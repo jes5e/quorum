@@ -45,11 +45,20 @@ If the description references specific code, files, or behavior:
 Use the bees CLI to create the ticket:
 
 ```bash
+# POSIX (bash / zsh):
 bees create-ticket \
   --ticket-type bee \
   --hive issues \
   --status open \
   --title "<concise title>" \
+  --body "<structured body>"
+
+# Windows (PowerShell):
+bees create-ticket `
+  --ticket-type bee `
+  --hive issues `
+  --status open `
+  --title "<concise title>" `
   --body "<structured body>"
 ```
 

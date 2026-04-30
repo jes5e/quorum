@@ -61,13 +61,13 @@ The core implementation roles (Engineer, Test Writer, Code Reviewer, Test Review
 
 Check whether you are running in an isolated context for this Bee's work. There are three scenarios:
 
-**Scenario A — Already in a worktree.** You are in a git worktree whose directory name matches the Bee (e.g., `b_Wx7` for `b.Wx7`). This is the expected path when launched via `/bees-worktree-add` or `/bees-fleet`. Proceed directly — no action needed.
+**Scenario A — Already in a worktree.** You are in a git worktree whose directory name matches the Bee (e.g., `b_Wx7` for `b.Wx7`). This is the expected path when launched via the optional worktree skills (`/bees-worktree-add`, `/bees-fleet`) if the user has them installed. Proceed directly — no action needed.
 
 **Scenario B — On an existing branch in the main repo.** You are in the main repo checkout but *not* on a worktree. This happens when the user invoked `/bees-execute` directly in their terminal. Present an AskUserQuestion with these options:
 
-1. **Create a feature branch (Recommended)** — Create a new branch (e.g., `bee/b.Wx7`) from the current HEAD and do all work there. This keeps main clean and allows the user to review, squash-merge, or discard the work later. At the end, instruct the user to merge the branch or open a PR — `/bees-worktree-rm` does not apply.
+1. **Create a feature branch (Recommended)** — Create a new branch (e.g., `bee/b.Wx7`) from the current HEAD and do all work there. This keeps main clean and allows the user to review, squash-merge, or discard the work later. At the end, instruct the user to merge the branch or open a PR.
 2. **Work on current branch** — Commit directly to whichever branch is checked out (tell the user the branch name). Appropriate if the user is already on a feature branch or intentionally wants commits on main.
-3. **Set up a worktree instead** — Suggest the user run `/bees-worktree-add` to create an isolated worktree and spawn an async agent. This is the right choice when the user wants fire-and-forget execution in a separate tmux session. Exit after giving this advice — do not proceed with work.
+3. **Set up a worktree instead** — If `/bees-worktree-add` is installed (it is not part of the portable core), suggest the user run it to create an isolated worktree and spawn an async agent. Right choice for fire-and-forget execution in a separate tmux session. Exit after giving this advice — do not proceed with work. Omit this option if the skill is not installed.
 
 In the question, always state:
 - The current working directory
@@ -96,7 +96,7 @@ If ready, mark the Epic status with `status=in_progress` to show work has starte
 ### 3. Form Team to Execute Tasks
 
 Before forming the Team, load all Tasks and Subtasks for the Epic:
-- Use `show_ticket()` on the Epic to get the `children` array (Task IDs)
+- Use `bees show-ticket --ids <epic-id>` to get the `children` array (Task IDs)
 - For each Task, fetch its full details including its own `children` array (Subtasks)
 - Read every Subtask — these contain the detailed instructions (Context, What Needs to Change, Key Files, Acceptance Criteria) that the team must follow
 - Sort Tasks in dependency order (check each Task's `up_dependencies`) to ensure no Task is blocked when executed
@@ -236,6 +236,8 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
       - Any cross-Task / cross-Epic interaction issues discovered during the wider-view check, and the resolution
 
 
+### 4. Per-Task and Per-Epic Cleanup
+
 #### 4.1 After Each Task
 
 When a Task and all its Subtasks are done (all reviewer feedback addressed or ignored):
@@ -361,13 +363,13 @@ Then use `AskUserQuestion` with:
 Once the user approves the Bee as done:
 
 1. Mark all Epics in the Bee as `status=done`:
-```bees
-update_ticket(ticket_id="<epic-id>", status="done")
+```bash
+bees update-ticket --ids <epic-id> --status done
 ```
 
 2. Verify all Epics are now `done`, then mark the Bee itself:
-```bees
-update_ticket(ticket_id="<bee-id>", status="done")
+```bash
+bees update-ticket --ids <bee-id> --status done
 ```
 
 ### 9. Output Final Summary
@@ -387,6 +389,6 @@ All work has been synced to git.
 
 Instruct the user to perform whatever further testing they want to do, then advise on merging based on the isolation strategy chosen in step 1:
 
-- **Worktree** — Invoke the `/bees-worktree-rm` skill to merge the worktree branch and clean up the worktree directory.
+- **Worktree** — If `/bees-worktree-rm` is installed (it is not part of the portable core), invoke it to merge the worktree branch and clean up the worktree directory. Otherwise, instruct the user to merge the worktree branch manually (`git merge <branch>` from the parent repo, then `git worktree remove <path>`).
 - **Feature branch** — Instruct the user to merge the branch (e.g., `git merge bee/b.Wx7`) or open a PR. Do NOT push to remote unless the user asks.
 - **Worked on main/current branch** — Commits are already on the branch. Remind the user that the work is committed locally and they can push when ready.

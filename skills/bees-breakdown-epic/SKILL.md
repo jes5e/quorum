@@ -41,7 +41,7 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
 - Read the parent Bee
 - Read the egg source material linked in the parent Bee. **If the egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Plan Bee body itself is the authoritative scope document — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
 - Identify what implementation work is needed as a list of Tasks.
-- Find any Epics this Epic depends on (check `up_dependencies` field) and use `show_ticket()` to read them
+- Find any Epics this Epic depends on (check `up_dependencies` field) and use `bees show-ticket --ids <id>` to read them
   - These Epics describe foundational work that will be complete before this Epic you are working on is done
   - So presume that foundational work is done and make a plan to build on top of it
 - Check for sibling overlap: 
@@ -108,12 +108,12 @@ Always spawn the Product Manager.
 
 **IMPORTANT**: You do not break Tasks into Subtasks. This is the job of the Team.
 
-**CRITICAL — Subagent permissions**: Spawn ALL team members with `mode: "plan"`. Team members are read-only researchers. They must never create, update, or delete tickets. Only YOU (the team lead) call `create_ticket`, `update_ticket`, or `delete_ticket`.
+**CRITICAL — Subagent permissions**: Spawn ALL team members with `mode: "plan"`. Team members are read-only researchers. They must never create, update, or delete tickets. Only YOU (the team lead) run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
 
 When spawning team members, include the following restriction in each teammate's spawn prompt:
 
 ```prompt
-You are a READ-ONLY researcher. You must NEVER call create_ticket, update_ticket, or delete_ticket.
+You are a READ-ONLY researcher. You must NEVER run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
 Your job is to research the codebase and report your proposed subtasks back via SendMessage as text.
 Only the team lead creates tickets.
 ```

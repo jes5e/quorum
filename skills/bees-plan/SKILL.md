@@ -180,11 +180,21 @@ After it returns, skip directly to Step 7 (commit) below — Step 6 (Offer Next 
 Create the Plan Bee directly in the Plans hive with `egg=null`:
 
 ```bash
+# POSIX (bash / zsh):
 bees create-ticket \
   --ticket-type bee \
   --hive plans \
   --status ready \
   --title "<feature title>" \
+  --body "<scope statement with acceptance criteria>"
+  # no --egg flag; egg stays null
+
+# Windows (PowerShell):
+bees create-ticket `
+  --ticket-type bee `
+  --hive plans `
+  --status ready `
+  --title "<feature title>" `
   --body "<scope statement with acceptance criteria>"
   # no --egg flag; egg stays null
 ```
@@ -199,12 +209,22 @@ Then break the feature into Epics. Use the **same Epic-decomposition rules** as 
 Create each Epic as a child of the Plan Bee:
 
 ```bash
+# POSIX (bash / zsh):
 bees create-ticket \
   --ticket-type t1 \
   --hive plans \
   --parent <bee-id> \
   --status drafted \
   --title "<epic title>" \
+  --body "<epic scope and acceptance criteria>"
+
+# Windows (PowerShell):
+bees create-ticket `
+  --ticket-type t1 `
+  --hive plans `
+  --parent <bee-id> `
+  --status drafted `
+  --title "<epic title>" `
   --body "<epic scope and acceptance criteria>"
 ```
 

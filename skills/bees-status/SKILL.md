@@ -1,12 +1,6 @@
 ---
 name: bees-status
 description: Show the bees-driven SDLC workflow stages and current progress across all hives in this repo
-triggers:
-  - where are we
-  - what's next
-  - workflow status
-  - bees status
-  - what do I do next
 ---
 
 # Bees Workflow Status
@@ -21,12 +15,11 @@ The bees SDLC has these stages, in order:
 |---|-------|-------|-------|--------|
 | 1 | **Setup** | `/bees-setup` | A repo | `plans` and `issues` hives configured with ticket types and statuses |
 | 2 | **Write specs** | (manual) | PRD and SDD documents on disk | `docs/prd.md` and `docs/sdd.md` (or similar) |
-| 3 | **Plan** | `/bees-plan-from-specs` | PRD + SDD | A Plan Bee (`status=ready`) with Epic children (`status=drafted`) |
+| 3 | **Plan** | `/bees-plan` (interactive) or `/bees-plan-from-specs` (express path with finalized PRD+SDD) | Feature scope (interactive) or PRD + SDD on disk | A Plan Bee (`status=ready`) with Epic children (`status=drafted`) |
 | 4 | **Break Down** | `/bees-breakdown-epic` | A Plan Bee or Epic | Epics broken into Tasks and Subtasks (Epic `status=ready`) |
 | 5 | **Execute** | `/bees-execute` | A Bee | Code written, committed, tests passing. Tickets `status=done` |
-| 6 | **Merge** | `/bees-worktree-rm` | A completed worktree | Branch merged, worktree cleaned up |
 
-For multi-Bee or multi-repo orchestration, `/bees-fleet` can launch and monitor multiple `/bees-execute` instances in parallel via worktrees.
+If `/bees-worktree-add`, `/bees-worktree-rm`, or `/bees-fleet` are installed (they are not part of the portable core), worktree-based async orchestration is also available — those skills' own descriptions explain when they apply.
 
 ## How to Determine Current State
 
@@ -103,7 +96,7 @@ Use these status meanings:
 [One clear sentence telling the user the recommended next action, e.g.:]
 - "All Epics are broken down. Run `/bees-execute b.xxx` to start executing."
 - "2 Epics still need to be broken down. Run `/bees-breakdown-epic` to continue."
-- "All Epics are done. Run `/bees-worktree-rm` to merge."
+- "All Epics are done. Merge or open a PR for the feature branch (or, if `/bees-worktree-rm` is installed, run it to merge the worktree branch)."
 ```
 
 ### 5. Decision Logic for "What's Next"
@@ -112,9 +105,9 @@ Walk this tree top-to-bottom; first match wins:
 
 1. No hives → `/bees-setup`
 2. No specs found → "Write PRD and SDD"
-3. No Plan Bees → `/bees-plan-from-specs`
+3. No Plan Bees → `/bees-plan` (interactive feature planning) or `/bees-plan-from-specs` (express path if you already have a finalized PRD+SDD on disk)
 4. Any Plan Bee has drafted Epics → `/bees-breakdown-epic` (report how many are drafted vs. ready)
 5. Any Plan Bee has ready Epics with all deps done or no deps → `/bees-execute [bee-id]`
 6. All Epics are `in_progress` → "Work in progress — check active sessions"
-7. All Epics are `done` → `/bees-worktree-rm` or "All done — merge and ship"
+7. All Epics are `done` → "All done — merge or open a PR for the feature branch" (or, if `/bees-worktree-rm` is installed, run it to merge the worktree)
 8. Issue Bees open → `/bees-fix-issue` or `/bees-execute [issue-id]`

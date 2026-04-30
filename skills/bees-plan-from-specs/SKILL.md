@@ -1,11 +1,6 @@
 ---
 name: bees-plan-from-specs
 description: Read a PRD and SDD from disk and create a Plan Bee with Epics in the Plans hive to describe the work that needs to be done.
-triggers:
-  - make a plan
-  - create a plan from PRD
-  - plan the work
-disable-model-invocation: false
 ---
 
 # PRD + SDD to Plan

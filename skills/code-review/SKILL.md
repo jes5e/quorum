@@ -88,7 +88,7 @@ These are the issues per-Task reviews structurally miss because reviewers typica
 - **Cumulative resource accounting**: if the diff adds acquires from a bounded resource (connection pool, semaphore, mutex, queue slot), model the aggregate behavior across all call sites — including call sites in *other* files not touched by this diff. Flag starvation scenarios and lifetime-mismatch interactions (e.g., short-lived API request handlers competing for a connection pool against a new long-lived background worker that holds connections across many requests — at steady state the long-lived consumer can starve the request path).
 - **Symmetric-change check**: if the diff adds a *new* resource (key, file, queue, pool entry, etc.), search for every code path that cleans up the sibling resource class and verify the new resource is handled symmetrically. Example: adding a new `cache:user:{id}:permissions` key class in the write path requires the cache-invalidation path, the user-deletion path, and any periodic-purge job to all DELETE this key class — otherwise stale-permissions data leaks past role changes.
 
-### Step 8: Prioritize and Filter
+### Step 3: Prioritize and Filter
 
 Focus on important issues only:
 - **Include:** Security vulnerabilities, logic errors, missing tests, architecture problems
@@ -105,7 +105,7 @@ NOTE: It is expected that many times you will return no important issues.
 This is OK. Don't feel obliged to report things. Only report if there is something important.
 In fact, if you keep reporting things it will cause an infinite loop which is very bad!
 
-### Step 9: Generate Work Item List
+### Step 4: Generate Work Item List
 
 Output a simple numbered list directly in your response:
 
