@@ -16,6 +16,10 @@ read these files to understand the scope and requirements of the work.
 
 Order in the array is preserved so consumers can rely on positional
 conventions (e.g., index 0 = PRD, index 1 = SDD) if desired.
+
+For convenience, a bare JSON string is accepted and treated as a one-element
+array — i.e., `egg = "/abs/path/to/file"` is equivalent to
+`egg = ["/abs/path/to/file"]`. Multi-document eggs must use a JSON array.
 """
 
 import argparse

@@ -179,6 +179,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - **Scope your test/lint runs narrowly** while iterating — use the **Narrow test** and **Lint** commands from CLAUDE.md `## Build Commands`. The authoritative workspace-wide run happens once at the Task's `.T` subtask. See "Testing discipline — avoid redundant full-workspace runs" above.
 - Doc Writer
   - Model: User's choice (Opus or Sonnet, selected at start)
+  - Note: this differs from `/bees-fix-issue`'s Doc Writer because `/bees-execute` Tasks have *pre-planned doc Subtasks* in the breakdown — the Doc Writer's primary job is to execute those, then review the Engineer's diff for additional gaps. `/bees-fix-issue` has no pre-planned subtasks, so its Doc Writer reviews ad-hoc only. The divergence is intentional.
   - Responsibilities:
     - Execute documentation Subtasks for a task (if required)
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
@@ -246,7 +247,7 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 2. Create one git commit for the Task. **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report). Do NOT re-run the test suite here — the `.T` subtask already validated, and the PM confirmed. Re-running wastes minutes per Task.
    2. Run `git status` to see the full set of modified and untracked files.
-   3. Stage files that are related to this Task — include agent-reported files, `.bees/` ticket changes, and any formatting changes to files that were touched by this Task's agents. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
+   3. Stage files that are related to this Task — include agent-reported files, formatting changes to files that were touched by this Task's agents, and (only if the Plans hive lives inside this repo) the `.bees/plans/` ticket changes. Resolve the Plans hive path via `bees list-hives` and skip the stage if the hive is sibling-to-repo or external (the bees CLI persists ticket files outside git tracking in those cases — same hive-path resolution as `/bees-plan` and `/bees-file-issue`). **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
    4. Commit with a descriptive message per system/project git guidance.
 3. Send shutdown requests to all current agents. Delete completed tasks from the task list.
 4. Output the summary below to the screen and continue to the next Task (spawning new agents with new task-scoped names on the same team).
@@ -291,7 +292,7 @@ If not, move to final Bee review.
 
 Once all Epics in the Bee are done:
 - `TeamDelete` the last Epic's team (if it still exists). If stuck: (1) `python3 <path-from-CLAUDE.md-Skill-Paths-Force-clean-team-script> <team-name>`, (2) `TeamDelete` again to clear session state.
-- Form a new review Team (e.g., `bee-review-<bee-id>`) to check their work. Use task-scoped agent names (e.g., `code-reviewer`, `test-reviewer`, `doc-reviewer`).
+- Form a new review Team (e.g., `bee-review-<bee-id>`) to check their work. Use bee-scoped agent names (e.g., `code-reviewer-<bee-id>`, `test-reviewer-<bee-id>`, `doc-reviewer-<bee-id>`) — the reviews run at the Bee level (across the whole Bee, not per Task), so the scope suffix is the bee-id rather than a task-id.
 
 If you invoked the Engineer in the first team, invoke the Code Reviewer in this team.
 If you invoked the Test Writer in the first team, invoke the Test Review in this team.

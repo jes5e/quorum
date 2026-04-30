@@ -9,6 +9,17 @@ Your job is to break down an Epic ticket into Tasks and Subtasks.
 
 ## Workflow
 
+### 0. Choose agent model preference
+
+Before starting work, ask the user which model to use for the support roles spawned during breakdown (research teammates, Product Manager when applicable). Use `AskUserQuestion`:
+
+- Question: "Which model should support agents (research teammates, PM, Doc Writer-equivalent) use?"
+- Options:
+  - **Opus (Recommended)** — highest quality, slower, more expensive
+  - **Sonnet** — fast and cost-effective, good for straightforward tasks
+
+The core implementation-shaping role (the team-lead — you) always uses **Opus**. Store the user's choice and apply it when spawning research teammates throughout this breakdown.
+
 ### 1. Determine Which Epic to Break Down
 
 **If caller provides Epic ID**: Use that Epic ID directly.

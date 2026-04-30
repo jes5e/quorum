@@ -26,6 +26,17 @@ If any precondition is missing, stop with `Run /bees-setup first.` and direct th
 
 ## Execution Flow
 
+#### Choose agent model preference
+
+Before starting work on the first issue, ask the user which model to use for the support roles (Doc Writer, Product Manager, Doc Reviewer). Use `AskUserQuestion`:
+
+- Question: "Which model should support agents (Doc Writer, Product Manager, Doc Reviewer) use?"
+- Options:
+  - **Opus (Recommended)** — highest quality, slower, more expensive
+  - **Sonnet** — fast and cost-effective, good for straightforward tasks
+
+The core implementation roles (Engineer, Test Writer, Code Reviewer, Test Reviewer) always use **Opus** — this is not configurable. Store the user's choice and apply it when spawning agents for every issue in the run (single-issue, list, or `all` mode). Ask once at the start, not per issue.
+
 ### 1. Determine which issues to fix
 
 Parse the argument string. Split on any run of commas and/or whitespace; discard empty tokens. The resulting tokens determine the mode:
@@ -151,7 +162,8 @@ The team may consist of any of the following agents:
     - Review the work of the Engineer to find any gaps, then add, delete or update required tests
     - **Running long commands (test suites, builds, etc.):** use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invocations of any length up to that, dispatch in the foreground: `Bash(command: "<your project's test command per CLAUDE.md>", timeout: 540000)`. The harness blocks until the command exits and returns the output; if the command hangs, the harness kills it at the timeout boundary. For runs that legitimately exceed 10 min, use `Bash(run_in_background: true)` and **wait silently** for the task-completion notification — read the output file when it arrives. Do not write shell polling loops to wait for completion; the harness handles notification on its own.
 - Doc Writer
-  - Model: Claude Opus
+  - Model: User's choice (Opus or Sonnet, selected at start)
+  - Note: this differs from `/bees-execute`'s Doc Writer because `/bees-fix-issue` issues have *no pre-planned doc Subtasks* — the Doc Writer reviews the Engineer's diff for doc gaps and updates ad-hoc. `/bees-execute` has pre-planned doc Subtasks that get executed first. The divergence is intentional.
   - Responsibilities:
     - Updating documentation if the issue fix changes behavior
   - Instructions:
@@ -161,7 +173,7 @@ The team may consist of any of the following agents:
     - Review the work of the Engineer and see if any docs need to be updated based on that work
     - Update any docs that require updating
 - Product Manager (complex fixes only)
-  - Model: Claude Opus
+  - Model: User's choice (Opus or Sonnet, selected at start)
   - Responsibilities:
     - Reviews the Engineer's changes against the PRD and SDD in real-time
     - Flags scope creep — changes beyond what the issue requires
@@ -215,7 +227,7 @@ Also check the background process's output file if it has one. A claim of "waiti
   - Instructions:
     - Invoke the /test-review skill
 - Doc Reviewer
-  - Model: Claude Opus
+  - Model: User's choice (Opus or Sonnet, selected at start)
   - Responsibilities:
     - Review the output of the Doc Writer
     - Provide feedback where the work of the Doc Writer was not up to standards
