@@ -85,14 +85,33 @@ python -m pip install --user pipx
 
 bees-md requires Python 3.10+. After install, the bees binary lives under the user's local-binary directory: `~/.local/bin/bees` on POSIX, `%USERPROFILE%\.local\bin\bees.exe` (or wherever pipx put it) on Windows. Documentation: https://github.com/gabemahoney/bees
 
-#### 2. Claude Code Agent Teams (optional)
+#### 2. Claude Code Agent Teams (strongly recommended)
 
-The bees workflow can use agent teams to parallelize work in `bees-execute`. Check whether `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"` in Claude Code's user-settings file:
+`bees-execute` and `bees-fix-issue` use Claude Code's **Agent Teams** feature to run Engineer + Test Writer + Doc Writer + PM concurrently on each Task instead of in sequence. With it enabled, the workflow is noticeably faster and more parallel; without it, the skills fall back to single-agent execution and still work end-to-end.
+
+**Detect current state.** Read the user's Claude Code settings file:
 
 - POSIX: `~/.claude/settings.json`
 - Windows: `%USERPROFILE%\.claude\settings.json`
 
-If not configured, note it is optional but recommended for parallel task execution. Without it, `bees-execute` falls back to single-agent execution — still functional.
+Check whether `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"`.
+
+**If already enabled**: confirm to the user ("Agent Teams is enabled — `bees-execute` and `bees-fix-issue` will run their teams in parallel.") and move on.
+
+**If not enabled (or the settings file doesn't exist)**: don't silently skip. Explain the upgrade and offer to enable it via `AskUserQuestion`:
+
+> "Agent Teams is currently disabled. Enabling it makes `bees-execute` and `bees-fix-issue` run their team agents (Engineer / Test Writer / Doc Writer / PM) in parallel instead of sequentially — typically a 2-3x speedup on each Task. The setting is `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1'` in your Claude Code user settings file. Want me to enable it now?"
+>
+> Options:
+> 1. **Yes, enable it (Recommended)** — I'll add the setting to your settings file (creating it if it doesn't exist). Takes effect on your next Claude Code session.
+> 2. **Skip for now** — `bees-execute` and `bees-fix-issue` fall back to single-agent execution; still fully functional.
+> 3. **Show me what to add and I'll do it myself** — print the JSON snippet and file path, then continue.
+
+If option 1: read the existing JSON (or `{}` if the file is missing), merge in the new key without disturbing other settings, show the user a before/after diff, then write the file. Remind the user: "This takes effect on your next Claude Code session — restart Claude Code when you have a moment."
+
+If option 2: continue setup; Agent Teams remains disabled. The user can enable it later by re-running `/bees-setup` (which will re-detect and re-offer) or by editing the settings file by hand.
+
+If option 3: print the exact addition (`"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"`) and the file path, then continue setup.
 
 > **Optional later-installs not needed for the core portable workflow:**
 > The skills `bees-fleet`, `bees-worktree-add`, and `bees-worktree-rm` require **tmux** for terminal session management. If you do not plan to use those skills, you do not need tmux. If you later install or invoke any of them, install tmux at that point (`brew install tmux` on macOS / `sudo apt install tmux` on Debian-Ubuntu Linux / install via WSL on Windows — tmux has no native Windows port). The core flow — `/bees-plan` or `/bees-plan-from-specs` → `/bees-breakdown-epic` → `/bees-execute` → `/bees-fix-issue` — does not need tmux and works on native Windows PowerShell.

@@ -40,7 +40,15 @@ If you want the lightweight, ephemeral-spec, async-team-spawning experience of A
 - **bees CLI** (`pipx install bees-md`) — see [bees](https://github.com/gabemahoney/bees) for documentation. Requires Python 3.10+.
 - **POSIX shell** (bash/zsh on macOS/Linux/WSL) **or PowerShell** (native Windows). Either works; every shell snippet in the skills is provided in both forms.
 
-That's it. No tmux, no waggle MCP server, no agent-team feature flags. (Agent Teams remain an *optional* upgrade — `bees-execute` parallelizes work when `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set, and falls back to single-agent execution otherwise.)
+## Strongly recommended: enable Agent Teams
+
+`bees-execute` and `bees-fix-issue` get a major speedup when Claude Code's **Agent Teams** feature is enabled — instead of running Engineer → Test Writer → Doc Writer → PM in sequence, the team works concurrently on each Task. The skills detect whether Agent Teams is available at runtime and gracefully fall back to single-agent execution when it isn't, so the workflow works either way; with it enabled, it's noticeably faster and more parallel.
+
+To enable, set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"1"` in your Claude Code user-settings file:
+- POSIX: `~/.claude/settings.json`
+- Windows: `%USERPROFILE%\.claude\settings.json`
+
+`/bees-setup` checks this for you on first run and offers to enable it if it isn't. You can also enable it manually any time.
 
 ## Install
 
@@ -121,15 +129,16 @@ Each `bees-plan` invocation that produces docs adds a new `### Feature: <title>`
 
 The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you can override the defaults if your project uses a different structure (e.g., `specs/` instead of `docs/`).
 
-## What's not in this repo (yet)
+## Coming soon: optional skills
 
-This repo intentionally ships the **portable core** — 11 skills that work on any project, any language, any platform. It does NOT ship:
+The current 11 skills are the portable core — they work on any project, any language, any platform with no extra tooling beyond the bees CLI and Claude Code. Optional skills are planned for users who want more — these will likely require additional tooling per skill, clearly labeled:
 
-- Skills that require **tmux** (e.g., async-worktree session management or multi-repo orchestration). Possible to add later if there's demand for a platform-conditional variant.
-- Skills tied to specific **toolchains** (e.g., Cargo-specific changelog or licensing). Those belong in stack-specific add-ons, not in the cross-language core.
-- Skills tied to specific **infrastructure** (e.g., a particular pastebin or cloud-storage API). Out of scope for an open-source workflow.
+- **Async-worktree session management** — spawn an isolated git-worktree session for a Plan Bee, work on it in the background, merge cleanly when done.
+- **Multi-repo orchestration** — survey ready work across multiple repos and launch concurrent execution sessions.
 
-If you want any of these, the [Apiary](https://github.com/gabemahoney/apiary) project includes some of them and is fully compatible with the same `bees` CLI underneath.
+If you need these capabilities today, the [Apiary](https://github.com/gabemahoney/apiary) project includes them and is fully compatible with the same `bees` CLI underneath.
+
+Stack-specific helpers (changelog management, license attribution generation, etc.) and infrastructure-specific helpers (pastebins, cloud storage) are out of scope for the cross-language core but can live in companion repos.
 
 ## Contributing
 
