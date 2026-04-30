@@ -58,11 +58,11 @@ Copy the skills into your user-level Claude Code skills directory so every repo 
 
 ```bash
 # POSIX (bash / zsh):
-git clone https://github.com/<your-username>/bees-workflow ~/projects/bees-workflow
+git clone https://github.com/jes5e/bees-workflow ~/projects/bees-workflow
 cp -r ~/projects/bees-workflow/skills/* ~/.claude/skills/
 
 # Windows (PowerShell):
-git clone https://github.com/<your-username>/bees-workflow $HOME\projects\bees-workflow
+git clone https://github.com/jes5e/bees-workflow $HOME\projects\bees-workflow
 Copy-Item -Recurse $HOME\projects\bees-workflow\skills\* $HOME\.claude\skills\
 ```
 
