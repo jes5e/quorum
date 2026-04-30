@@ -7,6 +7,20 @@ description: File a new issue ticket in the issues hive
 
 Create a new issue ticket in the issues hive. The user describes the issue and this skill creates a well-structured ticket.
 
+## House style: bundle related issues
+
+When filing issues, **default to bundling related items into fewer tickets** rather than splitting them along human-triage lines. The bees workflow is optimized for agent work efficiency: per-ticket overhead — read scope, load context, write tests, commit — is the cost to minimize, not human-triage legibility.
+
+Split into separate tickets only when:
+
+- Issues are truly independent (no shared code paths, no shared tests, no shared mental model required to fix them)
+- Different status / priority lifecycles are needed
+- One genuinely blocks another and they need separate tracking
+
+Don't split along categorical lines (e.g. "memory leak vs correctness vs doc fix") if the fixes touch the same module or can share a single pass through the code. A bundled ticket with clearly-labeled sub-findings inside the body is the right shape.
+
+This is workflow-level house style. Projects that disagree (e.g., projects with human triage workflows) can override in their CLAUDE.md or via project-specific instructions to the agent calling this skill.
+
 ## Usage
 
 The user can call this skill in several ways:
