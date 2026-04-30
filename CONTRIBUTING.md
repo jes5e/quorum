@@ -63,6 +63,19 @@ These look like inconsistencies if you compare two skills side-by-side without c
 - **Don't categorize-and-split issue tickets.** Default to bundling related issues into a single ticket with sub-task labels. The bees workflow optimizes for agent work efficiency (per-ticket overhead is the cost), not human triage. See `/bees-file-issue`'s "House style" section for the rule.
 - **Don't skip verification before recommending paths or flags.** When prose says `bees set-types --child-tiers ...`, that flag must exist. Verify with `--help` before writing it. CLI-flag drift is a recurring source of P0 bugs (see issue tracking history).
 
+## Considered and rejected
+
+Specific past suggestions that were evaluated and deliberately not adopted. Writing them down prevents future reviewers from re-flagging the same patterns and going through the same pushback cycle. Scan this list before flagging "this skill should do X" — X may already have been weighed and rejected.
+
+- **Path-traversal sanitization in `force_clean_team.py`** — rejected: the script's worst case is bounded to `~/.claude/teams/<name>` and `~/.claude/tasks/<name>`. A `..` argument resolves within `$HOME`. Defensive code for a non-threat.
+- **Dedicated bundled helper script for JSON edits to `~/.bees/config.json` and Claude Code `settings.json`** — rejected: skill prose specifying a Python one-liner (`python -c 'import json,sys; ...'`) gives the same atomicity without adding a maintained file.
+- **Unconditional "read ALL test files" in test-review** — rejected as written: blows context budget on large suites. Replaced with conditional "read the index plus contents of files that overlap with the changed code." Preserves duplication-detection without context bloat.
+- **Adding `triggers:` and `disable-model-invocation:` frontmatter to skills** — rejected: Claude Code silently ignores any frontmatter beyond `name` and `description`. The keys don't actually wire up trigger phrases or anything else.
+- **Renaming `code-review` / `doc-review` / `test-review` to `bees-code-review` etc. for prefix consistency** — rejected: those three are general-purpose review skills useful standalone. Prefixing them couples them to bees-workflow when they aren't.
+- **Centralizing skills into a global "shared" directory rather than skill-bundled `scripts/`** — rejected: each skill owns its helpers. Makes the bundle self-contained and avoids cross-skill coupling.
+
+When future tickets close with a "Skipped from external review" or "Considered and rejected" note, append a one-liner here so the record stays current.
+
 ## Status / type renames history
 
 These renames happened in this order with specific reasons. A future "simplification" that reverses any of them would re-introduce the issue it solved.
