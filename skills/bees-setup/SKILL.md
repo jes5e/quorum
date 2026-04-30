@@ -147,7 +147,11 @@ if (-not $skillsRoot) { Write-Error "No bees-workflow skills found in ~\.claude\
 
 ### Skill Paths section in CLAUDE.md
 
-Write the resolved absolute paths to a new `## Skill Paths` section in CLAUDE.md. Other skills look these up by exact key. Detect existing configuration first — if a `## Skill Paths` section already exists with all required keys, validate the paths still resolve to existing files and update only the entries that don't.
+Write the resolved absolute paths to a `## Skill Paths` section in CLAUDE.md. Other skills look these up by exact key.
+
+**Detect existing configuration first.** Read CLAUDE.md (create it if it doesn't exist):
+- If a `## Skill Paths` section already exists with all required keys, validate the paths still resolve to existing files. Update only the entries that don't.
+- If the section is missing, insert a new one as a top-level (`##`) heading. Placement preference: directly above `## Documentation Locations` for visual grouping. If `## Documentation Locations` does not yet exist (e.g., this is a first-run before that section is written), append `## Skill Paths` at the end of CLAUDE.md — other skills look it up by exact heading, so absolute position does not matter.
 
 Required keys:
 
@@ -156,7 +160,7 @@ Required keys:
 | `Force clean team script` | `<SKILLS_ROOT>/bees-execute/scripts/force_clean_team.py` |
 | `File list resolver script` | `<SKILLS_ROOT>/bees-setup/scripts/file_list_resolver.py` |
 
-Section template (insert above `## Documentation Locations`):
+Section template:
 
 ```markdown
 ## Skill Paths
@@ -194,18 +198,23 @@ data.setdefault("hives", {}).setdefault(hive_name, {})["egg_resolver"] = new_res
 with open(p, "w") as f: json.dump(data, f, indent=2)
 print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
 ' "$HOME/.bees/config.json" "<hive-name>" "$RESOLVER"
+```
 
+```powershell
 # Windows (PowerShell):
-python3 -c "
+# IMPORTANT: use a single-quoted here-string @'...'@ around the Python source so
+# PowerShell does NOT expand $variables inside the script body before invoking Python.
+$pyScript = @'
 import json, sys
 p = sys.argv[1]
 hive_name = sys.argv[2]
 new_resolver = sys.argv[3]
 with open(p) as f: data = json.load(f)
-data.setdefault('hives', {}).setdefault(hive_name, {})['egg_resolver'] = new_resolver
-with open(p, 'w') as f: json.dump(data, f, indent=2)
-print(f'Updated {hive_name}.egg_resolver = {new_resolver}')
-" "$env:USERPROFILE\.bees\config.json" "<hive-name>" "$RESOLVER"
+data.setdefault("hives", {}).setdefault(hive_name, {})["egg_resolver"] = new_resolver
+with open(p, "w") as f: json.dump(data, f, indent=2)
+print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
+'@
+python -c $pyScript "$env:USERPROFILE\.bees\config.json" "<hive-name>" "$RESOLVER"
 ```
 
 Verify with a `bees show-ticket` on a Plan Bee that has eggs.

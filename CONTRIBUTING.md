@@ -41,7 +41,7 @@ After this, edits in `~/code/bees-workflow/skills/<skill>/SKILL.md` are immediat
 - **Frontmatter:** Only `name` and `description` are honored by Claude Code's skill loader. `triggers:` and `disable-model-invocation:` are silently ignored. Don't add them to new skills; remove them from existing skills if you spot them.
 - **Shell snippets:** OS-conditional labeled blocks (POSIX bash + Windows PowerShell at minimum). Single-line trivial snippets can omit the PowerShell variant if and only if the syntax is identical (e.g., `bees show-ticket --ids b.xyz`).
 - **Helper scripts:** Ship inside the skill's `scripts/` directory (e.g., `bees-execute/scripts/force_clean_team.py`). Get their absolute path via the `## Skill Paths` section in CLAUDE.md (resolved by `/bees-setup`).
-- **JSON file edits:** Use a Python one-liner with `json.load` / `json.dump`, not prose-text-edit instructions. Direct text editing has no atomicity story and corrupts the file on a wrong escape.
+- **JSON file edits:** Use a Python one-liner with `json.load` / `json.dump`, not prose-text-edit instructions. Direct text editing has no atomicity story and corrupts the file on a wrong escape. Invoke as `python3` on POSIX and `python` (or `py -3`) on Windows — `python3` is generally not on Windows PATH for python.org installs.
 - **CLI invocation form:** Use the shell-form `bees show-ticket --ids <id>`, not the function-call form `show_ticket(ticket_id="<id>")`. None of the skills bootstrap the MCP server, so the CLI form is the right one. (The function-call form is what the bees MCP server exposes, but skills don't run that path.)
 
 ## Intentional asymmetries
@@ -61,7 +61,7 @@ These look like inconsistencies if you compare two skills side-by-side without c
 - **Don't hardcode hive paths or doc paths.** `/bees-setup` lets the user pick where each hive lives (in-repo, sibling-to-repo, or anywhere). Skills must resolve paths at runtime via `bees list-hives` or CLAUDE.md `## Documentation Locations`.
 - **Don't replace concrete shell snippets with vague prose** ("run the appropriate test command"). Concrete commands per OS keep agent reliability up — vague prose forces the agent to guess and often guesses wrong.
 - **Don't categorize-and-split issue tickets.** Default to bundling related issues into a single ticket with sub-task labels. The bees workflow optimizes for agent work efficiency (per-ticket overhead is the cost), not human triage. See `/bees-file-issue`'s "House style" section for the rule.
-- **Don't skip verification before recommending paths or flags.** When prose says `bees set-types --child-tiers ...`, that flag must exist. Verify with `--help` before writing it. CLI-flag drift is a recurring source of P0 bugs (see issue tracking history).
+- **Don't skip verification before recommending paths or flags.** When prose says `bees set-types --child-tiers ...`, that flag must exist. Verify with `--help` before writing it. CLI-flag drift is a recurring source of P0 bugs (see *Where things live* below for where past findings are tracked).
 
 ## Considered and rejected
 

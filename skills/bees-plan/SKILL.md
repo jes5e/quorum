@@ -250,17 +250,25 @@ Resolve the Plans hive path via `bees list-hives`, check whether it lives inside
 plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
 repo_root=$(git rev-parse --show-toplevel)
 git_add_args="docs/"
-if [ -n "$plans_path" ] && [ "${plans_path#$repo_root}" != "$plans_path" ]; then
-  git_add_args="$git_add_args $plans_path"
-fi
+case "$plans_path" in
+  "$repo_root"|"$repo_root"/*) git_add_args="$git_add_args $plans_path" ;;
+esac
 git add $git_add_args
 git commit -m "Plan feature: <title>"
+```
 
+```powershell
 # Windows (PowerShell):
 $plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
 $repoRoot = git rev-parse --show-toplevel
+# Normalize separators — git rev-parse returns forward slashes on Windows;
+# bees list-hives may return backslashes. Compare both sides on the same form.
+$plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
+$repoNorm = $repoRoot.Replace('\','/')
 $addArgs = @('docs/')
-if ($plansPath -and $plansPath.StartsWith($repoRoot)) { $addArgs += $plansPath }
+if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
+  $addArgs += $plansPath
+}
 git add @addArgs
 git commit -m "Plan feature: <title>"
 ```

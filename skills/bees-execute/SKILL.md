@@ -34,6 +34,8 @@ Rationale: the workflow reads project-specific commands and doc paths from CLAUD
 
 Do not attempt to recover from a missing precondition by improvising commands or guessing paths — fail fast and direct the user to `/bees-setup` so the configuration is captured deliberately.
 
+If the user reports "I already ran `/bees-setup`" but the `## Skill Paths` precondition is missing, the project was set up before that section existed. Re-running `/bees-setup` adds it idempotently — existing `## Documentation Locations` and `## Build Commands` entries are preserved, only the missing section gets written.
+
 ### 1. Find Bee to work on and validate
 
 The user will either call without arguments, with a Bee id or with an Epic ID:
@@ -110,7 +112,7 @@ Create **one team per Epic** (e.g., `epic-9v`) and reuse it across all Tasks in 
 
 - **Agent naming**: Use task-scoped names to avoid collision with agents that haven't fully shut down yet. For example, for Task `xb`: `engineer-xb`, `test-writer-xb`, `pm-xb`. This ensures unique routing regardless of shutdown timing.
 - **Between Tasks**: Send shutdown requests to current agents, delete completed tasks from the task list, then spawn new agents with new task-scoped names. Do NOT call `TeamDelete` between Tasks.
-- **At Epic boundary**: Call `TeamDelete` to clean up the team. By this point all agents from the last Task have had ample time to terminate. If `TeamDelete` fails due to a stuck agent: (1) read the absolute path to `force_clean_team.py` from CLAUDE.md `## Skill Paths` (key: `Force clean team script`) and run `python3 <that-path> <team-name>` to remove directories, then (2) call `TeamDelete` again to clear session state. Then proceed to create the next team.
+- **At Epic boundary**: Call `TeamDelete` to clean up the team. By this point all agents from the last Task have had ample time to terminate. If `TeamDelete` fails due to a stuck agent: (1) read the absolute path to `force_clean_team.py` from CLAUDE.md `## Skill Paths` (key: `Force clean team script`) and run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (2) call `TeamDelete` again to clear session state. Then proceed to create the next team.
 
 Create agents on the team to work on an individual Task.
 **IMPORTANT: You must stay in `delegate` mode. Do not take on work, delegate work to Team members.**
@@ -247,7 +249,29 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 2. Create one git commit for the Task. **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report). Do NOT re-run the test suite here — the `.T` subtask already validated, and the PM confirmed. Re-running wastes minutes per Task.
    2. Run `git status` to see the full set of modified and untracked files.
-   3. Stage files that are related to this Task — include agent-reported files, formatting changes to files that were touched by this Task's agents, and (only if the Plans hive lives inside this repo) the `.bees/plans/` ticket changes. Resolve the Plans hive path via `bees list-hives` and skip the stage if the hive is sibling-to-repo or external (the bees CLI persists ticket files outside git tracking in those cases — same hive-path resolution as `/bees-plan` and `/bees-file-issue`). **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
+   3. Stage files that are related to this Task — include agent-reported files, formatting changes to files that were touched by this Task's agents, and (only if the Plans hive lives inside this repo) the resolved Plans hive path's contents. Use the same hive-path resolution as `/bees-plan` and `/bees-file-issue`:
+
+      ```bash
+      # POSIX (bash / zsh):
+      plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
+      repo_root=$(git rev-parse --show-toplevel)
+      case "$plans_path" in
+        "$repo_root"|"$repo_root"/*) git add "$plans_path" ;;
+      esac
+      ```
+
+      ```powershell
+      # Windows (PowerShell):
+      $plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+      $repoRoot = git rev-parse --show-toplevel
+      $plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
+      $repoNorm = $repoRoot.Replace('\','/')
+      if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
+        git add $plansPath
+      }
+      ```
+
+      **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
    4. Commit with a descriptive message per system/project git guidance.
 3. Send shutdown requests to all current agents. Delete completed tasks from the task list.
 4. Output the summary below to the screen and continue to the next Task (spawning new agents with new task-scoped names on the same team).
@@ -283,7 +307,7 @@ After the checkpoint passes (clean or fixed):
 
 If there are more Epics to work on, ask the user if they want to continue with the next logical one. If so:
 1. Mark the Epic as `status=done`
-2. Call `TeamDelete` to clean up the Epic's team. If it fails due to stuck agents: (1) run `python3 <path-from-CLAUDE.md-Skill-Paths-Force-clean-team-script> <team-name>`, then (2) call `TeamDelete` again to clear session state.
+2. Call `TeamDelete` to clean up the Epic's team. If it fails due to stuck agents: (1) run the `Force clean team script` (path from CLAUDE.md `## Skill Paths`) via the platform's Python 3 launcher (`python3` on POSIX, `python` or `py -3` on Windows) with `<team-name>` as the argument, then (2) call `TeamDelete` again to clear session state.
 3. Clear your context window and go back to step 2 (which will create a new team for the next Epic).
 
 If not, move to final Bee review.
@@ -291,11 +315,11 @@ If not, move to final Bee review.
 ### 5. Final Bee-level Code, Doc and Eng reviews
 
 Once all Epics in the Bee are done:
-- `TeamDelete` the last Epic's team (if it still exists). If stuck: (1) `python3 <path-from-CLAUDE.md-Skill-Paths-Force-clean-team-script> <team-name>`, (2) `TeamDelete` again to clear session state.
+- `TeamDelete` the last Epic's team (if it still exists). If stuck: (1) run the `Force clean team script` (path from CLAUDE.md `## Skill Paths`) via the platform's Python 3 launcher (`python3` POSIX / `python` Windows) with `<team-name>`, (2) `TeamDelete` again to clear session state.
 - Form a new review Team (e.g., `bee-review-<bee-id>`) to check their work. Use bee-scoped agent names (e.g., `code-reviewer-<bee-id>`, `test-reviewer-<bee-id>`, `doc-reviewer-<bee-id>`) — the reviews run at the Bee level (across the whole Bee, not per Task), so the scope suffix is the bee-id rather than a task-id.
 
 If you invoked the Engineer in the first team, invoke the Code Reviewer in this team.
-If you invoked the Test Writer in the first team, invoke the Test Review in this team.
+If you invoked the Test Writer in the first team, invoke the Test Reviewer in this team.
 If you invoked the Doc Writer in the first team, invoke the Doc Reviewer in this team.
 
 - Code Reviewer

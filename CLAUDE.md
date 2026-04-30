@@ -44,7 +44,13 @@ These keys appear in the *target repo's* CLAUDE.md (not this one). `bees-setup` 
 - `Narrow test`
 - `Full test`
 
-`bees-execute` and `bees-fix-issue` hard-fail with `Run /bees-setup first.` if either section, or any required key in `## Build Commands`, is missing from the target repo's CLAUDE.md. Preserve that precondition behavior in any edit to those skills.
+`## Skill Paths` bullet keys (added by b.nyv):
+- `Force clean team script` — absolute path to `bees-execute/scripts/force_clean_team.py` (used as the `TeamDelete` recovery step)
+- `File list resolver script` — absolute path to `bees-setup/scripts/file_list_resolver.py` (registered as each hive's `egg_resolver`)
+
+`bees-setup` writes Skill Paths after detecting whether the bees-workflow skills are installed globally (`~/.claude/skills/`) or per-project (`<repo>/.claude/skills/`). Earlier prose hardcoded relative `.claude/skills/...` paths, which broke under the global install — the Skill Paths section eliminates that coupling.
+
+`bees-execute` and `bees-fix-issue` hard-fail with `Run /bees-setup first.` if any of the three sections (`Documentation Locations`, `Build Commands`, `Skill Paths`), or any required key inside them, is missing from the target repo's CLAUDE.md. Preserve that precondition behavior in any edit to those skills. If a project was set up before Skill Paths existed, re-running `/bees-setup` adds the section idempotently.
 
 ## Hives and status vocabulary
 

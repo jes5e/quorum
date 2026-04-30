@@ -24,18 +24,9 @@ Rationale: the workflow reads project-specific commands and doc paths from CLAUD
 
 If any precondition is missing, stop with `Run /bees-setup first.` and direct the user there. Do not improvise commands or guess paths.
 
+If the user reports "I already ran `/bees-setup`" but the `## Skill Paths` precondition is missing, the project was set up before that section existed. Re-running `/bees-setup` adds it idempotently — existing `## Documentation Locations` and `## Build Commands` entries are preserved, only the missing section gets written.
+
 ## Execution Flow
-
-#### Choose agent model preference
-
-Before starting work on the first issue, ask the user which model to use for the support roles (Doc Writer, Product Manager, Doc Reviewer). Use `AskUserQuestion`:
-
-- Question: "Which model should support agents (Doc Writer, Product Manager, Doc Reviewer) use?"
-- Options:
-  - **Opus (Recommended)** — highest quality, slower, more expensive
-  - **Sonnet** — fast and cost-effective, good for straightforward tasks
-
-The core implementation roles (Engineer, Test Writer, Code Reviewer, Test Reviewer) always use **Opus** — this is not configurable. Store the user's choice and apply it when spawning agents for every issue in the run (single-issue, list, or `all` mode). Ask once at the start, not per issue.
 
 ### 1. Determine which issues to fix
 
@@ -57,6 +48,17 @@ bees execute-freeform-query --query-yaml 'stages:
   - [type=bee, hive=issues, status=open]
 report: [title]'
 ```
+
+#### Choose agent model preference
+
+Before iterating through the issue list, ask the user which model to use for the support roles (Doc Writer, Product Manager, Doc Reviewer). Use `AskUserQuestion`:
+
+- Question: "Which model should support agents (Doc Writer, Product Manager, Doc Reviewer) use?"
+- Options:
+  - **Opus (Recommended)** — highest quality, slower, more expensive
+  - **Sonnet** — fast and cost-effective, good for straightforward tasks
+
+The core implementation roles (Engineer, Test Writer, Code Reviewer, Test Reviewer) always use **Opus** — this is not configurable. Store the user's choice and apply it when spawning agents for every issue in the run (single-issue, list, or `all` mode). Ask once at the start, not per issue.
 
 #### Validate isolation strategy
 
@@ -136,7 +138,7 @@ Create **one team per issue** (e.g., `issue-xfm`). Use task-scoped agent names (
 - **Between issues** (in batch mode — `all` or list mode):
   1. Send shutdown requests to all remaining agents
   2. Call `TeamDelete` to clean up the team
-  3. If `TeamDelete` fails due to stuck agents: (a) read the absolute path to `force_clean_team.py` from CLAUDE.md `## Skill Paths` (key: `Force clean team script`) and run `python3 <that-path> <team-name>` to remove directories, then (b) call `TeamDelete` again to clear session state
+  3. If `TeamDelete` fails due to stuck agents: (a) read the absolute path to `force_clean_team.py` from CLAUDE.md `## Skill Paths` (key: `Force clean team script`) and run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (b) call `TeamDelete` again to clear session state
   4. Create a new team for the next issue
 
 The team may consist of any of the following agents:
@@ -269,7 +271,7 @@ Once the issue is fixed:
    2. Run `git status` to see the full set of modified and untracked files.
    3. Stage files that are related to this issue — include agent-reported files, `.bees/` ticket changes, and any formatting changes to files that were touched by this issue's agents. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue.
    4. Commit with a descriptive message per system/project git guidance.
-4. Call `TeamDelete` to clean up the team. If it fails: (a) `python3 <path-from-CLAUDE.md-Skill-Paths-Force-clean-team-script> <team-name>`, (b) `TeamDelete` again.
+4. Call `TeamDelete` to clean up the team. If it fails: (a) run the `Force clean team script` (path from CLAUDE.md `## Skill Paths`) via the platform's Python 3 launcher (`python3` POSIX / `python` Windows) with `<team-name>`, (b) `TeamDelete` again.
 5. Output the summary:
 
 ```markdown

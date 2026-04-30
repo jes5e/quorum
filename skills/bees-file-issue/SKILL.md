@@ -122,17 +122,25 @@ Resolve the Issues hive path via `bees list-hives`, check whether it lives insid
 issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
 repo_root=$(git rev-parse --show-toplevel)
 git_add_args="docs/"
-if [ -n "$issues_path" ] && [ "${issues_path#$repo_root}" != "$issues_path" ]; then
-  git_add_args="$git_add_args $issues_path"
-fi
+case "$issues_path" in
+  "$repo_root"|"$repo_root"/*) git_add_args="$git_add_args $issues_path" ;;
+esac
 git add $git_add_args
 git commit -m "File issue: <title>"
+```
 
+```powershell
 # Windows (PowerShell):
 $issuesPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
 $repoRoot = git rev-parse --show-toplevel
+# Normalize separators — git rev-parse returns forward slashes on Windows;
+# bees list-hives may return backslashes. Compare both sides on the same form.
+$issuesNorm = if ($issuesPath) { $issuesPath.Replace('\','/') } else { '' }
+$repoNorm = $repoRoot.Replace('\','/')
 $addArgs = @('docs/')
-if ($issuesPath -and $issuesPath.StartsWith($repoRoot)) { $addArgs += $issuesPath }
+if ($issuesNorm -and ($issuesNorm -eq $repoNorm -or $issuesNorm.StartsWith("$repoNorm/"))) {
+  $addArgs += $issuesPath
+}
 git add @addArgs
 git commit -m "File issue: <title>"
 ```
