@@ -90,11 +90,31 @@ If the docs describe the buggy behavior as correct (or are missing information t
 
 ### 5. Commit the ticket (and any doc updates)
 
-Stage and commit the ticket file and any doc changes:
+Stage and commit the ticket file and any doc changes. **Do not hardcode the `.bees/issues/` path.** `/bees-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/issues/` silently stages nothing when the user picked a sibling path.
+
+Resolve the Issues hive path via `bees list-hives`, check whether it lives inside the current git repo, and only stage it if it does:
+
 ```bash
-git add .bees/issues/ docs/
+# POSIX (bash / zsh):
+issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
+repo_root=$(git rev-parse --show-toplevel)
+git_add_args="docs/"
+if [ -n "$issues_path" ] && [ "${issues_path#$repo_root}" != "$issues_path" ]; then
+  git_add_args="$git_add_args $issues_path"
+fi
+git add $git_add_args
+git commit -m "File issue: <title>"
+
+# Windows (PowerShell):
+$issuesPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
+$repoRoot = git rev-parse --show-toplevel
+$addArgs = @('docs/')
+if ($issuesPath -and $issuesPath.StartsWith($repoRoot)) { $addArgs += $issuesPath }
+git add @addArgs
 git commit -m "File issue: <title>"
 ```
+
+If the Issues hive lives outside the repo, commit the doc/ changes here and remind the user that the issue ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself). If `docs/` was not modified, drop it from the `add` list as well.
 
 ### 6. Report back
 

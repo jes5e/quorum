@@ -135,7 +135,8 @@ When all Epics are complete, present them to the user for final review.
 #### Creating Epics with the bees CLI
 
 Create T1 type child tickets in the Plan Bee with status `drafted` (their children — Tasks — have not been written yet).
-Each Epic's `egg` should be the same JSON array `[prd_path, sdd_path]` as the Plan Bee, so downstream skills can trace every Epic back to the PRD and SDD that defined it.
+
+**Do not pass `--egg` when creating Epics.** The bees CLI accepts `--egg` only on top-level Bees, not on child-tier tickets (`bees create-ticket --help`: "Only supported on bee (top-level) tickets"). Trying to set it on an Epic hard-errors. The egg lives on the parent Plan Bee — downstream skills (bees-breakdown-epic, bees-execute, bees-fix-issue) trace Epics back to the PRD/SDD by reading the parent's egg, not the Epic's.
 
 **NOTE**: If the plan is small, there may only be one Epic. You don't need to make multiple.
 

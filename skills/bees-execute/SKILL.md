@@ -43,7 +43,7 @@ The user will either call without arguments, with a Bee id or with an Epic ID:
 You will ultimately get the Bee ID you need to work on.
 Validate it is ready for work:
 - Must have a status of `ready` or `in_progress`
-- If it has `up_dependencies` they must be in `ready` state
+- If it has `up_dependencies` they must be in `done` state (a dependency in `ready` state is fully planned but not yet worked — that's a pending blocker, not a satisfied one)
 
 #### Choose agent model preference
 

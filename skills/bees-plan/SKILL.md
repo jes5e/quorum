@@ -221,12 +221,31 @@ Present the user with options:
 
 ### 7. Commit
 
-Stage and commit all changes (doc updates + .bees/ ticket files):
+Stage and commit all changes — doc updates and the Plans hive's ticket files. **Do not hardcode the `.bees/plans/` path.** `/bees-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked a sibling path.
+
+Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only stage it if it does:
 
 ```bash
-git add docs/ .bees/plans/
+# POSIX (bash / zsh):
+plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
+repo_root=$(git rev-parse --show-toplevel)
+git_add_args="docs/"
+if [ -n "$plans_path" ] && [ "${plans_path#$repo_root}" != "$plans_path" ]; then
+  git_add_args="$git_add_args $plans_path"
+fi
+git add $git_add_args
+git commit -m "Plan feature: <title>"
+
+# Windows (PowerShell):
+$plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+$repoRoot = git rev-parse --show-toplevel
+$addArgs = @('docs/')
+if ($plansPath -and $plansPath.StartsWith($repoRoot)) { $addArgs += $plansPath }
+git add @addArgs
 git commit -m "Plan feature: <title>"
 ```
+
+If the Plans hive lives outside the repo, commit the doc/ changes here and remind the user that the Plan Bee ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself). If `docs/` was not modified during this run, drop it from the `add` list as well.
 
 ### Important Notes
 

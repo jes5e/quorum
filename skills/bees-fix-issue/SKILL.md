@@ -11,9 +11,6 @@ The user can call this skill in four ways:
 - `/bees-fix-issue <id1> <id2> <id3>` — fix an explicit list of issues, sequentially, in the order given. IDs may be separated by spaces, commas, or any mix (e.g. `b.cnb,b.sgq b.xet` is valid)
 - `/bees-fix-issue all` — fix ALL open issues sequentially without user intervention
 
-### Setup:
-There must be a hive called "Bugs". If it does not exist, ask the user where you can create one.
-
 ## Preconditions
 
 Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:

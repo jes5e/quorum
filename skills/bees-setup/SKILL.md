@@ -167,7 +167,7 @@ If any hives are missing:
   ```
 - After colonization, set child tiers and status values:
   ```bash
-  bees set-types --scope hive --hive <name> --types '<json>'
+  bees set-types --scope hive --hive <name> --child-tiers '<json>'
   bees set-status-values --scope hive --hive <name> --status-values '<json>'
   ```
 
