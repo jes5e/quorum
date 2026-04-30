@@ -1,0 +1,17 @@
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor noise
+.vscode/
+.idea/
+*.swp
+
+# Python (the bundled helper scripts are pure stdlib; no venvs expected)
+__pycache__/
+*.pyc
+.venv/
+
+# Optional local-only Claude Code overrides (settings.local.json may contain
+# user-specific paths or permissions that shouldn't ship)
+.claude/settings.local.json

@@ -1,0 +1,120 @@
+---
+name: code-review
+description: Perform code review of changed files after task completion. Returns a simple list of improvement work items.
+---
+
+## Overview
+
+This skill performs code review on files changed during a Task. 
+It returns a list of improvement work items for the caller to review, 
+Be thorough but not pedantic - focus on substance over style.
+
+## Parameters
+
+You will receive some instructions on which set of work to review. It might be a Bees ticket idea, or a git worktree.
+
+## Your Mission
+
+Analyze changed code files and return a focused list of actionable improvement work items.
+Understand the work context from the user input.
+Review all commits and changed files.
+- Focus only on source code files. Ignore natural language documentation and unit test code.
+If no code files were changed, output "No code files to review" and exit.
+
+### Step 0: Understand project best practices
+Find any engineering best practices and architecture documentation and understand them. 
+Your job is to provide feedback in any case where the work done deviates from the guidance therein.
+**Human Pro Tip**: Place references to you project specific best practices documents in `project/.Claude.md`
+
+### Step 1: Run Linter
+
+If the project has linters/formatters configured (ruff, black, eslint, etc.), run them:
+Note any linting issues that should be fixed.
+
+### Step 2: Review Changed Files - Critical Eye
+
+For each changed file, use Read to load it and check for issues across these categories (in addition to any project specific best practice):
+
+#### 1. Dead/Obsolete Code
+- Commented-out code that should be removed
+- Unused functions, variables, or imports
+- Old implementations left behind
+- Debugging code (print statements, console.log, TODO comments)
+
+#### 2. Architecture & Design
+- Inconsistent interfaces (does this match existing patterns?)
+- Inappropriate mixing of concerns (business logic, API, data access should be separated)
+- Unnecessary abstractions (YAGNI - You Aren't Gonna Need It)
+- Inconsistent patterns with the rest of the codebase
+
+#### 3. Security & Correctness (CRITICAL)
+
+Check for security vulnerabilities:
+- Input validation: All user inputs should be validated (Pydantic models, type checks)
+- SQL queries: Must use parameterized queries (?, :param), never f-strings
+- File paths: Use Path(), validate against workspace
+- API keys: Loaded from environment/config, never hardcoded
+- Authentication: Proper checks on protected endpoints
+- Error messages: No sensitive data in error responses
+
+#### 4. Code Quality
+- Long/complex functions (>50 lines, deep nesting >3 levels)
+- Repeated code blocks (DRY violations)
+- Magic numbers/strings (should be named constants)
+- Poor variable/function names (unclear purpose)
+- Missing comments for complex logic
+- Bare except clauses (anti-pattern)
+
+#### 5. Error Handling
+- Bare except clauses (`except:` instead of specific exceptions)
+- Resources not properly cleaned up (files/connections should use context managers)
+- Missing error handling in critical paths
+- Poor error messages (not actionable for users)
+
+#### 6. Performance
+- Database queries in loops (N+1 problem)
+- Loading entire files into memory (should stream)
+- No connection pooling for databases
+- Synchronous I/O in async functions
+- Missing cache invalidation
+
+#### 7. Cross-Task / Cross-File Interactions (CRITICAL — often missed)
+
+These are the issues per-Task reviews structurally miss because reviewers typically only look at the diff. Extend the viewport deliberately:
+
+- **Reverse-dependency check**: for every function, method, or public API the diff *modifies* (signature, ordering, return value, side effects), grep for callers in the rest of the codebase. For each caller, read enough context to verify the caller's assumptions still hold. Flag any caller whose implicit contract with the modified code is now violated. Example: if a diff reorders the steps inside an `auth_middleware` so user lookup runs before signature verification, callers in the request handler that assumed signature-first ordering ("by this point the request is verified") must be re-verified.
+- **Implicit contract check**: if this diff's code comments or docstrings describe behavior that another file/function depends on (especially "this should never happen" / "defensive branch" / "unreachable" / "by the time we get here, X is true"), verify that the *actual* behavior of the collaborator still satisfies the invariant. Comments routinely lag the code they describe.
+- **Pre-existing code exposed by new usage**: if the diff introduces a new call pattern for an unchanged function (new call site, new frequency, new argument combination), mentally run that unchanged function under the new pattern and flag any latent assumptions the new pattern breaks. Example: `get_user_profile(id)` is fine when called once per request from the request hot path, but a new batch endpoint that calls it for hundreds of IDs in a tight loop may miss the per-request memoization reset and leak stale data from the prior request into the next.
+- **Cumulative resource accounting**: if the diff adds acquires from a bounded resource (connection pool, semaphore, mutex, queue slot), model the aggregate behavior across all call sites — including call sites in *other* files not touched by this diff. Flag starvation scenarios and lifetime-mismatch interactions (e.g., short-lived API request handlers competing for a connection pool against a new long-lived background worker that holds connections across many requests — at steady state the long-lived consumer can starve the request path).
+- **Symmetric-change check**: if the diff adds a *new* resource (key, file, queue, pool entry, etc.), search for every code path that cleans up the sibling resource class and verify the new resource is handled symmetrically. Example: adding a new `cache:user:{id}:permissions` key class in the write path requires the cache-invalidation path, the user-deletion path, and any periodic-purge job to all DELETE this key class — otherwise stale-permissions data leaks past role changes.
+
+### Step 8: Prioritize and Filter
+
+Focus on important issues only:
+- **Include:** Security vulnerabilities, logic errors, missing tests, architecture problems
+- **Exclude:** Trivial style issues, minor naming nitpicks, personal preferences
+
+Each work item should be:
+1. Actionable (can become a standalone Task)
+2. Specific (includes file:line where applicable)
+3. Important (not trivial)
+4. Concise (one line description)
+5. Applicable (understand requirements and dont aim for more than is needed)
+
+NOTE: It is expected that many times you will return no important issues.
+This is OK. Don't feel obliged to report things. Only report if there is something important.
+In fact, if you keep reporting things it will cause an infinite loop which is very bad!
+
+### Step 9: Generate Work Item List
+
+Output a simple numbered list directly in your response:
+
+```markdown
+## Code Review Work items
+
+1. Fix SQL injection in transactions.py:85 - use parameterized queries instead of f-strings
+2. Add input validation to cache.py:45 endpoint - validate user input format
+3. Refactor process_transactions() in llm_categorizer.py:120 - function is 60 lines, extract helper functions
+4. Remove commented-out code in llm_categorizer.py:200-210
+```
+
