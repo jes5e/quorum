@@ -118,32 +118,97 @@ If option 3: print the exact addition (`"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": 
 
 ---
 
-### Egg Resolver
+### Resolve skill install location
 
-Before configuring hives, set up the egg resolver. This resolver lets a Plan Bee's `egg` field point at one or more source documents on disk (PRD, SDD, etc.). Downstream skills (`/bees-execute`, `/bees-breakdown-epic`) read these files as the authoritative source for the work.
+This skill set works in two install modes:
+- **Global install** — skills live under `~/.claude/skills/<skill-name>/` (per-user, recommended for single-user machines)
+- **Per-project install** — skills live under `<repo>/.claude/skills/<skill-name>/`
 
-The resolver ships bundled with this skill at `.claude/skills/bees-setup/scripts/file_list_resolver.py` (relative to the repo root where the skill is installed). It takes a JSON array of absolute file paths as the egg value and returns a validated JSON array of resolved paths.
+Helper scripts (`force_clean_team.py`, `file_list_resolver.py`) ship bundled inside skill `scripts/` directories. Their resolved absolute paths depend on which install mode the user picked, so we discover them once here and persist them to CLAUDE.md so every other skill can look them up by exact key — same pattern as `## Documentation Locations` and `## Build Commands`.
 
-Compute the absolute path to the resolver at invocation time and verify it exists:
+Detect the install location by probing both candidates and picking whichever has the bundled `bees-setup/scripts/file_list_resolver.py` file:
 
 ```bash
 # POSIX (bash / zsh):
-RESOLVER="$(pwd)/.claude/skills/bees-setup/scripts/file_list_resolver.py"
-test -f "$RESOLVER" && echo "OK" || echo "Missing"
+for candidate in "$HOME/.claude/skills" "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/skills"; do
+  if [ -f "$candidate/bees-setup/scripts/file_list_resolver.py" ]; then
+    SKILLS_ROOT="$candidate"
+    break
+  fi
+done
+test -n "$SKILLS_ROOT" && echo "Skills installed at: $SKILLS_ROOT" || { echo "No bees-workflow skills found in ~/.claude/skills/ or <repo>/.claude/skills/. Install per the README."; exit 1; }
 
 # Windows (PowerShell):
-$RESOLVER = "$(Get-Location)\.claude\skills\bees-setup\scripts\file_list_resolver.py"
-if (Test-Path $RESOLVER) { "OK" } else { "Missing" }
+$candidates = @("$HOME\.claude\skills", "$(git rev-parse --show-toplevel 2>$null)\.claude\skills")
+$skillsRoot = $candidates | Where-Object { Test-Path "$_\bees-setup\scripts\file_list_resolver.py" } | Select-Object -First 1
+if (-not $skillsRoot) { Write-Error "No bees-workflow skills found in ~\.claude\skills\ or <repo>\.claude\skills\. Install per the README." ; exit 1 }
+"Skills installed at: $skillsRoot"
 ```
 
-If missing, the skill installation is incomplete — direct the user to re-copy the `.claude/skills/` tree.
+### Skill Paths section in CLAUDE.md
 
-When colonizing hives, pass the absolute resolver path as the `egg_resolver` parameter to `bees colonize-hive`. If hives already exist and have a stale `egg_resolver` from an earlier installation, update their configuration to point to this file. The bees CLI user config file lives at:
+Write the resolved absolute paths to a new `## Skill Paths` section in CLAUDE.md. Other skills look these up by exact key. Detect existing configuration first — if a `## Skill Paths` section already exists with all required keys, validate the paths still resolve to existing files and update only the entries that don't.
+
+Required keys:
+
+| Key | Resolves to |
+|-----|-------------|
+| `Force clean team script` | `<SKILLS_ROOT>/bees-execute/scripts/force_clean_team.py` |
+| `File list resolver script` | `<SKILLS_ROOT>/bees-setup/scripts/file_list_resolver.py` |
+
+Section template (insert above `## Documentation Locations`):
+
+```markdown
+## Skill Paths
+
+Used by `bees-execute`, `bees-fix-issue`, and `bees-setup` to invoke bundled helper scripts. Paths are absolute so they work regardless of cwd.
+
+- **Force clean team script**: <ABSOLUTE_PATH>
+- **File list resolver script**: <ABSOLUTE_PATH>
+
+If you re-install bees-workflow at a different location, re-run `/bees-setup` to refresh these paths.
+```
+
+Verify each path exists before writing — if either is missing, the install is incomplete; tell the user to re-install and stop.
+
+### Egg Resolver
+
+The egg resolver lets a Plan Bee's `egg` field point at one or more source documents on disk (PRD, SDD, etc.). Downstream skills (`/bees-execute`, `/bees-breakdown-epic`) read these files as the authoritative source for the work.
+
+When colonizing hives, pass the resolved absolute resolver path (`File list resolver script` from the section you just wrote) as the `--egg-resolver` flag to `bees colonize-hive`. If hives already exist and have a stale `egg_resolver` from an earlier installation, update their configuration to point to the current resolved path. The bees CLI user config file lives at:
 
 - POSIX: `~/.bees/config.json`
 - Windows: `%USERPROFILE%\.bees\config.json`
 
-Edit it directly to set the `egg_resolver` field on the hive entry, then verify with a `bees show-ticket` on a Plan Bee that has eggs.
+Update the file with a Python one-liner — direct text editing has no atomicity story and corrupts the JSON on a wrong escape:
+
+```bash
+# POSIX (bash / zsh):
+python3 -c '
+import json, sys
+p = sys.argv[1]
+hive_name = sys.argv[2]
+new_resolver = sys.argv[3]
+with open(p) as f: data = json.load(f)
+data.setdefault("hives", {}).setdefault(hive_name, {})["egg_resolver"] = new_resolver
+with open(p, "w") as f: json.dump(data, f, indent=2)
+print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
+' "$HOME/.bees/config.json" "<hive-name>" "$RESOLVER"
+
+# Windows (PowerShell):
+python3 -c "
+import json, sys
+p = sys.argv[1]
+hive_name = sys.argv[2]
+new_resolver = sys.argv[3]
+with open(p) as f: data = json.load(f)
+data.setdefault('hives', {}).setdefault(hive_name, {})['egg_resolver'] = new_resolver
+with open(p, 'w') as f: json.dump(data, f, indent=2)
+print(f'Updated {hive_name}.egg_resolver = {new_resolver}')
+" "$env:USERPROFILE\.bees\config.json" "<hive-name>" "$RESOLVER"
+```
+
+Verify with a `bees show-ticket` on a Plan Bee that has eggs.
 
 ### Hive Configuration
 

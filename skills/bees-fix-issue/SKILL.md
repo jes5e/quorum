@@ -18,6 +18,7 @@ Before doing anything else, verify the host repo is configured for the bees work
 - The Issues hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `issues`).
 - CLAUDE.md contains a `## Documentation Locations` section. The PM and Doc Writer roles read architecture/customer-doc paths from this section by exact key.
 - CLAUDE.md contains a `## Build Commands` section with all five required keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`. The Engineer reads compile/format/lint/test commands from this section by exact key.
+- CLAUDE.md contains a `## Skill Paths` section with the `Force clean team script` key. This is the absolute path to `force_clean_team.py` — used as the recovery step when `TeamDelete` fails. `/bees-setup` writes this section based on whether the bees-workflow skills are installed globally or per-project.
 
 Rationale: the workflow reads project-specific commands and doc paths from CLAUDE.md instead of hardcoding language-specific tooling, so the skill works on Rust, Node, Python, Go, etc. without per-skill editing. Auto-detection alone is unsafe on polyglot projects, monorepos, and projects with custom build systems — silently running the wrong commands would mask real failures.
 
@@ -100,7 +101,7 @@ Create **one team per issue** (e.g., `issue-xfm`). Use task-scoped agent names (
 - **Between issues** (in batch mode — `all` or list mode):
   1. Send shutdown requests to all remaining agents
   2. Call `TeamDelete` to clean up the team
-  3. If `TeamDelete` fails due to stuck agents: (a) run `python3 .claude/skills/bees-execute/scripts/force_clean_team.py <team-name>` to remove directories, then (b) call `TeamDelete` again to clear session state
+  3. If `TeamDelete` fails due to stuck agents: (a) read the absolute path to `force_clean_team.py` from CLAUDE.md `## Skill Paths` (key: `Force clean team script`) and run `python3 <that-path> <team-name>` to remove directories, then (b) call `TeamDelete` again to clear session state
   4. Create a new team for the next issue
 
 The team may consist of any of the following agents:
@@ -232,7 +233,7 @@ Once the issue is fixed:
    2. Run `git status` to see the full set of modified and untracked files.
    3. Stage files that are related to this issue — include agent-reported files, `.bees/` ticket changes, and any formatting changes to files that were touched by this issue's agents. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue.
    4. Commit with a descriptive message per system/project git guidance.
-4. Call `TeamDelete` to clean up the team. If it fails: (a) `python3 .claude/skills/bees-execute/scripts/force_clean_team.py <team-name>`, (b) `TeamDelete` again.
+4. Call `TeamDelete` to clean up the team. If it fails: (a) `python3 <path-from-CLAUDE.md-Skill-Paths-Force-clean-team-script> <team-name>`, (b) `TeamDelete` again.
 5. Output the summary:
 
 ```markdown
