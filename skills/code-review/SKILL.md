@@ -1,17 +1,21 @@
 ---
 name: code-review
-description: Perform code review of changed files after task completion. Returns a simple list of improvement work items.
+description: Perform code review of a change set. Returns a simple list of improvement work items.
 ---
 
 ## Overview
 
-This skill performs code review on files changed during a Task. 
-It returns a list of improvement work items for the caller to review, 
-Be thorough but not pedantic - focus on substance over style.
+This skill performs code review on a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket.
+It returns a list of improvement work items for the caller to review.
+Be thorough but not pedantic — focus on substance over style.
+
+**When invoked standalone** (e.g. `/code-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
+
+**When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance under Step 3.
 
 ## Parameters
 
-You will receive some instructions on which set of work to review. It might be a Bees ticket idea, or a git worktree.
+You will receive some instructions on which set of work to review — a list of files, a git diff/range, a worktree, or a bees ticket. Read the input carefully to determine what's in scope.
 
 ## Your Mission
 
@@ -22,9 +26,9 @@ Review all commits and changed files.
 If no code files were changed, output "No code files to review" and exit.
 
 ### Step 0: Understand project best practices
-Find any engineering best practices and architecture documentation and understand them. 
+Find any engineering best practices and architecture documentation and understand them.
 Your job is to provide feedback in any case where the work done deviates from the guidance therein.
-**Human Pro Tip**: Place references to you project specific best practices documents in `project/.Claude.md`
+**Human Pro Tip**: Place references to your project-specific best-practices documents in the project's `CLAUDE.md` (at the repo root).
 
 ### Step 1: Run Linter
 
@@ -49,25 +53,25 @@ For each changed file, use Read to load it and check for issues across these cat
 
 #### 3. Security & Correctness (CRITICAL)
 
-Check for security vulnerabilities:
-- Input validation: All user inputs should be validated (Pydantic models, type checks)
-- SQL queries: Must use parameterized queries (?, :param), never f-strings
-- File paths: Use Path(), validate against workspace
-- API keys: Loaded from environment/config, never hardcoded
-- Authentication: Proper checks on protected endpoints
-- Error messages: No sensitive data in error responses
+Check for security vulnerabilities (apply with the language and stack of the project in mind — examples below are illustrative, not prescriptive):
+- Input validation: all user inputs should be validated using the language's standard validation/parsing (Pydantic in Python, zod / typescript-types in TS, serde/validator in Rust, encoding/json + manual checks in Go, etc.)
+- SQL queries: must use parameterized queries (`?`, `:param`, prepared statements, query-builder bindings), never string interpolation/concatenation
+- File paths: validate paths against an allowed workspace root using the language's standard path API (Python `pathlib.Path`, Node `path` + `fs.realpath`, Rust `std::path::Path` + `canonicalize`, Go `filepath.Clean` + base-prefix check)
+- API keys / secrets: loaded from environment/config/secret store, never hardcoded
+- Authentication: proper checks on protected endpoints; deny-by-default
+- Error messages: no sensitive data in error responses (no internal paths, stack traces, raw DB errors)
 
 #### 4. Code Quality
-- Long/complex functions (>50 lines, deep nesting >3 levels)
-- Repeated code blocks (DRY violations)
+- Long/complex functions — projects vary, but as **default heuristics**: >50 lines or >3 levels of nesting deserve a second look. Override these defaults from the project's engineering best practices doc (see Step 0) if it specifies its own thresholds.
+- Repeated code blocks (DRY violations) — but watch out for premature abstraction; three similar lines is better than the wrong abstraction
 - Magic numbers/strings (should be named constants)
 - Poor variable/function names (unclear purpose)
-- Missing comments for complex logic
-- Bare except clauses (anti-pattern)
+- Missing comments for complex logic — the *why*, not the *what*
+- Catch-all error handlers that swallow exceptions silently (anti-pattern in any language)
 
 #### 5. Error Handling
-- Bare except clauses (`except:` instead of specific exceptions)
-- Resources not properly cleaned up (files/connections should use context managers)
+- Catch-all handlers that swallow specific exceptions silently (Python `except:`, JS `catch (e) {}`, Rust `let _ = ...?`, Go `_ = err`, etc.)
+- Resources not properly cleaned up — use the language's idiomatic cleanup mechanism (Python context managers, JS `finally` / `using`, Rust RAII / `Drop`, Go `defer`, C# `using`)
 - Missing error handling in critical paths
 - Poor error messages (not actionable for users)
 
@@ -78,7 +82,7 @@ Check for security vulnerabilities:
 - Synchronous I/O in async functions
 - Missing cache invalidation
 
-#### 7. Cross-Task / Cross-File Interactions (CRITICAL — often missed)
+#### 7. Cross-File / Cross-Call-Site Interactions (CRITICAL — often missed)
 
 These are the issues per-Task reviews structurally miss because reviewers typically only look at the diff. Extend the viewport deliberately:
 
@@ -95,15 +99,16 @@ Focus on important issues only:
 - **Exclude:** Trivial style issues, minor naming nitpicks, personal preferences
 
 Each work item should be:
-1. Actionable (can become a standalone Task)
+1. Actionable as a standalone follow-up
 2. Specific (includes file:line where applicable)
 3. Important (not trivial)
 4. Concise (one line description)
-5. Applicable (understand requirements and dont aim for more than is needed)
+5. Applicable (understand requirements and don't aim for more than is needed)
 
 NOTE: It is expected that many times you will return no important issues.
 This is OK. Don't feel obliged to report things. Only report if there is something important.
-In fact, if you keep reporting things it will cause an infinite loop which is very bad!
+
+**When invoked from `/bees-execute` or `/bees-fix-issue`** specifically: keep in mind that the team-lead agent will loop back with fixes and re-invoke this skill. If you keep reporting trivial-but-not-important items each pass, you create an infinite loop. Be selective. If you have nothing important, say so.
 
 ### Step 4: Generate Work Item List
 

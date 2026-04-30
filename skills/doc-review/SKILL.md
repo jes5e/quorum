@@ -1,14 +1,20 @@
 ---
 name: doc-review
-description: Review documentation completeness after task completes. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items.
+description: Review documentation completeness for a change set. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items.
 ---
 
 ## Overview
 
-Review documentation completeness after Task completion. Verify README and any architecture documents.
+Review documentation completeness for a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket. Verify README and any architecture documents.
 Concise is better than verbose. Value brevity.
-The ReadMe is for human users that want to use the program.
-Architecture docs should contain high level architecture and architecture and core technology.
+The README is for human users that want to use the program.
+Architecture docs should contain the high-level architecture and core technology.
+
+**When invoked standalone** (e.g. `/doc-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
+
+**When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance below.
+
+This skill **returns work items** — it does not apply fixes itself. The team lead (or human) decides whether and how to address each item.
 
 ## Mission
 
@@ -22,21 +28,21 @@ Readme is for human users to understand how to install and run the project
 - No discussion of security implications or requirements
 - Keep it short and simple - focused on how to install and how to use
 - Don't describe how to use common tools (like screen, poetry, bash etc)
-Architecture docs are for LLM codegen agents as a "cheat sheet" to understand the code base without reading all of it
-- Dont brag about or rationalize the code
+Architecture docs — house style for this skill: written as an "LLM cheat sheet" so codegen agents can navigate the code base without reading all of it. (Some teams write architecture docs primarily for humans; if the project's own conventions say otherwise, follow them. The list below is the default.)
+- Don't brag about or rationalize the code
   - No performance details
-  - Dont describe how comprehensive the tests are or the testing strategy
-  - Dont describe design decisions, trade offs or other designs considered 
-  - Dont describe what happened before - just the current state of things
+  - Don't describe how comprehensive the tests are or the testing strategy
+  - Don't describe design decisions, trade-offs, or other designs considered
+  - Don't describe what happened before — just the current state of things
   - No design patterns
-- No code - that defeats the purpose, the LLM can read the code if it wants to
+- No code — that defeats the purpose, the LLM can read the code if it wants to
   - no functions, no methods
 - Do add:
   - list of logical components
   - what the components do
-  - how to components interact
+  - how the components interact
   - how data flows through the components
-  - use of resources  like databases or file storage
+  - use of resources like databases or file storage
   - schemas or API endpoints
 
 ## Workflow
@@ -60,15 +66,15 @@ Read README.md and Architecture docs to understand current state.
 - Install instructions correct?
 - Updated setup/dependencies?
 - Are CLI commands and API references correct?
-- If outdated, fix them. If correct, LEAVE IT ALONE!
+- If outdated, return a work item ("Update README §X — Y is now Z"). If correct, LEAVE IT ALONE!
 
 
 **Architecture Docs** (cheat sheet for llms):
-- Has the high level architecture changed?
+- Has the high-level architecture changed?
 - Have new components been introduced or old ones removed?
 - Schema/API changes?
 - Data flow still accurate?
-- If yes, update it. If no, LEAVE IT ALONE!
+- If yes, return a work item describing what's stale. If no, LEAVE IT ALONE!
 
 
 ### 4. Check for Inconsistencies
@@ -100,8 +106,9 @@ Or if no issues:
 No documentation issues found. README and architecture docs are up to date!
 ```
 
-NOTE: It is OK to return "no issues found". Only return issues if they are very important. 
-In fact, if you never return "no issues found" the workflow will go into an infinite loop which is very bad!
+NOTE: It is OK to return "no issues found". Only return issues if they are very important.
+
+**When invoked from `/bees-execute` or `/bees-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you never return "no issues found", the workflow goes into an infinite loop. Be selective — return real gaps, not nice-to-haves.
 **Important**
 - Docs are wrong
 - Readme is missing information the user needs to use the app

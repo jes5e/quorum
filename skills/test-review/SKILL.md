@@ -1,17 +1,21 @@
 ---
 name: test-review
-description: Review test files for quality, coverage, and correctness after task completion. Returns a simple list of improvement work items.
+description: Review test files for quality, coverage, and correctness across a change set. Returns a simple list of improvement work items.
 ---
 
 ## Overview
 
-This skill reviews test files changed during some period of work.
+This skill reviews test files in a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket.
 It returns a list of improvement work items for the caller to review.
-Be thorough but not pedantic - focus on substance over style.
+Be thorough but not pedantic — focus on substance over style.
+
+**When invoked standalone** (e.g. `/test-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
+
+**When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance under Step 3.
 
 ## Parameters
 
-You will receive some instructions on which set of work to review. It might be a Bees ticket idea, or a git worktree.
+You will receive some instructions on which set of work to review — a list of files, a git diff/range, a worktree, or a bees ticket.
 
 ## Your Mission
 
@@ -27,12 +31,17 @@ Find any testing best practices and architecture documentation and understand th
 Your job is to provide feedback where test work deviates from the guidance therein.
 You may presume the previous agents left the tests in a working state, you do not need to run them.
 
-### Step 1: Load the Full Test Suite
+### Step 1: Load the Test Suite Index, Then Read Selectively
 
-Use Glob to find all test files in the project (e.g. `**/test_*.py`, `**/*.test.ts`, `**/*_test.go`, etc.).
-Read ALL of them — not just the changed ones.
-You need the full picture to identify cross-file duplication, redundancy, and parameterization opportunities.
-Changed files are your focus, but you can only spot bloat if you know what already exists elsewhere.
+Use Glob to find all test files in the project (e.g. `**/test_*.py`, `**/*.test.ts`, `**/*_test.go`, `**/tests/*.rs`, etc.). Read the **full file list and quickly scan file names** — that's the index of what tests exist.
+
+Then read in full:
+- **Every changed test file** (the focus of the review)
+- **Every existing test file that overlaps with the code under test in the changed files** — i.e., tests that target the same module/function/component as the changes. Use the imports / file naming / `describe`-block / module declarations to decide overlap.
+
+You need the cross-file picture to identify cross-file duplication, redundancy, and parameterization opportunities. But on a large suite (hundreds of files, tens of thousands of lines), reading everything blows the context budget — be selective. The index of file names plus the overlapping files is enough to spot near-duplicates without reading the entire suite.
+
+If the project's test suite is small (under a few thousand lines total), reading everything is fine.
 
 ### Step 2: Review Changed Test Files - Critical Eye
 
@@ -44,9 +53,9 @@ With the full suite loaded, review the changed files and check for issues:
 - Missing error/exception cases (only happy path tested)
 - Missing negative tests (things that should fail but aren't verified)
 
-**Scenario-matrix check for blocking-input / timing-sensitive paths** (often missed — flag aggressively):
+**Scenario-matrix check for blocking-input / timing-sensitive paths** — apply only if the changed code includes a blocking I/O path or a timing-sensitive wait. Skip if the changes are pure logic / data transformations.
 
-Any code path that waits on an external input (blocking I/O, BLOCK timeout, long poll, subscription receive, queue dequeue, gRPC streaming read, etc.) needs tests for the following scenarios. If any are missing, add them to the work-item list:
+When applicable: any code path that waits on an external input (blocking I/O, BLOCK timeout, long poll, subscription receive, queue dequeue, gRPC streaming read, etc.) needs tests for the following scenarios. If any are missing, add them to the work-item list:
 
 | Scenario | What to test |
 |---|---|
@@ -57,7 +66,7 @@ Any code path that waits on an external input (blocking I/O, BLOCK timeout, long
 | Cancellation during the wait | Cleanup runs promptly; no leaked resources |
 | Input arrives during cancellation | No delivery-after-cancel; state is consistent |
 
-The "input never arrives" row is the one most commonly missing — tests usually set up an input before asserting, which never exercises the native-timeout path. If the production code uses a library-level block/poll/wait (e.g., fred `XREAD BLOCK`, Kafka `poll`, `recv_timeout`), the test must exercise a wait that exceeds that library's timeout to catch issues in how the library's timeout reply is interpreted.
+The "input never arrives" row is the one most commonly missing — tests usually set up an input before asserting, which never exercises the native-timeout path. If the production code uses a library-level block/poll/wait (examples: a Redis client's `XREAD BLOCK`, a Kafka consumer's `poll`, an in-process channel's `recv_timeout`, a long-poll HTTP handler), the test must exercise a wait that exceeds that library's timeout to catch issues in how the library's timeout reply is interpreted.
 
 #### 2. Test Correctness
 - Tests that assert the wrong thing (incorrect expectations)
@@ -99,7 +108,7 @@ Focus on important issues only:
 - **Exclude:** Minor style issues, trivial naming nitpicks, personal preferences
 
 Each work item should be:
-1. Actionable (can become a standalone Task)
+1. Actionable as a standalone follow-up
 2. Specific (includes file:line where applicable)
 3. Important (not trivial)
 4. Concise (one line description)
@@ -107,7 +116,8 @@ Each work item should be:
 
 NOTE: It is expected that many times you will return no important issues.
 This is OK. Don't feel obliged to report things. Only report if there is something important.
-In fact, if you keep reporting things it will cause an infinite loop which is very bad!
+
+**When invoked from `/bees-execute` or `/bees-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you keep reporting trivial-but-not-important items each pass, you create an infinite loop. Be selective. If you have nothing important, say so.
 
 ### Step 4: Generate Work Item List
 
