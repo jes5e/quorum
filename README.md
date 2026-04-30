@@ -1,4 +1,4 @@
-# bees-workflow
+# <img src="assets/header.png" alt="" width="48" valign="middle"> bees-workflow
 
 A portable [Claude Code](https://claude.com/claude-code) skill set for running an end-to-end SDLC on top of [bees](https://github.com/gabemahoney/bees) tickets — plan, break down, execute, review, fix, repeat. Works on any project, any language, any POSIX or Windows shell, with no per-project skill-editing.
 
