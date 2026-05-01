@@ -47,6 +47,7 @@ Rules:
 - Always label the OS in a comment line above the snippet, even if the command happens to work in both shells. Future readers shouldn't have to guess intent.
 - Quote variable expansion correctly per shell. PowerShell's `$env:USERPROFILE` is not the same as bash's `$HOME`.
 - When a snippet embeds Python or another scripting language, use a single-quoted PowerShell here-string (`@'…'@`) so PowerShell doesn't pre-expand `$variables` in the script body before invoking the interpreter. The bees-setup skill has the canonical example.
+- Don't carry shell variables across snippet boundaries. Each Bash tool invocation in Claude Code is a fresh shell, so a `VAR=...` set in one fenced block is empty when referenced from a later one. If a value is needed in multiple snippets (a resolver path, a hive ID, etc.), inline the literal at every site or pass it as a positional argument to the snippet's invocation. The bug surfaces silently — e.g., `--egg-resolver ""` reaches downstream commands and the failure manifests far from the cause.
 - Helper logic that doesn't fit naturally as a shell one-liner belongs in a Python script under `skills/<name>/scripts/`, not as a wall of OS-paired shell.
 
 ## The lookup-key pattern (no hardcoded language commands)

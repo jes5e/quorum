@@ -134,7 +134,90 @@ Base directory for this skill: /Users/.../.claude/skills/bees-setup
 
 `bees-setup`'s own bundled script (`file_list_resolver.py`) is at `<this skill's base directory>/scripts/file_list_resolver.py`. That's the absolute path passed to `bees colonize-hive --egg-resolver` below. No CLAUDE.md section is written for it — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` computes `<bees-execute base>/scripts/force_clean_team.py`, `bees-fix-issue` computes `<bees-fix-issue base>/../bees-execute/scripts/force_clean_team.py`).
 
-**Migration.** Earlier versions of `bees-setup` wrote a `## Skill Paths` section to CLAUDE.md containing absolute machine-local paths. That section was removed because committing per-machine paths to a tracked file broke multi-engineer collaboration. If the target repo's CLAUDE.md still has a `## Skill Paths` section from an earlier setup run, delete it as part of this run — the section is no longer used by any skill, and leaving it behind keeps the broken paths in git history. After deletion, mention to the user: "Removed obsolete `## Skill Paths` section from CLAUDE.md — paths are now resolved at runtime per-machine. Consider squashing this change with other in-flight work; don't push the delete on its own if the section was already pushed earlier."
+**Migration.** Earlier versions of `bees-setup` wrote a `## Skill Paths` section to CLAUDE.md containing absolute machine-local paths. That section was removed because committing per-machine paths to a tracked file broke multi-engineer collaboration. If the target repo's CLAUDE.md still has a `## Skill Paths` section from an earlier setup run, delete it as part of this run — the section is no longer used by any skill, and leaving it behind keeps the broken paths in git history.
+
+Use the Python one-liner below from the repo root — direct text editing has no atomicity story and corrupts the file on a wrong escape, and an unanchored `sed`/regex deletion would mis-handle a `## ` heading that appears *inside* a fenced code block (e.g., a doc example) and either eat too little or too much. The script:
+
+1. Reads CLAUDE.md (returns early as a no-op if the file doesn't exist yet — fresh repos hit this migration step before `Documentation Locations` creates the file).
+2. Walks lines, tracking whether the cursor is inside a ```` ``` ```` fenced block.
+3. Detects `^## ` section boundaries that occur **outside** fenced blocks — line-anchored boundary semantics with code-fence awareness layered on top, without `re.split`'s blind-spot for fenced content.
+4. Drops the block whose heading line is exactly `## Skill Paths`.
+5. Writes the result back atomically (tempfile in the same directory + `os.replace`, never an in-place edit).
+
+```bash
+# POSIX (bash / zsh):
+python3 -c '
+import sys, tempfile, os
+p = sys.argv[1]
+if not os.path.exists(p):
+    print("CLAUDE.md does not exist yet — nothing to migrate."); sys.exit(0)
+with open(p, encoding="utf-8") as f: lines = f.readlines()
+out, in_fence, skipping, removed = [], False, False, False
+for line in lines:
+    stripped = line.rstrip("\r\n")
+    if stripped.startswith("```"):
+        in_fence = not in_fence
+        if not skipping: out.append(line)
+        continue
+    if not in_fence and stripped.startswith("## "):
+        if stripped.rstrip() == "## Skill Paths":
+            skipping, removed = True, True
+            continue
+        if skipping: skipping = False
+    if not skipping: out.append(line)
+new = "".join(out)
+if not removed:
+    print("No ## Skill Paths section found — nothing to do."); sys.exit(0)
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(p)), prefix=".CLAUDE.md.", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f: f.write(new)
+    os.replace(tmp, p)
+except Exception:
+    if os.path.exists(tmp): os.unlink(tmp)
+    raise
+print("Removed ## Skill Paths section from CLAUDE.md.")
+' CLAUDE.md
+```
+
+```powershell
+# Windows (PowerShell):
+# IMPORTANT: use a single-quoted here-string @'...'@ around the Python source so
+# PowerShell does NOT expand $variables inside the script body before invoking Python.
+$pyScript = @'
+import sys, tempfile, os
+p = sys.argv[1]
+if not os.path.exists(p):
+    print("CLAUDE.md does not exist yet — nothing to migrate."); sys.exit(0)
+with open(p, encoding="utf-8") as f: lines = f.readlines()
+out, in_fence, skipping, removed = [], False, False, False
+for line in lines:
+    stripped = line.rstrip("\r\n")
+    if stripped.startswith("```"):
+        in_fence = not in_fence
+        if not skipping: out.append(line)
+        continue
+    if not in_fence and stripped.startswith("## "):
+        if stripped.rstrip() == "## Skill Paths":
+            skipping, removed = True, True
+            continue
+        if skipping: skipping = False
+    if not skipping: out.append(line)
+new = "".join(out)
+if not removed:
+    print("No ## Skill Paths section found — nothing to do."); sys.exit(0)
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(p)), prefix=".CLAUDE.md.", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f: f.write(new)
+    os.replace(tmp, p)
+except Exception:
+    if os.path.exists(tmp): os.unlink(tmp)
+    raise
+print("Removed ## Skill Paths section from CLAUDE.md.")
+'@
+python -c $pyScript CLAUDE.md
+```
+
+If the script printed "CLAUDE.md does not exist yet — nothing to migrate." or "No ## Skill Paths section found — nothing to do.", skip ahead. Otherwise (the section was actually removed), mention to the user: "Removed obsolete `## Skill Paths` section from CLAUDE.md — paths are now resolved at runtime per-machine. Consider squashing this change with other in-flight work; don't push the delete on its own if the section was already pushed earlier."
 
 ### Egg Resolver
 
@@ -147,21 +230,21 @@ If hives already exist and have a stale `egg_resolver` from an earlier installat
 - POSIX: `~/.bees/config.json`
 - Windows: `%USERPROFILE%\.bees\config.json`
 
-First set `$RESOLVER` to the absolute path to `file_list_resolver.py`, computed from this skill's base directory (shown in the invocation header). Replace `<bees-setup-base-dir>` with the literal path from the header — do not try to derive it from environment variables, since the install mode (global vs per-project) determines the actual location:
+The absolute path to `file_list_resolver.py` is `<bees-setup-base-dir>/scripts/file_list_resolver.py` on POSIX or `<bees-setup-base-dir>\scripts\file_list_resolver.py` on Windows. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header — do not try to derive it from environment variables or store it in a shell variable. Each Bash tool invocation in Claude Code is a fresh shell, so a `RESOLVER=...` set in one snippet is empty when referenced from a later snippet; inline the literal path at every site that needs it. (This is the same convention `bees-execute` and `bees-fix-issue` use for their `force_clean_team.py` references.)
+
+First, verify the resolver script exists at that path. If it's missing, the bees-workflow install is incomplete; tell the user to re-install per the README and stop:
 
 ```bash
 # POSIX (bash / zsh):
-RESOLVER="<bees-setup-base-dir>/scripts/file_list_resolver.py"
-test -f "$RESOLVER" || { echo "file_list_resolver.py not found at $RESOLVER — bees-workflow install is incomplete; tell the user to re-install per the README and stop."; exit 1; }
+test -f "<bees-setup-base-dir>/scripts/file_list_resolver.py" || { echo "file_list_resolver.py not found at <bees-setup-base-dir>/scripts/file_list_resolver.py — bees-workflow install is incomplete; tell the user to re-install per the README and stop."; exit 1; }
 ```
 
 ```powershell
 # Windows (PowerShell):
-$RESOLVER = "<bees-setup-base-dir>\scripts\file_list_resolver.py"
-if (-not (Test-Path $RESOLVER)) { Write-Error "file_list_resolver.py not found at $RESOLVER — bees-workflow install is incomplete; tell the user to re-install per the README and stop." ; exit 1 }
+if (-not (Test-Path "<bees-setup-base-dir>\scripts\file_list_resolver.py")) { Write-Error "file_list_resolver.py not found at <bees-setup-base-dir>\scripts\file_list_resolver.py — bees-workflow install is incomplete; tell the user to re-install per the README and stop." ; exit 1 }
 ```
 
-Then update the bees config file with a Python one-liner — direct text editing has no atomicity story and corrupts the JSON on a wrong escape:
+Then update the bees config file with a Python one-liner — direct text editing has no atomicity story and corrupts the JSON on a wrong escape. Pass the literal resolver path as the third positional argument (do not rely on a shell variable carried over from the earlier snippet):
 
 ```bash
 # POSIX (bash / zsh):
@@ -174,7 +257,7 @@ with open(p) as f: data = json.load(f)
 data.setdefault("hives", {}).setdefault(hive_name, {})["egg_resolver"] = new_resolver
 with open(p, "w") as f: json.dump(data, f, indent=2)
 print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
-' "$HOME/.bees/config.json" "<hive-name>" "$RESOLVER"
+' "$HOME/.bees/config.json" "<hive-name>" "<bees-setup-base-dir>/scripts/file_list_resolver.py"
 ```
 
 ```powershell
@@ -191,7 +274,7 @@ data.setdefault("hives", {}).setdefault(hive_name, {})["egg_resolver"] = new_res
 with open(p, "w") as f: json.dump(data, f, indent=2)
 print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
 '@
-python -c $pyScript "$env:USERPROFILE\.bees\config.json" "<hive-name>" "$RESOLVER"
+python -c $pyScript "$env:USERPROFILE\.bees\config.json" "<hive-name>" "<bees-setup-base-dir>\scripts\file_list_resolver.py"
 ```
 
 Verify with a `bees show-ticket` on a Plan Bee that has eggs.
@@ -212,9 +295,14 @@ Check for the existence of the above hives using `bees list-hives` and validate 
 
 If any hives are missing:
 - **Use `AskUserQuestion` to ask the user where each missing hive should live.** Do not assume a default path. Suggest sensible options (e.g., `<repo>/.bees/issues` in-repo, or `<project-parent>/issues` sibling-to-repo) but always let the user pick.
-- Once the user chooses, create the hive using the bees CLI. Pass `--egg-resolver "$RESOLVER"` (the value set in the *Egg Resolver* section above) so the hive can resolve eggs out of the box:
+- Once the user chooses, create the hive using the bees CLI. Pass the literal absolute path to `file_list_resolver.py` (the one verified in the *Egg Resolver* section above) as the `--egg-resolver` value so the hive can resolve eggs out of the box. Inline the literal path — do not reference a shell variable like `$RESOLVER`, since each Bash tool invocation is a fresh shell and the variable will be empty here. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
   ```bash
-  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "$RESOLVER"
+  # POSIX (bash / zsh):
+  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+  ```
+  ```powershell
+  # Windows (PowerShell):
+  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
   ```
 - After colonization, set child tiers and status values:
   ```bash

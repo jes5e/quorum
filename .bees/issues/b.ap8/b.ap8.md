@@ -2,10 +2,11 @@
 id: b.ap8
 type: bee
 title: 'bees-setup post-b.963: $RESOLVER lost across shell calls; ## Skill Paths deletion has no concrete procedure'
-status: open
-created_at: '2026-04-30T21:56:50.855421'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-04-30T21:56:50.855421'
+status: done
+schema_version: '0.1'
 guid: ap8e4xtx9q63b6bijdkxo3dzuu2mr5yc
 ---
 
