@@ -43,7 +43,7 @@ The Plans hive is a **top-level** hive. It is not nested inside an Ideas hive.
 
 ### Prerequisites
 
-#### 1. bees CLI
+#### bees CLI
 
 Verify bees is available on PATH. The exact lookup command depends on the host shell:
 
@@ -85,7 +85,137 @@ python -m pip install --user pipx
 
 bees-md requires Python 3.10+. After install, the bees binary lives under the user's local-binary directory: `~/.local/bin/bees` on POSIX, `%USERPROFILE%\.local\bin\bees.exe` (or wherever pipx put it) on Windows. Documentation: https://github.com/gabemahoney/bees
 
-#### 2. Claude Code Agent Teams (required)
+### Fast-path detection (new-machine re-registration)
+
+The `.bees/<hive>/` directories are committed to the repo, but the per-machine `~/.bees/config.json` is not. When a user clones a fully set-up repo onto a new machine (or a teammate clones it for the first time), the on-disk hive markers are present but the per-machine bees config has no scope entry for this repo. Result: every bees command behaves as if no tickets exist, and downstream skills hard-fail with `Run /bees-setup first.`
+
+The full slow-path walk-through is wrong for this case — CLAUDE.md is already correct, the hives already exist on disk, the only thing missing is per-machine registration. The fast path detects this and re-registers in one or two prompts, leaving CLAUDE.md untouched.
+
+#### Detect
+
+Run the bundled detector script with the target repo's absolute path. The script lives at `<this skill's base directory>/scripts/detect_fast_path.py` (where "this skill" is `bees-setup` — see *Resolve bundled helper script paths* below for the same runtime-resolution convention used by the egg resolver). Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<bees-setup-base-dir>/scripts/detect_fast_path.py" --repo-root "$(pwd)"
+```
+
+```powershell
+# Windows (PowerShell):
+python "<bees-setup-base-dir>\scripts\detect_fast_path.py" --repo-root (Get-Location).Path
+```
+
+The script emits a JSON payload to stdout:
+
+```json
+{
+  "repo_root": "/abs/path/to/repo",
+  "on_disk_hives": [{"name": "issues", "path": "/abs/path/to/repo/.bees/issues"}, {"name": "plans", "path": "/abs/path/to/repo/.bees/plans"}],
+  "any_registered_for_repo": false,
+  "registered_hive_names": [],
+  "claude_md_path": "/abs/path/to/repo/CLAUDE.md",
+  "claude_md_doc_locations_set_up": true,
+  "claude_md_build_commands_set_up": true,
+  "fast_path_eligible": true
+}
+```
+
+`fast_path_eligible` is true iff **all three** of the following hold:
+
+1. At least one `.bees/<hive>/.hive/identity.json` marker exists in the repo (`on_disk_hives` non-empty).
+2. None of the registered scopes in `~/.bees/config.json` cover the current repo path (`any_registered_for_repo` is false).
+3. CLAUDE.md already contains both `## Documentation Locations` and `## Build Commands` sections with all required contract bullets present (`claude_md_doc_locations_set_up` and `claude_md_build_commands_set_up` are both true). Empty values for individual rows are acceptable — the user may have legitimately skipped a guide; what matters is that the section was previously walked through and the contract keys are in place.
+
+If `fast_path_eligible` is **false**, fall through to the existing slow path starting at *Per-machine Claude Code settings* below — there is no behavior change for first-time setup or for already-fully-configured machines.
+
+If `fast_path_eligible` is **true**, run the actions below.
+
+#### Diagnose
+
+Print this paragraph to the user verbatim:
+
+> Looks like this repo was already set up for bees on another machine. The on-disk hive markers are here but they're not registered in your machine's bees config. I can re-register them for you and you'll be ready to go. CLAUDE.md will not be touched.
+
+#### Re-register each on-disk hive
+
+For each entry in `on_disk_hives`, branch on the hive name:
+
+**Canonical hives (`issues` and `plans`)** — apply the canonical defaults verbatim. The scope glob is the repo root with a trailing `/**`. The `--egg-resolver` path is `<bees-setup-base-dir>/scripts/file_list_resolver.py` (see *Egg Resolver* below for the same convention). Inline the literal at the call site — do not store it in a shell variable across snippets.
+
+**Before the first `bees colonize-hive` call**, verify the resolver script actually exists. A corrupted or partial install would otherwise register hives pointing at a non-existent resolver:
+
+```bash
+# POSIX (bash / zsh):
+test -f "<bees-setup-base-dir>/scripts/file_list_resolver.py" || { echo "file_list_resolver.py not found at <bees-setup-base-dir>/scripts/file_list_resolver.py — bees-workflow install is incomplete. Fall through to the slow path (skip the fast path entirely) and tell the user to re-install per the README."; exit 1; }
+```
+
+```powershell
+# Windows (PowerShell):
+if (-not (Test-Path "<bees-setup-base-dir>\scripts\file_list_resolver.py")) { Write-Error "file_list_resolver.py not found at <bees-setup-base-dir>\scripts\file_list_resolver.py — bees-workflow install is incomplete. Fall through to the slow path (skip the fast path entirely) and tell the user to re-install per the README." ; exit 1 }
+```
+
+Then run the per-hive registration:
+
+```bash
+# POSIX (bash / zsh) — for each issues hive:
+bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
+
+# POSIX (bash / zsh) — for each plans hive:
+bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
+bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
+```
+
+```powershell
+# Windows (PowerShell) — for each issues hive:
+bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
+
+# Windows (PowerShell) — for each plans hive:
+bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
+bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
+```
+
+**Unknown hive names** (anything other than `issues` or `plans`) — the canonical defaults do not apply. Do **not** silently re-register with assumed values. For each unknown hive, use `AskUserQuestion` to ask whether to re-register it now (and, if yes, the user will need to supply child tiers and status values via prose follow-up — fall through to the slow path's *Hive Configuration* section for that one hive only). The fast path is only safe for the canonical two; treat anything else as "I don't know the defaults; ask the user."
+
+#### Configure per-machine Claude Code settings (condensed prompt)
+
+Read `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Windows). Check whether `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"` and whether `teammateMode` is set to `"in-process"` or `"tmux"` (any explicit user choice).
+
+- **If both are already set**: print `"Per-machine Claude Code settings already configured — leaving them alone."` and skip ahead to *Confirm and exit*.
+- **If either or both are missing**: present a single combined `AskUserQuestion` confirming both at once with sensible defaults — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"` (required by `bees-execute` / `bees-fix-issue`) and `teammateMode = "in-process"` (the recommended default — works on every terminal, no setup-prompt surprises).
+
+  > "Your per-machine Claude Code settings need two values to support `bees-execute` / `bees-fix-issue`. I can set both at once with the recommended defaults, or walk through each setting in detail."
+  >
+  > Options:
+  > 1. **Set both with recommended defaults (Recommended)** — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS="1"`, `teammateMode="in-process"`.
+  > 2. **Walk through each setting in detail** — fall through to the slow path's *Per-machine Claude Code settings* section instead of the condensed confirm.
+
+  If option 1: write each missing setting using the **shared Python one-liner** in *Helper: write a single key to `~/.claude/settings.json`* below — one call per missing key.
+
+  If option 2: fall through to the slow path's *Per-machine Claude Code settings* section for the per-setting walk-through, then return here for *Confirm and exit*.
+
+#### Confirm and exit
+
+Print: `"Re-registered N hives. You're ready to go."` (where N is the count of hives processed above), then use `AskUserQuestion`:
+
+> "Setup complete. The fast path skipped the full walk-through because your repo was already configured. Anything else?"
+>
+> Options:
+> 1. **Exit now (Recommended)** — most users on a new machine want exactly this.
+> 2. **Continue with the full setup walk anyway** — escape hatch for users who actually want to reconfigure CLAUDE.md sections, hive paths, build commands, etc. Falls through to *Resolve bundled helper script paths* below.
+
+If option 1: stop. **Do not** modify CLAUDE.md, do not walk Documentation Locations, do not walk Build Commands. The repo state is already correct on disk and the per-machine bits are now in place.
+
+If option 2: continue with the existing slow path starting at *Resolve bundled helper script paths* (*Per-machine Claude Code settings* was already configured by the condensed prompt above; we skip ahead to the next slow-path section).
+
+### Per-machine Claude Code settings
+
+The two settings below — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and `teammateMode` — live in the user's per-machine Claude Code settings file (`~/.claude/settings.json` on POSIX, `%USERPROFILE%\.claude\settings.json` on Windows). They are not committed to a repo, so a fresh machine always needs them set even if the repo itself is fully configured. Both fast-path and slow-path setups configure them; the fast path uses a condensed single-prompt confirm, the slow path walks through each one in detail.
+
+#### Claude Code Agent Teams (required)
 
 `bees-execute` and `bees-fix-issue` use Claude Code's **Agent Teams** feature to run Engineer + Test Writer + Doc Writer + PM concurrently on each Task instead of in sequence. **Agent Teams is required for both skills** — they spawn a team unconditionally and will hard-fail with `Run /bees-setup first.` if Agent Teams is not enabled. `/bees-setup` configures both the env var that enables Agent Teams (this step) and the `teammateMode` display backend (the next step).
 
@@ -107,7 +237,7 @@ Check whether `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"`.
 > 2. **Skip for now** — `/bees-execute` and `/bees-fix-issue` will not function until you enable this; you can re-run `/bees-setup` later to enable.
 > 3. **Show me what to add and I'll do it myself** — print the JSON snippet and file path, then continue.
 
-If option 1: read the existing JSON (or `{}` if the file is missing), merge in the new key without disturbing other settings, show the user a before/after diff, then write the file. Remind the user: "This takes effect on your next Claude Code session — restart Claude Code when you have a moment."
+If option 1: show the user a before/after diff, then write the setting using the **shared Python one-liner** documented below in *Helper: write a single key to `~/.claude/settings.json`* (key `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, value `"1"`). Remind the user: "This takes effect on your next Claude Code session — restart Claude Code when you have a moment."
 
 If option 2: continue setup; Agent Teams remains disabled. Note to the user that `/bees-execute` and `/bees-fix-issue` will hard-fail until they re-run `/bees-setup` (which will re-detect and re-offer) or edit the settings file by hand.
 
@@ -116,7 +246,7 @@ If option 3: print the exact addition (`"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": 
 > **Optional later-installs not needed for the core portable workflow:**
 > The skills `bees-fleet`, `bees-worktree-add`, and `bees-worktree-rm` require **tmux** for terminal session management. If you do not plan to use those skills, you do not need tmux. If you later install or invoke any of them, install tmux at that point (`brew install tmux` on macOS / `sudo apt install tmux` on Debian-Ubuntu Linux / install via WSL on Windows — tmux has no native Windows port). The core flow — `/bees-plan` or `/bees-plan-from-specs` → `/bees-breakdown-epic` → `/bees-execute` → `/bees-fix-issue` — does not need tmux and works on native Windows PowerShell.
 
-#### 3. teammateMode display backend
+#### teammateMode display backend
 
 Agent Teams routes teammate output through a "display backend" controlled by `teammateMode` in `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Windows). Pre-configuring it during setup avoids mid-run setup prompts that can abort a team spawn — most notably the iTerm2 Split Pane Setup prompt that ships with Claude Code's default `"auto"` mode on macOS + iTerm2, where picking Cancel aborts the team spawn entirely (a known re-prompt bug compounds the problem: https://github.com/anthropics/claude-code/issues/27413).
 
@@ -175,76 +305,7 @@ Present an `AskUserQuestion`. Always include options 1 and 3; include option 2 o
 
 Mirror the UX of the Agent Teams enable step: **read the existing JSON, show the user a before/after diff (the only changed line will be `"teammateMode": "<old>"` → `"teammateMode": "<new>"`, or a single new line on a fresh file), and confirm via `AskUserQuestion` before writing.** This keeps the user in the loop for any change to their settings file and matches the muscle memory the previous step established.
 
-After confirmation, write the chosen value to the settings file using the Python one-liner below — direct text editing has no atomicity story and corrupts JSON on a wrong escape. Pass the chosen value as the second positional argument so the literal does not have to round-trip through a shell variable across snippet boundaries (each Bash tool invocation is a fresh shell).
-
-The script:
-
-1. Reads the existing JSON, or starts from `{}` if the file does not exist. Bails out with a clear error if the file exists but is not valid JSON — do not silently overwrite a corrupt-but-recoverable settings file.
-2. Sets `teammateMode` to the chosen value, leaving every other key untouched.
-3. Writes the result back atomically (tempfile in the same directory + `os.replace`).
-
-```bash
-# POSIX (bash / zsh):
-python3 -c '
-import json, os, sys, tempfile
-p = sys.argv[1]
-new_value = sys.argv[2]
-data = {}
-if os.path.exists(p):
-    try:
-        with open(p, encoding="utf-8") as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        print(f"Error: {p} is not valid JSON ({e}). Fix or remove the file by hand, then re-run /bees-setup.", file=sys.stderr)
-        sys.exit(1)
-data["teammateMode"] = new_value
-parent = os.path.dirname(os.path.abspath(p)) or "."
-os.makedirs(parent, exist_ok=True)
-fd, tmp = tempfile.mkstemp(dir=parent, prefix=".settings.json.", suffix=".tmp")
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    os.replace(tmp, p)
-except Exception:
-    if os.path.exists(tmp): os.unlink(tmp)
-    raise
-print(f"Set teammateMode={new_value} in {p}")
-' "$HOME/.claude/settings.json" "in-process"
-```
-
-```powershell
-# Windows (PowerShell):
-# IMPORTANT: use a single-quoted here-string @'...'@ around the Python source so
-# PowerShell does NOT expand $variables inside the script body before invoking Python.
-$pyScript = @'
-import json, os, sys, tempfile
-p = sys.argv[1]
-new_value = sys.argv[2]
-data = {}
-if os.path.exists(p):
-    try:
-        with open(p, encoding="utf-8") as f:
-            data = json.load(f)
-    except json.JSONDecodeError as e:
-        print(f"Error: {p} is not valid JSON ({e}). Fix or remove the file by hand, then re-run /bees-setup.", file=sys.stderr)
-        sys.exit(1)
-data["teammateMode"] = new_value
-parent = os.path.dirname(os.path.abspath(p)) or "."
-os.makedirs(parent, exist_ok=True)
-fd, tmp = tempfile.mkstemp(dir=parent, prefix=".settings.json.", suffix=".tmp")
-try:
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    os.replace(tmp, p)
-except Exception:
-    if os.path.exists(tmp): os.unlink(tmp)
-    raise
-print(f"Set teammateMode={new_value} in {p}")
-'@
-python -c $pyScript "$env:USERPROFILE\.claude\settings.json" "in-process"
-```
-
-Replace the trailing `"in-process"` literal at every site with the value the user actually chose (`"tmux"` or `"auto"` if they picked one of those instead). Inline the literal at the call site — do not rely on a shell variable carried over from an earlier snippet. Remind the user: "This takes effect on your next Claude Code session — restart Claude Code when you have a moment."
+After confirmation, write the chosen value to the settings file using the **shared Python one-liner** documented below in *Helper: write a single key to `~/.claude/settings.json`*. Pass `teammateMode` as the key and the user's chosen value (`"in-process"`, `"tmux"`, or `"auto"`) as the value. Inline the literal at the call site — do not rely on a shell variable carried over from an earlier snippet. Remind the user: "This takes effect on your next Claude Code session — restart Claude Code when you have a moment."
 
 ##### If the user picked `"tmux"`, verify the backend is installed
 
@@ -272,6 +333,77 @@ if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
 ```
 
 If the backend is missing, offer to install via `AskUserQuestion`. If the user declines, warn that team spawn will fail until the backend is available, and offer to fall back to `"in-process"` instead.
+
+#### Helper: write a single key to `~/.claude/settings.json`
+
+Both subsections above (and the fast-path branch below) write a single top-level key into the user's Claude Code settings file. Use this shared Python one-liner — direct text editing has no atomicity story and corrupts JSON on a wrong escape. Pass the key name and value as the second and third positional arguments so neither has to round-trip through a shell variable across snippet boundaries (each Bash tool invocation is a fresh shell).
+
+The script:
+
+1. Reads the existing JSON, or starts from `{}` if the file does not exist. Bails out with a clear error if the file exists but is not valid JSON — do not silently overwrite a corrupt-but-recoverable settings file.
+2. Sets the named key to the chosen value, leaving every other key untouched.
+3. Writes the result back atomically (tempfile in the same directory + `os.replace`).
+
+```bash
+# POSIX (bash / zsh):
+python3 -c '
+import json, os, sys, tempfile
+p, key, new_value = sys.argv[1], sys.argv[2], sys.argv[3]
+data = {}
+if os.path.exists(p):
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Error: {p} is not valid JSON ({e}). Fix or remove the file by hand, then re-run /bees-setup.", file=sys.stderr)
+        sys.exit(1)
+data[key] = new_value
+parent = os.path.dirname(os.path.abspath(p)) or "."
+os.makedirs(parent, exist_ok=True)
+fd, tmp = tempfile.mkstemp(dir=parent, prefix=".settings.json.", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, p)
+except Exception:
+    if os.path.exists(tmp): os.unlink(tmp)
+    raise
+print(f"Set {key}={new_value} in {p}")
+' "$HOME/.claude/settings.json" "<key>" "<value>"
+```
+
+```powershell
+# Windows (PowerShell):
+# IMPORTANT: use a single-quoted here-string @'...'@ around the Python source so
+# PowerShell does NOT expand $variables inside the script body before invoking Python.
+$pyScript = @'
+import json, os, sys, tempfile
+p, key, new_value = sys.argv[1], sys.argv[2], sys.argv[3]
+data = {}
+if os.path.exists(p):
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Error: {p} is not valid JSON ({e}). Fix or remove the file by hand, then re-run /bees-setup.", file=sys.stderr)
+        sys.exit(1)
+data[key] = new_value
+parent = os.path.dirname(os.path.abspath(p)) or "."
+os.makedirs(parent, exist_ok=True)
+fd, tmp = tempfile.mkstemp(dir=parent, prefix=".settings.json.", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, p)
+except Exception:
+    if os.path.exists(tmp): os.unlink(tmp)
+    raise
+print(f"Set {key}={new_value} in {p}")
+'@
+python -c $pyScript "$env:USERPROFILE\.claude\settings.json" "<key>" "<value>"
+```
+
+Replace `<key>` and `<value>` at the call site with the literals for the setting being written (e.g., `"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"` `"1"` for Agent Teams; `"teammateMode"` `"in-process"` for the display backend). Inline the literals — do not rely on a shell variable carried over from an earlier snippet.
 
 ---
 

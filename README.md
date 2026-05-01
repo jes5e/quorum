@@ -100,7 +100,7 @@ It will colonize hives (Plans + Issues), write a `## Documentation Locations` an
 
 | Skill | What it does |
 |---|---|
-| `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, Agent Teams + display backend, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. |
+| `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, Agent Teams + display backend, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. On a new machine in an already-set-up repo, `/bees-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through. |
 | `/bees-plan` | Interactive scope discovery for an idea, refactor, or feature without finalized specs. Produces a Plan Bee with Epics. |
 | `/bees-plan-from-specs` | Express path for when you already have a finalized PRD and SDD on disk. Produces a Plan Bee with Epics. |
 | `/bees-breakdown-epic` | Decompose a single Epic into Tasks and Subtasks with the mandatory description template applied. |
