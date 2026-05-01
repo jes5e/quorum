@@ -126,7 +126,7 @@ The script emits a JSON payload to stdout:
 2. None of the registered scopes in `~/.bees/config.json` cover the current repo path (`any_registered_for_repo` is false).
 3. CLAUDE.md already contains both `## Documentation Locations` and `## Build Commands` sections with all required contract bullets present (`claude_md_doc_locations_set_up` and `claude_md_build_commands_set_up` are both true). Empty values for individual rows are acceptable — the user may have legitimately skipped a guide; what matters is that the section was previously walked through and the contract keys are in place.
 
-If `fast_path_eligible` is **false**, fall through to the existing slow path starting at *Per-machine Claude Code settings* below — there is no behavior change for first-time setup or for already-fully-configured machines.
+If `fast_path_eligible` is **false**, fall through to the existing slow path starting at *Per-machine Claude Code settings*; if those are already configured, the slow path continues to *Resolve bundled helper script paths* — there is no behavior change for first-time setup or for already-fully-configured machines.
 
 If `fast_path_eligible` is **true**, run the actions below.
 
@@ -233,7 +233,7 @@ Read `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Wind
 
   If option 1: write each missing setting using the **shared Python one-liner** in *Helper: write a single key to `~/.claude/settings.json`* below — one call per missing key.
 
-  If option 2: fall through to the slow path's *Per-machine Claude Code settings* section for the per-setting walk-through, then return here for *Confirm and exit*.
+  If option 2: after completing the slow path's *Per-machine Claude Code settings* section, jump back up to *Confirm and exit* in the fast-path branch above.
 
 #### Confirm and exit
 

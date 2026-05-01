@@ -199,6 +199,12 @@ def _split_top_level_sections(text: str):
     return sections
 
 
+# Matches the canonical contract bullet shape `- **Key**: value` that the
+# bees-setup slow path emits. If a user hand-edits CLAUDE.md to drop the bold
+# emphasis or use a different style, the bullet silently fails to match and
+# the section is reported as not-set-up, which causes the slow path to re-prompt
+# — that is intentional defensive behavior. Don't loosen this regex without
+# considering that you'd be widening the parse to match malformed CLAUDE.md.
 _BULLET_RE = re.compile(r"^\s*-\s+\*\*(?P<key>[^*]+?)\*\*\s*:\s*(?P<value>.*?)\s*$")
 
 
