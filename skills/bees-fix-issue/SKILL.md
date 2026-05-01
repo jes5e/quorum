@@ -374,7 +374,7 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 
    Wait for the agent's report.
 
-3. Present the findings to the user.
+3. Synthesize the findings before presenting. Compare the fresh reviewer's findings against the in-flight per-issue code/test/doc reviewer verdicts (which the team-lead still has in context) and flag any disagreements explicitly — e.g. "fresh reviewer flagged X but in-flight code reviewer judged X clean." Then present the synthesized findings (fresh reviewer's list plus your synthesis notes) to the user.
 
 4. If the agent returned "no issues found", report "Post-completion review: no issues found" and exit.
 
