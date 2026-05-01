@@ -2,6 +2,8 @@
 id: b.kpt
 type: bee
 title: /bees-setup should detect new-machine case and offer fast-path re-registration
+down_dependencies:
+- b.6e6
 parent: null
 egg: null
 created_at: '2026-05-01T16:19:06.836236'
