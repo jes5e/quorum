@@ -57,6 +57,10 @@ The workflow uses two hives in the target repo:
 
 When a Plan Bee is authored via `/bees-plan` for a feature with no separate PRD/SDD, the Bee's `egg` is null/empty and the **Plan Bee body itself becomes the authoritative spec**. Several skills (`bees-execute`'s PM role, `bees-breakdown-epic`) explicitly substitute "the Plan Bee body" for "the PRD/SDD" in that case — keep the substitution prose intact when editing those skills.
 
+## Querying tickets
+
+The bees CLI has no `ls`, `search`, `list-tickets`, or hive-scoped enumeration command — anything that smells like one is a guess. To enumerate or filter tickets (e.g., "what open issues exist?", "which Epics under this Bee are ready?"), use `bees execute-freeform-query --query-yaml '<yaml>'`. Recipes and the full filter/graph-stage vocabulary live in `docs/doc-writing-guide.md` `## Querying tickets`; consult it before composing a query rather than guessing subcommands.
+
 ## Egg resolver
 
 `skills/bees-setup/scripts/file_list_resolver.py` is the egg resolver bundled with the skills. Hives in the target repo are colonized with this script's absolute path as their `egg_resolver`, so a Bee's `egg` field can point to one or more on-disk docs (PRD, SDD, etc.). If you change the resolver's contract (input/output shape), `bees-setup` must also be updated to migrate existing hive configs in `~/.bees/config.json`.
