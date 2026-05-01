@@ -50,7 +50,12 @@ sys.exit(0 if val == "1" else 1)
 $settingsPath = "$env:USERPROFILE\.claude\settings.json"
 $fromFile = $null
 if (Test-Path $settingsPath) {
-    try { $fromFile = (Get-Content $settingsPath -Raw | ConvertFrom-Json).env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS } catch { $fromFile = $null }
+    try {
+        $fromFile = (Get-Content $settingsPath -Raw | ConvertFrom-Json).env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
+    } catch {
+        Write-Warning "could not read ${settingsPath}: $_ — falling back to environment check."
+        $fromFile = $null
+    }
 }
 if ($fromFile -ne "1" -and $env:CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS -ne "1") {
     Write-Error "Run /bees-setup first. — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is not '1' in settings.json or the environment."
