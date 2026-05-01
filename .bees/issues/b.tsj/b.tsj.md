@@ -2,10 +2,11 @@
 id: b.tsj
 type: bee
 title: Skills use vague 'search hive' prose without concrete query recipes, causing Claude to invent bees CLI verbs
-status: open
-created_at: '2026-04-30T21:19:44.483444'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-04-30T21:19:44.483444'
+status: done
+schema_version: '0.1'
 guid: tsj4y2xj624fqef8o2rzsgk93nyo7p4r
 ---
 

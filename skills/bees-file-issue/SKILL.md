@@ -52,7 +52,15 @@ If called with arguments, use those as the description.
 
 If the description references specific code, files, or behavior:
 - Read the relevant source files to understand the current state
-- Check if there's already an issue ticket for this issue (search existing issues hive)
+- Check if there's already an issue ticket for the same problem. Query the open issues in the issues hive and scan returned titles for overlap with the user's description:
+
+  ```bash
+  bees execute-freeform-query --query-yaml 'stages:
+    - [type=bee, hive=issues, status=open]
+  report: [title]'
+  ```
+
+  If a clear duplicate exists, surface it to the user and ask whether to file anyway (sometimes a near-duplicate captures a different angle), append to the existing ticket, or stop.
 
 ### 3. Create the ticket
 

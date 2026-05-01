@@ -24,17 +24,24 @@ The core implementation-shaping role (the team-lead — you) always uses **Opus*
 
 **If caller provides Epic ID**: Use that Epic ID directly.
 
-**If caller provides a Bee ID**: Find workable Epics automatically (see below).
+**If caller provides a Bee ID**: Use the Bee ID to find workable Epics — see the "Once you have a Bee ID" recipe below.
 
-**If caller provides no arguments**: Search for Plan Bees in the current repo by querying the Plans hive:
+**If caller provides no arguments**: Search for ready Plan Bees in the current repo by querying the Plans hive:
 ```bash
 bees execute-freeform-query --query-yaml 'stages:
-  - [type=bee, hive=plans, status=ready]'
+  - [type=bee, hive=plans, status=ready]
+report: [title]'
 ```
-If exactly one Bee is found, use it. If multiple, use `AskUserQuestion` to let the user pick which Bee to work on. If none found, tell the user no Plan Bees are ready and suggest running `/bees-plan-from-specs`.
+If exactly one Bee is found, use it. If multiple, use `AskUserQuestion` to let the user pick which Bee to work on (the `report: [title]` clause gives you the titles to display). If none found, tell the user no Plan Bees are ready and suggest running `/bees-plan-from-specs`.
 
-**Once you have a Bee ID**: Find workable Epics by querying with the `bees` CLI for any
-Epic children of that Bee in the `drafted` state. These are Epics that are written but whose children (Tasks) have not been written yet.
+**Once you have a Bee ID**: Find Epic children of that Bee in the `drafted` state — those are Epics that are written but whose children (Tasks) have not been written yet:
+
+```bash
+bees execute-freeform-query --query-yaml 'stages:
+  - [parent=<bee-id>, type=t1, status=drafted]
+report: [title, up_dependencies]'
+```
+
 If there are multiple, use `AskUserQuestion` with `multiSelect: false` to let user pick ONE Epic. Review the 
 dependency chain and recommend the one that makes the most sense:
 - Question: "Which Epic do you want to break down?"

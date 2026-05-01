@@ -39,9 +39,37 @@ If the user reports "I already ran `/bees-setup`" but the `## Skill Paths` preco
 ### 1. Find Bee to work on and validate
 
 The user will either call without arguments, with a Bee id or with an Epic ID:
-- If called without arguments, find all bees for this repo and ask the user which one they want to work on
-- If called with a Bee id, find all Epics in the `ready` state that are unblocked and ask which one they want to work on
-- If called with an Epic id, find the Bee that is a parent of that Epic and use that Bee
+
+- **If called without arguments**, list all Plan Bees in this repo and ask the user which one to work on:
+
+  ```bash
+  bees execute-freeform-query --query-yaml 'stages:
+    - [type=bee, hive=plans]
+  report: [title, ticket_status]'
+  ```
+
+  Filter the result to Bees with status `ready` or `in_progress` (those are workable). If exactly one matches, use it. If multiple, present them via `AskUserQuestion`. If none, tell the user no Plan Bees are workable and suggest `/bees-plan` or `/bees-plan-from-specs`.
+
+- **If called with a Bee ID**, find that Bee's `ready` Epic children and ask which one to start with:
+
+  ```bash
+  bees execute-freeform-query --query-yaml 'stages:
+    - [parent=<bee-id>, type=t1, status=ready]
+  report: [title, up_dependencies]'
+  ```
+
+  Filter the result to Epics whose `up_dependencies` are all in `done` status (a dependency in `ready` state is a pending blocker, not satisfied). Present unblocked candidates via `AskUserQuestion` and recommend the one with the fewest downstream dependencies first.
+
+- **If called with an Epic ID**, walk up to the parent Bee:
+
+  ```bash
+  bees execute-freeform-query --query-yaml 'stages:
+    - [id=<epic-id>]
+    - [parent]
+  report: [title, ticket_status]'
+  ```
+
+  Use the parent Bee for the rest of the run.
 
 You will ultimately get the Bee ID you need to work on.
 Validate it is ready for work:
@@ -78,9 +106,17 @@ In the question, always state:
 
 ### 2. Find Epic to work on and validate
 
-Find all Epics in the Bee and recommend the best one to work on first:
-- Must have a status of `ready` or `in_progress`
-- If it has `up_dependencies` they must be in `done` state
+Find all Epics under the chosen Bee and recommend the best one to work on first:
+
+```bash
+bees execute-freeform-query --query-yaml 'stages:
+  - [parent=<bee-id>, type=t1]
+report: [title, ticket_status, up_dependencies]'
+```
+
+From the result set, the Epic to work on must:
+- Have a status of `ready` or `in_progress`
+- Have all `up_dependencies` in `done` state
 
 
 #### Check if stale

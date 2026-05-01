@@ -48,7 +48,21 @@ Research (incorporating the user's context):
 - Read CLAUDE.md to understand the project structure and conventions
 - Read relevant source code to understand the current state
 - If the user pointed to reference implementations, read those
-- Check if there's existing work that overlaps (search the plans and issues hives)
+- Check if there's existing work that overlaps. Query both hives and scan returned titles for related scope:
+
+  ```bash
+  # All Plan Bees in the plans hive (any status — overlap may be planned, in-progress, or done):
+  bees execute-freeform-query --query-yaml 'stages:
+    - [type=bee, hive=plans]
+  report: [title, ticket_status]'
+
+  # All open issues:
+  bees execute-freeform-query --query-yaml 'stages:
+    - [type=bee, hive=issues, status=open]
+  report: [title]'
+  ```
+
+  If overlap looks meaningful, `bees show-ticket --ids <id>` on the candidate(s) and discuss with the user whether to extend an existing Bee, depend on it, or proceed with a separate Plan.
 - If PRD/SDD exist, read them to understand if this feature relates to existing requirements
 
 Then ask clarifying questions using `AskUserQuestion`:
