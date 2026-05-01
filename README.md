@@ -40,15 +40,23 @@ If you want the lightweight, ephemeral-spec, async-team-spawning experience of A
 - **bees CLI** (`pipx install bees-md`) — see [bees](https://github.com/gabemahoney/bees) for documentation. Requires Python 3.10+.
 - **POSIX shell** (bash/zsh on macOS/Linux/WSL) **or PowerShell** (native Windows). Either works; every shell snippet in the skills is provided in both forms.
 
-## Strongly recommended: enable Agent Teams
+## Required: enable Agent Teams
 
-`bees-execute` and `bees-fix-issue` get a major speedup when Claude Code's **Agent Teams** feature is enabled — instead of running Engineer → Test Writer → Doc Writer → PM in sequence, the team works concurrently on each Task. The skills detect whether Agent Teams is available at runtime and gracefully fall back to single-agent execution when it isn't, so the workflow works either way; with it enabled, it's noticeably faster and more parallel.
+`bees-execute` and `bees-fix-issue` use Claude Code's **Agent Teams** feature to run Engineer / Test Writer / Doc Writer / PM concurrently against each Task. Both skills spawn a team unconditionally — without Agent Teams enabled, neither can proceed.
 
-To enable, set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"1"` in your Claude Code user-settings file:
-- POSIX: `~/.claude/settings.json`
-- Windows: `%USERPROFILE%\.claude\settings.json`
+`/bees-setup` configures this for you. It checks `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` in your Claude Code user-settings file (`~/.claude/settings.json` on POSIX, `%USERPROFILE%\.claude\settings.json` on Windows) and offers to set it to `"1"` if it isn't. Re-run `/bees-setup` any time you want to flip it on.
 
-`/bees-setup` checks this for you on first run and offers to enable it if it isn't. You can also enable it manually any time.
+## Display backend
+
+Agent Teams renders concurrent agent activity through one of three `teammateMode` values in `~/.claude/settings.json`:
+
+- `"in-process"` — inline status panel inside the same Claude Code session. No terminal multiplexer required, no setup prompts, works on every terminal. **bees-workflow recommends this** for smooth onboarding.
+- `"tmux"` — split-pane mode. Each teammate runs in its own pane via `tmux` (Linux, Terminal.app) or `it2` (iTerm2). Requires the relevant multiplexer to be installed and, on iTerm2, the Python API enabled. Unsupported in VS Code's integrated terminal, Windows Terminal, and Ghostty.
+- `"auto"` — Claude Code's default. Picks split-pane on terminals it recognizes as supporting it, otherwise falls back to in-process.
+
+`/bees-setup` configures this for you. If `teammateMode` is unset or `"auto"`, you'll be offered the choice with `"in-process"` as the recommended default.
+
+**Why we don't recommend `"auto"`.** On macOS + iTerm2, the first team spawn under `"auto"` triggers an "iTerm2 Split Pane Setup" prompt. Picking Cancel aborts the team spawn entirely (returning `Teammate spawn cancelled - iTerm2 setup required`) — it does *not* simply decline a visual upgrade, and the calling skill stalls with no recovery. An upstream [Claude Code verification bug](https://github.com/anthropics/claude-code/issues/27413) compounds the problem: the prompt may re-appear even after `it2` is installed. `"in-process"` sidesteps both.
 
 ## Install
 
@@ -92,7 +100,7 @@ It will colonize hives (Plans + Issues), write a `## Documentation Locations` an
 
 | Skill | What it does |
 |---|---|
-| `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. |
+| `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, Agent Teams + display backend, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. |
 | `/bees-plan` | Interactive scope discovery for an idea, refactor, or feature without finalized specs. Produces a Plan Bee with Epics. |
 | `/bees-plan-from-specs` | Express path for when you already have a finalized PRD and SDD on disk. Produces a Plan Bee with Epics. |
 | `/bees-breakdown-epic` | Decompose a single Epic into Tasks and Subtasks with the mandatory description template applied. |

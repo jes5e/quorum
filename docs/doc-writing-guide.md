@@ -189,6 +189,6 @@ Use these terms consistently. Mixing synonyms forces readers (and Claude) to men
 
 1. **Read the README's skill table first.** If your edit changes user-visible behavior (name, description, what the skill does), the table is part of the change.
 2. **Read CLAUDE.md.** It captures project-internal guidance that applies to every skill edit (cross-platform rules, contract keys, model assignments, etc.).
-3. **Check both the Agent-Teams-on and Agent-Teams-off paths** when editing `bees-execute` or `bees-fix-issue`. Both must keep working.
+3. **Agent Teams is required** for `bees-execute` and `bees-fix-issue`. Both skills spawn a team unconditionally — there is no single-agent fallback path. Don't introduce conditional "if-Teams-off" branches when editing those skills; rely on the precondition check to hard-fail when Agent Teams isn't enabled.
 4. **Don't introduce stack-specific helpers** to the portable core (Rust changelogs, Node license tooling, etc.). Those route to companion repos per the README.
 5. **Don't introduce a tmux dependency** to any of the 11 portable-core skills.

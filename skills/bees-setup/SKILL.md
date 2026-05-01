@@ -85,9 +85,9 @@ python -m pip install --user pipx
 
 bees-md requires Python 3.10+. After install, the bees binary lives under the user's local-binary directory: `~/.local/bin/bees` on POSIX, `%USERPROFILE%\.local\bin\bees.exe` (or wherever pipx put it) on Windows. Documentation: https://github.com/gabemahoney/bees
 
-#### 2. Claude Code Agent Teams (strongly recommended)
+#### 2. Claude Code Agent Teams (required)
 
-`bees-execute` and `bees-fix-issue` use Claude Code's **Agent Teams** feature to run Engineer + Test Writer + Doc Writer + PM concurrently on each Task instead of in sequence. With it enabled, the workflow is noticeably faster and more parallel; without it, the skills fall back to single-agent execution and still work end-to-end.
+`bees-execute` and `bees-fix-issue` use Claude Code's **Agent Teams** feature to run Engineer + Test Writer + Doc Writer + PM concurrently on each Task instead of in sequence. **Agent Teams is required for both skills** — they spawn a team unconditionally and will hard-fail with `Run /bees-setup first.` if Agent Teams is not enabled. `/bees-setup` configures both the env var that enables Agent Teams (this step) and the `teammateMode` display backend (the next step).
 
 **Detect current state.** Read the user's Claude Code settings file:
 
@@ -98,23 +98,180 @@ Check whether `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"`.
 
 **If already enabled**: confirm to the user ("Agent Teams is enabled — `bees-execute` and `bees-fix-issue` will run their teams in parallel.") and move on.
 
-**If not enabled (or the settings file doesn't exist)**: don't silently skip. Explain the upgrade and offer to enable it via `AskUserQuestion`:
+**If not enabled (or the settings file doesn't exist)**: don't silently skip. Explain the requirement and offer to enable it via `AskUserQuestion`:
 
-> "Agent Teams is currently disabled. Enabling it makes `bees-execute` and `bees-fix-issue` run their team agents (Engineer / Test Writer / Doc Writer / PM) in parallel instead of sequentially — typically a 2-3x speedup on each Task. The setting is `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1'` in your Claude Code user settings file. Want me to enable it now?"
+> "Agent Teams is currently disabled. `/bees-execute` and `/bees-fix-issue` require it — they spawn a team unconditionally and hard-fail without it. The setting is `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = '1'` in your Claude Code user settings file. Want me to enable it now?"
 >
 > Options:
 > 1. **Yes, enable it (Recommended)** — I'll add the setting to your settings file (creating it if it doesn't exist). Takes effect on your next Claude Code session.
-> 2. **Skip for now** — `bees-execute` and `bees-fix-issue` fall back to single-agent execution; still fully functional.
+> 2. **Skip for now** — `/bees-execute` and `/bees-fix-issue` will not function until you enable this; you can re-run `/bees-setup` later to enable.
 > 3. **Show me what to add and I'll do it myself** — print the JSON snippet and file path, then continue.
 
 If option 1: read the existing JSON (or `{}` if the file is missing), merge in the new key without disturbing other settings, show the user a before/after diff, then write the file. Remind the user: "This takes effect on your next Claude Code session — restart Claude Code when you have a moment."
 
-If option 2: continue setup; Agent Teams remains disabled. The user can enable it later by re-running `/bees-setup` (which will re-detect and re-offer) or by editing the settings file by hand.
+If option 2: continue setup; Agent Teams remains disabled. Note to the user that `/bees-execute` and `/bees-fix-issue` will hard-fail until they re-run `/bees-setup` (which will re-detect and re-offer) or edit the settings file by hand.
 
 If option 3: print the exact addition (`"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"`) and the file path, then continue setup.
 
 > **Optional later-installs not needed for the core portable workflow:**
 > The skills `bees-fleet`, `bees-worktree-add`, and `bees-worktree-rm` require **tmux** for terminal session management. If you do not plan to use those skills, you do not need tmux. If you later install or invoke any of them, install tmux at that point (`brew install tmux` on macOS / `sudo apt install tmux` on Debian-Ubuntu Linux / install via WSL on Windows — tmux has no native Windows port). The core flow — `/bees-plan` or `/bees-plan-from-specs` → `/bees-breakdown-epic` → `/bees-execute` → `/bees-fix-issue` — does not need tmux and works on native Windows PowerShell.
+
+#### 3. teammateMode display backend
+
+Agent Teams routes teammate output through a "display backend" controlled by `teammateMode` in `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Windows). Pre-configuring it during setup avoids mid-run setup prompts that can abort a team spawn — most notably the iTerm2 Split Pane Setup prompt that ships with Claude Code's default `"auto"` mode on macOS + iTerm2, where picking Cancel aborts the team spawn entirely (a known re-prompt bug compounds the problem: https://github.com/anthropics/claude-code/issues/27413).
+
+**Detect current state.** Read the same settings file as the previous step. Look up `teammateMode`.
+
+- **If already set to `"in-process"` or `"tmux"`** (an explicit user choice): confirm to the user (`"teammateMode is already set to <value> — leaving it alone."`) and move on.
+- **If unset, missing, or set to `"auto"`**: detect the user's terminal, then prompt for a choice (the steps below).
+
+##### Detect the terminal
+
+Terminal detection is best-effort and defensive. Read these environment variables and map them to the table that follows. When the terminal is unknown or ambiguous, do **not** offer the `"tmux"` option in the prompt below.
+
+```bash
+# POSIX (bash / zsh):
+echo "TERM_PROGRAM=${TERM_PROGRAM:-}"
+echo "TMUX=${TMUX:-}"
+echo "TERM=${TERM:-}"
+echo "WT_SESSION=${WT_SESSION:-}"
+```
+
+```powershell
+# Windows (PowerShell):
+"TERM_PROGRAM=$($env:TERM_PROGRAM)"
+"TMUX=$($env:TMUX)"
+"TERM=$($env:TERM)"
+"WT_SESSION=$($env:WT_SESSION)"
+```
+
+| Environment cue | Terminal | Supports split panes? |
+|---|---|---|
+| `$TMUX` non-empty | already inside a tmux session | yes (tmux available by definition) |
+| `TERM_PROGRAM=iTerm.app` | macOS iTerm2 | yes (via `it2` backend) |
+| `TERM_PROGRAM=Apple_Terminal` | macOS Terminal.app | yes (via tmux) |
+| `TERM_PROGRAM=WezTerm` | WezTerm | yes (via tmux) |
+| `TERM_PROGRAM=WarpTerminal` | Warp | yes (via tmux) |
+| `TERM=alacritty` | Alacritty | yes (via tmux) |
+| `TERM_PROGRAM=ghostty` | Ghostty | **no** — split-pane unsupported per Claude Code docs |
+| `TERM_PROGRAM=vscode` | VS Code integrated terminal | **no** — split-pane unsupported per Claude Code docs |
+| `$WT_SESSION` non-empty | Windows Terminal | **no** — split-pane unsupported per Claude Code docs |
+| (none of the above) | unknown terminal | unknown — skip the `"tmux"` option |
+
+Reference: https://code.claude.com/docs/en/agent-teams.
+
+##### Prompt the user
+
+Present an `AskUserQuestion`. Always include options 1 and 3; include option 2 only when the detection table above flagged the terminal as supporting split panes.
+
+> "How should Claude Code display teammate output during `/bees-execute` and `/bees-fix-issue` runs? `bees-workflow` recommends `"in-process"` for smooth onboarding."
+>
+> Options:
+> 1. **`"in-process"` (Recommended)** — Inline status panel only; no terminal multiplexer required, no setup prompts, no abort-on-Cancel surprises. Works on every terminal.
+> 2. **`"tmux"`** — Split-pane mode. Each teammate gets its own pane. Despite the value name, Claude Code chooses the actual backend per-terminal: `it2` on iTerm2, `tmux` everywhere else. (Only shown when the detected terminal supports split panes.)
+> 3. **Leave as `"auto"`** — Claude Code's default. On macOS + iTerm2 this triggers an iTerm2 Split Pane Setup prompt on first team spawn; picking Cancel aborts the team spawn (and the re-prompt bug noted above can resurface even after the backend is installed). Recommend only if the user explicitly prefers Claude Code's default.
+
+##### Apply the choice
+
+Mirror the UX of the Agent Teams enable step: **read the existing JSON, show the user a before/after diff (the only changed line will be `"teammateMode": "<old>"` → `"teammateMode": "<new>"`, or a single new line on a fresh file), and confirm via `AskUserQuestion` before writing.** This keeps the user in the loop for any change to their settings file and matches the muscle memory the previous step established.
+
+After confirmation, write the chosen value to the settings file using the Python one-liner below — direct text editing has no atomicity story and corrupts JSON on a wrong escape. Pass the chosen value as the second positional argument so the literal does not have to round-trip through a shell variable across snippet boundaries (each Bash tool invocation is a fresh shell).
+
+The script:
+
+1. Reads the existing JSON, or starts from `{}` if the file does not exist. Bails out with a clear error if the file exists but is not valid JSON — do not silently overwrite a corrupt-but-recoverable settings file.
+2. Sets `teammateMode` to the chosen value, leaving every other key untouched.
+3. Writes the result back atomically (tempfile in the same directory + `os.replace`).
+
+```bash
+# POSIX (bash / zsh):
+python3 -c '
+import json, os, sys, tempfile
+p = sys.argv[1]
+new_value = sys.argv[2]
+data = {}
+if os.path.exists(p):
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Error: {p} is not valid JSON ({e}). Fix or remove the file by hand, then re-run /bees-setup.", file=sys.stderr)
+        sys.exit(1)
+data["teammateMode"] = new_value
+parent = os.path.dirname(os.path.abspath(p)) or "."
+os.makedirs(parent, exist_ok=True)
+fd, tmp = tempfile.mkstemp(dir=parent, prefix=".settings.json.", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, p)
+except Exception:
+    if os.path.exists(tmp): os.unlink(tmp)
+    raise
+print(f"Set teammateMode={new_value} in {p}")
+' "$HOME/.claude/settings.json" "in-process"
+```
+
+```powershell
+# Windows (PowerShell):
+# IMPORTANT: use a single-quoted here-string @'...'@ around the Python source so
+# PowerShell does NOT expand $variables inside the script body before invoking Python.
+$pyScript = @'
+import json, os, sys, tempfile
+p = sys.argv[1]
+new_value = sys.argv[2]
+data = {}
+if os.path.exists(p):
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Error: {p} is not valid JSON ({e}). Fix or remove the file by hand, then re-run /bees-setup.", file=sys.stderr)
+        sys.exit(1)
+data["teammateMode"] = new_value
+parent = os.path.dirname(os.path.abspath(p)) or "."
+os.makedirs(parent, exist_ok=True)
+fd, tmp = tempfile.mkstemp(dir=parent, prefix=".settings.json.", suffix=".tmp")
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    os.replace(tmp, p)
+except Exception:
+    if os.path.exists(tmp): os.unlink(tmp)
+    raise
+print(f"Set teammateMode={new_value} in {p}")
+'@
+python -c $pyScript "$env:USERPROFILE\.claude\settings.json" "in-process"
+```
+
+Replace the trailing `"in-process"` literal at every site with the value the user actually chose (`"tmux"` or `"auto"` if they picked one of those instead). Inline the literal at the call site — do not rely on a shell variable carried over from an earlier snippet. Remind the user: "This takes effect on your next Claude Code session — restart Claude Code when you have a moment."
+
+##### If the user picked `"tmux"`, verify the backend is installed
+
+Claude Code's `"tmux"` mode picks a per-terminal backend. Verify the appropriate one and offer to install if missing:
+
+- **macOS + iTerm2** → `it2` backend. Requires iTerm2 3.3.0+ with the Python API enabled (Settings → General → Magic). Persistent install: `uv tool install it2` (per https://github.com/mkusaka/it2). If `uv` itself is missing, `brew install uv` first.
+- **macOS + Terminal.app, Linux** → `tmux`. Install: `brew install tmux` on macOS, `sudo apt install tmux` on Debian/Ubuntu, `sudo dnf install tmux` on Fedora.
+- **Already inside a tmux session** (`$TMUX` non-empty): tmux is available by definition — no install needed.
+
+Verify presence:
+
+```bash
+# POSIX (bash / zsh) — iTerm2 backend (run on macOS + iTerm2):
+which it2 || echo "it2 not installed — run 'uv tool install it2' (and 'brew install uv' first if uv is missing)"
+
+# POSIX (bash / zsh) — tmux backend (macOS Terminal.app, Linux, WezTerm, etc.):
+which tmux || echo "tmux not installed — run 'brew install tmux' (macOS) or 'sudo apt install tmux' (Debian/Ubuntu) or 'sudo dnf install tmux' (Fedora)"
+```
+
+```powershell
+# Windows (PowerShell) — tmux backend:
+if (-not (Get-Command tmux -ErrorAction SilentlyContinue)) {
+    Write-Host "tmux not available on native Windows — install inside WSL if you need split-pane mode"
+}
+```
+
+If the backend is missing, offer to install via `AskUserQuestion`. If the user declines, warn that team spawn will fail until the backend is available, and offer to fall back to `"in-process"` instead.
 
 ---
 

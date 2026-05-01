@@ -15,6 +15,7 @@ The user can call this skill in four ways:
 
 Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
+- `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"` in either `~/.claude/settings.json` or the shell environment. The skill spawns a team unconditionally; without Agent Teams enabled, team-creation tools are unavailable and the skill cannot proceed.
 - The Issues hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `issues`).
 - CLAUDE.md contains a `## Documentation Locations` section. The PM and Doc Writer roles read architecture/customer-doc paths from this section by exact key.
 - CLAUDE.md contains a `## Build Commands` section with all five required keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`. The Engineer reads compile/format/lint/test commands from this section by exact key.
@@ -22,6 +23,40 @@ Before doing anything else, verify the host repo is configured for the bees work
 Rationale: the workflow reads project-specific commands and doc paths from CLAUDE.md instead of hardcoding language-specific tooling, so the skill works on Rust, Node, Python, Go, etc. without per-skill editing. Auto-detection alone is unsafe on polyglot projects, monorepos, and projects with custom build systems — silently running the wrong commands would mask real failures.
 
 If any precondition is missing, stop with `Run /bees-setup first.` and direct the user there. Do not improvise commands or guess paths.
+
+**Verifying the Agent Teams precondition.** Read `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Windows) with the JSON parser, look up `.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. If it is `"1"`, the precondition is satisfied. If absent or any other value, fall back to the shell environment variable `$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (POSIX) / `$env:CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (PowerShell). If neither resolves to `"1"`, hard-fail with `Run /bees-setup first.` and a one-line note that Agent Teams is not enabled.
+
+```bash
+# POSIX (bash / zsh):
+python3 -c '
+import json, os, sys
+p = os.path.expanduser("~/.claude/settings.json")
+val = ""
+if os.path.exists(p):
+    try:
+        with open(p, encoding="utf-8") as f:
+            val = (json.load(f).get("env") or {}).get("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "")
+    except (FileNotFoundError, IsADirectoryError):
+        val = ""
+    except (PermissionError, json.JSONDecodeError, OSError) as e:
+        print(f"Warning: could not read {p}: {e!r} — falling back to environment check.", file=sys.stderr)
+        val = ""
+sys.exit(0 if val == "1" else 1)
+' || test "${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-}" = "1" || { echo "Run /bees-setup first. — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is not '1' in settings.json or the environment."; exit 1; }
+```
+
+```powershell
+# Windows (PowerShell):
+$settingsPath = "$env:USERPROFILE\.claude\settings.json"
+$fromFile = $null
+if (Test-Path $settingsPath) {
+    try { $fromFile = (Get-Content $settingsPath -Raw | ConvertFrom-Json).env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS } catch { $fromFile = $null }
+}
+if ($fromFile -ne "1" -and $env:CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS -ne "1") {
+    Write-Error "Run /bees-setup first. — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is not '1' in settings.json or the environment."
+    exit 1
+}
+```
 
 ## Execution Flow
 

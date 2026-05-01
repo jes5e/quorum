@@ -67,7 +67,7 @@ The bees CLI has no `ls`, `search`, `list-tickets`, or hive-scoped enumeration c
 
 ## Agent Teams
 
-`bees-execute` and `bees-fix-issue` use Claude Code's experimental **Agent Teams** feature (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"`) to run Engineer / Test Writer / Doc Writer / PM concurrently. The skills detect at runtime and fall back to single-agent execution when it's off — so any edit to those skills must keep both code paths working, not just the Teams-enabled one. Agent naming inside a team uses task-scoped suffixes (e.g., `engineer-xb`, `pm-xb`) to avoid collision with not-yet-shut-down agents from the previous Task; reuse the same scheme when extending team logic.
+`bees-execute` and `bees-fix-issue` use Claude Code's experimental **Agent Teams** feature (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"`) to run Engineer / Test Writer / Doc Writer / PM concurrently. Agent Teams is **required** for both skills — they spawn a team unconditionally and hard-fail without it. `/bees-setup` configures the env var, plus the `teammateMode` display backend (see the README's "Display backend" section for the user-facing explanation). Agent naming inside a team uses task-scoped suffixes (e.g., `engineer-xb`, `pm-xb`) to avoid collision with not-yet-shut-down agents from the previous Task; reuse the same scheme when extending team logic.
 
 ## Model assignment in execution skills
 

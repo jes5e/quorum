@@ -5,7 +5,7 @@ title: 'Agent Teams hard requirement: enforce in skills, configure teammateMode 
 parent: null
 egg: null
 created_at: '2026-04-30T23:18:36.691498'
-status: open
+status: done
 schema_version: '0.1'
 guid: 9svamzf6dhkc9qpe65fsmec5tu2r33rr
 ---
