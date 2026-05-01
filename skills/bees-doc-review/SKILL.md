@@ -1,6 +1,6 @@
 ---
-name: doc-review
-description: Review documentation completeness for a change set. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items.
+name: bees-doc-review
+description: Review documentation completeness for a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc doc review of a diff, worktree, files, or bees ticket. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items.
 ---
 
 ## Overview
@@ -10,7 +10,7 @@ Concise is better than verbose. Value brevity.
 The README is for human users that want to use the program.
 Architecture docs should contain the high-level architecture and core technology.
 
-**When invoked standalone** (e.g. `/doc-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
+**When invoked standalone** (e.g. `/bees-doc-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
 
 **When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance below.
 

@@ -19,7 +19,7 @@ The workflow chain is linear with two entry points:
 - `/bees-execute` — walks every Epic, runs the team per Task, commits
 - `/bees-file-issue` *and* `/bees-fix-issue` — anytime, for bugs/follow-ups
 
-Three review skills (`code-review`, `doc-review`, `test-review`) are general-purpose and don't depend on the bees workflow — they're useful standalone too.
+Three review skills (`bees-code-review`, `bees-doc-review`, `bees-test-review`) are dual-mode — primarily invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles, with standalone invocation also supported for ad-hoc reviews outside the workflow.
 
 The workflow uses two hives in the target repo: **Plans** (top-level, with t1/t2/t3 = Epic/Task/Subtask) and **Issues** (no children). Plan Bees may carry one or more on-disk source documents (PRD, SDD, etc.) in their `egg` field, resolved by the bundled `file_list_resolver.py`. When a Plan Bee has a null/empty `egg`, the **Plan Bee body itself becomes the authoritative spec** — downstream skills explicitly substitute the Bee body for the PRD/SDD in that mode.
 
@@ -33,7 +33,7 @@ The workflow uses two hives in the target repo: **Plans** (top-level, with t1/t2
 - **`skills/bees-fix-issue/`** — fix one or more issue tickets. Single, list, or `all` modes. Same kind of team as `bees-execute` but at issue scope.
 - **`skills/bees-file-issue/`** — file a new issue ticket (bug, follow-up, small feature, tech debt).
 - **`skills/bees-status/`** — show workflow stages and current progress across all hives.
-- **`skills/code-review/`**, **`skills/doc-review/`**, **`skills/test-review/`** — general-purpose reviewers, independent of the bees workflow.
+- **`skills/bees-code-review/`**, **`skills/bees-doc-review/`**, **`skills/bees-test-review/`** — dual-mode reviewers. Primary use: invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles, with bees-specific loop-bounding prose for that path. Secondary use: standalone ad-hoc review of a diff or worktree.
 - **`skills/bees-execute/scripts/force_clean_team.py`** — force-clean stuck Claude Code teams. Used as the `TeamDelete` recovery step.
 - **`skills/bees-setup/scripts/file_list_resolver.py`** — the egg resolver. Registered as each hive's `egg_resolver` so a Bee's `egg` field can point to one or more on-disk docs.
 

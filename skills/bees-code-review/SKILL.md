@@ -1,6 +1,6 @@
 ---
-name: code-review
-description: Perform code review of a change set. Returns a simple list of improvement work items.
+name: bees-code-review
+description: Perform code review of a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items.
 ---
 
 ## Overview
@@ -9,7 +9,7 @@ This skill performs code review on a change set — files changed during a Task,
 It returns a list of improvement work items for the caller to review.
 Be thorough but not pedantic — focus on substance over style.
 
-**When invoked standalone** (e.g. `/code-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
+**When invoked standalone** (e.g. `/bees-code-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
 
 **When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance under Step 3.
 

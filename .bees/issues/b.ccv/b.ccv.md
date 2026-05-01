@@ -2,10 +2,11 @@
 id: b.ccv
 type: bee
 title: Rename code-review/doc-review/test-review skills to bees-* prefix
-status: open
-created_at: '2026-04-30T22:03:08.576769'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-04-30T22:03:08.576769'
+status: done
+schema_version: '0.1'
 guid: ccvj52677qk6s44e4q3vdx7rgyxkd4zd
 ---
 

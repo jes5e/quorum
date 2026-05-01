@@ -217,21 +217,21 @@ Also check the background process's output file if it has one. A claim of "waiti
     - Review the output of the Engineer
     - Provide feedback where the work of the Engineer was not up to standards
   - Instructions:
-    - Invoke the /code-review skill
+    - Invoke the /bees-code-review skill
 - Test Reviewer
   - Model: Claude Opus
   - Responsibilities:
     - Review the output of the Test Writer
     - Provide feedback where the work of the Test Writer was not up to standards
   - Instructions:
-    - Invoke the /test-review skill
+    - Invoke the /bees-test-review skill
 - Doc Reviewer
   - Model: User's choice (Opus or Sonnet, selected at start)
   - Responsibilities:
     - Review the output of the Doc Writer
     - Provide feedback where the work of the Doc Writer was not up to standards
   - Instructions:
-    - Invoke the /doc-review skill
+    - Invoke the /bees-doc-review skill
 
 - Get the feedback, and make a judgement call about whether that work must be done
   - If so, **reform the first team** to do the work
@@ -285,9 +285,9 @@ Once the issue is fixed:
 
 ### 8. Post-Completion Code Review
 
-After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final `/code-review` across all changes made during this bees-fix-issue session.
+After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final `/bees-code-review` across all changes made during this bees-fix-issue session.
 
-1. Invoke the `/code-review` skill against all changes made during this session (diff against the branch state before bees-fix-issue started)
+1. Invoke the `/bees-code-review` skill against all changes made during this session (diff against the branch state before bees-fix-issue started)
 2. Present the findings to the user
 3. If there are no issues, report "Code review: no issues found" and exit
 4. If there are issues, use `AskUserQuestion` to ask:

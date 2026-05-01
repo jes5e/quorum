@@ -100,11 +100,11 @@ It will colonize hives (Plans + Issues), write a `## Documentation Locations` an
 | `/bees-file-issue` | File a new issue ticket in the issues hive. Issues cover bugs, follow-ups, small features, tech debt — anything ticket-worthy that isn't planned upfront. |
 | `/bees-fix-issue` | Fix one or more issue tickets. Single, list, or `all` modes. Spawns the same kind of team as `bees-execute` but at issue scope. |
 | `/bees-status` | Show the workflow stages and current progress across all hives. Useful for "where am I?" |
-| `/code-review` | Review changed files for substance — security, correctness, architecture, dead code. Returns a list of work items. |
-| `/doc-review` | Review documentation completeness after changes land. Returns a list of work items. |
-| `/test-review` | Review test files for quality, coverage, and bloat. Returns a list of work items. |
+| `/bees-code-review` | Perform code review of a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items. |
+| `/bees-doc-review` | Review documentation completeness for a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc doc review of a diff, worktree, files, or bees ticket. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items. |
+| `/bees-test-review` | Review test files for quality, coverage, and correctness across a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc test review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items. |
 
-The three reviewers (`code-review`, `doc-review`, `test-review`) are general-purpose and don't depend on the bees workflow — useful standalone too.
+The three reviewers (`bees-code-review`, `bees-doc-review`, `bees-test-review`) are dual-mode — primarily invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles, but they also support standalone invocation if you want an ad-hoc review without the bees workflow.
 
 ## Status vocabulary
 

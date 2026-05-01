@@ -253,10 +253,10 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
         - The work will meet the Acceptance Criteria
         - The work covers all functionality required by the Epic
         - The work does not introduce any functionality not required or explicitly disallowed in the Epic
-    - Uses the code-review and doc-review skill after work has been done for quality control
+    - Uses the bees-code-review and bees-doc-review skill after work has been done for quality control
       - NOTE: These skills could infinitely return work items
       - Product Manager must use judgement when deciding whether to ask the Team to make the improvements or not
-      - If the Product Manager decides to ignore code-review or doc-review feedback, this MUST be included in the end of task summary report for review
+      - If the Product Manager decides to ignore bees-code-review or bees-doc-review feedback, this MUST be included in the end of task summary report for review
     - **Trust the Task's `.T` subtask output** — do NOT re-run the full workspace test suite / clippy by default. The `.T` subtask is the authoritative workspace-wide validation run. Only re-run if you have a specific reason (engineer reported skipping something, stale `.bees/` state, etc.). See "Testing discipline — avoid redundant full-workspace runs" above.
     - **Cross-Task and cross-Epic interaction check** — per-Task code review naturally focuses on the Task's own diff. The PM is responsible for the wider view. Before approving a Task, explicitly verify:
       - **Contract consistency with sibling Tasks in the same Epic.** Read the other Tasks in this Epic. For each function/API this Task modifies, find sibling Tasks that call or assume behavior from it and verify those assumptions still hold. Example: if this Task reorders steps inside an `auth_middleware`, a sibling Task whose request-handler docstring says "by this point the request is signature-verified" must be cross-checked against the new ordering.
@@ -315,7 +315,7 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 **Task ID**: <task-id>
 **Files Changed**: [count] files ([list key filenames if < 5, otherwise just count])
 **Reviews**: [Code review: X issues found/None needed | Docs review: Y issues found/None needed]
-**Ignored Review Feedback**: [list items that were flagged by code-review or doc-review but Director chose not to address, or "None"]
+**Ignored Review Feedback**: [list items that were flagged by bees-code-review or bees-doc-review but Director chose not to address, or "None"]
 **Follow-up Tasks Created**: [count, if any] [list task-ids if created]
 One of:
 - Proceeding to next Task <task-id>
@@ -361,21 +361,21 @@ If you invoked the Doc Writer in the first team, invoke the Doc Reviewer in this
     - Review the output of the Engineer
     - Provide feedback where the work of the Engineer was not up to standards
   - Instructions:
-    - Invoke the /code-review skill
+    - Invoke the /bees-code-review skill
 - Test Reviewer
   - Model: Claude Opus (always)
   - Responsibilities:
     - Review the output of the Test Writer
     - Provide feedback where the work of the Test Writer was not up to standards
   - Instructions:
-    - Invoke the /test-review skill
+    - Invoke the /bees-test-review skill
 - Doc Reviewer
   - Model: User's choice (Opus or Sonnet, selected at start)
   - Responsibilities:
     - Review the output of the Doc Writer
     - Provide feedback where the work of the Doc Writer was not up to standards
   - Instructions:
-    - Invoke the /doc-review skill
+    - Invoke the /bees-doc-review skill
 - Get the feedback, and make a judgement call about whether that work must be done
   - If so, **reform or re-use the first team** to do the work
     - **IMPORTANT** Stay in delegate mode and do not do the work yourself.
@@ -387,9 +387,9 @@ If you invoked the Doc Writer in the first team, invoke the Doc Reviewer in this
 
 ### 6. Post-Completion Code Review
 
-After the review loop in step 5 is done and all fixable issues have been addressed by the team, run one final `/code-review` across all changes made by this Bee (diff against the base branch or the state before work began). This is an independent quality gate — separate from the per-Task and per-Epic review cycles above.
+After the review loop in step 5 is done and all fixable issues have been addressed by the team, run one final `/bees-code-review` across all changes made by this Bee (diff against the base branch or the state before work began). This is an independent quality gate — separate from the per-Task and per-Epic review cycles above.
 
-1. Invoke the `/code-review` skill against all changes in this Bee
+1. Invoke the `/bees-code-review` skill against all changes in this Bee
 2. Present the findings to the user
 3. If there are no issues, report "Code review: no issues found" and continue to Final Output
 4. If there are issues, use `AskUserQuestion` to ask:
