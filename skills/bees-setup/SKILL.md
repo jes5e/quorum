@@ -582,12 +582,12 @@ Capture: the tech stack, the deployment model (CLI / library / web service / etc
 
 The codebase tells you *what* and *how*; it doesn't tell you *why* or *for whom*. Ask the following batch — group the multiple-choice questions into one `AskUserQuestion` call (it supports multiple questions per call), then ask the open-ended ones as plain prose in a single message and let the user reply in their next turn. **Do not** wrap the open-ended questions in `AskUserQuestion` — it is multi-choice only; for free-text answers, prose is the right shape.
 
-**Multiple-choice questions** (single-select, free-text "Other" always available):
+**Multiple-choice questions** (single-select; the runtime auto-appends a `Type something.` free-text slot, so you don't need to add an "Other" option yourself):
 
-- **Primary audience:** End users (consumer-facing) / Developers (dev tool or library) / Internal team (internal tool) / Mixed audience / Other
-- **Deployment model:** CLI tool / Web service or API / Library or SDK / Desktop app / Mobile app / Browser extension / Other
-- **Maturity:** Production-shipping / Active maintenance / Early-stage prototype / Research or experiment / Other
-- **Project type:** Open-source / Proprietary product / Internal-only tool / Side project / Other
+- **Primary audience:** End users (consumer-facing) / Developers (dev tool or library) / Internal team (internal tool) / Mixed audience
+- **Deployment model:** CLI tool / Web service or API / Library or SDK / Desktop app / Mobile app / Browser extension
+- **Maturity:** Production-shipping / Active maintenance / Early-stage prototype / Research or experiment
+- **Project type:** Open-source / Proprietary product / Internal-only tool / Side project
 
 **Open-ended questions** (ask these as a numbered prose list in a single message — no tool call; the user will reply in their next turn; ≤ 2-3 sentences each is ideal):
 
