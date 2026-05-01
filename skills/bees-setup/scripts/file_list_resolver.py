@@ -54,7 +54,7 @@ def main():
         sys.exit(1)
 
     if len(parsed) == 0:
-        print(f"egg value is an empty list", file=sys.stderr)
+        print("egg value is an empty list", file=sys.stderr)
         sys.exit(1)
 
     resolved = []
