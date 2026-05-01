@@ -57,7 +57,8 @@ Instead, refer to the contract keys that `bees-setup` writes to the *target repo
 
 - `## Build Commands` keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`
 - `## Documentation Locations` keys: `Project requirements doc (PRD)`, `Internal architecture docs (SDD)`, `Customer-facing docs`, `Engineering best practices`, `Test writing guide`, `Test review guide`, `Doc writing guide`
-- `## Skill Paths` keys: `Force clean team script`, `File list resolver script`
+
+Bundled helper scripts (e.g., `force_clean_team.py`) are deliberately *not* on this list. Their paths are per-machine and would corrupt CLAUDE.md across contributors if persisted there. Each skill resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header (`Base directory for this skill: ...`). A skill using its own bundled script: `<base>/scripts/<name>.py`. A skill using a sibling's bundled script: `<base>/../<sibling>/scripts/<name>.py`.
 
 A skill that needs to run the project's full test suite reads the value of the `Full test` key from CLAUDE.md and shell-executes that. The skill's job is to know *when* to run a full test, not *what* the command is.
 
@@ -140,7 +141,7 @@ report: [title, ticket_status, up_dependencies]'
 
 ## Hard-fail preconditions
 
-Execution skills (`bees-execute`, `bees-fix-issue`) hard-fail with `Run /bees-setup first.` when the target CLAUDE.md is missing any of the three required sections (`Documentation Locations`, `Build Commands`, `Skill Paths`) or any required key inside them. Preserve that precondition behavior in any edit to those skills.
+Execution skills (`bees-execute`, `bees-fix-issue`) hard-fail with `Run /bees-setup first.` when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them. Preserve that precondition behavior in any edit to those skills.
 
 When you add a new required key to one of those sections, update bees-setup to write it *and* update every downstream skill's precondition check in the same change.
 

@@ -118,73 +118,50 @@ If option 3: print the exact addition (`"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": 
 
 ---
 
-### Resolve skill install location
+### Resolve bundled helper script paths
 
 This skill set works in two install modes:
 - **Global install** — skills live under `~/.claude/skills/<skill-name>/` (per-user, recommended for single-user machines)
 - **Per-project install** — skills live under `<repo>/.claude/skills/<skill-name>/`
 
-Helper scripts (`force_clean_team.py`, `file_list_resolver.py`) ship bundled inside skill `scripts/` directories. Their resolved absolute paths depend on which install mode the user picked, so we discover them once here and persist them to CLAUDE.md so every other skill can look them up by exact key — same pattern as `## Documentation Locations` and `## Build Commands`.
+Helper scripts (`file_list_resolver.py`, `force_clean_team.py`) ship bundled inside their owning skill's `scripts/` directory. Each skill that needs a bundled script computes the path at runtime from its own base directory — no probing, no persistence to CLAUDE.md.
 
-Detect the install location by probing both candidates and picking whichever has the bundled `bees-setup/scripts/file_list_resolver.py` file:
+The skill invocation header at session start tells Claude where this skill lives, e.g.:
 
-```bash
-# POSIX (bash / zsh):
-for candidate in "$HOME/.claude/skills" "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/skills"; do
-  if [ -f "$candidate/bees-setup/scripts/file_list_resolver.py" ]; then
-    SKILLS_ROOT="$candidate"
-    break
-  fi
-done
-test -n "$SKILLS_ROOT" && echo "Skills installed at: $SKILLS_ROOT" || { echo "No bees-workflow skills found in ~/.claude/skills/ or <repo>/.claude/skills/. Install per the README."; exit 1; }
-
-# Windows (PowerShell):
-$candidates = @("$HOME\.claude\skills", "$(git rev-parse --show-toplevel 2>$null)\.claude\skills")
-$skillsRoot = $candidates | Where-Object { Test-Path "$_\bees-setup\scripts\file_list_resolver.py" } | Select-Object -First 1
-if (-not $skillsRoot) { Write-Error "No bees-workflow skills found in ~\.claude\skills\ or <repo>\.claude\skills\. Install per the README." ; exit 1 }
-"Skills installed at: $skillsRoot"
+```
+Base directory for this skill: /Users/.../.claude/skills/bees-setup
 ```
 
-### Skill Paths section in CLAUDE.md
+`bees-setup`'s own bundled script (`file_list_resolver.py`) is at `<this skill's base directory>/scripts/file_list_resolver.py`. That's the absolute path passed to `bees colonize-hive --egg-resolver` below. No CLAUDE.md section is written for it — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` computes `<bees-execute base>/scripts/force_clean_team.py`, `bees-fix-issue` computes `<bees-fix-issue base>/../bees-execute/scripts/force_clean_team.py`).
 
-Write the resolved absolute paths to a `## Skill Paths` section in CLAUDE.md. Other skills look these up by exact key.
-
-**Detect existing configuration first.** Read CLAUDE.md (create it if it doesn't exist):
-- If a `## Skill Paths` section already exists with all required keys, validate the paths still resolve to existing files. Update only the entries that don't.
-- If the section is missing, insert a new one as a top-level (`##`) heading. Placement preference: directly above `## Documentation Locations` for visual grouping. If `## Documentation Locations` does not yet exist (e.g., this is a first-run before that section is written), append `## Skill Paths` at the end of CLAUDE.md — other skills look it up by exact heading, so absolute position does not matter.
-
-Required keys:
-
-| Key | Resolves to |
-|-----|-------------|
-| `Force clean team script` | `<SKILLS_ROOT>/bees-execute/scripts/force_clean_team.py` |
-| `File list resolver script` | `<SKILLS_ROOT>/bees-setup/scripts/file_list_resolver.py` |
-
-Section template:
-
-```markdown
-## Skill Paths
-
-Used by `bees-execute`, `bees-fix-issue`, and `bees-setup` to invoke bundled helper scripts. Paths are absolute so they work regardless of cwd.
-
-- **Force clean team script**: <ABSOLUTE_PATH>
-- **File list resolver script**: <ABSOLUTE_PATH>
-
-If you re-install bees-workflow at a different location, re-run `/bees-setup` to refresh these paths.
-```
-
-Verify each path exists before writing — if either is missing, the install is incomplete; tell the user to re-install and stop.
+**Migration.** Earlier versions of `bees-setup` wrote a `## Skill Paths` section to CLAUDE.md containing absolute machine-local paths. That section was removed because committing per-machine paths to a tracked file broke multi-engineer collaboration. If the target repo's CLAUDE.md still has a `## Skill Paths` section from an earlier setup run, delete it as part of this run — the section is no longer used by any skill, and leaving it behind keeps the broken paths in git history. After deletion, mention to the user: "Removed obsolete `## Skill Paths` section from CLAUDE.md — paths are now resolved at runtime per-machine. Consider squashing this change with other in-flight work; don't push the delete on its own if the section was already pushed earlier."
 
 ### Egg Resolver
 
 The egg resolver lets a Plan Bee's `egg` field point at one or more source documents on disk (PRD, SDD, etc.). Downstream skills (`/bees-execute`, `/bees-breakdown-epic`) read these files as the authoritative source for the work.
 
-When colonizing hives, pass the resolved absolute resolver path (`File list resolver script` from the section you just wrote) as the `--egg-resolver` flag to `bees colonize-hive`. If hives already exist and have a stale `egg_resolver` from an earlier installation, update their configuration to point to the current resolved path. The bees CLI user config file lives at:
+When colonizing hives, pass the resolved path to `file_list_resolver.py` as the `--egg-resolver` flag to `bees colonize-hive`. The path is `<this skill's base directory>/scripts/file_list_resolver.py` (where "this skill" is `bees-setup` — see the section above). The bees CLI persists this value in `~/.bees/config.json`, which is per-user and not committed; each new contributor on a different machine re-runs `/bees-setup` once to register hives on their machine.
+
+If hives already exist and have a stale `egg_resolver` from an earlier installation (different home directory, install location moved, etc.), update their configuration to point to the current resolved path using the same Python one-liner pattern shown below. The bees CLI user config file lives at:
 
 - POSIX: `~/.bees/config.json`
 - Windows: `%USERPROFILE%\.bees\config.json`
 
-Update the file with a Python one-liner — direct text editing has no atomicity story and corrupts the JSON on a wrong escape:
+First set `$RESOLVER` to the absolute path to `file_list_resolver.py`, computed from this skill's base directory (shown in the invocation header). Replace `<bees-setup-base-dir>` with the literal path from the header — do not try to derive it from environment variables, since the install mode (global vs per-project) determines the actual location:
+
+```bash
+# POSIX (bash / zsh):
+RESOLVER="<bees-setup-base-dir>/scripts/file_list_resolver.py"
+test -f "$RESOLVER" || { echo "file_list_resolver.py not found at $RESOLVER — bees-workflow install is incomplete; tell the user to re-install per the README and stop."; exit 1; }
+```
+
+```powershell
+# Windows (PowerShell):
+$RESOLVER = "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+if (-not (Test-Path $RESOLVER)) { Write-Error "file_list_resolver.py not found at $RESOLVER — bees-workflow install is incomplete; tell the user to re-install per the README and stop." ; exit 1 }
+```
+
+Then update the bees config file with a Python one-liner — direct text editing has no atomicity story and corrupts the JSON on a wrong escape:
 
 ```bash
 # POSIX (bash / zsh):
@@ -235,9 +212,9 @@ Check for the existence of the above hives using `bees list-hives` and validate 
 
 If any hives are missing:
 - **Use `AskUserQuestion` to ask the user where each missing hive should live.** Do not assume a default path. Suggest sensible options (e.g., `<repo>/.bees/issues` in-repo, or `<project-parent>/issues` sibling-to-repo) but always let the user pick.
-- Once the user chooses, create the hive using the bees CLI:
+- Once the user chooses, create the hive using the bees CLI. Pass `--egg-resolver "$RESOLVER"` (the value set in the *Egg Resolver* section above) so the hive can resolve eggs out of the box:
   ```bash
-  bees colonize-hive --name <name> --path <path> --scope "<scope>"
+  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "$RESOLVER"
   ```
 - After colonization, set child tiers and status values:
   ```bash

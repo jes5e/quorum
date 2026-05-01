@@ -18,13 +18,10 @@ Before doing anything else, verify the host repo is configured for the bees work
 - The Issues hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `issues`).
 - CLAUDE.md contains a `## Documentation Locations` section. The PM and Doc Writer roles read architecture/customer-doc paths from this section by exact key.
 - CLAUDE.md contains a `## Build Commands` section with all five required keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`. The Engineer reads compile/format/lint/test commands from this section by exact key.
-- CLAUDE.md contains a `## Skill Paths` section with the `Force clean team script` key. This is the absolute path to `force_clean_team.py` — used as the recovery step when `TeamDelete` fails. `/bees-setup` writes this section based on whether the bees-workflow skills are installed globally or per-project.
 
 Rationale: the workflow reads project-specific commands and doc paths from CLAUDE.md instead of hardcoding language-specific tooling, so the skill works on Rust, Node, Python, Go, etc. without per-skill editing. Auto-detection alone is unsafe on polyglot projects, monorepos, and projects with custom build systems — silently running the wrong commands would mask real failures.
 
 If any precondition is missing, stop with `Run /bees-setup first.` and direct the user there. Do not improvise commands or guess paths.
-
-If the user reports "I already ran `/bees-setup`" but the `## Skill Paths` precondition is missing, the project was set up before that section existed. Re-running `/bees-setup` adds it idempotently — existing `## Documentation Locations` and `## Build Commands` entries are preserved, only the missing section gets written.
 
 ## Execution Flow
 
@@ -138,7 +135,7 @@ Create **one team per issue** (e.g., `issue-xfm`). Use task-scoped agent names (
 - **Between issues** (in batch mode — `all` or list mode):
   1. Send shutdown requests to all remaining agents
   2. Call `TeamDelete` to clean up the team
-  3. If `TeamDelete` fails due to stuck agents: (a) read the absolute path to `force_clean_team.py` from CLAUDE.md `## Skill Paths` (key: `Force clean team script`) and run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (b) call `TeamDelete` again to clear session state
+  3. If `TeamDelete` fails due to stuck agents: (a) resolve the path to `force_clean_team.py` as `<this skill's base directory>/../bees-execute/scripts/force_clean_team.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-fix-issue`), and the script is bundled with sibling skill `bees-execute`. Run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (b) call `TeamDelete` again to clear session state
   4. Create a new team for the next issue
 
 The team may consist of any of the following agents:
@@ -271,7 +268,7 @@ Once the issue is fixed:
    2. Run `git status` to see the full set of modified and untracked files.
    3. Stage files that are related to this issue — include agent-reported files, `.bees/` ticket changes, and any formatting changes to files that were touched by this issue's agents. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue.
    4. Commit with a descriptive message per system/project git guidance.
-4. Call `TeamDelete` to clean up the team. If it fails: (a) run the `Force clean team script` (path from CLAUDE.md `## Skill Paths`) via the platform's Python 3 launcher (`python3` POSIX / `python` Windows) with `<team-name>`, (b) `TeamDelete` again.
+4. Call `TeamDelete` to clean up the team. If it fails: (a) run `force_clean_team.py` (located at `<this skill's base directory>/../bees-execute/scripts/force_clean_team.py` — bundled with sibling skill `bees-execute`) via the platform's Python 3 launcher (`python3` POSIX / `python` Windows) with `<team-name>`, (b) `TeamDelete` again.
 5. Output the summary:
 
 ```markdown

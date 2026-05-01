@@ -2,10 +2,11 @@
 id: b.963
 type: bee
 title: bees-setup writes machine-local paths to committed CLAUDE.md (## Skill Paths)
-status: open
-created_at: '2026-04-30T21:14:25.887691'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-04-30T21:14:25.887691'
+status: done
+schema_version: '0.1'
 guid: 963k6c881x2dj99aaxupsrrx9vdh9jq9
 ---
 

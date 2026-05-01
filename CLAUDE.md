@@ -44,13 +44,9 @@ These keys appear in the *target repo's* CLAUDE.md (not this one). `bees-setup` 
 - `Narrow test`
 - `Full test`
 
-`## Skill Paths` bullet keys (added by b.nyv):
-- `Force clean team script` — absolute path to `bees-execute/scripts/force_clean_team.py` (used as the `TeamDelete` recovery step)
-- `File list resolver script` — absolute path to `bees-setup/scripts/file_list_resolver.py` (registered as each hive's `egg_resolver`)
+**Bundled helper scripts are NOT contract keys.** Earlier revisions wrote a `## Skill Paths` section to CLAUDE.md containing absolute paths to `bees-execute/scripts/force_clean_team.py` and `bees-setup/scripts/file_list_resolver.py`. That section was removed (b.963) because committing per-machine paths to a tracked file broke multi-engineer collaboration. Each skill now resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header. See `## Querying tickets` and `## The lookup-key pattern` in `docs/doc-writing-guide.md` for the runtime-resolution conventions skills must follow.
 
-`bees-setup` writes Skill Paths after detecting whether the bees-workflow skills are installed globally (`~/.claude/skills/`) or per-project (`<repo>/.claude/skills/`). Earlier prose hardcoded relative `.claude/skills/...` paths, which broke under the global install — the Skill Paths section eliminates that coupling.
-
-`bees-execute` and `bees-fix-issue` hard-fail with `Run /bees-setup first.` if any of the three sections (`Documentation Locations`, `Build Commands`, `Skill Paths`), or any required key inside them, is missing from the target repo's CLAUDE.md. Preserve that precondition behavior in any edit to those skills. If a project was set up before Skill Paths existed, re-running `/bees-setup` adds the section idempotently.
+`bees-execute` and `bees-fix-issue` hard-fail with `Run /bees-setup first.` if either of the two contract sections (`Documentation Locations`, `Build Commands`), or any required key inside them, is missing from the target repo's CLAUDE.md. Preserve that precondition behavior in any edit to those skills.
 
 ## Hives and status vocabulary
 
@@ -76,6 +72,24 @@ Hardcoded in `bees-execute` and `bees-fix-issue`:
 - **Doc Writer, Product Manager, Doc Reviewer**: user picks Opus or Sonnet at the start of the run.
 
 Don't change these assignments without a concrete reason — they're load-bearing for output quality and are referenced by users in their workflows.
+
+## Documentation Locations
+
+- **Project requirements doc (PRD)**: docs/prd.md
+- **Internal architecture docs (SDD)**: docs/sdd.md
+- **Customer-facing docs**: README.md
+- **Engineering best practices**: CONTRIBUTING.md
+- **Test writing guide**:
+- **Test review guide**:
+- **Doc writing guide**: docs/doc-writing-guide.md
+
+## Build Commands
+
+- **Compile/type-check**:
+- **Format**: echo 'no formatter configured for this repo'
+- **Lint**: python -m pyflakes skills/*/scripts/*.py
+- **Narrow test**: echo 'no test suite for this repo'
+- **Full test**: echo 'no test suite for this repo'
 
 ## When editing skills
 
