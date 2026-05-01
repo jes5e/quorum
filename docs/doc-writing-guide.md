@@ -10,7 +10,7 @@ A skill is read by Claude at invocation time, not by a human at design time. Wri
 
 - **Direct, imperative voice.** "Read CLAUDE.md" not "you should read CLAUDE.md". "Write the section as below" not "the section can be written as".
 - **Code over prose.** A labeled shell block teaches more than a paragraph describing what the shell block would do.
-- **Opinionated defaults, not exhaustive references.** A skill that lists six options for everything is a skill that makes Claude waffle. Pick one, mark it "(Recommended)", and let the user override via AskUserQuestion.
+- **Opinionated defaults, not exhaustive references.** A skill that lists six options for everything is a skill that makes Claude waffle. Pick one, mark it "(Recommended)", and let the user override (via `AskUserQuestion` if the override is itself a finite set of choices, or by replying in prose if it's free-text — see `## AskUserQuestion patterns` below).
 - **No headers-and-bullets-for-everything.** A two-sentence answer should be two sentences, not a "Summary" header followed by a one-bullet list.
 
 ## The frontmatter contract
@@ -152,10 +152,11 @@ When you add a new required key to one of those sections, update bees-setup to w
 
 Skills use `AskUserQuestion` for decisions the user should drive. Patterns we follow:
 
+- **Multi-choice only — never for free-text answers.** `AskUserQuestion` is for picking from a small finite set of meaningful choices. The runtime auto-appends `Type something.` and `Chat about this`, so questions whose real answer is free-text (a path, a name, a description, an open-ended explanation) belong in plain prose — let the user reply normally in their next turn. Don't author fake "Use my own answer" / "Pick Other" options that point at the auto-appended slot; that's a UI smell. See CLAUDE.md `## AskUserQuestion usage`.
 - **Detect first, prompt second.** If a piece of configuration already exists, show the user the current value and ask whether to keep or change it — don't blindly re-prompt. Re-runs of `/bees-setup` should be near-no-ops when nothing has changed.
 - **Recommended option first.** When you have a sensible default, make it the first option and append "(Recommended)" to the label. Users should be able to skim and accept.
 - **Batch related questions.** AskUserQuestion supports up to 4 questions per call. Group related decisions (e.g., the seven Documentation Locations slots) so the user makes them in one mental context, not seven.
-- **No "Other" option in your options list.** The runtime adds a free-text "Other" automatically.
+- **No fake free-text option in your options list.** The runtime adds `Type something.` automatically — duplicating it (with an "Other", "Use my own answer", or `___`-suffixed label) confuses the UI.
 - **Reframe when needed.** When a default-skip looks tempting but is actually wrong, lead with *why* the user should care. The Bootstrap PRD/SDD section in `bees-setup` is the canonical example: it explicitly reframes "I don't read PRDs" as "PRDs are read by *agents*, not by you".
 
 ## Inline style

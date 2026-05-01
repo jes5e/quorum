@@ -15,7 +15,7 @@ This skill takes two absolute file paths as input:
 
 Both documents are expected to already be finalized on disk. This workflow does not author these documents — it takes them as given and turns them into a plan.
 
-If the caller does not provide both paths, ask them for the missing one(s) using `AskUserQuestion`. Both paths must resolve to existing files before proceeding.
+If the caller does not provide both paths, ask in prose for the missing path(s) and let the user reply in their next turn — do not use `AskUserQuestion`, since file paths are free-text answers, not a finite set of choices. Both paths must resolve to existing files before proceeding.
 
 ## Workflow
 

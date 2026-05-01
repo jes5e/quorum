@@ -2,10 +2,11 @@
 id: b.iaz
 type: bee
 title: AskUserQuestion misused for open-ended questions across skills (renders confusing 'Pick Other' UX)
-status: open
-created_at: '2026-05-01T12:09:33.348285'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-01T12:09:33.348285'
+status: done
+schema_version: '0.1'
 guid: iazhxdfa3r9xqvsuwn4sv8st6byax76p
 ---
 

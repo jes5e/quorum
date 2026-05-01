@@ -451,7 +451,7 @@ Pick the narrowest scope glob that covers the entire project directory tree — 
 Check for the existence of the above hives using `bees list-hives` and validate their configs with `bees get-types` and `bees get-status-values`.
 
 If any hives are missing:
-- **Use `AskUserQuestion` to ask the user where each missing hive should live.** Do not assume a default path. Suggest sensible options (e.g., `<repo>/.bees/issues` in-repo, or `<project-parent>/issues` sibling-to-repo) but always let the user pick.
+- **Ask the user in prose where each missing hive should live.** Do not assume a default path. Suggest sensible options (e.g., `<repo>/.bees/issues` in-repo, or `<project-parent>/issues` sibling-to-repo) and let the user reply with a path in their next turn. (`AskUserQuestion` is only appropriate here when offering a recommended default vs. "let me type a different path" — the path itself is free-text, so prose is the right shape.)
 - Once the user chooses, create the hive using the bees CLI. Pass the literal absolute path to `file_list_resolver.py` (the one verified in the *Egg Resolver* section above) as the `--egg-resolver` value so the hive can resolve eggs out of the box. Inline the literal path — do not reference a shell variable like `$RESOLVER`, since each Bash tool invocation is a fresh shell and the variable will be empty here. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
   ```bash
   # POSIX (bash / zsh):
@@ -482,23 +482,23 @@ After hives are configured, set up the `## Documentation Locations` section in C
 If the section doesn't exist at all, ask whether to configure it now: "Would you like to configure documentation locations in CLAUDE.md now? The bees workflow uses these docs as the **machine-readable source of truth** that downstream agents (`bees-execute`, `bees-fix-issue`) read during work to detect spec drift and align with project standards. For each doc type, you can point to an existing file or have one generated for you. You may also skip this step entirely."
 - Options: "Yes" / "Skip for now"
 
-If yes (or for any individual rows the user opted to change), walk through each of the six doc types below **one at a time**. For each, use AskUserQuestion to ask the user what they'd like to do:
+If yes (or for any individual rows the user opted to change), walk through each of the six doc types below **one at a time**. For each, use `AskUserQuestion` to ask the high-level decision (provide existing path / generate / skip / etc.) — these are genuine multi-choice prompts. **Do not** include `___`-suffixed labels or any "type your own answer" options — `AskUserQuestion` auto-appends a free-text slot, so a redundant fake option just confuses the UI. Then, **only if the user picks the "provide existing path" option, prompt for the actual path in prose** in the next turn (e.g., "Got it — what's the path to your PRD?") and let the user reply normally.
 
 | Doc type | Question | Options |
 |----------|----------|---------|
-| Project requirements doc (PRD) | "Do you have a project-level PRD?" | "Yes, here's the path: ___" / "Skip (offer bootstrap below)" |
-| Internal architecture docs (SDD) | "Do you have internal architecture docs (e.g., an SDD)?" | "Yes, here's the path: ___" / "Skip (offer bootstrap below)" |
-| Customer-facing docs | "Do you have customer-facing docs (e.g., a README)?" | "Yes, here's the path: ___" / "Use README.md (will be created during execution)" / "Skip" |
-| Engineering best practices | "Do you have an engineering best practices guide?" | "Yes, here's the path: ___" / "Generate one for me" / "Skip" |
-| Test writing guide | "Do you have a test writing guide?" | "Yes, here's the path: ___" / "Generate one for me" / "Skip" |
-| Test review guide | "Do you have a test review guide?" | "Yes, here's the path: ___" / "Generate one for me" / "Skip" |
-| Doc writing guide | "Do you have a doc writing guide?" | "Yes, here's the path: ___" / "Generate one for me" / "Skip" |
+| Project requirements doc (PRD) | "Do you have a project-level PRD?" | "Yes, I'll provide the path" / "Skip (offer bootstrap below)" |
+| Internal architecture docs (SDD) | "Do you have internal architecture docs (e.g., an SDD)?" | "Yes, I'll provide the path" / "Skip (offer bootstrap below)" |
+| Customer-facing docs | "Do you have customer-facing docs (e.g., a README)?" | "Yes, I'll provide the path" / "Use README.md (will be created during execution)" / "Skip" |
+| Engineering best practices | "Do you have an engineering best practices guide?" | "Yes, I'll provide the path" / "Generate one for me" / "Skip" |
+| Test writing guide | "Do you have a test writing guide?" | "Yes, I'll provide the path" / "Generate one for me" / "Skip" |
+| Test review guide | "Do you have a test review guide?" | "Yes, I'll provide the path" / "Generate one for me" / "Skip" |
+| Doc writing guide | "Do you have a doc writing guide?" | "Yes, I'll provide the path" / "Generate one for me" / "Skip" |
 
 Notes:
 - **PRD and Internal architecture docs (SDD)** describe what the project is and how it's designed. If skipped here, the **Bootstrap PRD/SDD from existing codebase** subsection below offers to create them by exploring the repo. Don't auto-generate from a static template — they need real content drawn from the project.
 - **Customer-facing docs** should not be generated during setup — offer to point to `README.md` which the Doc Writer agent will create during execution.
 - The four boilerplate guides (engineering, test writing, test review, doc writing) can each independently be provided by the user or generated from a template tailored to the detected stack.
-- You may batch multiple questions into a single AskUserQuestion if it reads clearly, but the user must be able to give a different answer per doc type.
+- You may batch multiple high-level decisions into a single `AskUserQuestion` if it reads clearly, but the user must be able to give a different answer per doc type. Path collection always happens as prose in the next turn — never as an option label.
 
 #### Generating docs
 
@@ -580,7 +580,7 @@ Capture: the tech stack, the deployment model (CLI / library / web service / etc
 
 ##### Step B: Ask the user the questions code can't answer
 
-The codebase tells you *what* and *how*; it doesn't tell you *why* or *for whom*. Ask the following batch — group the multiple-choice questions into one `AskUserQuestion` call (it supports multiple questions per call), then ask the open-ended ones in a follow-up `AskUserQuestion` call.
+The codebase tells you *what* and *how*; it doesn't tell you *why* or *for whom*. Ask the following batch — group the multiple-choice questions into one `AskUserQuestion` call (it supports multiple questions per call), then ask the open-ended ones as plain prose in a single message and let the user reply in their next turn. **Do not** wrap the open-ended questions in `AskUserQuestion` — it is multi-choice only; for free-text answers, prose is the right shape.
 
 **Multiple-choice questions** (single-select, free-text "Other" always available):
 
@@ -589,12 +589,12 @@ The codebase tells you *what* and *how*; it doesn't tell you *why* or *for whom*
 - **Maturity:** Production-shipping / Active maintenance / Early-stage prototype / Research or experiment / Other
 - **Project type:** Open-source / Proprietary product / Internal-only tool / Side project / Other
 
-**Open-ended questions** (free-text, ≤ 2-3 sentences each is ideal):
+**Open-ended questions** (ask these as a numbered prose list in a single message — no tool call; the user will reply in their next turn; ≤ 2-3 sentences each is ideal):
 
-- "In one or two sentences, what does this project do for its users? (the elevator pitch)"
-- "What's the main reason this project exists — what problem is it solving?"
-- "Are there explicit non-goals — things this project *deliberately* doesn't try to do? (Skip if none come to mind.)"
-- "What's one observable behavior you'd point at to say 'this project is working correctly'? (Becomes a baseline acceptance criterion.)"
+1. "In one or two sentences, what does this project do for its users? (the elevator pitch)"
+2. "What's the main reason this project exists — what problem is it solving?"
+3. "Are there explicit non-goals — things this project *deliberately* doesn't try to do? (Skip if none come to mind.)"
+4. "What's one observable behavior you'd point at to say 'this project is working correctly'? (Becomes a baseline acceptance criterion.)"
 
 ##### Step C: Generate the seed docs
 

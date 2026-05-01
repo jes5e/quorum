@@ -19,11 +19,11 @@ This skill handles the full journey from "I have an idea" to "here's a broken-do
 
 ### 1. Gather Context from the User FIRST
 
-**Before doing any research or asking pointed questions**, ask the user if there's additional context you should know. Use `AskUserQuestion`:
+**Before doing any research or asking pointed questions**, ask the user as plain prose (no tool call — this is an open-ended question, not a multi-choice one) if there's additional context you should know:
 
-- Question: "Before I start researching, is there anything I should know? For example: reference implementations, existing services to look at, design constraints, related repos, prior art, or anything else that would help me plan this well."
+> Before I start researching, is there anything I should know? For example: reference implementations, existing services to look at, design constraints, related repos, prior art, or anything else that would help me plan this well.
 
-Wait for the user's answer. They may point you to:
+Wait for the user's reply in their next turn. They may point you to:
 - An existing deployed service to use as reference
 - A specific repo, directory, or file with relevant patterns
 - Design constraints or team preferences
@@ -66,11 +66,12 @@ Research (incorporating the user's context):
   If overlap looks meaningful, `bees show-ticket --ids <id>` on the candidate(s) and discuss with the user whether to extend an existing Bee, depend on it, or proceed with a separate Plan.
 - If PRD/SDD exist, read them to understand if this feature relates to existing requirements
 
-Then ask clarifying questions using `AskUserQuestion`:
-- What problem does this solve?
-- What's the scope? (minimum viable vs full vision)
-- Are there constraints or preferences? (technology choices, timeline, etc.)
-- Any dependencies on other work?
+Then ask the following clarifying questions as a numbered prose list in a single message — no `AskUserQuestion` call; these are open-ended and the user will answer them in their reply:
+
+1. What problem does this solve?
+2. What's the scope? (minimum viable vs full vision)
+3. Are there constraints or preferences? (technology choices, timeline, etc.)
+4. Any dependencies on other work?
 
 **Do not proceed until you and the user agree on what the feature is.**
 

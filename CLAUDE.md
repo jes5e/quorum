@@ -101,3 +101,7 @@ Don't change these assignments without a concrete reason — they're load-bearin
 - The `description` field in a skill's frontmatter is what Claude Code uses to decide whether to invoke the skill. Keep it precise — vague descriptions cause mis-invocation.
 - Don't introduce a tmux dependency in any of the 11 portable-core skills. Tmux-dependent skills (`bees-fleet`, `bees-worktree-add`, `bees-worktree-rm`) are explicitly out-of-scope for the cross-platform core and are mentioned only as optional later-installs.
 - Avoid adding stack-specific helpers (changelog tooling, license attribution, etc.) to the core — the README declares those out of scope and routes users to companion repos.
+
+## AskUserQuestion usage
+
+**`AskUserQuestion` is multi-choice only.** It auto-appends `Type something.` and `Chat about this`. Use it when there is a small finite set of meaningful choices. For free-text answers (paths, descriptions, names), ask in prose and let the user reply normally — do NOT add fake "Use my own answer" / "Pick Other" options that point at the auto-appended slot.
