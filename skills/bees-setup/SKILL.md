@@ -102,7 +102,7 @@ python3 "<bees-setup-base-dir>/scripts/detect_fast_path.py" --repo-root "$(pwd)"
 
 ```powershell
 # Windows (PowerShell):
-python "<bees-setup-base-dir>\scripts\detect_fast_path.py" --repo-root (Get-Location).Path
+python "<bees-setup-base-dir>\scripts\detect_fast_path.py" --repo-root "$((Get-Location).Path)"
 ```
 
 The script emits a JSON payload to stdout:
@@ -178,7 +178,45 @@ bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"
 bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
 ```
 
-**Unknown hive names** (anything other than `issues` or `plans`) — the canonical defaults do not apply. Do **not** silently re-register with assumed values. For each unknown hive, use `AskUserQuestion` to ask whether to re-register it now (and, if yes, the user will need to supply child tiers and status values via prose follow-up — fall through to the slow path's *Hive Configuration* section for that one hive only). The fast path is only safe for the canonical two; treat anything else as "I don't know the defaults; ask the user."
+**Unknown hive names** (anything other than `issues` or `plans`) — the canonical defaults do not apply. Do **not** silently re-register with assumed values. Walk the user through registration **inline** in the fast path (the slow path's *Hive Configuration* section is structured around colonizing *missing* hives — wrong shape here, since the on-disk path is already known and only the per-machine config bits are missing).
+
+For each unknown hive, do this inline:
+
+1. Use `AskUserQuestion` to confirm whether to re-register this hive now. Options: "Yes, re-register it" / "Skip this hive". If skipped, note to the user that downstream skills won't see this hive on this machine, and continue to the next on-disk hive.
+
+2. If yes, ask the user for the **child tiers** in prose (free-text — `AskUserQuestion` is multi-choice only, do **not** invent fake "Other" options for free-text answers). Phrase it like:
+
+   > "What child tiers should `<hive-name>` have? Reply with either:
+   > - `none` (this hive holds leaf tickets only — like the `issues` hive), OR
+   > - a JSON object mapping tier keys (`t1`, `t2`, `t3`) to display names, e.g. `{\"t1\": [\"Epic\", \"Epics\"], \"t2\": [\"Task\", \"Tasks\"]}`."
+
+   Wait for the user's reply in the next turn.
+
+3. Then ask for the **status values** in prose, also free-text:
+
+   > "What status values should `<hive-name>` have? Reply with a JSON array of status names in workflow order, e.g. `[\"open\", \"done\"]` or `[\"drafted\", \"ready\", \"in_progress\", \"done\"]`."
+
+   Wait for the user's reply in the next turn.
+
+4. With the answers in hand, register the hive directly. Use the on-disk `<discovered-path>` from the detector output — do **not** re-prompt the user for it. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+
+   ```bash
+   # POSIX (bash / zsh):
+   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+   # If user gave child tiers as a JSON object (not "none"):
+   bees set-types --scope hive --hive <hive-name> --child-tiers '<user-supplied-json>'
+   bees set-status-values --scope hive --hive <hive-name> --status-values '<user-supplied-json>'
+   ```
+
+   ```powershell
+   # Windows (PowerShell):
+   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+   # If user gave child tiers as a JSON object (not "none"):
+   bees set-types --scope hive --hive <hive-name> --child-tiers '<user-supplied-json>'
+   bees set-status-values --scope hive --hive <hive-name> --status-values '<user-supplied-json>'
+   ```
+
+   If the user replied `none` for child tiers, omit the `bees set-types` call entirely (matches the `issues` hive shape).
 
 #### Configure per-machine Claude Code settings (condensed prompt)
 

@@ -125,11 +125,19 @@ def scope_covers(scope_glob: str, repo_root: Path) -> bool:
         pat = _glob_to_regex(scope_glob)
     except re.error:
         return False
-    if pat.match(repo_str):
-        return True
-    if pat.match(repo_str + "/"):
-        return True
-    return False
+    # Cross-platform separator gotcha: on Windows, Path.resolve() returns
+    # backslash-separated form (`C:\Users\foo\repo`), but scopes are typically
+    # registered with forward slashes (the prose in SKILL.md uses `<repo-root>/**`).
+    # Test both separator forms (and both trailing-separator variants) against
+    # the pattern so detection is robust regardless of which form was used at
+    # registration time. On POSIX the replace() is a no-op since path strings
+    # have no backslashes, so behavior is unchanged.
+    repo_fwd = repo_str.replace("\\", "/")
+    candidates = {
+        repo_str, repo_str + "/", repo_str + "\\",
+        repo_fwd, repo_fwd + "/",
+    }
+    return any(pat.match(c) for c in candidates)
 
 
 def load_bees_config():
