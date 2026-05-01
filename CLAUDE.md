@@ -15,14 +15,25 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 
 The full workflow chain — `bees-setup` → (`bees-plan` | `bees-plan-from-specs`) → `bees-breakdown-epic` → `bees-execute` → `bees-file-issue` / `bees-fix-issue` — is documented in the README; don't re-derive it from the skill files.
 
-## The two non-negotiable design rules
+## The three non-negotiable design rules
 
 These are the contributing principles called out in the README, and they should drive every change you make to a skill:
 
 1. **Skills must work on Rust, Node, Python, Go, Java, and unknown stacks.** Never hardcode a language-specific command, file extension, or manifest filename in skill prose. Downstream skills look up project commands from CLAUDE.md (in the *target* repo, not this one) under fixed contract keys.
 2. **Skills must work on POSIX and native Windows PowerShell.** Every shell snippet in a `SKILL.md` ships as labeled OS-conditional blocks (POSIX bash + Windows PowerShell at minimum; cmd.exe optional). Helper scripts should be Python (preferred) or come in OS-paired implementations. There is no bash-only fallback.
+3. **Skill prose must be project-neutral.** A `SKILL.md` (or any helper script) must not reference *this* repo's paths, ticket IDs, internal workflow specifics, or anything that wouldn't make sense in a different project that installs the skills. Project-specific guidance for downstream users lives in the *target repo's* `CLAUDE.md`, which the skills read at runtime — never baked into the skills themselves. (This file you're reading now is *this* repo's `CLAUDE.md` — guidance here governs work done **on** the skills, but does not get baked **into** them.)
 
 If you're tempted to write `cargo test` or `npm run lint` directly into a skill, stop — use the lookup-key pattern below instead.
+
+## Review criteria for skill changes
+
+When `bees-code-review`, `bees-test-review`, or `bees-doc-review` runs against changes in *this* repo, the three design rules above are mandatory review criteria layered on top of each skill's standard checks. Flag any skill-prose or helper-script change that:
+
+- Hardcodes a language-specific command, file extension, or manifest filename (rule 1).
+- Introduces a shell snippet without paired POSIX bash + Windows PowerShell variants, or relies on a bash-only fallback (rule 2).
+- References this repo's specific paths, ticket IDs, or internal workflow specifics in a way that would not make sense when the skill is installed in a different project or on a different machine (rule 3).
+
+These criteria are additive — they do not replace, relax, or exempt any of the standard checks each review skill performs by default. They apply *only* to changes inside this repo; when the same review skills run against work in a downstream project, this section does not travel with them.
 
 ## Contract keys that downstream skills depend on
 
