@@ -2,10 +2,11 @@
 id: b.ctf
 type: bee
 title: bees-execute Epic-discovery prose says 'filter by up_dependencies status' but recipe returns only dep IDs
-status: open
-created_at: '2026-04-30T21:57:24.752272'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-04-30T21:57:24.752272'
+status: done
+schema_version: '0.1'
 guid: ctf8vvceewc71um6b668h9hjnzw7x3p3
 ---
 

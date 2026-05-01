@@ -77,6 +77,8 @@ The bees CLI does not have a `list-tickets` command, a `search` command, or a hi
 
 **Prose rule.** When a skill tells Claude to "find", "search", "list", or "look up" tickets, ship the concrete recipe inline at that point. Vague prose ("search the issues hive for a duplicate") forces the agent to invent a CLI verb and is the same anti-pattern CONTRIBUTING.md flags under "Don't replace concrete shell snippets with vague prose."
 
+The rule extends past the recipe itself. If a recipe's `report:` projection returns only part of what the prose-after-the-recipe instructs the agent to check (e.g., the projection reports `up_dependencies` as IDs and the prose then asks "verify each dependency is `done`"), ship the follow-up recipe inline too. `bees show-ticket --ids <id1> <id2> ...` is the canonical batch-lookup shape — use it explicitly rather than leaving the agent to derive it.
+
 **Canonical YAML shape.**
 
 ```yaml

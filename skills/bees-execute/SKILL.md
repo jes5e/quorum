@@ -55,7 +55,14 @@ The user will either call without arguments, with a Bee id or with an Epic ID:
   report: [title, up_dependencies]'
   ```
 
-  Filter the result to Epics whose `up_dependencies` are all in `done` status (a dependency in `ready` state is a pending blocker, not satisfied). Present unblocked candidates via `AskUserQuestion` and recommend the one with the fewest downstream dependencies first.
+  `up_dependencies` is returned as a list of ticket IDs only — not statuses. Collect the IDs across all candidate Epics, then batch-look-up their statuses:
+
+  ```bash
+  # After getting the Epic candidates, batch-look-up their up_dependencies' statuses:
+  bees show-ticket --ids <dep-id-1> <dep-id-2> <...>
+  ```
+
+  For each candidate Epic, check the returned `ticket_status` of its dependencies. An Epic is workable only if all its `up_dependencies` are in `done` status (a dependency in `ready` state is a pending blocker, not satisfied). An Epic with no `up_dependencies` is unblocked by default. Present unblocked candidates via `AskUserQuestion` and recommend the one with the fewest downstream dependencies first.
 
 - **If called with an Epic ID**, walk up to the parent Bee:
 
@@ -114,6 +121,15 @@ report: [title, ticket_status, up_dependencies]'
 From the result set, the Epic to work on must:
 - Have a status of `ready` or `in_progress`
 - Have all `up_dependencies` in `done` state
+
+`up_dependencies` is returned as a list of ticket IDs only — not statuses. Collect the IDs across all candidate Epics, then batch-look-up their statuses:
+
+```bash
+# After getting the Epic candidates, batch-look-up their up_dependencies' statuses:
+bees show-ticket --ids <dep-id-1> <dep-id-2> <...>
+```
+
+For each candidate Epic, check the returned `ticket_status` of its dependencies. An Epic is workable only if all its `up_dependencies` are in `done` status. An Epic with no `up_dependencies` is unblocked by default.
 
 
 #### Check if stale
