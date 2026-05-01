@@ -451,7 +451,11 @@ Pick the narrowest scope glob that covers the entire project directory tree — 
 Check for the existence of the above hives using `bees list-hives` and validate their configs with `bees get-types` and `bees get-status-values`.
 
 If any hives are missing:
-- **Ask the user in prose where each missing hive should live.** Do not assume a default path. Suggest sensible options (e.g., `<repo>/.bees/issues` in-repo, or `<project-parent>/issues` sibling-to-repo) and let the user reply with a path in their next turn. (`AskUserQuestion` is only appropriate here when offering a recommended default vs. "let me type a different path" — the path itself is free-text, so prose is the right shape.)
+- **Use `AskUserQuestion` to ask which location strategy to use** for the missing hive(s). This is a genuine multi-choice prompt — the user is picking a strategy, not typing a path; the actual paths are derived from the strategy. Offer two options (the auto-appended `Type something.` slot already covers users who want a fully custom path — do not add a redundant "Other" option):
+  - **In-repo** — `<repo>/.bees/issues` and `<repo>/.bees/plans`. Versions tickets alongside code; survives machine moves.
+  - **Sibling-to-repo** — `<project-parent>/<repo>-issues` and `<project-parent>/<repo>-plans`. Right when hives should be gitignored or stay per-machine.
+
+  If both hives are missing, ask once and apply the chosen strategy to both. If only one is missing, scope the question to just that hive.
 - Once the user chooses, create the hive using the bees CLI. Pass the literal absolute path to `file_list_resolver.py` (the one verified in the *Egg Resolver* section above) as the `--egg-resolver` value so the hive can resolve eggs out of the box. Inline the literal path — do not reference a shell variable like `$RESOLVER`, since each Bash tool invocation is a fresh shell and the variable will be empty here. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
   ```bash
   # POSIX (bash / zsh):
