@@ -1,6 +1,7 @@
 ---
 name: bees-plan-from-specs
 description: Read a PRD and SDD from disk and create a Plan Bee with Epics in the Plans hive to describe the work that needs to be done.
+argument-hint: "<prd-path> <sdd-path>"
 ---
 
 # PRD + SDD to Plan

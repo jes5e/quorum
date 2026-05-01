@@ -1,6 +1,7 @@
 ---
 name: bees-breakdown-epic
 description: Break down a single Epic into Tasks. User can provide Epic ID or a Bee ID and skill finds Epics that are ready
+argument-hint: "[<epic-id> | <bee-id>]"
 ---
 
 # Epic to Tasks

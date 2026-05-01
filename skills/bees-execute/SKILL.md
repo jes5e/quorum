@@ -1,6 +1,7 @@
 ---
 name: bees-execute
 description: Proceed through each Epic in a Bee, doing the work described therin. Report questions and status back to caller.
+argument-hint: "[<bee-id> | <epic-id>]"
 ---
 
 ## Overview

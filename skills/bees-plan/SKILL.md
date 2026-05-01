@@ -1,6 +1,7 @@
 ---
 name: bees-plan
 description: Interactive feature planning — explore scope, update docs if needed, create a Plan Bee with Epics ready for /bees-breakdown-epic and /bees-execute.
+argument-hint: "[<description>]"
 ---
 
 ## Overview

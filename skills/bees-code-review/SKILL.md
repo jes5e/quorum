@@ -1,6 +1,7 @@
 ---
 name: bees-code-review
 description: Perform code review of a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items.
+argument-hint: "[<ticket-id> | <git-ref> | <files>]"
 ---
 
 ## Overview

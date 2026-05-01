@@ -1,6 +1,7 @@
 ---
 name: bees-fix-issue
 description: Fix an issue described in a Bee ticket. Use '/bees-fix-issue all' to fix all open issues sequentially, or '/bees-fix-issue <id1> <id2> ...' (space- and/or comma-delimited) to fix an explicit subset.
+argument-hint: "[<issue-id> | <id1> <id2> ... | all]"
 ---
 
 ## Overview

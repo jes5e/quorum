@@ -1,6 +1,7 @@
 ---
 name: bees-doc-review
 description: Review documentation completeness for a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc doc review of a diff, worktree, files, or bees ticket. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items.
+argument-hint: "[<ticket-id> | <git-ref> | <files>]"
 ---
 
 ## Overview

@@ -1,6 +1,7 @@
 ---
 name: bees-file-issue
 description: File a new issue ticket in the issues hive
+argument-hint: "[<description>]"
 ---
 
 ## Overview
