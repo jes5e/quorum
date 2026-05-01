@@ -15,3 +15,6 @@ __pycache__/
 # Optional local-only Claude Code overrides (settings.local.json may contain
 # user-specific paths or permissions that shouldn't ship)
 .claude/settings.local.json
+
+notes.txt
+
