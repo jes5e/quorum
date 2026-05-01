@@ -2,10 +2,11 @@
 id: b.yf9
 type: bee
 title: 'Post-completion review: spawn fresh generalist agent instead of /bees-code-review'
-status: open
-created_at: '2026-05-01T10:32:49.439820'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-01T10:32:49.439820'
+status: done
+schema_version: '0.1'
 guid: yf981x6hbphk387mw36uww1q4ufeaqq2
 ---
 

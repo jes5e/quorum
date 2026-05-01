@@ -332,20 +332,60 @@ Once the issue is fixed:
 
 6. In batch mode (`all` or list mode): proceed to the next issue in the batch (go back to step 2). In single mode: continue to step 8.
 
-### 8. Post-Completion Code Review
+### 8. Post-Completion Review
 
-After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final `/bees-code-review` across all changes made during this bees-fix-issue session.
+After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final fresh-context generalist sweep across all changes made during this bees-fix-issue session.
 
-1. Invoke the `/bees-code-review` skill against all changes made during this session (diff against the branch state before bees-fix-issue started)
-2. Present the findings to the user
-3. If there are no issues, report "Code review: no issues found" and exit
-4. If there are issues, use `AskUserQuestion` to ask:
-   - Question: "Post-completion code review found [N] issues. How would you like to handle them?"
+**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` ignores natural-language documentation by design, which is unsafe for doc-heavy fixes). Spawn a fresh general-purpose agent with a self-contained prompt instead.
+
+**Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, and reviewer verdicts from the whole run; that context biases it toward "did the four phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the issue body and nothing else — that's the point.
+
+1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when bees-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Step 7.3). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
+
+2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this session, so the prompt must be self-contained. Starting skeleton (substitute `<pre-session-sha>` and the issue ID list before sending):
+
+   ```
+   You are an independent reviewer for a bees-workflow fix that was just shipped.
+
+   Scope: review the diff `git diff <pre-session-sha>..HEAD` (compute it
+   yourself via git) against the issue body, or bodies in batch mode — read
+   each via `bees show-ticket --ids <id>`. Issue IDs in this session:
+   <issue-id-1> <issue-id-2> ...
+   The orchestrating team-lead has finished the work — your job is to give it a
+   fresh-eyes review with no context of how the work was done.
+
+   Flag anything that looks wrong: code defects, prose problems, spec drift
+   between the change and the issue, contract-key violations (do NOT allow
+   renames of keys in CLAUDE.md `## Documentation Locations` or `## Build
+   Commands`), cross-file inconsistencies, missing edits the issue called for.
+   One generalist pass covers code AND docs AND tests — do not lane-scope.
+
+   Do NOT do a general repo audit. Stay focused on the diff.
+
+   Do NOT invoke /bees-code-review, /bees-doc-review, or /bees-test-review at
+   this stage. Those skills are designed as parallel lanes of an in-flight
+   review; they each have lane-specific scope rules that make them wrong for a
+   final generalist sweep.
+
+   Return findings as a numbered list. For each item: `file:line`, what's
+   wrong, severity (`blocker` / `suggestion` / `nit`). If clean, return
+   exactly "no issues found".
+   ```
+
+   Wait for the agent's report.
+
+3. Present the findings to the user.
+
+4. If the agent returned "no issues found", report "Post-completion review: no issues found" and exit.
+
+5. If the agent flagged any issues, use `AskUserQuestion`:
+   - Question: "Post-completion review found [N] issues. How would you like to handle them?"
    - Options:
      - **Fix in this session** — address the issues now
      - **File as issue tickets** — create issue tickets via `/bees-file-issue` for each issue
      - **Skip** — acknowledge and move on without action
-5. Execute the user's choice:
+
+6. Execute the user's choice:
    - **Fix in this session**: Form a new team and delegate the fixes. Stay in delegate mode. After fixes are done, commit.
    - **File as issue tickets**: For each issue, invoke `/bees-file-issue` with the issue description. Report the created ticket IDs to the user.
    - **Skip**: Done.

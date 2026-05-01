@@ -441,20 +441,61 @@ If you invoked the Doc Writer in the first team, invoke the Doc Reviewer in this
   - Note: This could create an infinite loop so you may ignore feedback so long as you present it in Final Review
 
 
-### 6. Post-Completion Code Review
+### 6. Post-Completion Review
 
-After the review loop in step 5 is done and all fixable issues have been addressed by the team, run one final `/bees-code-review` across all changes made by this Bee (diff against the base branch or the state before work began). This is an independent quality gate — separate from the per-Task and per-Epic review cycles above.
+After the review loop in step 5 is done and all fixable issues have been addressed by the team, run one final fresh-context generalist sweep across all changes made by this Bee. This is an independent quality gate — separate from the per-Task and per-Epic review cycles above.
 
-1. Invoke the `/bees-code-review` skill against all changes in this Bee
-2. Present the findings to the user
-3. If there are no issues, report "Code review: no issues found" and continue to Final Output
-4. If there are issues, use `AskUserQuestion` to ask:
-   - Question: "Post-completion code review found [N] issues. How would you like to handle them?"
+**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` ignores natural-language documentation by design, which is unsafe for doc-heavy Bees). Spawn a fresh general-purpose agent with a self-contained prompt instead.
+
+**Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, PM verdict, and per-Task reviewer verdicts from the whole Bee run; that context biases it toward "did the phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the Bee body and nothing else — that's the point.
+
+1. Compute the pre-Bee diff scope. Capture `<pre-bee-sha>` as the HEAD that existed when work began on this Bee (use the SHA recorded at the start of the run, or walk `git log` back to the commit before the first Task commit landed in Step 4 — one commit per Task). Collect the Bee ID `<bee-id>` and, secondarily, the IDs of the Epics/Tasks under it as `<epic-id-1> <task-id-1> ...` (the Bee body is the primary spec; Epic/Task bodies are secondary context the reviewer can consult when something in the diff is ambiguous).
+
+2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this run, so the prompt must be self-contained. Starting skeleton (substitute `<pre-bee-sha>`, `<bee-id>`, and the Epic/Task IDs before sending):
+
+   ```
+   You are an independent reviewer for a bees-workflow Bee that was just shipped.
+
+   Scope: review the diff `git diff <pre-bee-sha>..HEAD` (compute it yourself
+   via git) against the Bee body — read it via `bees show-ticket --ids
+   <bee-id>`. The parent Epic/Task bodies are secondary spec sources; consult
+   them via `bees show-ticket --ids <epic-id-1> <task-id-1> ...` only when the
+   diff vs. the Bee body is ambiguous. The orchestrating team-lead has
+   finished the work — your job is to give it a fresh-eyes review with no
+   context of how the work was done.
+
+   Flag anything that looks wrong: code defects, prose problems, spec drift
+   between the change and the Bee, contract-key violations (do NOT allow
+   renames of keys in CLAUDE.md `## Documentation Locations` or `## Build
+   Commands`), cross-file inconsistencies, missing edits the Bee called for.
+   One generalist pass covers code AND docs AND tests — do not lane-scope.
+
+   Do NOT do a general repo audit. Stay focused on the diff.
+
+   Do NOT invoke /bees-code-review, /bees-doc-review, or /bees-test-review at
+   this stage. Those skills are designed as parallel lanes of an in-flight
+   review; they each have lane-specific scope rules that make them wrong for a
+   final generalist sweep.
+
+   Return findings as a numbered list. For each item: `file:line`, what's
+   wrong, severity (`blocker` / `suggestion` / `nit`). If clean, return
+   exactly "no issues found".
+   ```
+
+   Wait for the agent's report.
+
+3. Present the findings to the user.
+
+4. If the agent returned "no issues found", report "Post-completion review: no issues found" and continue to Final Output.
+
+5. If the agent flagged any issues, use `AskUserQuestion`:
+   - Question: "Post-completion review found [N] issues. How would you like to handle them?"
    - Options:
      - **Fix in this session** — address the issues now before closing the Bee
      - **File as issue tickets** — create issue tickets via `/bees-file-issue` for each issue
      - **Skip** — acknowledge and move on without action
-5. Execute the user's choice:
+
+6. Execute the user's choice:
    - **Fix in this session**: Reform the implementation team and delegate the fixes. Stay in delegate mode. After fixes are done, commit and continue to Final Output.
    - **File as issue tickets**: For each issue, invoke `/bees-file-issue` with the issue description. Report the created ticket IDs to the user.
    - **Skip**: Continue to Final Output.
