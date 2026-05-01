@@ -91,6 +91,15 @@ Check:
 - Issue has a status which means it is ready to begin work (`open`)
 - Check `up_dependencies` array for any blockers. They must be in a completed state.
 
+`up_dependencies` is returned as a list of ticket IDs only — not statuses. Collect the IDs and batch-look-up their statuses:
+
+```bash
+# After reading the issue, batch-look-up its up_dependencies' statuses:
+bees show-ticket --ids <dep-id-1> <dep-id-2> <...>
+```
+
+For each up_dependency, check the returned `ticket_status`. The issue is unblocked only if all its `up_dependencies` are in `done` status. An issue with no `up_dependencies` is unblocked by default.
+
 If blocked:
 - Output blocking IDs and titles
 - In batch mode (`all` or list mode): skip this issue and continue to the next one
