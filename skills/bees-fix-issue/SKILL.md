@@ -200,6 +200,7 @@ The team may consist of any of the following agents:
     - Review the engineering best practices guide referenced in CLAUDE.md under "Documentation Locations"
     - Modify any source code required to fix the issue
     - **Compile-check discipline:** Look up the **Compile/type-check** command from CLAUDE.md `## Build Commands` and run it after each significant change. Fix errors before moving on. Run the **Lint** command when the implementation is done. If the project's Compile/type-check entry is empty (interpreted languages without a static type-checker), skip that rung — narrow tests still apply.
+    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc.
 - Test Writer
   - Model: Claude Opus
   - Responsibilities:
@@ -210,6 +211,7 @@ The team may consist of any of the following agents:
     - Review the work of the Engineer and see if any tests need to be added, deleted or updated based on that work
     - Review the work of the Engineer to find any gaps, then add, delete or update required tests
     - **Running long commands (test suites, builds, etc.):** use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invocations of any length up to that, dispatch in the foreground: `Bash(command: "<your project's test command per CLAUDE.md>", timeout: 540000)`. The harness blocks until the command exits and returns the output; if the command hangs, the harness kills it at the timeout boundary. For runs that legitimately exceed 10 min, use `Bash(run_in_background: true)` and **wait silently** for the task-completion notification — read the output file when it arrives. Do not write shell polling loops to wait for completion; the harness handles notification on its own.
+    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc.
 - Doc Writer
   - Model: User's choice (Opus or Sonnet, selected at start)
   - Note: this differs from `/bees-execute`'s Doc Writer because `/bees-fix-issue` issues have *no pre-planned doc Subtasks* — the Doc Writer reviews the Engineer's diff for doc gaps and updates ad-hoc. `/bees-execute` has pre-planned doc Subtasks that get executed first. The divergence is intentional.
@@ -221,6 +223,7 @@ The team may consist of any of the following agents:
     - Review the internal architecture docs referenced in CLAUDE.md under "Documentation Locations" and see if they need any updates
     - Review the work of the Engineer and see if any docs need to be updated based on that work
     - Update any docs that require updating
+    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc.
 - Product Manager (complex fixes only)
   - Model: User's choice (Opus or Sonnet, selected at start)
   - Responsibilities:
@@ -235,6 +238,7 @@ The team may consist of any of the following agents:
     - If the Engineer changes something not required by the issue, flag it
     - If the changes contradict the PRD or SDD, determine if the docs or code are wrong
     - Send a report to the team lead when review is complete
+    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc.
 
 
 ### 4. Review Loop

@@ -2,10 +2,11 @@
 id: b.6k2
 type: bee
 title: Runtime agents emit shell commands that defeat user Bash allow rules
-status: open
-created_at: '2026-05-01T17:02:29.489069'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-01T17:02:29.489069'
+status: done
+schema_version: '0.1'
 guid: 6k2kd181r99xnv6aq48bjabzkng99yz3
 ---
 
