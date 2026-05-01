@@ -49,6 +49,15 @@ The target repo's CLAUDE.md carries two sections that act as a string contract b
 
 Bundled helper script paths (e.g., `force_clean_team.py`) are *not* part of the CLAUDE.md contract — each skill resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header. This keeps per-machine paths out of tracked files.
 
+## Team orchestration in execution skills
+
+Agent Teams is message-driven — a teammate that finishes processing a ping without a follow-up trigger idles silently. There is no "teammate idle" event. `bees-execute` and `bees-fix-issue` therefore prescribe team-lead choreography rather than peer-to-peer messaging:
+
+- **Team-lead routes; workers do work.** When a teammate reports a state transition (Engineer subtask done, Test Writer Phase A done, all subtasks at `status=done`), the team-lead pings the next-rung teammate. Workers do not message each other directly — peer-to-peer coupling breaks down on Tasks/fixes that omit a role (research-only, test-only, doc-only).
+- **Self-trigger as backstop.** Each worker role's Instructions include a top-of-turn precondition check; if the gating condition is met, the worker starts without waiting for a ping. This guards against missed routes.
+- **Graduated escalation when teammates go silent.** Both execution skills carry a four-rung idle ladder (~10 min light nudge, ~20 min specific-deliverable nudge, ~30 min firm deadline, then proceed-and-log). The team-lead does not loop "Waiting" turns indefinitely.
+- **Time-bounded review iteration.** In `bees-execute`, the PM short-circuits `/bees-code-review` and `/bees-doc-review` when a single invocation returns more than ~10 items or runs more than ~5 turns: triage to blocker-severity items only and defer the rest to the Task summary.
+
 ## Model assignment in execution skills
 
 Hardcoded in `bees-execute` and `bees-fix-issue`:

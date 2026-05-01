@@ -204,6 +204,35 @@ Create **one team per Epic** (e.g., `epic-9v`) and reuse it across all Tasks in 
 - **Between Tasks**: Send shutdown requests to current agents, delete completed tasks from the task list, then spawn new agents with new task-scoped names. Do NOT call `TeamDelete` between Tasks.
 - **At Epic boundary**: Call `TeamDelete` to clean up the team. By this point all agents from the last Task have had ample time to terminate. If `TeamDelete` fails due to a stuck agent: (1) resolve the path to `force_clean_team.py` as `<this skill's base directory>/scripts/force_clean_team.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-execute`). Run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (2) call `TeamDelete` again to clear session state. Then proceed to create the next team.
 
+#### Team-lead message-flow choreography
+
+Agent Teams is message-driven — a teammate that finishes processing one ping without a follow-up trigger idles silently, even when all preconditions for its next phase are met. There is no "teammate idle" event the team-lead can subscribe to. The team-lead must therefore proactively route work between teammates as subtask states transition. Workers do work; team-lead routes. Do NOT have workers ping each other directly — peer-to-peer messaging bakes in coupling, breaks when a Task has no Test Writer (research-only Tasks), and obscures the orchestration model.
+
+Apply these rules whenever a teammate reports a state transition:
+
+1. **Engineer reports a subtask done** → team-lead pings the Test Writer with "engineer subtasks done — start Phase A". If the Task has no Test Writer (research-only), skip this rung.
+2. **Test Writer reports Phase A done** → team-lead pings the PM with "subtasks complete, review the per-subtask diff".
+3. **All child subtasks at `status=done`** → team-lead pings the PM with "all subtasks done, run reviews and produce the final Task report". This drives the per-Task PM reviews (`bees-code-review` + `bees-doc-review` per the PM Instructions block) and the per-Task summary.
+
+If a teammate reports done and the next-rung teammate is in a known-not-spawned state for this Task, advance directly without an extra ping (e.g., research-only Task with no Test Writer: Engineer-done routes straight to PM).
+
+#### Don't wait silently on idle teammates — graduated escalation
+
+Pings can be missed. When a teammate has gone silent past the work it was asked for, the team-lead's job is to notice and escalate, NOT to keep printing "Waiting" turn after turn. Apply this ladder:
+
+1. **First nudge (~10 min after ping):** light status check. "Just checking — any blockers on your <X> for this Task / Epic? If not, a one-line 'no blockers' is fine."
+2. **Second nudge (~20 min in):** restate the specific deliverable + cite what's blocking. "Waiting on your <PM review report / test counts / doc list> before I can commit this Task. If you hit a snag, tell me specifically what."
+3. **Third nudge (~30 min in):** firm deadline. "I'll proceed without your report in 5 min unless you respond."
+4. **Proceed and log:** if no substantive response, run the missing work yourself if tractable (Narrow/Full test per CLAUDE.md, doc verify, code review skim) and commit. Note in the Task summary which review was pending. Do NOT block hours hoping someone wakes up.
+
+When a teammate claims to be "waiting on" something async (a long-running test, an external service, etc.), **verify the claim** before accepting it. Use the platform's process-listing tool to confirm the process is actually running:
+
+- POSIX (bash / zsh): `ps -ef | grep <process-name>`
+- Windows (PowerShell): `Get-Process | Where-Object { $_.ProcessName -like '*<process-name>*' }`
+- Windows (cmd): `tasklist | findstr <process-name>`
+
+Also check the background process's output file if it has one. A claim of "waiting" with no underlying process running is the same as silence.
+
 Create agents on the team to work on an individual Task.
 **IMPORTANT: You must stay in `delegate` mode. Do not take on work, delegate work to Team members.**
 
@@ -246,6 +275,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Executing implementation Subtasks for a task (if required)
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Engineer, that's "an implementation Subtask exists at `status=ready` (or you have an `in_progress` one mid-flight)". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
     - Read the Subtask description using the bees CLI — it contains Context, What Needs to Change, Key Files, and Acceptance Criteria
     - Review any relevant internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
     - Review the existing code to determine the current state
@@ -262,6 +292,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Executing testing Subtasks for a task (if required)
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "the gating Engineer subtask(s) for this Task are at `status=done`". If yes, you are unblocked; start Phase A now, do not wait for a "start Phase A" ping from the team-lead. (When the Task is test-only with no Engineer phase, treat your own ready Subtasks as the gating precondition.)
     - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
     - Execute all test subtasks to change, add or delete tests
@@ -296,6 +327,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Responsible for providing report to share back up to calling Agent
     - Ultimately responsible for the quality of the Task work and correctness of the output of the Team
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check both PM gating preconditions: (a) the Engineer + Test Writer have reported a per-subtask phase complete (per-subtask diff review is unblocked); (b) all child subtasks of the Task are at `status=done` (Step 5 reviews and the final Task report are unblocked). If either is met, you are unblocked for that phase; start it now, do not wait for further pings from the team-lead.
     - Get the Task using the bees CLI and read it.
     - Read all Subtasks (children of the Task) — these contain the detailed work instructions.
     - Read the Parent Epic.
@@ -316,6 +348,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Uses the bees-code-review and bees-doc-review skill after work has been done for quality control
       - NOTE: These skills could infinitely return work items
       - Product Manager must use judgement when deciding whether to ask the Team to make the improvements or not
+      - **Time budget — short-circuit when reviews run hot.** If a single `/bees-code-review` or `/bees-doc-review` invocation returns more than ~10 work items, OR runs more than ~5 turns of back-and-forth, stop iterating in that lane: triage the returned list down to blocker-severity items only (correctness bugs, spec violations, contract-key violations), ask the Team to address those, and defer suggestions / nits / style work to ignored-feedback for the Task summary. These thresholds are guidance, not a hard contract — pick the firmer side when the review is clearly thrashing on subjective feedback, the looser side when each item is high-signal.
       - If the Product Manager decides to ignore bees-code-review or bees-doc-review feedback, this MUST be included in the end of task summary report for review
     - **Trust the Task's `.T` subtask output** — do NOT re-run the full workspace test suite / clippy by default. The `.T` subtask is the authoritative workspace-wide validation run. Only re-run if you have a specific reason (engineer reported skipping something, stale `.bees/` state, etc.). See "Testing discipline — avoid redundant full-workspace runs" above.
     - **Cross-Task and cross-Epic interaction check** — per-Task code review naturally focuses on the Task's own diff. The PM is responsible for the wider view. Before approving a Task, explicitly verify:

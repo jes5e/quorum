@@ -188,12 +188,25 @@ Create **one team per issue** (e.g., `issue-xfm`). Use task-scoped agent names (
   3. If `TeamDelete` fails due to stuck agents: (a) resolve the path to `force_clean_team.py` as `<this skill's base directory>/../bees-execute/scripts/force_clean_team.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-fix-issue`), and the script is bundled with sibling skill `bees-execute`. Run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (b) call `TeamDelete` again to clear session state
   4. Create a new team for the next issue
 
+#### Team-lead message-flow choreography
+
+Agent Teams is message-driven — a teammate that finishes processing one ping without a follow-up trigger idles silently, even when all preconditions for its next phase are met. There is no "teammate idle" event the team-lead can subscribe to. The team-lead must therefore proactively route work between teammates as the issue progresses. Workers do work; team-lead routes. Do NOT have workers ping each other directly — peer-to-peer messaging bakes in coupling and breaks when a fix has no Test Writer (doc-only or test-only fixes).
+
+Apply these rules whenever a teammate reports a state transition:
+
+1. **Engineer reports the implementation done** → team-lead pings the Test Writer with "engineer changes done — write/update tests for the fix". If the fix is test-only or has no Test Writer, skip this rung.
+2. **Test Writer reports tests done** → team-lead pings the Doc Writer (if spawned) with "engineer + test changes done — review the diff for doc gaps", and pings the PM (if spawned for a complex fix) with "implementation complete, review against the spec".
+3. **All writers report done** → team-lead advances to Step 4 (Review Loop) and forms the review team.
+
+If a writer was not spawned for this fix, advance directly to the next-rung teammate that was spawned.
+
 The team may consist of any of the following agents:
 - Engineer
   - Model: Claude Opus
   - Responsibilities:
     - Executing implementation changes to fix the issue
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Engineer, that's "the issue has been validated and assigned to you". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
     - Read the Issue description using the bees CLI
     - Review any relevant internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
     - Review the existing code to determine the current state
@@ -206,6 +219,7 @@ The team may consist of any of the following agents:
   - Responsibilities:
     - Writing tests that verify the issue fix
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "the Engineer has reported its implementation done (or there is no Engineer phase for this fix)". If yes, you are unblocked; start writing tests now, do not wait for further pings from the team-lead.
     - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
     - Review the work of the Engineer and see if any tests need to be added, deleted or updated based on that work
@@ -232,6 +246,7 @@ The team may consist of any of the following agents:
     - Flags spec divergence — code that contradicts the PRD or SDD
     - Makes final call on whether the fix is ready for review
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the PM, that's "the Engineer has reported its implementation done". If yes, you are unblocked; start your spec review now, do not wait for further pings from the team-lead.
     - Read the Issue description using the bees CLI
     - Read the project's spec docs relevant to the issue. Use the paths configured in CLAUDE.md `## Documentation Locations` — specifically `Internal architecture docs` (the SDD-equivalent path) and `Customer-facing docs` (the README-equivalent path). The Documentation Locations section has no canonical "PRD" key — if the project has a PRD-equivalent at a known path, use it; otherwise the Issue ticket body itself is the authoritative spec source for bees-fix-issue, and the parent Plan Bee body (if the issue derives from one) is secondary. Do NOT hardcode `docs/prd.md` or `docs/sdd.md` — those names are project-specific.
     - Review the Engineer's code changes against the spec

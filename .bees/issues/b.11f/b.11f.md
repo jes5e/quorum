@@ -5,7 +5,7 @@ title: PM agents idle mid-Task; bees-execute lacks team-lead orchestration
 parent: null
 egg: null
 created_at: '2026-05-01T16:43:22.774627'
-status: open
+status: done
 schema_version: '0.1'
 guid: 11fjce8bzcmgamir65uoqfxf1r7mmtm3
 ---
