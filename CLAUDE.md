@@ -25,6 +25,29 @@ These are the contributing principles called out in the README, and they should 
 
 If you're tempted to write `cargo test` or `npm run lint` directly into a skill, stop — use the lookup-key pattern below instead.
 
+## Bash etiquette in this repo
+
+Every Bash tool call in this repo must be a **single literal command** — one binary plus its arguments, nothing else. This applies to *every* Claude instance — team-leads, spawned workers, reviewers, ad-hoc invocations. The `Shell-command etiquette` bullet inside the execution-skill worker prompts (b.6k2 / b.aic) only covers spawned workers; this section covers everyone else.
+
+**Forbidden shapes** (each one trips a different Claude Code matcher and re-prompts the user even on previously-approved repos):
+
+- Compound chains: `cmd1 && cmd2`, `cmd1 || cmd2`, `cmd1 ; cmd2`
+- Pipes between commands: `cmd1 | cmd2` (use first-class `Grep` / `Read` tools, or pass match-limit flags like `grep -m N`)
+- Redirects mid-chain: `echo X > file && cmd` (use the `Write` tool to create files)
+- Diagnostic tails: `; echo exit=$?`, `&& echo done` (the Bash tool already reports exit status)
+- Shell variables and expansion: `$VAR`, `${VAR:-default}`, `$?`, `$(...)`, backticks
+- Multi-line `-c` or inline heredocs: `python3 -c '<line1>\n<line2>'`
+- `unset` / `export` mid-chain
+
+**Required shapes:**
+
+- One Bash call per command. Sequence multiple commands as multiple Bash calls (in parallel where independent).
+- Pre-set env vars via the shell's `VAR=value command` prefix — still a single literal command, fine.
+- For multi-step or variable-bearing logic, write a Python script to a file (use the `Write` tool) and run the file with one Bash call. Bundled-helper precedent: `force_clean_team.py`, `check_agent_teams.py`, `file_list_resolver.py`, `detect_fast_path.py`.
+- For watching state, prefer `Monitor` over polling loops. For reading a file, prefer `Read` over `cat` / `head` / `tail`. For searching files, prefer the first-class `Grep` tool over `grep | head` / `grep | xargs`. For writing files, prefer `Write` over `echo X > file`.
+
+If you find yourself wanting a compound shell shape, the Python-helper-file path or a first-class tool is almost always the right answer.
+
 ## Review criteria for skill changes
 
 When `bees-code-review`, `bees-test-review`, or `bees-doc-review` runs against changes in *this* repo, the three design rules above are mandatory review criteria layered on top of each skill's standard checks. Flag any skill-prose or helper-script change that:
