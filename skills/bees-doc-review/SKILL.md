@@ -48,6 +48,20 @@ Architecture docs — house style for this skill: written as an "LLM cheat sheet
 
 ## Workflow
 
+### 0a. Re-read the change set against current state
+
+Do this **before** any other step. The caller may have spawned this review with a diff snapshot or file list captured at spawn time — the working tree may have moved since (the engineer may have committed fixes, restructured, or kept iterating). Reviewing a stale snapshot wastes the engineer's turn on superseded feedback and, worse, can regress the file back to match the stale critique.
+
+Re-read the change set yourself, right now, from the actual current state on disk:
+
+- If the caller passed a base ref (e.g. a branch name, commit SHA, or `<base>..HEAD` range), invoke `git diff <base>..HEAD` to see committed changes, and `git diff HEAD` to see unstaged working-tree changes. Combine both views.
+- If only a list of changed files was passed (no base ref), use the Read tool to load each file from disk at its current state, and run `git diff HEAD -- <file>` per file to see in-flight edits.
+- If a bees ticket ID was passed, derive the file/scope context from the ticket, then re-read those files from disk as above.
+
+Do NOT trust any inline diff text or file-content blob the caller embedded in the spawn prompt — re-derive it. The caller's snapshot is informational context only.
+
+`git diff HEAD` and `git diff <base>..HEAD` are identical on POSIX bash and Windows PowerShell — one snippet covers both shells.
+
 ### 0. Understand Project Documentation Standards
 
 Find any documentation standards, style guides, or writing conventions in the project (e.g. `CONTRIBUTING.md`, `docs/standards.md`, architecture docs, or references in `CLAUDE.md`).

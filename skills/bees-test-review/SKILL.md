@@ -26,6 +26,20 @@ Review all commits and changed test files.
 - Focus only on test files. Ignore source code files and natural language documentation.
 If no test files were changed, output "No test files to review" and exit.
 
+### Step 0a: Re-read the change set against current state
+
+Do this **before** any other step. The caller may have spawned this review with a diff snapshot or file list captured at spawn time — the working tree may have moved since (the engineer may have committed fixes, restructured, or kept iterating). Reviewing a stale snapshot wastes the engineer's turn on superseded feedback and, worse, can regress the file back to match the stale critique.
+
+Re-read the change set yourself, right now, from the actual current state on disk:
+
+- If the caller passed a base ref (e.g. a branch name, commit SHA, or `<base>..HEAD` range), invoke `git diff <base>..HEAD` to see committed changes, and `git diff HEAD` to see unstaged working-tree changes. Combine both views.
+- If only a list of changed files was passed (no base ref), use the Read tool to load each file from disk at its current state, and run `git diff HEAD -- <file>` per file to see in-flight edits.
+- If a bees ticket ID was passed, derive the file/scope context from the ticket, then re-read those files from disk as above.
+
+Do NOT trust any inline diff text or file-content blob the caller embedded in the spawn prompt — re-derive it. The caller's snapshot is informational context only.
+
+`git diff HEAD` and `git diff <base>..HEAD` are identical on POSIX bash and Windows PowerShell — one snippet covers both shells.
+
 ### Step 0: Understand project best practices
 
 Find any testing best practices and architecture documentation and understand them.
@@ -103,6 +117,11 @@ This is one of the most common and damaging issues in test suites. Be aggressive
 - Hardcoded sleep/delays (use mocks or event-based waits)
 - External I/O in unit tests (network calls, file system) without mocking
 - Tests that are too tightly coupled to internal implementation
+- **Suspect-pattern (Python only): Black 25 paren-strip on `except` clauses.** If the changed test files include Python and the diff shows any of the following shapes, flag it as "is this a Black-25 paren-strip bug?":
+  - `except FooError,:` — malformed; the trailing comma with no parens is invalid Python 3 syntax. Almost certainly a Black 25 strip of `except (FooError,):` (a single-element tuple).
+  - `except A, B:` — invalid in Python 3 (Python 2 syntax). Should be `except (A, B):` for multi-class catch or `except A as B:` for catch-as-name. A diff that transitions from `except (A, B):` to `except A, B:` is a Black 25 regression.
+  - Any `except` clause in a test that no longer parses cleanly after a format/lint pass — verify the original parenthesized form was preserved.
+  Note: this check applies only when the change touches Python test source. Skip for non-Python test diffs.
 
 ### Step 3: Prioritize and Filter
 

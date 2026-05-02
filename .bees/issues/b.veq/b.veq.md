@@ -2,10 +2,11 @@
 id: b.veq
 type: bee
 title: 'Review skills (code/test/doc): re-read current state at review time + flag Black-25 except paren-strip'
-status: open
-created_at: '2026-05-02T13:36:25.555129'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-02T13:36:25.555129'
+status: done
+schema_version: '0.1'
 guid: veq3drde7ke1yi49dkw26hg3649tvw1h
 ---
 
@@ -41,4 +42,3 @@ Edit `skills/bees-code-review/SKILL.md`, `skills/bees-test-review/SKILL.md`, and
 ## Severity
 
 Medium — stale reviews waste engineer turns and silently miss Black-25 lint regressions.
-

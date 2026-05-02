@@ -26,6 +26,20 @@ Review all commits and changed files.
 - Focus only on source code files. Ignore natural language documentation and unit test code.
 If no code files were changed, output "No code files to review" and exit.
 
+### Step 0a: Re-read the change set against current state
+
+Do this **before** any other step. The caller may have spawned this review with a diff snapshot or file list captured at spawn time — the working tree may have moved since (the engineer may have committed fixes, restructured, or kept iterating). Reviewing a stale snapshot wastes the engineer's turn on superseded feedback and, worse, can regress the file back to match the stale critique.
+
+Re-read the change set yourself, right now, from the actual current state on disk:
+
+- If the caller passed a base ref (e.g. a branch name, commit SHA, or `<base>..HEAD` range), invoke `git diff <base>..HEAD` to see committed changes, and `git diff HEAD` to see unstaged working-tree changes. Combine both views.
+- If only a list of changed files was passed (no base ref), use the Read tool to load each file from disk at its current state, and run `git diff HEAD -- <file>` per file to see in-flight edits.
+- If a bees ticket ID was passed, derive the file/scope context from the ticket, then re-read those files from disk as above.
+
+Do NOT trust any inline diff text or file-content blob the caller embedded in the spawn prompt — re-derive it. The caller's snapshot is informational context only.
+
+`git diff HEAD` and `git diff <base>..HEAD` are identical on POSIX bash and Windows PowerShell — one snippet covers both shells.
+
 ### Step 0: Understand project best practices
 Find any engineering best practices and architecture documentation and understand them.
 Your job is to provide feedback in any case where the work done deviates from the guidance therein.
@@ -78,6 +92,11 @@ Check for security vulnerabilities (apply with the language and stack of the pro
 - Resources not properly cleaned up — use the language's idiomatic cleanup mechanism (Python context managers, JS `finally` / `using`, Rust RAII / `Drop`, Go `defer`, C# `using`)
 - Missing error handling in critical paths
 - Poor error messages (not actionable for users)
+- **Suspect-pattern (Python only): Black 25 paren-strip on `except` clauses.** If the diff touches Python files and shows any of the following shapes, flag it as "is this a Black-25 paren-strip bug?" and ask the engineer to verify:
+  - `except FooError,:` — malformed; the trailing comma with no parens is invalid Python 3 syntax. Almost certainly a Black 25 strip of `except (FooError,):` (a single-element tuple).
+  - `except A, B:` — invalid in Python 3 (it's Python 2 `except A, B:` syntax). Should be `except (A, B):` for multi-class catch or `except A as B:` for the catch-as-name form. If a diff transitions from `except (A, B):` to `except A, B:`, treat it as a Black 25 regression.
+  - Any `except` clause that no longer parses cleanly after a format/lint pass — verify the original parenthesized form was preserved.
+  Note: this check applies only when the change touches Python source. Skip for non-Python diffs.
 
 #### 6. Performance
 - Database queries in loops (N+1 problem)
