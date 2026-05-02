@@ -189,6 +189,51 @@ Apply these rules whenever a teammate reports a state transition:
 
 If a teammate reports done and the next-rung teammate is in a known-not-spawned state for this Task, advance directly without an extra ping (e.g., research-only Task with no Test Writer: Engineer-done routes straight to PM).
 
+##### Pre-dispatch state check
+
+Before sending any `task_assignment` (or equivalent "start working on subtask <id>") message to a worker, the team-lead must consult **two** current-state sources — never dispatch from stale memory. Workers may have already advanced the ticket since the last time the team-lead looked at it, and re-dispatching a `done` ticket wastes a turn or, worse, causes the worker to redo finished work.
+
+The two sources answer different questions:
+
+- **bees ticket status** — "is the work already finished?" The bees ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`):
+
+  ```bash
+  bees execute-freeform-query --query-yaml 'stages:
+    - [id=<ticket-id>]
+  report: [title, ticket_status]'
+  ```
+
+- **TaskList** — "is the recipient already on it?" TaskList tasks are first-class team-state — each task has `owner` and `status` fields. Read them via the `TaskList` tool against this team's task list; locate the recipient's task by matching `owner=<recipient agent name>` (the same name you would use in `to:` for SendMessage).
+
+Skip the dispatch when **either** condition holds:
+
+- bees `ticket_status` is `done` — the work is already finished. Advance the choreography rung instead (e.g., if the Engineer subtask is already `done`, fire rung 1 to the Test Writer rather than re-pinging the Engineer).
+- TaskList shows the recipient's task with `owner=<recipient>` AND `status=in_progress` — the worker is already on it. A redundant ping interrupts; trust their self-trigger.
+
+Otherwise dispatch the assignment.
+
+##### Quote the ticket body verbatim
+
+The `task_assignment` message must embed the ticket body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the ticket via:
+
+```bash
+bees show-ticket --ids <ticket-id>
+```
+
+Embed the returned body block in the assignment message as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. If you must add framing prose around the quoted body (e.g., "your gating precondition is met — start now"), keep it strictly outside the quoted block.
+
+##### Read the `blocked_on` signal each tick
+
+Workers signal idle-blocked state by setting `metadata.blocked_on: "<short description of what they need>"` on their TaskList task (TaskUpdate's metadata bag, see worker instructions below). The team-lead must scan TaskList for this signal at the top of each tick — there is no push notification.
+
+Concrete recipe: call the `TaskList` tool against this team's task list. Each returned task carries its `metadata` bag in standard output, so no extra read is needed. Inspect every task and treat any task whose `metadata.blocked_on` is set (non-null, non-empty string) as a block requiring action this tick.
+
+When a `blocked_on` value is present:
+
+1. Read the description. If it names a teammate or deliverable the team-lead can route (e.g., "waiting on test-writer for subtask <id>"), dispatch the unblocker first per the choreography rungs above (still applying the pre-dispatch state check).
+2. If the block is on something only the human caller can resolve (a missing spec decision, an external credential, a design question the team cannot answer), surface it to the human via `AskUserQuestion` or a direct prose message — do not loop silently.
+3. Once the block is cleared, instruct the worker to clear its own `metadata.blocked_on` (set the key to `null` via TaskUpdate) and resume.
+
 #### Don't wait silently on idle teammates — graduated escalation
 
 Pings can be missed. When a teammate has gone silent past the work it was asked for, the team-lead's job is to notice and escalate, NOT to keep printing "Waiting" turn after turn. Apply this ladder:
@@ -249,6 +294,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
   - Instructions:
     - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Engineer, that's "an implementation Subtask exists at `status=ready` (or you have an `in_progress` one mid-flight)". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on test-writer for subtask <id>"` or `"need spec decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Read the Subtask description using the bees CLI — it contains Context, What Needs to Change, Key Files, and Acceptance Criteria
     - Review any relevant internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
     - Review the existing code to determine the current state
@@ -266,6 +312,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
   - Instructions:
     - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "at least one Engineer subtask for this Task is at `status=done` and its corresponding test work has not yet been started". If yes, you are unblocked; start writing/updating tests for that subtask now, do not wait for a ping from the team-lead. (When the Task is test-only with no Engineer subtasks, treat your own ready Subtasks as the gating precondition.)
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer for subtask <id>"` or `"need test-fixture decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
     - Execute all test subtasks to change, add or delete tests
@@ -283,6 +330,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
   - Instructions:
     - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Doc Writer, that's "a pre-planned doc Subtask is at `status=ready` (or `in_progress` mid-flight), OR all in-flight Engineer/Test Writer subtasks for this Task are at `status=done` so a diff-review pass is unblocked". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer diff for doc review"` or `"need clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Use the doc writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Execute any customer-facing docs subtasks
     - Execute any internal architecture docs subtasks
@@ -302,6 +350,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Ultimately responsible for the quality of the Task work and correctness of the output of the Team
   - Instructions:
     - **Self-trigger:** at the top of every turn, check both PM gating preconditions: (a) at least one subtask has reached `status=done` from both the Engineer side and (where applicable) the Test Writer side, and you have not yet reviewed its per-subtask diff (per-subtask diff review is unblocked); (b) all child subtasks of the Task are at `status=done` (Step 5 reviews and the final Task report are unblocked). If either is met, you are unblocked for that lane; start it now, do not wait for further pings from the team-lead.
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer + test-writer to finish subtasks before final review"` or `"need spec clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Get the Task using the bees CLI and read it.
     - Read all Subtasks (children of the Task) — these contain the detailed work instructions.
     - Read the Parent Epic.

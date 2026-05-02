@@ -2,10 +2,11 @@
 id: b.hf8
 type: bee
 title: 'bees-execute team-lead/dispatcher: state-aware dispatch, verbatim ticket-body quoting, blocked_on signal'
-status: open
-created_at: '2026-05-02T13:36:22.499525'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-02T13:36:22.499525'
+status: done
+schema_version: '0.1'
 guid: hf8vkbf6at3ztvq9k5pjd9y42kq9ptc8
 ---
 
@@ -58,4 +59,3 @@ Edit `skills/bees-execute/SKILL.md` (team-lead role and dispatcher prose):
 ## Severity
 
 Medium — wastes turns and corrupts identifier names in flight, but does not corrupt persisted state.
-

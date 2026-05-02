@@ -173,6 +173,51 @@ Apply these rules whenever a teammate reports a state transition:
 
 If a writer was not spawned for this fix, advance directly to the next-rung teammate that was spawned.
 
+##### Pre-dispatch state check
+
+Before sending any `task_assignment` (or equivalent "start working on the fix" / "tests are ready, write docs" message) to a worker, the team-lead must consult **two** current-state sources — never dispatch from stale memory. Workers may have already advanced the ticket since the last time the team-lead looked at it, and re-dispatching a `done` ticket wastes a turn or, worse, causes the worker to redo finished work.
+
+The two sources answer different questions:
+
+- **bees ticket status** — "is the work already finished?" The bees ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`):
+
+  ```bash
+  bees execute-freeform-query --query-yaml 'stages:
+    - [id=<issue-id>]
+  report: [title, ticket_status]'
+  ```
+
+- **TaskList** — "is the recipient already on it?" TaskList tasks are first-class team-state — each task has `owner` and `status` fields. Read them via the `TaskList` tool against this team's task list; locate the recipient's task by matching `owner=<recipient agent name>` (the same name you would use in `to:` for SendMessage).
+
+Skip the dispatch when **either** condition holds:
+
+- bees `ticket_status` is `done` — the work is already finished. Advance the choreography rung instead (e.g., if the Engineer has already closed the issue, fire rung 1 to the Test Writer rather than re-pinging the Engineer).
+- TaskList shows the recipient's task with `owner=<recipient>` AND `status=in_progress` — the worker is already on it. A redundant ping interrupts; trust their self-trigger.
+
+Otherwise dispatch the assignment.
+
+##### Quote the ticket body verbatim
+
+The `task_assignment` message must embed the issue body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the issue via:
+
+```bash
+bees show-ticket --ids <issue-id>
+```
+
+Embed the returned body block in the assignment message as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. If you must add framing prose around the quoted body (e.g., "your gating precondition is met — start now"), keep it strictly outside the quoted block.
+
+##### Read the `blocked_on` signal each tick
+
+Workers signal idle-blocked state by setting `metadata.blocked_on: "<short description of what they need>"` on their TaskList task (TaskUpdate's metadata bag, see worker instructions below). The team-lead must scan TaskList for this signal at the top of each tick — there is no push notification.
+
+Concrete recipe: call the `TaskList` tool against this team's task list. Each returned task carries its `metadata` bag in standard output, so no extra read is needed. Inspect every task and treat any task whose `metadata.blocked_on` is set (non-null, non-empty string) as a block requiring action this tick.
+
+When a `blocked_on` value is present:
+
+1. Read the description. If it names a teammate or deliverable the team-lead can route (e.g., "waiting on engineer's implementation to write tests"), dispatch the unblocker first per the choreography rungs above (still applying the pre-dispatch state check).
+2. If the block is on something only the human caller can resolve (a missing spec decision, an external credential, a design question the team cannot answer), surface it to the human via `AskUserQuestion` or a direct prose message — do not loop silently.
+3. Once the block is cleared, instruct the worker to clear its own `metadata.blocked_on` (set the key to `null` via TaskUpdate) and resume.
+
 The team may consist of any of the following agents:
 - Engineer
   - Model: Claude Opus
@@ -180,6 +225,7 @@ The team may consist of any of the following agents:
     - Executing implementation changes to fix the issue
   - Instructions:
     - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Engineer, that's "the issue has been validated and assigned to you". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on test-writer to confirm fixture name"` or `"need spec decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Read the Issue description using the bees CLI
     - Review any relevant internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
     - Review the existing code to determine the current state
@@ -193,6 +239,7 @@ The team may consist of any of the following agents:
     - Writing tests that verify the issue fix
   - Instructions:
     - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "the Engineer has reported its implementation done (or there is no Engineer phase for this fix)". If yes, you are unblocked; start writing tests now, do not wait for further pings from the team-lead.
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer's implementation"` or `"need test-fixture decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
     - Review the work of the Engineer and see if any tests need to be added, deleted or updated based on that work
@@ -206,6 +253,7 @@ The team may consist of any of the following agents:
     - Updating documentation if the issue fix changes behavior
   - Instructions:
     - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Doc Writer, that's "the Engineer has reported its implementation done (or there is no Engineer phase for this fix)". If yes, you are unblocked; review the diff for doc gaps and start updating docs now, do not wait for further pings from the team-lead.
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer's diff"` or `"need clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Use the doc writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Review the customer-facing docs referenced in CLAUDE.md under "Documentation Locations" and see if they need any updates
     - Review the internal architecture docs referenced in CLAUDE.md under "Documentation Locations" and see if they need any updates
@@ -221,6 +269,7 @@ The team may consist of any of the following agents:
     - Makes final call on whether the fix is ready for review
   - Instructions:
     - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the PM, that's "the Engineer has reported its implementation done". If yes, you are unblocked; start your spec review now, do not wait for further pings from the team-lead.
+    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer's implementation"` or `"need spec clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Read the Issue description using the bees CLI
     - Read the project's spec docs relevant to the issue. Use the paths configured in CLAUDE.md `## Documentation Locations` — specifically `Internal architecture docs` (the SDD-equivalent path) and `Customer-facing docs` (the README-equivalent path). The Documentation Locations section has no canonical "PRD" key — if the project has a PRD-equivalent at a known path, use it; otherwise the Issue ticket body itself is the authoritative spec source for bees-fix-issue, and the parent Plan Bee body (if the issue derives from one) is secondary. Do NOT hardcode `docs/prd.md` or `docs/sdd.md` — those names are project-specific.
     - Review the Engineer's code changes against the spec
