@@ -49,3 +49,30 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 - Modifications to beads itself, or to bees solely for dual-backend users.
 - Beads' multi-repo / cross-repo aggregation features (`repos.additional`, `routing.mode auto`).
 - Running both backends in the same repo simultaneously.
+
+### Feature: Test strategy for the skills repo
+
+**What.** Add a layered test strategy for the bees-workflow repo itself. Three layers — Layer 1 (pytest unit tests on every bundled Python helper), Layer 2 (a structural linter validating each `SKILL.md` against the project's design rules), and Layer 2.5 (a backend-equivalence harness running the same dispatcher operations through both bees and beads and asserting equivalent state). All three layers wire to a single `make test` entrypoint. Layer 3 (live Claude Code end-to-end smoke) is explicitly out of scope.
+
+**Why.** Today the only automated check is `python -m pyflakes` on helper scripts. Recent work (b.aic, b.ekz, b.c4z, b.veq) shows real regressions slipping in — design-rule drift in skill prose, helper bugs, contract changes nobody catches until a downstream skill fails. The dual-backend work in the previous feature substantially raises the cost of an undetected regression: divergence between the bees and beads adapter paths in `ticket_backend.py` would only surface end-to-end, far from the change site. A layered strategy is the cheapest way to catch the failure modes that actually bite (helper bugs, design-rule drift, backend divergence) without trying to fully test prose-driven LLM workflows.
+
+**Acceptance criteria.**
+
+- `pytest skills/` passes from a clean clone, exercising every bundled Python helper (5+ at execution time).
+- A linter walks all 11 `SKILL.md` files and asserts the project's design rules; exits 0 on the current repo, 1 on a deliberate violation.
+- A backend-equivalence harness runs the dispatcher's seven verbs through both bees and beads and asserts equivalent normalized state; skips cleanly if either backend CLI is unavailable.
+- A top-level `make test` target runs all three layers and exits non-zero on any failure. A `tools/run_tests.py` fallback covers Windows users without `make`.
+- CLAUDE.md gains a `## Test Commands` section (contributor-facing) documenting the entrypoints.
+- README's Contributing section gains a short paragraph naming the three layers and pointing at the entrypoint.
+- CI runs `make test` on every push and PR.
+
+**Sequencing.** This feature blocks on the "Optional beads backend" feature (Plan Bee `b.9xr`) reaching `done`. Layer 2.5 needs the dispatcher to exist; Layer 1's pytest coverage of `ticket_backend.py` needs the file in place; Layer 2's linter needs to know about backend-conditional blocks.
+
+**Out of scope.**
+
+- Layer 3 — live Claude Code end-to-end smoke harness. May ship later as a separate Plan Bee.
+- Testing LLM-generated content (PRD-bootstrap exploration, code-review judgment).
+- Testing `AskUserQuestion` interactive flows directly.
+- Snapshot testing of full skill output.
+- Migration of existing skill patterns beyond what's needed for the new layers.
+- A proxy / mock test harness — the equivalence harness uses real CLIs against temp directories.

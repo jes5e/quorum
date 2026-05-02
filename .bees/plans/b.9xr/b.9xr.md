@@ -2,6 +2,8 @@
 id: b.9xr
 type: bee
 title: Optional beads backend
+down_dependencies:
+- b.gar
 parent: null
 children:
 - t1.9xr.p6

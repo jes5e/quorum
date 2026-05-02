@@ -104,3 +104,73 @@ Hardcoded in `bees-execute` and `bees-fix-issue`:
 **Helper script directory.** A new `skills/_shared/scripts/` directory holds cross-skill helpers — `ticket_backend.py` plus any backend-specific submodules. Resolved at runtime from the invoking skill's base directory plus a `../_shared/scripts/` relative jump, consistent with the existing per-skill scripts pattern.
 
 **Sequencing.** The work decomposes into two Epics. Epic A introduces the dispatcher and routes all skill bees-CLI calls through it as a pure refactor — bees remains the only supported backend, no user-visible change. Epic B adds the beads adapter inside the dispatcher, the backend-pick step in `bees-setup`, the `## Ticket Backend` contract section, the new README content, and the `tier:bee`/`tier:t1`/etc. labeling at create-time on both backends.
+
+### Feature: Test strategy for the skills repo
+
+**Architecture.** Three independent test layers, each with its own entrypoint, unified under a top-level `make test` target. Test code lives in two locations: per-helper unit tests sit beside the helper they cover (`skills/<skill>/scripts/test_<helper>.py`); cross-cutting test infrastructure lives at `tests/` at the repo root.
+
+**Layer 1 — Helper unit tests.** Per-helper pytest files at `skills/<skill>/scripts/test_<helper>.py` (and `skills/_shared/scripts/test_ticket_backend.py` for the dispatcher introduced in the previous feature). Tests use pytest's `tmp_path` fixture for filesystem isolation and `monkeypatch` for environment overrides. Coverage targets: every public function, every error path, every JSON contract field. The dispatcher's tests exercise both backend branches when the relevant CLI is present and skip cleanly when it isn't. Entrypoint: `pytest skills/`.
+
+**Layer 2 — Structural SKILL.md linter.** A `tools/lint_skills.py` script (Python 3, no third-party deps) walks every `skills/*/SKILL.md`, parses YAML frontmatter, and asserts the design rules baked into CLAUDE.md:
+
+- Frontmatter has `name` and `description`.
+- Every fenced code block tagged `bash` (or labeled "POSIX") has a sibling block tagged `powershell` (or labeled "Windows") in the same section, and vice versa.
+- No path starting with `/Users/`, `/home/`, or `C:\Users\`.
+- No raw `cargo`, `npm`, `pip`, `pipx` commands outside sections explicitly marked as install instructions.
+- All bundled-script references use the `<bees-setup-base-dir>` literal placeholder rather than absolute paths.
+- All `bees ...` and `bd ...` subcommands in skill prose match an allow-list (catches typos and out-of-vocabulary subcommands).
+- Backend-conditional sections come in matching pairs (every "if backend=bees" block has an "if backend=beads" sibling, where applicable).
+
+Output is human-readable: `<file>:<line>: <rule>: <message>`. Exits non-zero on any rule violation. Entrypoint: `python tools/lint_skills.py`.
+
+**Layer 2.5 — Backend-equivalence harness.** A pytest test suite at `tests/equivalence/test_dispatcher_equivalence.py`. Each test:
+
+1. Spins up two temp directories — one initialized with `ticket_backend.py setup-spaces --backend bees`, the other with `--backend beads`.
+2. Runs the same sequence of dispatcher verb calls against each (e.g., create Plan Bee → create Epic → set `up_dependencies` → query unblocked tickets → show ticket).
+3. Captures resulting state via the dispatcher's read verbs (`query`, `show`).
+4. Normalizes the responses — strips `id` (different formats per backend), `created_at` (timestamps), `guid`, and any other backend-specific noise — and asserts deep equality on the remaining structure.
+
+The harness skips gracefully if either CLI is missing, with a `pytest.skip` message naming what's absent. Entrypoint: `pytest tests/equivalence/`.
+
+**Top-level entrypoint.** A `Makefile` at the repo root:
+
+```make
+.PHONY: test test-helpers test-lint test-equivalence
+
+test: test-lint test-helpers test-equivalence
+
+test-helpers:
+	pytest skills/
+
+test-lint:
+	python tools/lint_skills.py
+
+test-equivalence:
+	pytest tests/equivalence/
+```
+
+For Windows contributors without `make`, a `tools/run_tests.py` script (Python; invokes the same commands via subprocess) provides a portable fallback. Both are documented in CLAUDE.md `## Test Commands`.
+
+**CLAUDE.md `## Test Commands`.** A new contract-style section, contributor-facing only (skills don't read it):
+
+```markdown
+## Test Commands
+
+- **Run all tests**: `make test`
+- **Helper unit tests only**: `pytest skills/`
+- **SKILL.md linter only**: `python tools/lint_skills.py`
+- **Backend-equivalence harness only**: `pytest tests/equivalence/`
+- **Windows (without make)**: `python tools/run_tests.py`
+```
+
+**README Contributing section update.** A short paragraph immediately after the existing Contributing principles, naming the three layers and pointing at `make test` and CLAUDE.md `## Test Commands`.
+
+**CI integration.** A `.github/workflows/test.yml` (or equivalent) runs `make test` on every push and PR. Both backend CLIs installed in the workflow image so Layer 2.5 doesn't skip. The workflow file lives in the repo so contributors can see what's gating their PR.
+
+**Sequencing.** This feature blocks on the "Optional beads backend" feature (Plan Bee `b.9xr`) reaching `done`. Layer 1 covers `ticket_backend.py` (only exists post-b.9xr Epic A); Layer 2 needs to know about backend-conditional blocks (only exist post-b.9xr Epic B); Layer 2.5 explicitly requires both backends to be present.
+
+**Decomposition.** Three Epics:
+
+- Epic A — Layer 1: pytest infrastructure and unit tests for every bundled helper.
+- Epic B — Layer 2: structural SKILL.md linter (independent of A; can be worked in parallel).
+- Epic C — Layer 2.5 + integration: backend-equivalence harness, top-level `make test`, CLAUDE.md `## Test Commands`, README Contributing paragraph, CI workflow. Blocks on Epic A (uses pytest infrastructure) and Epic B (linter must already be wired to the make target).
