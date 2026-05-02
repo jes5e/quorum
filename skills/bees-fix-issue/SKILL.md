@@ -194,9 +194,9 @@ Agent Teams is message-driven — a teammate that finishes processing one ping w
 
 Apply these rules whenever a teammate reports a state transition:
 
-1. **Engineer reports the implementation done** → team-lead pings the Test Writer with "engineer changes done — write/update tests for the fix". If the fix is test-only or has no Test Writer, skip this rung.
-2. **Test Writer reports tests done** → team-lead pings the Doc Writer (if spawned) with "engineer + test changes done — review the diff for doc gaps", and pings the PM (if spawned for a complex fix) with "implementation complete, review against the spec".
-3. **All writers report done** → team-lead advances to Step 4 (Review Loop) and forms the review team.
+1. **Engineer reports the entire fix's implementation done** (bees-fix-issue has no subtask breakdown — there's one implementation pass per issue) → team-lead pings the Test Writer with "engineer changes done — write/update tests for the fix". If the fix is test-only or has no Test Writer, skip this rung.
+2. **Test Writer reports the entire fix's tests done** → team-lead pings the Doc Writer (if spawned) with "engineer + test changes done — review the diff for doc gaps", and pings the PM (if spawned for a complex fix) with "implementation complete, review against the spec".
+3. **All writers report done for the fix as a whole** → team-lead advances to Step 4 (Review Loop) and forms the review team.
 
 If a writer was not spawned for this fix, advance directly to the next-rung teammate that was spawned.
 
@@ -232,6 +232,7 @@ The team may consist of any of the following agents:
   - Responsibilities:
     - Updating documentation if the issue fix changes behavior
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Doc Writer, that's "the Engineer has reported its implementation done (or there is no Engineer phase for this fix)". If yes, you are unblocked; review the diff for doc gaps and start updating docs now, do not wait for further pings from the team-lead.
     - Use the doc writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Review the customer-facing docs referenced in CLAUDE.md under "Documentation Locations" and see if they need any updates
     - Review the internal architecture docs referenced in CLAUDE.md under "Documentation Locations" and see if they need any updates
@@ -270,7 +271,7 @@ Reviewers (and writers) sometimes go idle right after receiving a "ready for X" 
 1. **First nudge (~10 min after ping):** light status check. "Just checking — any blockers on your <X> for b.Y? If not, a one-line 'no blockers' is fine."
 2. **Second nudge (~20 min in):** restate the specific deliverable + cite what's blocking. "Waiting on your <PM review report / test counts / doc list> before I can commit b.Y. If you hit a snag, tell me specifically what."
 3. **Third nudge (~30 min in):** firm deadline. "I'll proceed without your report in 5 min unless you respond."
-4. **Proceed and log:** if no substantive response, run the missing work yourself if tractable (cargo test, doc verify, code review skim) and commit. Note in the commit summary which review was pending. Do NOT block 6 hours hoping someone wakes up.
+4. **Proceed and log:** if no substantive response, run the missing work yourself if tractable (Narrow/Full test per CLAUDE.md, doc verify, code review skim) and commit. Note in the commit summary which review was pending. Do NOT block 6 hours hoping someone wakes up.
 
 When a teammate claims to be "waiting on" something async (a long-running test, an external service, etc.), **verify the claim** before accepting it. Use the platform's process-listing tool to confirm the process is actually running:
 

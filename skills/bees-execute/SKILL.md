@@ -210,8 +210,8 @@ Agent Teams is message-driven — a teammate that finishes processing one ping w
 
 Apply these rules whenever a teammate reports a state transition:
 
-1. **Engineer reports a subtask done** → team-lead pings the Test Writer with "engineer subtasks done — start Phase A". If the Task has no Test Writer (research-only), skip this rung.
-2. **Test Writer reports Phase A done** → team-lead pings the PM with "subtasks complete, review the per-subtask diff".
+1. **Engineer reports a subtask is at `status=done`** → team-lead pings the Test Writer with "engineer subtask <id> done — start writing/updating tests for that subtask now". If the Task has no Test Writer (research-only), skip this rung. Re-fire this rung for each Engineer subtask that completes; do not wait for all Engineer subtasks to land before pinging.
+2. **Test Writer reports a subtask is at `status=done`** → team-lead pings the PM with "test subtask <id> done — review the per-subtask diff". Re-fire per Test Writer subtask, same as rung 1.
 3. **All child subtasks at `status=done`** → team-lead pings the PM with "all subtasks done, run reviews and produce the final Task report". This drives the per-Task PM reviews (`bees-code-review` + `bees-doc-review` per the PM Instructions block) and the per-Task summary.
 
 If a teammate reports done and the next-rung teammate is in a known-not-spawned state for this Task, advance directly without an extra ping (e.g., research-only Task with no Test Writer: Engineer-done routes straight to PM).
@@ -292,7 +292,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Executing testing Subtasks for a task (if required)
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
   - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "the gating Engineer subtask(s) for this Task are at `status=done`". If yes, you are unblocked; start Phase A now, do not wait for a "start Phase A" ping from the team-lead. (When the Task is test-only with no Engineer phase, treat your own ready Subtasks as the gating precondition.)
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "at least one Engineer subtask for this Task is at `status=done` and its corresponding test work has not yet been started". If yes, you are unblocked; start writing/updating tests for that subtask now, do not wait for a ping from the team-lead. (When the Task is test-only with no Engineer subtasks, treat your own ready Subtasks as the gating precondition.)
     - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
     - Execute all test subtasks to change, add or delete tests
@@ -309,6 +309,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Execute documentation Subtasks for a task (if required)
       - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
   - Instructions:
+    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Doc Writer, that's "a pre-planned doc Subtask is at `status=ready` (or `in_progress` mid-flight), OR all in-flight Engineer/Test Writer subtasks for this Task are at `status=done` so a diff-review pass is unblocked". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
     - Use the doc writing guide referenced in CLAUDE.md under "Documentation Locations"
     - Execute any customer-facing docs subtasks
     - Execute any internal architecture docs subtasks
@@ -327,7 +328,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Responsible for providing report to share back up to calling Agent
     - Ultimately responsible for the quality of the Task work and correctness of the output of the Team
   - Instructions:
-    - **Self-trigger:** at the top of every turn, check both PM gating preconditions: (a) the Engineer + Test Writer have reported a per-subtask phase complete (per-subtask diff review is unblocked); (b) all child subtasks of the Task are at `status=done` (Step 5 reviews and the final Task report are unblocked). If either is met, you are unblocked for that phase; start it now, do not wait for further pings from the team-lead.
+    - **Self-trigger:** at the top of every turn, check both PM gating preconditions: (a) at least one subtask has reached `status=done` from both the Engineer side and (where applicable) the Test Writer side, and you have not yet reviewed its per-subtask diff (per-subtask diff review is unblocked); (b) all child subtasks of the Task are at `status=done` (Step 5 reviews and the final Task report are unblocked). If either is met, you are unblocked for that lane; start it now, do not wait for further pings from the team-lead.
     - Get the Task using the bees CLI and read it.
     - Read all Subtasks (children of the Task) — these contain the detailed work instructions.
     - Read the Parent Epic.
