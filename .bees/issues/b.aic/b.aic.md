@@ -2,10 +2,11 @@
 id: b.aic
 type: bee
 title: 'Extend b.6k2 etiquette bullet: prefer first-class tools over shell control flow'
-status: open
-created_at: '2026-05-01T18:01:25.663093'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-01T18:01:25.663093'
+status: done
+schema_version: '0.1'
 guid: aicthwaa4x498qbwiqyimr1wcva9ihta
 ---
 
