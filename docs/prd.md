@@ -29,4 +29,23 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 
 ## Per-feature scope
 
-(Empty — `/bees-plan` invocations append `### Feature: <title>` subsections here as features are planned.)
+### Feature: Optional beads backend
+
+**What.** Add optional support for the [beads](https://github.com/gastownhall/beads) ticket backend alongside the existing bees backend. A repo picks one at `/bees-setup` time; the choice persists in CLAUDE.md `## Ticket Backend`. All 11 portable-core skills work transparently on either backend without per-backend skill edits. Both backends cannot coexist in a single repo.
+
+**Why.** Beads is Dolt-backed (version-controlled SQL, native multi-writer, designed for distributed AI agents) — structurally different from bees' file-based ticket model. Some users prefer one, some the other, depending on their concurrency and sync needs. Backend-pluggable extends the project's existing language-agnostic and OS-agnostic portability principles to ticket-system-agnostic. Forcing a single backend forecloses on a real audience.
+
+**Acceptance criteria.**
+
+- Both bees and beads work as backends. The chain `/bees-setup` → `/bees-plan` → `/bees-breakdown-epic` → `/bees-execute` → `/bees-fix-issue` runs end-to-end to `done` on each.
+- CLAUDE.md `## Ticket Backend` is a new contract section with values `bees` or `beads`. Skills hard-fail with `Run /bees-setup first.` when the section is missing — matching the existing pattern for `## Documentation Locations` and `## Build Commands`.
+- Status vocabulary preserved verbatim on both backends: `drafted` / `ready` / `in_progress` / `done` for plans; `open` / `done` for issues.
+- Spec pointer (PRD/SDD egg) preserved on both backends. On beads, the resolver runs skill-side rather than CLI-registered.
+- README updated: intro, Requirements, Why-this-exists bullets, Status-vocabulary column header, `/bees-setup` description, plus a new "Ticket backend" section between "After install" and "The skills."
+
+**Out of scope.**
+
+- Migration of an existing bees-set-up repo to beads (or vice versa). Greenfield-only.
+- Modifications to beads itself, or to bees solely for dual-backend users.
+- Beads' multi-repo / cross-repo aggregation features (`repos.additional`, `routing.mode auto`).
+- Running both backends in the same repo simultaneously.
