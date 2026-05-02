@@ -162,7 +162,14 @@ Output markdown summary:
 - Each Epic: ID, title, status, dependencies (if any)
 - Dependency relationships created
 
-### 6. Continue to bees-breakdown-epic
+### 6. Offer Next Steps
 
-Load the `bees-breakdown-epic` skill and execute it for each Epic in dependency order until all are broken down.
-Do not ask the user for permission — proceed automatically.
+After the Plan Bee and its Epics exist, present the user with clear options. Use `AskUserQuestion`.
+
+Note above the options: each downstream skill re-reads the Plan Bee, Epics, and CLAUDE.md from the bees CLI and disk, so prior conversation context is not load-bearing across the boundary. A fresh Claude Code session is the recommended default — it gives `/bees-breakdown-epic` (and later `/bees-execute`) full context budget for per-Task body authoring and review cycles. Same-session continuation is acceptable as an opt-in for small Bees with one or two Epics.
+
+- **In a fresh session, break down all Epics** (Recommended) — run `/bees-breakdown-epic <bee-id>` in a new Claude Code session. The skill walks every `drafted` Epic in the Bee.
+- **In a fresh session, break down a specific Epic** — run `/bees-breakdown-epic <epic-id>` in a new session.
+- **Continue in this session** — load `bees-breakdown-epic` now and break down each Epic in dependency order. Reasonable only for small Bees with one or two Epics, since each Epic decomposition adds non-trivial context.
+- **Review first** — let the user review the plan before proceeding.
+- **Done for now** — plan is saved; user will come back later.

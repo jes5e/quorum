@@ -952,6 +952,8 @@ The next-step recommendation depends on whether the user already has spec docs (
 
   `/bees-plan-from-specs` reads both documents, creates a Plan Bee in the Plans hive with the two paths as its `egg`, decomposes the work into Epics, and chains into `/bees-breakdown-epic`. This is the right choice when scope and design are already nailed down and just need to be turned into a plan.
 
+  Run `/bees-plan-from-specs` in a fresh Claude Code session. `/bees-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/bees-plan-from-specs` re-reads the specs and CLAUDE.md from disk, so a fresh session gives it full context budget for scope analysis and Epic creation.
+
 - **No PRD/SDD yet, or the user wants to start from "I have an idea"** → recommend:
 
   ```
@@ -959,5 +961,7 @@ The next-step recommendation depends on whether the user already has spec docs (
   ```
 
   `/bees-plan` is interactive — it asks clarifying questions to define scope, optionally drafts PRD/SDD updates if the project has those docs, then creates a Plan Bee with Epics. The Plan Bee body itself becomes the authoritative scope document when no PRD/SDD exist (the Bee's `egg` field stays empty), and downstream skills (`/bees-breakdown-epic`, `/bees-execute`) will use the Bee body as the spec source. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
+
+  Run `/bees-plan` in a fresh Claude Code session. `/bees-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/bees-plan` does deep codebase exploration and scope iteration, so a fresh session gives it full context budget for that work.
 
 Both paths converge on the same Plan Bee shape (top-level Bee in the Plans hive with Epic children). The downstream chain — `/bees-breakdown-epic` → `/bees-execute` → `/bees-fix-issue` for any issues — works the same way for either entry point.

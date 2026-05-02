@@ -248,10 +248,14 @@ After all Epics exist, set `up_dependencies` between them where blocking relatio
 
 ### 6. Offer Next Steps
 
-Present the user with options:
+Present the user with options.
 
-- **Break down now** — run `/bees-breakdown-epic` to break Epics into Tasks/Subtasks
-- **Execute now** — run `/bees-execute <bee-id>` to start building immediately
+Note above the options: each downstream skill re-reads the Plan Bee, Epics, and CLAUDE.md from the bees CLI and disk, so prior conversation context is not load-bearing across the boundary. A fresh Claude Code session is the recommended default — it gives `/bees-breakdown-epic` (and later `/bees-execute`) full context budget for per-Task body authoring and review cycles. Same-session continuation is acceptable as an opt-in for small Bees with one or two Epics.
+
+- **In a fresh session, break down now** (Recommended) — run `/bees-breakdown-epic <bee-id>` in a new Claude Code session to break Epics into Tasks/Subtasks
+- **In a fresh session, execute now** — run `/bees-execute <bee-id>` in a new session to start building immediately
+- **Continue in this session: break down now** — load `bees-breakdown-epic` and break Epics into Tasks/Subtasks now. Reasonable only for small Bees with one or two Epics
+- **Continue in this session: execute now** — load `bees-execute <bee-id>` and start building now. Reasonable only for small Bees with one or two Epics
 - **Review first** — let the user review the plan before proceeding
 - **Done for now** — plan is saved, user will come back later
 

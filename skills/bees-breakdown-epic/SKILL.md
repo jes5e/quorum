@@ -311,11 +311,13 @@ This review ensures nothing from the spec is lost during the Task/Subtask decomp
 
 ### 6. Offer Next Steps
 
-After the Epic (or all Epics, if breaking down a whole Bee) is fully broken down, present the user with clear options. Use `AskUserQuestion`:
+After the Epic (or all Epics, if breaking down a whole Bee) is fully broken down, present the user with clear options. Use `AskUserQuestion`.
 
-- **Execute the whole Bee** — run `/bees-execute <bee-id>` (e.g. `b.duy`). `/bees-execute` walks every Epic in the Bee in dependency order.
-- **Start at a specific Epic** — run `/bees-execute <epic-id>` (e.g. `t1.duy.c9`). `/bees-execute` accepts an Epic ID too; it finds the parent Bee automatically and starts from that Epic's position in the plan. All Epics still run — this just biases the entry point.
-- **Break down the next Epic** — run `/bees-breakdown-epic <next-epic-id>` if more Epics in this Bee remain in `drafted` state.
+Note above the options: `/bees-execute` re-reads the Bee, Epics, and Tasks from the bees CLI and reads CLAUDE.md from disk, so prior conversation context is not load-bearing across the boundary. A fresh Claude Code session is the recommended default — it gives the executing agents full context budget for per-Task implementation, review cycles, and the team-lead's running judgment. Continuing to break down the next Epic in this session is lower-risk (same skill, similar context footprint), but a fresh session is still preferred for big Bees.
+
+- **In a fresh session, execute the whole Bee** (Recommended) — run `/bees-execute <bee-id>` (e.g. `b.duy`) in a new Claude Code session. `/bees-execute` walks every Epic in the Bee in dependency order.
+- **In a fresh session, start at a specific Epic** — run `/bees-execute <epic-id>` (e.g. `t1.duy.c9`) in a new session. `/bees-execute` accepts an Epic ID too; it finds the parent Bee automatically and starts from that Epic's position in the plan. All Epics still run — this just biases the entry point.
+- **In a fresh session, break down the next Epic** — run `/bees-breakdown-epic <next-epic-id>` in a new session if more Epics in this Bee remain in `drafted` state. Same-session continuation is also reasonable here since the skill is repeating with similar context growth per Epic.
 - **Review first** — let the user review the plan before proceeding.
 - **Done for now** — plan is saved; user will come back later.
 

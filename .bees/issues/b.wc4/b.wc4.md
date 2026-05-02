@@ -2,10 +2,11 @@
 id: b.wc4
 type: bee
 title: Skill boundaries default to same-session continuation, burning context unnecessarily
-status: open
-created_at: '2026-05-01T15:44:54.941078'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-01T15:44:54.941078'
+status: done
+schema_version: '0.1'
 guid: wc4gtmnheny9awgqsjrspgkv283hoqh2
 ---
 

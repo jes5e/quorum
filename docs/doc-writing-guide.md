@@ -159,6 +159,19 @@ Skills use `AskUserQuestion` for decisions the user should drive. Patterns we fo
 - **No fake free-text option in your options list.** The runtime adds `Type something.` automatically — duplicating it (with an "Other", "Use my own answer", or `___`-suffixed label) confuses the UI.
 - **Reframe when needed.** When a default-skip looks tempting but is actually wrong, lead with *why* the user should care. The Bootstrap PRD/SDD section in `bees-setup` is the canonical example: it explicitly reframes "I don't read PRDs" as "PRDs are read by *agents*, not by you".
 
+## Heavy → heavy skill boundaries default to fresh-session
+
+When a skill's "Offer Next Steps" block points at another skill that does its own deep state read — e.g. `/bees-plan` → `/bees-breakdown-epic` → `/bees-execute`, or `/bees-setup` → `/bees-plan-from-specs` — the recommended default should be running the next skill in a **fresh Claude Code session**. Each downstream skill re-reads the Plan Bee, Epics, ticket schemas, and CLAUDE.md from the bees CLI and disk, so prior conversation context is not load-bearing across the boundary. Carrying the prior skill's transcript forward just consumes context budget that the next (heavier) skill needs for its own work — per-Task body authoring, agent-team spawning, review cycles, the team-lead's running judgment.
+
+Practical rules when authoring an "Offer Next Steps" block:
+
+- **Lead each cross-skill option with "In a fresh session, run `/<next-skill> <args>`."** Make the fresh-session phrasing part of the option label, not a footnote.
+- **Add a one-line justification** above the options explaining why fresh-session is the default — readers should not have to guess whether the recommendation is load-bearing.
+- **Same-session continuation is an explicit opt-in, never the default.** Acceptable only when the next invocation is small (a single Epic, a lightweight skill like `/bees-file-issue`) or when the same skill is repeating with similar context growth per iteration. Keep it as a labeled alternative, not the first option.
+- **Never auto-chain into another heavy skill without asking.** A skill that loads the next skill automatically with no opt-out forces the anti-pattern. If the boundary is heavy → heavy, surface the choice.
+
+This rule does not apply to in-skill loops (e.g. `bees-execute` orchestrating its own review cycles) or to lightweight follow-ups (e.g. `bees-execute` invoking `/bees-file-issue` per finding) — same-session is correct there because the orchestrator's in-context judgment is load-bearing or the follow-up skill is light.
+
 ## Inline style
 
 - **No emojis** unless the user explicitly requests them. This applies to skill prose, generated docs, commit messages, and PR bodies.
