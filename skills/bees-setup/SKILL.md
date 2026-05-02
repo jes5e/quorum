@@ -451,7 +451,7 @@ This skill set works in two install modes:
 - **Global install** — skills live under `~/.claude/skills/<skill-name>/` (per-user, recommended for single-user machines)
 - **Per-project install** — skills live under `<repo>/.claude/skills/<skill-name>/`
 
-Helper scripts (`file_list_resolver.py`, `force_clean_team.py`) ship bundled inside their owning skill's `scripts/` directory. Each skill that needs a bundled script computes the path at runtime from its own base directory — no probing, no persistence to CLAUDE.md.
+Helper scripts (`file_list_resolver.py`, `detect_fast_path.py`, `force_clean_team.py`, `check_agent_teams.py`) ship bundled inside their owning skill's `scripts/` directory. Each skill that needs a bundled script computes the path at runtime from its own base directory — no probing, no persistence to CLAUDE.md.
 
 The skill invocation header at session start tells Claude where this skill lives, e.g.:
 
@@ -459,7 +459,7 @@ The skill invocation header at session start tells Claude where this skill lives
 Base directory for this skill: /Users/.../.claude/skills/bees-setup
 ```
 
-`bees-setup`'s own bundled script (`file_list_resolver.py`) is at `<this skill's base directory>/scripts/file_list_resolver.py`. That's the absolute path passed to `bees colonize-hive --egg-resolver` below. No CLAUDE.md section is written for it — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` computes `<bees-execute base>/scripts/force_clean_team.py`, `bees-fix-issue` computes `<bees-fix-issue base>/../bees-execute/scripts/force_clean_team.py`).
+`bees-setup`'s own bundled scripts (`file_list_resolver.py`, `detect_fast_path.py`) live at `<this skill's base directory>/scripts/<name>.py`. The `file_list_resolver.py` path is the absolute path passed to `bees colonize-hive --egg-resolver` below. No CLAUDE.md section is written for any helper — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` computes `<bees-execute base>/scripts/force_clean_team.py` and `<bees-execute base>/scripts/check_agent_teams.py`; `bees-fix-issue` computes `<bees-fix-issue base>/../bees-execute/scripts/force_clean_team.py` and `<bees-fix-issue base>/../bees-execute/scripts/check_agent_teams.py`).
 
 **Migration.** Earlier versions of `bees-setup` wrote a `## Skill Paths` section to CLAUDE.md containing absolute machine-local paths. That section was removed because committing per-machine paths to a tracked file broke multi-engineer collaboration. If the target repo's CLAUDE.md still has a `## Skill Paths` section from an earlier setup run, delete it as part of this run — the section is no longer used by any skill, and leaving it behind keeps the broken paths in git history.
 
