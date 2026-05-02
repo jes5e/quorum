@@ -11,7 +11,7 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 ## Repo layout (only what isn't obvious)
 
 - `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user; the body is the instructions Claude follows when the skill is invoked.
-- `skills/<name>/scripts/` — optional cross-platform Python helpers. Two exist today: `bees-setup/scripts/file_list_resolver.py` (the egg resolver) and `bees-execute/scripts/force_clean_team.py` (force-clean stuck Claude Code teams).
+- `skills/<name>/scripts/` — optional cross-platform Python helpers. Four exist today: `bees-setup/scripts/file_list_resolver.py` (the egg resolver), `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection), `bees-execute/scripts/force_clean_team.py` (force-clean stuck Claude Code teams), and `bees-execute/scripts/check_agent_teams.py` (Agent Teams precondition check, sibling-resolved by `bees-fix-issue`).
 
 The full workflow chain — `bees-setup` → (`bees-plan` | `bees-plan-from-specs`) → `bees-breakdown-epic` → `bees-execute` → `bees-file-issue` / `bees-fix-issue` — is documented in the README; don't re-derive it from the skill files.
 

@@ -3,7 +3,7 @@
 ## Tech stack
 
 - **Skill prose**: Markdown (`SKILL.md`) with YAML frontmatter (`name`, `description`). The body is the instructions Claude follows when the skill is invoked.
-- **Helper scripts**: Python 3 (cross-platform). Three exist today — `bees-setup/scripts/file_list_resolver.py` (egg resolver), `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection), and `bees-execute/scripts/force_clean_team.py` (force-clean stuck Claude Code teams).
+- **Helper scripts**: Python 3 (cross-platform). Four exist today — `bees-setup/scripts/file_list_resolver.py` (egg resolver), `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection), `bees-execute/scripts/force_clean_team.py` (force-clean stuck Claude Code teams), and `bees-execute/scripts/check_agent_teams.py` (Agent Teams precondition check, sibling-resolved by `bees-fix-issue`).
 - **External CLI**: [bees](https://github.com/gabemahoney/bees) (`bees-md` on pipx, Python 3.10+) for ticket management.
 - **Runtime host**: [Claude Code](https://claude.com/claude-code) — skills are invoked via `/<skill>` slash commands. The execution skills (`bees-execute`, `bees-fix-issue`) require Claude Code's experimental Agent Teams feature (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) for parallel Engineer/Test Writer/Doc Writer/PM execution; they spawn a team unconditionally and hard-fail without it. `/bees-setup` configures both the env var and the `teammateMode` display backend.
 
@@ -35,6 +35,7 @@ The workflow uses two hives in the target repo: **Plans** (top-level, with t1/t2
 - **`skills/bees-status/`** — show workflow stages and current progress across all hives.
 - **`skills/bees-code-review/`**, **`skills/bees-doc-review/`**, **`skills/bees-test-review/`** — dual-mode reviewers. Primary use: invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles, with bees-specific loop-bounding prose for that path. Secondary use: standalone ad-hoc review of a diff or worktree.
 - **`skills/bees-execute/scripts/force_clean_team.py`** — force-clean stuck Claude Code teams. Used as the `TeamDelete` recovery step.
+- **`skills/bees-execute/scripts/check_agent_teams.py`** — Agent Teams precondition check. Reads `~/.claude/settings.json` `.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, falls back to the same-name environment variable, exits 0 silently when either is `"1"` and exits 1 with a stable error message otherwise. Run by the parent session at the top of `/bees-execute` and `/bees-fix-issue` (`bees-fix-issue` resolves it as a sibling skill's bundled script). Single-line invocation per OS keeps the call shape allow-listable; the prior inline `python3 -c '<multi-line>'` shape tripped Claude Code's expansion-obfuscation matcher.
 - **`skills/bees-setup/scripts/file_list_resolver.py`** — the egg resolver. Registered as each hive's `egg_resolver` so a Bee's `egg` field can point to one or more on-disk docs.
 - **`skills/bees-setup/scripts/detect_fast_path.py`** — detect the new-machine fast-path scenario. Emits a JSON status payload (hive markers found, scope-already-registered check, CLAUDE.md sections populated, `fast_path_eligible` boolean) consumed by `/bees-setup`.
 

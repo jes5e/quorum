@@ -2,10 +2,11 @@
 id: b.ekz
 type: bee
 title: Agent Teams preflight in bees-execute / bees-fix-issue trips Bash expansion-obfuscation matcher
-status: open
-created_at: '2026-05-01T17:56:24.800729'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-01T17:56:24.800729'
+status: done
+schema_version: '0.1'
 guid: ekzs71i4pbhkzxs1wdw8n5xq8vm6zt5y
 ---
 

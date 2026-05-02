@@ -35,43 +35,16 @@ Rationale: the workflow reads project-specific commands and doc paths from CLAUD
 
 Do not attempt to recover from a missing precondition by improvising commands or guessing paths — fail fast and direct the user to `/bees-setup` so the configuration is captured deliberately.
 
-**Verifying the Agent Teams precondition.** Read `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Windows) with the JSON parser, look up `.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. If it is `"1"`, the precondition is satisfied. If absent or any other value, fall back to the shell environment variable `$CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (POSIX) / `$env:CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (PowerShell). If neither resolves to `"1"`, hard-fail with `Run /bees-setup first.` and a one-line note that Agent Teams is not enabled.
+**Verifying the Agent Teams precondition.** Run the bundled `check_agent_teams.py` helper, which reads `~/.claude/settings.json` (or `%USERPROFILE%\.claude\settings.json` on Windows), looks up `.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, falls back to the `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` environment variable, exits 0 silently when either resolves to `"1"`, and exits 1 with `Run /bees-setup first. — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is not '1' in settings.json or the environment.` otherwise. Resolve the helper at `<this skill's base directory>/scripts/check_agent_teams.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-execute`).
 
 ```bash
 # POSIX (bash / zsh):
-python3 -c '
-import json, os, sys
-p = os.path.expanduser("~/.claude/settings.json")
-val = ""
-if os.path.exists(p):
-    try:
-        with open(p, encoding="utf-8") as f:
-            val = (json.load(f).get("env") or {}).get("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "")
-    except (FileNotFoundError, IsADirectoryError):
-        val = ""
-    except (PermissionError, json.JSONDecodeError, OSError) as e:
-        print(f"Warning: could not read {p}: {e!r} — falling back to environment check.", file=sys.stderr)
-        val = ""
-sys.exit(0 if val == "1" else 1)
-' || test "${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-}" = "1" || { echo "Run /bees-setup first. — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is not '1' in settings.json or the environment."; exit 1; }
+python3 "<this skill's base directory>/scripts/check_agent_teams.py"
 ```
 
 ```powershell
 # Windows (PowerShell):
-$settingsPath = "$env:USERPROFILE\.claude\settings.json"
-$fromFile = $null
-if (Test-Path $settingsPath) {
-    try {
-        $fromFile = (Get-Content $settingsPath -Raw | ConvertFrom-Json).env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
-    } catch {
-        Write-Warning "could not read ${settingsPath}: $_ — falling back to environment check."
-        $fromFile = $null
-    }
-}
-if ($fromFile -ne "1" -and $env:CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS -ne "1") {
-    Write-Error "Run /bees-setup first. — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is not '1' in settings.json or the environment."
-    exit 1
-}
+python "<this skill's base directory>\scripts\check_agent_teams.py"
 ```
 
 ### 1. Find Bee to work on and validate
