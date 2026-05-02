@@ -2,10 +2,11 @@
 id: b.c4z
 type: bee
 title: Adopt --body-file / --chunk-file across this repo's ticket-creation skills
-status: open
-created_at: '2026-05-02T10:17:53.837748'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-02T10:17:53.837748'
+status: done
+schema_version: '0.1'
 guid: c4zjrn6q4trz8ffz2sozho4eqp44sfsv
 ---
 
@@ -76,4 +77,3 @@ Short single-line bodies / chunks (titles only, single-line summaries, status-on
 - Eliminates shell-quoting fragility for bodies/chunks containing backticks, quotes, dollar signs, etc.
 - Shrinks skill prose: many OS-paired shell snippets collapse to one block.
 - Makes the temp-file authoring step explicit, which is also clearer for human contributors reading the skill.
-

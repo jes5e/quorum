@@ -132,6 +132,8 @@ When all Epics are complete, present them to the user for final review.
 
 Create T1 type child tickets in the Plan Bee with status `drafted` (their children — Tasks — have not been written yet).
 
+**Author each Epic body to a temp file and pass `--body-file <path>` to `bees create-ticket`.** Do not inline a multi-paragraph Epic body as a `--body "..."` argument — bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting. Use the `Write` tool to author the body to a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), pass the path via `--body-file`, then remove the temp file after the bees command exits. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+
 **Do not pass `--egg` when creating Epics.** The bees CLI accepts `--egg` only on top-level Bees, not on child-tier tickets (`bees create-ticket --help`: "Only supported on bee (top-level) tickets"). Trying to set it on an Epic hard-errors. The egg lives on the parent Plan Bee — downstream skills (bees-breakdown-epic, bees-execute, bees-fix-issue) trace Epics back to the PRD/SDD by reading the parent's egg, not the Epic's.
 
 **NOTE**: If the plan is small, there may only be one Epic. You don't need to make multiple.

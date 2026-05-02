@@ -65,25 +65,31 @@ If the description references specific code, files, or behavior:
 
 ### 3. Create the ticket
 
-Use the bees CLI to create the ticket:
+Author the structured body to a temp file via the `Write` tool, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt regardless of the user's allowlist, and inlined markdown is also fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both problems. Status-only updates with no body (e.g. `bees update-ticket --ids <id> --status done`) and genuinely single-line bodies can stay on inline `--body`. Steps:
 
-```bash
-# POSIX (bash / zsh):
-bees create-ticket \
-  --ticket-type bee \
-  --hive issues \
-  --status open \
-  --title "<concise title>" \
-  --body "<structured body>"
+1. Pick a temp path under the OS temp dir: `/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows.
+2. Use the `Write` tool to write the structured body to that path.
+3. Run the bees command (the file-flag carries no shell-quoting surface — only the line-continuation character differs between OSes):
 
-# Windows (PowerShell):
-bees create-ticket `
-  --ticket-type bee `
-  --hive issues `
-  --status open `
-  --title "<concise title>" `
-  --body "<structured body>"
-```
+   ```bash
+   # POSIX (bash / zsh):
+   bees create-ticket \
+     --ticket-type bee \
+     --hive issues \
+     --status open \
+     --title "<concise title>" \
+     --body-file <path>
+
+   # Windows (PowerShell):
+   bees create-ticket `
+     --ticket-type bee `
+     --hive issues `
+     --status open `
+     --title "<concise title>" `
+     --body-file <path>
+   ```
+
+4. Remove the temp file after the bees command exits.
 
 **Title guidelines:**
 - Under 80 characters

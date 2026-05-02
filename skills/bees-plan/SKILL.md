@@ -193,7 +193,7 @@ After it returns, skip directly to Step 7 (commit) below — Step 6 (Offer Next 
 
 **Path B — no PRD/SDD exist for this feature (the Plan Bee body is the authoritative spec).**
 
-Create the Plan Bee directly in the Plans hive with `egg=null`:
+Create the Plan Bee directly in the Plans hive with `egg=null`. Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the temp file after the bees command exits.
 
 ```bash
 # POSIX (bash / zsh):
@@ -202,7 +202,7 @@ bees create-ticket \
   --hive plans \
   --status ready \
   --title "<feature title>" \
-  --body "<scope statement with acceptance criteria>"
+  --body-file <path>
   # no --egg flag; egg stays null
 
 # Windows (PowerShell):
@@ -211,7 +211,7 @@ bees create-ticket `
   --hive plans `
   --status ready `
   --title "<feature title>" `
-  --body "<scope statement with acceptance criteria>"
+  --body-file <path>
   # no --egg flag; egg stays null
 ```
 
@@ -222,7 +222,7 @@ Then break the feature into Epics. Use the **same Epic-decomposition rules** as 
 - Make Epics as granular as possible while preserving a single coherent outcome per Epic.
 - Each Epic needs concrete, testable Acceptance Criteria a user can verify or an agent can demonstrate.
 
-Create each Epic as a child of the Plan Bee:
+Create each Epic as a child of the Plan Bee. Use the same temp-file + `--body-file` pattern — author the Epic's scope and acceptance criteria to a temp file, pass the path, then remove the temp file:
 
 ```bash
 # POSIX (bash / zsh):
@@ -232,7 +232,7 @@ bees create-ticket \
   --parent <bee-id> \
   --status drafted \
   --title "<epic title>" \
-  --body "<epic scope and acceptance criteria>"
+  --body-file <path>
 
 # Windows (PowerShell):
 bees create-ticket `
@@ -241,7 +241,7 @@ bees create-ticket `
   --parent <bee-id> `
   --status drafted `
   --title "<epic title>" `
-  --body "<epic scope and acceptance criteria>"
+  --body-file <path>
 ```
 
 After all Epics exist, set `up_dependencies` between them where blocking relationships apply, then mark the Plan Bee `ready` (its children — the Epics — are now written, even though the Epics' children — Tasks — are not).

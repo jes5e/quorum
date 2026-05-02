@@ -129,6 +129,8 @@ Always spawn the Product Manager.
 
 **CRITICAL — Subagent permissions**: Spawn ALL team members with `mode: "plan"`. Team members are read-only researchers. They must never create, update, or delete tickets. Only YOU (the team lead) run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
 
+**Authoring Task and Subtask bodies**: Task and Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the file after the bees command exits. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+
 When spawning team members, include the following restriction in each teammate's spawn prompt:
 
 ```prompt
