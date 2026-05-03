@@ -62,28 +62,32 @@ Agent Teams renders concurrent agent activity through one of three `teammateMode
 
 ### Option A — global (recommended for single-user machines)
 
-Copy the skills into your user-level Claude Code skills directory so every repo can use them:
+Copy the skills and subagent definitions into your user-level Claude Code directories so every repo can use them:
 
 ```bash
 # POSIX (bash / zsh):
 git clone https://github.com/jes5e/bees-workflow ~/projects/bees-workflow
 cp -r ~/projects/bees-workflow/skills/* ~/.claude/skills/
+cp -r ~/projects/bees-workflow/subagents/* ~/.claude/subagents/
 
 # Windows (PowerShell):
 git clone https://github.com/jes5e/bees-workflow $HOME\projects\bees-workflow
 Copy-Item -Recurse $HOME\projects\bees-workflow\skills\* $HOME\.claude\skills\
+Copy-Item -Recurse $HOME\projects\bees-workflow\subagents\* $HOME\.claude\subagents\
 ```
 
 ### Option B — per-project install
 
-If you want to try bees-workflow on one repo without affecting others, copy the skills into that repo's `.claude/skills/`:
+If you want to try bees-workflow on one repo without affecting others, copy the skills and subagent definitions into that repo's `.claude/skills/` and `.claude/subagents/`:
 
 ```bash
 # POSIX:
 cp -r ~/projects/bees-workflow/skills/* /path/to/your/repo/.claude/skills/
+cp -r ~/projects/bees-workflow/subagents/* /path/to/your/repo/.claude/subagents/
 
 # Windows (PowerShell):
 Copy-Item -Recurse $HOME\projects\bees-workflow\skills\* C:\path\to\your\repo\.claude\skills\
+Copy-Item -Recurse $HOME\projects\bees-workflow\subagents\* C:\path\to\your\repo\.claude\subagents\
 ```
 
 ### After install
