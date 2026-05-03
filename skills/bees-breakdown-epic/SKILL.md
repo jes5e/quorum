@@ -61,7 +61,7 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
 - Read the egg source material linked in the parent Bee. **If the egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Plan Bee body itself is the authoritative scope document — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
 - **Check for the Scoped-marker on the parent Bee.** If the parent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the egg-resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before treating it as the spec. Run the bundled parser/scoper to do the detection and scoping in one step:
 
-  Write the parent Bee body to a temp file via the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows), then invoke the helper. Resolve the helper at `<this skill's base directory>/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-breakdown-epic`).
+  Extract the `body` field from the `bees show-ticket --ids <bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows). Do NOT dump the whole JSON envelope to the temp file — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Then invoke the helper. Resolve the helper at `<this skill's base directory>/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-breakdown-epic`).
 
   ```bash
   # POSIX (bash / zsh):
@@ -73,7 +73,17 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
   python "<this skill's base directory>\scripts\scoped_marker_resolver.py" "$env:TEMP\bees-bee-body-<short-suffix>.md"
   ```
 
-  The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full egg-resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per egg-doc path; use that scoped content for all subsequent Task decomposition, sibling-overlap checks, and the Spec Traceability Review (cite `### Feature: <title>` subsection coordinates rather than the full PRD/SDD when the marker is present). The helper exits 2 with a clear error on stderr if the marker is present but malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the user and stop; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`. Remove the temp file after the helper exits.
+  The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full egg-resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per egg-doc path; use that scoped content for all subsequent Task decomposition, sibling-overlap checks, and the Spec Traceability Review (cite `### Feature: <title>` subsection coordinates rather than the full PRD/SDD when the marker is present). The helper exits 2 with a clear error on stderr if the marker is present but malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the user and stop; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`. Remove the temp file after the helper exits:
+
+  ```bash
+  # POSIX (bash / zsh):
+  rm "/tmp/bees-bee-body-<short-suffix>.md"
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
+  ```
 - Identify what implementation work is needed as a list of Tasks.
 - Find any Epics this Epic depends on (check `up_dependencies` field) and use `bees show-ticket --ids <id>` to read them
   - These Epics describe foundational work that will be complete before this Epic you are working on is done

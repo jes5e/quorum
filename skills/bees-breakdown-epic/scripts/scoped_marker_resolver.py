@@ -52,8 +52,10 @@ Failure modes
 
 Subsection extraction rule (mirrors `/bees-plan-from-specs` Step 1b):
 - The matched heading line itself is excluded.
-- The body runs until the next line starting with `### Feature:` (also
-  excluded), or end-of-file, whichever comes first.
+- The body runs until the next line starting with `### Feature: `
+  (literal `### Feature:` followed by a single space — the trailing
+  space is required and matches `HEADING_PREFIX` below; also excluded),
+  or end-of-file, whichever comes first.
 - Heading-side title comparison is case-sensitive against the trimmed
   text after the `### Feature: ` prefix.
 
@@ -71,7 +73,7 @@ from pathlib import Path
 MARKER_RE = re.compile(
     r"^\s*Scoped to `### Feature: (?P<title>.*?)` from (?P<prd>.+?) and (?P<sdd>.+?)\.\s*$"
 )
-MARKER_PREFIX_RE = re.compile(r"^\s*Scoped to ")
+MARKER_PREFIX_RE = re.compile(r"^\s*Scoped to `")
 HEADING_PREFIX = "### Feature: "
 
 
@@ -84,8 +86,12 @@ def find_marker(body: str):
     """Return (match, malformed_line).
 
     - (m, None): a well-formed marker line was found.
-    - (None, line): a marker-shaped line (starts with `Scoped to `) was found
-      but the full grammar did not match — caller must hard-fail.
+    - (None, line): a marker-shaped line (starts with `` Scoped to ` ``,
+      i.e. the literal `Scoped to ` followed by a backtick) was found but
+      the full grammar did not match — caller must hard-fail. The backtick
+      requirement narrows this from any prose starting with "Scoped to "
+      (e.g. "Scoped to a single feature.") to lines that are clearly
+      attempting the marker shape.
     - (None, None): no marker-shaped line at all — caller treats as unscoped.
     """
     for line in body.splitlines():

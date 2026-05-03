@@ -272,7 +272,47 @@ The team may consist of any of the following agents:
     - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer's implementation"` or `"need spec clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
     - Read the Issue description using the bees CLI
     - Read the project's spec docs relevant to the issue. Use the paths configured in CLAUDE.md `## Documentation Locations` — specifically `Internal architecture docs` (the SDD-equivalent path) and `Customer-facing docs` (the README-equivalent path). The Documentation Locations section has no canonical "PRD" key — if the project has a PRD-equivalent at a known path, use it; otherwise the Issue ticket body itself is the authoritative spec source for bees-fix-issue, and the parent Plan Bee body (if the issue derives from one) is secondary. Do NOT hardcode `docs/prd.md` or `docs/sdd.md` — those names are project-specific.
-    - **Scoped-marker note.** Issues live in the `issues` hive and have no canonical parent-Plan-Bee field in the bees ticket schema (only `up_dependencies`, used for blockers). The Scoped-marker convention (`` Scoped to `### Feature: <title>` from <prd> and <sdd>. ``) is emitted by `/bees-plan-from-specs --feature` onto Plan Bees in the `plans` hive; it does not appear on Issue tickets. The Scoped-marker check is therefore a **documented no-op** for bees-fix-issue today: the PM reads spec docs in full as described above. If a future change introduces a way to associate an Issue with a scoped Plan Bee (e.g., a typed `derived_from` field), the PM should at that point check that linked Plan Bee's body for the marker via the bundled parser at `<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py` and scope spec content per `docs/doc-writing-guide.md` `## The Scoped-marker contract`. Until then, do not attempt to invent a heuristic parent-Bee discovery — guessing produces silent scope drift, which is exactly what the marker exists to prevent.
+    - **Scoped-marker discovery via `up_dependencies` (best-effort).** Issues live in the `issues` hive and have no canonical parent-Plan-Bee field in the bees ticket schema. However, an Issue's `up_dependencies` array — its primary role is listing blocker tickets whose statuses you have already validated above — is also a permitted carrier for an optional scope-context link to a Plan Bee in the `plans` hive. **This is a deliberate dual-use of `up_dependencies`** (blocker AND optional scope-context source), documented here so future maintainers do not silently conflate the two roles. A Plan Bee in `up_dependencies` carrying a Scoped-marker means the Issue is being fixed in the scope of one feature within a cumulative spec, not the whole spec. After validating dependency-blocker statuses, iterate `up_dependencies` and, for each entry that resolves to a Bee in the `plans` hive, attempt to detect and apply the marker. The discovery is **best-effort** — a missing marker, a malformed marker, or a non-`plans`-hive `up_dependencies` entry is not a fatal error; the PM falls back to full-doc spec content. Procedure:
+
+      1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. The bees CLI exposes hive-of-record via the freeform-query mechanism — see `docs/doc-writing-guide.md` `## Querying tickets`. A canonical recipe:
+
+         ```bash
+         bees execute-freeform-query --query-yaml 'stages:
+           - [id=<dep-id>, type=bee, hive=plans]
+         report: [title, body]'
+         ```
+
+         If the query returns zero rows for that ID, treat it as a non-`plans`-hive entry and skip to the next ID. Do NOT hard-fail on a non-Plan-Bee `up_dependencies` entry — that's the blocker-only use of the field, which is fine.
+
+      2. For each Plan Bee found, extract the `body` field from the query result (the envelope's `tickets[0].body` markdown string — same shape as `bees show-ticket`). Do NOT dump the whole JSON envelope to the temp file — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Write that body to a temp file via the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows), then invoke the bundled parser/scoper at `<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-fix-issue`).
+
+         ```bash
+         # POSIX (bash / zsh):
+         python3 "<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py" "/tmp/bees-bee-body-<short-suffix>.md"
+         ```
+
+         ```powershell
+         # Windows (PowerShell):
+         python "<this skill's base directory>\..\bees-breakdown-epic\scripts\scoped_marker_resolver.py" "$env:TEMP\bees-bee-body-<short-suffix>.md"
+         ```
+
+         Remove the temp file after each helper invocation:
+
+         ```bash
+         # POSIX (bash / zsh):
+         rm "/tmp/bees-bee-body-<short-suffix>.md"
+         ```
+
+         ```powershell
+         # Windows (PowerShell):
+         Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
+         ```
+
+      3. Parse the helper's JSON output. When `"scoped": true`, use the per-doc scoped content from the `docs` array for the PM's spec review (Internal architecture docs, Customer-facing docs, and any project PRD-equivalent), in place of the corresponding full-doc content. When `"scoped": false`, no marker was present — fall back to full-doc spec content. If the helper hard-fails (exit 2 — the marker is malformed, references a missing doc on disk, or references a missing heading), surface the helper's stderr to the user as part of the PM's report, then fall back to full-doc spec content for the review (best-effort discovery; do not block the fix).
+
+      4. **Tie-break on multiple markers.** If more than one Plan Bee in `up_dependencies` carries a marker (rare), use the FIRST one in `up_dependencies` iteration order — that is, the order the IDs appear in the Issue's `up_dependencies` array as returned by `bees show-ticket`. Subsequent markers are ignored for this Issue; mention the tie-break in the PM's report so the user knows which marker scoped the spec content.
+
+      Do not attempt to discover a parent Plan Bee outside `up_dependencies` (e.g., by string-matching the Issue title against Plan Bee titles) — that produces silent scope drift, which is exactly what the marker exists to prevent.
     - Review the Engineer's code changes against the spec
     - If the Engineer changes something not required by the issue, flag it
     - If the changes contradict the PRD or SDD, determine if the docs or code are wrong

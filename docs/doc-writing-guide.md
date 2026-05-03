@@ -178,6 +178,8 @@ The marker is the durable signal that the Plan Bee covers a single `### Feature:
 
 When the marker is present, the consuming skill must operate on the per-doc scoped content for all PM / spec-compare / Epic-decomposition logic, not on the full doc. When the marker is absent, behavior is unchanged — full doc content is the spec.
 
+**`bees-fix-issue` consumer note.** Issues live in the `issues` hive and have no canonical parent-Plan-Bee field in the bees ticket schema. The `bees-fix-issue` PM discovers a scope-context Plan Bee opportunistically by iterating the Issue's `up_dependencies` array — a deliberate dual-use of that field (blocker AND optional scope-context source). For each `up_dependencies` entry that resolves to a Bee in the `plans` hive, the PM extracts the body, runs it through the bundled parser, and applies the resulting scoped per-doc content if a well-formed marker is found. Discovery is best-effort: a missing marker, a non-`plans`-hive `up_dependencies` entry, or a parser hard-fail (exit 2) is not fatal — the PM surfaces the helper's stderr (on hard-fail) and falls back to full-doc spec content. If multiple `up_dependencies` Plan Bees carry markers, the PM uses the FIRST one in `up_dependencies` iteration order. A Plan Bee in `up_dependencies` carrying a Scoped-marker means the Issue is being fixed in the scope of one feature within a cumulative spec, not the whole spec.
+
 ## Hard-fail preconditions
 
 Execution skills (`bees-execute`, `bees-fix-issue`) hard-fail with `Run /bees-setup first.` when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them. Preserve that precondition behavior in any edit to those skills.
