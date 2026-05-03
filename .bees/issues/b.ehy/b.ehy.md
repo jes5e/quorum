@@ -1,78 +1,79 @@
 ---
 id: b.ehy
 type: bee
-title: 'bees-breakdown-epic next-steps menu: add per-option rationale and detect foundation-Epic chains'
-status: open
-created_at: '2026-05-03T13:17:08.032566'
-schema_version: '0.1'
+title: 'bees-breakdown-epic end-of-skill: per-option rationale, foundation-Epic detection, and missing commit step'
+parent: null
 egg: null
+created_at: '2026-05-03T13:17:08.032566'
+status: open
+schema_version: '0.1'
 guid: ehy3itaec5c2vi1bce5kzr5aw549uuk8
 ---
 
 ## Description
 
-The post-completion next-steps menu in `bees-breakdown-epic` (Step 6, "Offer Next Steps") describes *what* each option does but not *when to pick which* or *what trade-off it implies*. The "Recommended" badge is unconditionally pinned to "execute the whole Bee in a fresh session", even when the just-broken-down Epic is foundational and the remaining drafted sibling Epics depend on it — i.e. the case where breaking those siblings down before the foundation Epic's implementation lands is the rework-prone path.
+Two related gaps in `bees-breakdown-epic`'s end-of-skill behavior:
+
+**(A) Step 6 next-steps menu lacks per-option rationale and uses the wrong heuristic for the Recommended badge.** The menu describes *what* each option does but not *when to pick which*. The "Recommended" badge is unconditionally pinned to "execute the whole Bee", even when remaining drafted Epics consume contracts that the just-broken-down Epic's implementation will lock in (foundation-then-rewrites pattern), and breaking those siblings down now risks rework if the contract shifts during execution.
+
+**(B) The skill ends without committing the new ticket files it just created.** When breakdown completes, `.bees/<plans-hive>/` carries new Task and Subtask files, plus the parent Epic's status update. The skill jumps straight to Step 6's next-steps menu without staging or committing them. If the user ends the session at that point — which is the explicitly-recommended fresh-session path for `/bees-execute` — they're left with a pile of uncommitted ticket files that the next session has to discover and reason about.
+
+Both gaps live at the end of the same skill file (`SKILL.md` Steps 5–6) and the fix is one cohesive pass.
 
 ## Current behavior
 
-Step 6 lists five options:
+**(A)** Step 6 lists five options with action-only descriptions and an unconditional "Recommended" tag on "Fresh session: execute whole Bee". The skill does not consult the just-broken-down Epic's drafted siblings, does not read those siblings' bodies to assess contract coupling, and does not vary its recommendation based on Epic-chain shape. Concrete observation: after `t1.5tm.27` (subagent definitions and infrastructure) was broken down, the menu pointed at "execute whole Bee" — but `.8s` / `.fk` / `.o1` rewrite skills to *consume* what `.27` produces, so breaking those Epics down before `.27`'s implementation lands risks stale Tasks. The menu hid the heuristic.
 
-1. Fresh session: execute whole Bee (Recommended)
-2. Fresh session: start at a specific Epic
-3. Fresh session: break down next Epic
-4. Review first
-5. Done for now
-
-Each option's description states only the action ("Walks every Epic in dependency order, starting with t1.5tm.27" / "5 more Epics in b.5tm remain drafted ... Run /bees-breakdown-epic in a new session for the next foundational one"). There is no per-option reason, no comparison of trade-offs, and no awareness of whether the just-broken-down Epic is foundational to drafted siblings.
-
-Concrete observation that prompted this issue: in b.5tm, after `t1.5tm.27` (subagent definitions and infrastructure) was broken down, the menu surfaced "execute whole Bee" as Recommended. But `.8s` / `.fk` / `.o1` rewrite skills to *consume* what `.27` produces — breaking those Epics down before `.27`'s implementation lands risks stale Tasks if the subagent contract shifts during implementation. The skill steered the user toward the higher-rework default with no rationale visible to the user.
+**(B)** After `bees create-ticket` runs for every new Task and Subtask and `bees update-ticket --status ready` runs for the Epic and its children, control returns to the skill, which then renders the next-steps menu. There is no `git add` / `git commit` step in `SKILL.md`. The user is implicitly expected to commit before ending the session, but nothing in the skill prose tells them to and the natural reading of "Recommended: open a fresh session" leads them to do exactly the wrong thing.
 
 ## Expected behavior
 
-The menu should reason about Epic-chain shape and embed per-option rationale:
+**(A)** The Recommended option should reflect the team-lead's read of design-reshape risk, not just `up_dependencies` presence. A drafted sibling having `up_dependencies: [<this-epic>]` is *only* an ordering constraint at execute-time — it doesn't automatically imply plan-time coupling. The right distinction is whether the upstream Epic's implementation will lock contract details that the drafted sibling's Tasks would otherwise have to guess at:
 
-1. **Detect foundation Epics before composing the menu.** Before calling `AskUserQuestion`, query the just-broken-down Epic's drafted siblings and check whether any list this Epic in their `up_dependencies`:
+- **Default behavior** (most cases, including most "drafted siblings are blocked by this Epic" cases): keep going. Recommend either "break down the next Epic" or "execute the whole Bee" — same as if no dependencies existed. Don't surface a confirm-or-defer choice the user can't meaningfully answer.
+- **Surface a defer-downstream-breakdown choice only when there's a real trade-off.** Trigger: after Step 5 finishes, the team-lead reads the bodies of any drafted siblings whose `up_dependencies` includes the just-broken-down Epic, and judges whether the upstream Epic's implementation will materially reshape the contract those siblings consume (e.g., upstream defines new infrastructure / API / schema / framework that the siblings explicitly rewrite-to-consume). When that judgment lands "yes, contract is in flux", surface a Recommended option of "execute this Epic first; defer downstream breakdown" with a one-line reason naming the dependent siblings and the contract-reshape concern.
+- **Per-option rationale.** Each option in the menu should carry a one-line "best when …" clause in addition to the action description, so the user can compare trade-offs without external context.
 
-   ```
-   bees execute-freeform-query --query-yaml 'stages:
-     - [parent=<bee-id>, type=t1, status=drafted]
-   report: [title, up_dependencies]'
-   ```
-
-   Filter the result to siblings whose `up_dependencies` includes the just-broken-down Epic ID.
-
-2. **Branch the recommendation:**
-   - If one or more drafted siblings depend on this Epic, recommend "execute this Epic first, defer downstream breakdown" with a one-line reason (e.g. "drafted siblings <ids> depend on this Epic's output; breaking them down before this Epic's implementation lands risks rework if the contract shifts during execution").
-   - If no drafted siblings depend on this Epic (or no drafted siblings exist), keep the current "execute whole Bee" / "break down next Epic" recommendation.
-
-3. **Embed per-option rationale.** Each option's description should carry a short "why / when to pick this" clause in addition to the what. Example shape:
-   - "Execute whole Bee — best when remaining drafted Epics are independent or you're confident the spec is stable. Walks every Epic in dependency order."
-   - "Break down next Epic now — best when remaining Epics are independent or unblocked. Avoids context-switching back to breakdown later."
-   - "Defer downstream breakdown until this Epic is done — best when drafted siblings consume what this Epic produces, so per-Task contracts aren't locked in yet."
+**(B)** Before rendering Step 6, the skill should stage and commit the new ticket files it created (Tasks, Subtasks, and the Epic's status-update). Use the same hive-resolution pattern bees-file-issue uses (`bees list-hives` → check whether the Plans hive lives inside the repo → only `git add` if so). Commit message naming the Epic that was broken down. If the Plans hive lives outside the repo, skip the commit and remind the user where the tickets are stored. After the commit, then render Step 6's next-steps menu.
 
 ## Impact
 
-Users following the current skill get steered toward bulk breakdown even in foundation-then-rewrite Epic chains where it produces the most rework. The menu hides the heuristics the skill should know, forcing the user to recognize the chain shape themselves and override the recommendation. Users who don't notice will spend agent cycles writing Subtasks that go stale when the foundation Epic's implementation reshapes the contract.
+**(A)** Users following the current skill get steered toward bulk breakdown even in foundation-then-rewrite Epic chains where it produces the most rework. The skill hides the heuristic the team-lead is uniquely positioned to apply (reading both Epic bodies and judging contract coupling), forcing the user to recognize the chain shape themselves and override the recommendation.
+
+**(B)** The recommended next step is "open a fresh session" — but a fresh session inherits an unstaged, uncommitted pile of ticket files the user didn't know they were responsible for. They get discovered the next time someone runs `git status`, and can collide with unrelated work the user does in between sessions. This silently violates the skill's own "fresh session" recommendation.
 
 ## Suggested fix
 
-Edit `skills/bees-breakdown-epic/SKILL.md` Step 6 ("Offer Next Steps", currently lines ~339–349):
+Edit `skills/bees-breakdown-epic/SKILL.md`:
 
-1. Insert a pre-menu step that queries drafted siblings of the just-broken-down Epic and identifies which (if any) list it in `up_dependencies`. Reuse the freeform-query recipe pattern already used in Step 1.
-2. Add conditional logic that shifts the Recommended badge:
-   - **Foundation case** (drafted siblings depend on this Epic): recommend "execute this Epic first; defer downstream breakdown" and include the dependent sibling IDs in the rationale.
-   - **Independent case** (no dependent drafted siblings): keep current behavior.
-3. Append a short "why" clause to each option's description so the user can compare trade-offs without external context.
-4. Keep the existing fresh-session-vs-same-session preamble — it's still correct and orthogonal to the rationale gap.
+**For (A) — Step 6 logic**:
+1. Before composing the menu, query the just-broken-down Epic's drafted siblings: `bees execute-freeform-query --query-yaml 'stages: [parent=<bee-id>, type=t1, status=drafted]
+report: [title, up_dependencies, body]'` (or fetch bodies via `bees show-ticket` for the dependent subset).
+2. Filter to siblings whose `up_dependencies` includes the just-broken-down Epic ID.
+3. For each such sibling, the team-lead reads the upstream Epic body and the sibling Epic body and judges design-reshape risk. The judgment is the team-lead's call, not a hardcoded rule — treat it the same as other team-lead judgment calls in the skill.
+4. Branch the Recommended option:
+   - **Reshape-risk case** (any dependent sibling judged to consume an in-flux contract): Recommended is "execute this Epic first; defer downstream breakdown" with a rationale that names the at-risk siblings.
+   - **No-reshape-risk case** (default, including dependent siblings whose coupling is just ordering): Recommended is the current "execute whole Bee" / "break down next Epic" — keep going, don't ask.
+5. Append a one-line "best when …" rationale to every option's description.
+6. Preserve the existing fresh-session-vs-same-session preamble — it's correct and orthogonal.
+
+**For (B) — pre-Step-6 commit**:
+1. Add a new step between Step 5 ("Review Epic") and Step 6 ("Offer Next Steps") that stages and commits the new ticket files.
+2. Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only `git add` if so. Mirror the pattern in `bees-file-issue` Step 5 (POSIX bash + Windows PowerShell variants). Don't hardcode `.bees/plans/` — `/bees-setup` lets users put hives outside the repo.
+3. Commit message: `Break down <epic-id>: <epic-title>` (or similar). Single literal command, no compound chains, per repo Bash etiquette.
+4. If the Plans hive lives outside the repo, skip the commit and surface a one-line note in the next-steps menu so the user knows the tickets are persisted by the bees CLI but not git-tracked.
+5. After the commit, then render Step 6's menu.
 
 Key files:
 
-- `skills/bees-breakdown-epic/SKILL.md` (Step 6 prose)
+- `skills/bees-breakdown-epic/SKILL.md` (Step 5 / new pre-Step-6 commit step / Step 6 prose)
 
 Acceptance criteria:
 
-- After breaking down a foundation Epic with drafted dependent siblings, the menu's Recommended option is "execute this Epic first / defer downstream breakdown" and names the dependent siblings.
-- After breaking down an Epic with no drafted dependent siblings, the menu's Recommended option is unchanged from current behavior.
-- Every option in the menu carries a one-line rationale ("best when …") in addition to the action description.
-- Same-session vs fresh-session guidance is preserved.
+- After breaking down an Epic with drafted dependent siblings whose contract is in flux (team-lead judgment), the menu's Recommended option is "execute this Epic first / defer downstream breakdown" and names the at-risk siblings.
+- After breaking down an Epic where dependencies are pure ordering (no contract reshape), the menu's Recommended option is unchanged from current behavior — no extra confirm-or-defer prompt.
+- Every option in the menu carries a one-line "best when …" rationale.
+- Same-session-vs-fresh-session preamble preserved.
+- Before the menu renders, new Task/Subtask files and the Epic's status update are staged and committed (when the Plans hive lives in-repo). When the hive lives out-of-repo, the skill surfaces a one-line note and skips the git commands.
+- All shell snippets ship as paired POSIX bash + Windows PowerShell blocks, per repo design rule 2.
 
