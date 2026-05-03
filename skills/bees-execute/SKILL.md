@@ -465,19 +465,19 @@ report: [title, ticket_status, up_dependencies]'
 
 `up_dependencies` is returned as a list of ticket IDs only — not statuses. If any Epic is in `ready` state with non-empty `up_dependencies`, batch-look-up those dependency IDs via `bees show-ticket --ids <dep-id-1> <dep-id-2> <...>` to determine whether each `ready` Epic is actually workable or blocked.
 
-Classify the result into exactly one of three branches (the status vocabulary `drafted` → `ready` → `in_progress` → `done` is canonical for the Plans hive):
+Classify the result into exactly one of three branches (the status vocabulary `drafted` → `ready` → `in_progress` → `done` is canonical for the Plans hive). Evaluate the branches in the order listed — branch 1 takes precedence over branch 2 when both apply, because any drafted Epic must stop the loop regardless of whether other Epics happen to be workable:
 
-1. **Workable Epic remains** — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so:
-   1. Call `TeamDelete` to clean up the just-finished Epic's team. If it fails due to stuck agents: (1) run `force_clean_team.py` (located at `<this skill's base directory>/scripts/force_clean_team.py` — base directory shown in the skill invocation header) via the platform's Python 3 launcher (`python3` on POSIX, `python` or `py -3` on Windows) with `<team-name>` as the argument, then (2) call `TeamDelete` again to clear session state.
-   2. Clear your context window and go back to step 2 (which will create a new team for the next Epic).
-
-   If the user declines, move to final Bee review.
-
-2. **Drafted (or blocked-on-drafted) Epics remain** — at least one Epic has `status=drafted`, OR has `status=ready` blocked on a dependency that is not `done` (typically a sibling Epic still in `drafted`). **Stop the loop. Do NOT proceed to Step 5 final review and do NOT offer to mark the Bee done.** Tell the user:
+1. **Drafted (or blocked-on-drafted) Epics remain** — at least one Epic has `status=drafted`, OR has `status=ready` blocked on a dependency that is not `done` (typically a sibling Epic still in `drafted`). **Stop the loop. Do NOT proceed to Step 5 final review and do NOT offer to mark the Bee done.** Tell the user:
 
    > Epic `<just-completed-epic-id>` is complete, but Epics `<drafted-or-blocked-ids>` in this Bee are still `drafted` (or blocked on drafted dependencies) and need breakdown before this Bee can be closed. Run `/bees-breakdown-epic <bee-id>` (a fresh session is reasonable to keep context clean) to break down the remaining Epics, then re-run `/bees-execute <bee-id>`.
 
-   Call `TeamDelete` on the just-finished Epic's team (with the same `force_clean_team.py` fallback as branch 1 if it sticks), then exit the skill.
+   Call `TeamDelete` on the just-finished Epic's team (with the same `force_clean_team.py` fallback as branch 2 if it sticks), then exit the skill.
+
+2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so:
+   1. Call `TeamDelete` to clean up the just-finished Epic's team. If it fails due to stuck agents: (1) run `force_clean_team.py` (located at `<this skill's base directory>/scripts/force_clean_team.py` — base directory shown in the skill invocation header) via the platform's Python 3 launcher (`python3` on POSIX, `python` or `py -3` on Windows) with `<team-name>` as the argument, then (2) call `TeamDelete` again to clear session state.
+   2. Clear your context window and go back to step 2 (which will create a new team for the next Epic).
+
+   If the user declines, call `TeamDelete` on the just-finished Epic's team (with the same `force_clean_team.py` fallback as branch 1 if it sticks), then move to final Bee review.
 
 3. **All Epics under this Bee are `done`** — proceed to Step 5 final Bee review.
 
