@@ -2,10 +2,11 @@
 id: b.48t
 type: bee
 title: 'bees-execute: don''t suggest closing Plan Bee when drafted Epics still exist'
-status: open
-created_at: '2026-05-02T23:53:59.186300'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-02T23:53:59.186300'
+status: done
+schema_version: '0.1'
 guid: 48tfudrfbgnj1udodkvbpjzwmfcnjw9y
 ---
 
@@ -88,4 +89,3 @@ Branch on the result:
 - This repo's `CLAUDE.md` `## Hives and status vocabulary` section is the canonical reference for the `drafted` → `ready` → `in_progress` → `done` ladder; the new Step 4.2 prose should align with it.
 
 No changes needed to `bees-breakdown-epic` or `bees-plan` — those skills behave correctly; the bug is purely in `bees-execute`'s end-of-loop classification and Bee-close precondition.
-

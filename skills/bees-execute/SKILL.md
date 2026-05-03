@@ -455,12 +455,31 @@ The Director (you) runs this check directly — no new team:
 
 After the checkpoint passes (clean or fixed):
 
-If there are more Epics to work on, ask the user if they want to continue with the next logical one. If so:
-1. Mark the Epic as `status=done`
-2. Call `TeamDelete` to clean up the Epic's team. If it fails due to stuck agents: (1) run `force_clean_team.py` (located at `<this skill's base directory>/scripts/force_clean_team.py` — base directory shown in the skill invocation header) via the platform's Python 3 launcher (`python3` on POSIX, `python` or `py -3` on Windows) with `<team-name>` as the argument, then (2) call `TeamDelete` again to clear session state.
-3. Clear your context window and go back to step 2 (which will create a new team for the next Epic).
+Mark the just-completed Epic as `status=done`, then re-query *all* Epics under the Bee to classify the post-Epic state. Do not assume "no workable Epic remains" means "Bee is finished" — Epics in `status=drafted` (still need `/bees-breakdown-epic`) must not fall through to final review.
 
-If not, move to final Bee review.
+```bash
+bees execute-freeform-query --query-yaml 'stages:
+  - [parent=<bee-id>, type=t1]
+report: [title, ticket_status, up_dependencies]'
+```
+
+`up_dependencies` is returned as a list of ticket IDs only — not statuses. If any Epic is in `ready` state with non-empty `up_dependencies`, batch-look-up those dependency IDs via `bees show-ticket --ids <dep-id-1> <dep-id-2> <...>` to determine whether each `ready` Epic is actually workable or blocked.
+
+Classify the result into exactly one of three branches (the status vocabulary `drafted` → `ready` → `in_progress` → `done` is canonical for the Plans hive):
+
+1. **Workable Epic remains** — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so:
+   1. Call `TeamDelete` to clean up the just-finished Epic's team. If it fails due to stuck agents: (1) run `force_clean_team.py` (located at `<this skill's base directory>/scripts/force_clean_team.py` — base directory shown in the skill invocation header) via the platform's Python 3 launcher (`python3` on POSIX, `python` or `py -3` on Windows) with `<team-name>` as the argument, then (2) call `TeamDelete` again to clear session state.
+   2. Clear your context window and go back to step 2 (which will create a new team for the next Epic).
+
+   If the user declines, move to final Bee review.
+
+2. **Drafted (or blocked-on-drafted) Epics remain** — at least one Epic has `status=drafted`, OR has `status=ready` blocked on a dependency that is not `done` (typically a sibling Epic still in `drafted`). **Stop the loop. Do NOT proceed to Step 5 final review and do NOT offer to mark the Bee done.** Tell the user:
+
+   > Epic `<just-completed-epic-id>` is complete, but Epics `<drafted-or-blocked-ids>` in this Bee are still `drafted` (or blocked on drafted dependencies) and need breakdown before this Bee can be closed. Run `/bees-breakdown-epic <bee-id>` (a fresh session is reasonable to keep context clean) to break down the remaining Epics, then re-run `/bees-execute <bee-id>`.
+
+   Call `TeamDelete` on the just-finished Epic's team (with the same `force_clean_team.py` fallback as branch 1 if it sticks), then exit the skill.
+
+3. **All Epics under this Bee are `done`** — proceed to Step 5 final Bee review.
 
 ### 5. Final Bee-level Code, Doc and Eng reviews
 
@@ -578,12 +597,21 @@ Then use `AskUserQuestion` with:
 
 Once the user approves the Bee as done:
 
-1. Mark all Epics in the Bee as `status=done`:
-```bash
-bees update-ticket --ids <epic-id> --status done
-```
+1. **Precondition check (defense-in-depth).** In a healthy flow every Epic under this Bee was already transitioned to `status=done` at the end of its iteration in Step 4.2, so by the time you reach this step nothing should require a status change. Do not bulk-flip Epic statuses here — that would silently mark `drafted` work as `done`. Instead, re-query and verify:
 
-2. Verify all Epics are now `done`, then mark the Bee itself:
+   ```bash
+   bees execute-freeform-query --query-yaml 'stages:
+     - [parent=<bee-id>, type=t1]
+   report: [title, ticket_status]'
+   ```
+
+   If any Epic returns with `ticket_status` other than `done`, abort with:
+
+   > Cannot mark Bee complete — Epics `<ids>` are still `<status>`. Run `/bees-breakdown-epic` and `/bees-execute` on them first.
+
+   Do not silently update them. (Reaching this branch indicates a bug upstream — the Step 4.2 classifier should have stopped the run before Step 7 ever asked the user to close the Bee.)
+
+2. All Epics confirmed `done` — mark the Bee itself:
 ```bash
 bees update-ticket --ids <bee-id> --status done
 ```
