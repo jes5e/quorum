@@ -63,6 +63,14 @@ These look like inconsistencies if you compare two skills side-by-side without c
 - **Don't categorize-and-split issue tickets.** Default to bundling related issues into a single ticket with sub-task labels. The bees workflow optimizes for agent work efficiency (per-ticket overhead is the cost), not human triage. See `/bees-file-issue`'s "House style" section for the rule.
 - **Don't skip verification before recommending paths or flags.** When prose says `bees set-types --child-tiers ...`, that flag must exist. Verify with `--help` before writing it. CLI-flag drift is a recurring source of P0 bugs (see *Where things live* below for where past findings are tracked).
 
+## Verifying external-system contracts
+
+Before designing a validation probe for an external system's contract — Claude Code's subagent loader, a third-party CLI's flag set, a platform feature's behavior — search the system's authoritative docs first. WebSearch and WebFetch are available; use them. If the docs are sufficient to establish the contract, skip the probe entirely.
+
+If a probe is still needed, use what the docs told you to design specific, tight assertions rather than broad discovery probes. *"Does the harness register this exact frontmatter shape at this exact path with this exact session-lifecycle behavior?"* beats *"does anything happen when I dispatch this?"* — the first probe distinguishes failure causes; the second forces a guess-and-check loop.
+
+This applies at all stages: when authoring a spec (PRD/SDD), when breaking down an Epic that touches an external contract, and when running validation probes themselves. Spending five minutes on docs upfront often saves hours of probe-and-fix cycles later, *and* makes the probes that do run far more diagnostic when they fail. (`b.5tm` Epic A's AC#2 ran probes against the wrong install directory because the spec was authored without checking the canonical Claude Code subagents directory; one WebSearch would have prevented the entire failed-probe-and-fix cycle.)
+
 ## Considered and rejected
 
 Specific past suggestions that were evaluated and deliberately not adopted. Writing them down prevents future reviewers from re-flagging the same patterns and going through the same pushback cycle. Scan this list before flagging "this skill should do X" — X may already have been weighed and rejected.

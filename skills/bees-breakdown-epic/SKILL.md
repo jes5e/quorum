@@ -84,6 +84,11 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
   # Windows (PowerShell):
   Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
   ```
+- **Check external-system contracts against authoritative docs.** When the Epic body references a third-party platform feature (a tool API, a CLI flag set, a harness behavior, an environment-variable contract), search the system's authoritative docs before authoring Tasks — `WebSearch` and `WebFetch` are available. Look for: canonical install paths, file shapes / frontmatter formats, lifecycle requirements (e.g., does a session restart load new files, or does a hot-reload command exist?), error-message vocabulary the rewrite needs to match. Two outcomes:
+  - The docs answer the contract definitively → fold the answer into the spec; skip any "probe whether it works" Tasks the breakdown might otherwise create.
+  - The docs leave specific behavior unspecified → keep the probe Task, but use what the docs *did* say to design tight assertions (`does the harness register this exact frontmatter shape at this exact path with this exact session-lifecycle behavior?`) rather than broad discovery probes (`does anything happen when I dispatch this?`). Tight probes distinguish failure causes; broad probes force a guess-and-check loop.
+
+  Spending a few minutes on docs upfront often saves hours of probe-and-fix downstream, *and* makes any probes that do run far more diagnostic when they fail. See `CONTRIBUTING.md` `## Verifying external-system contracts` for the underlying principle.
 - Identify what implementation work is needed as a list of Tasks.
 - Find any Epics this Epic depends on (check `up_dependencies` field) and use `bees show-ticket --ids <id>` to read them
   - These Epics describe foundational work that will be complete before this Epic you are working on is done
