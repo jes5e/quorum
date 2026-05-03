@@ -12,7 +12,7 @@ egg:
 - /Users/jesseg/code/bees-workflow/docs/prd.md
 - /Users/jesseg/code/bees-workflow/docs/sdd.md
 created_at: '2026-05-02T14:09:41.628044'
-status: ready
+status: in_progress
 schema_version: '0.1'
 guid: 9xr3vcmmpgympucy7314ji7dt5z2otz4
 ---
