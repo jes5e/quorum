@@ -952,6 +952,8 @@ The next-step recommendation depends on whether the user already has spec docs (
 
   `/bees-plan-from-specs` reads both documents, creates a Plan Bee in the Plans hive with the two paths as its `egg`, decomposes the work into Epics, and chains into `/bees-breakdown-epic`. This is the right choice when scope and design are already nailed down and just need to be turned into a plan.
 
+  If your PRD/SDD already describe multiple features, use `/bees-plan` (or `/bees-plan-from-specs --feature "<title>"` to scope to one) — bare `/bees-plan-from-specs <PRD> <SDD>` assumes a single-feature spec and will hard-fail on cumulative docs.
+
   Run `/bees-plan-from-specs` in a fresh Claude Code session. `/bees-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/bees-plan-from-specs` re-reads the specs and CLAUDE.md from disk, so a fresh session gives it full context budget for scope analysis and Epic creation.
 
 - **No PRD/SDD yet, or the user wants to start from "I have an idea"** → recommend:

@@ -1,21 +1,22 @@
 ---
 name: bees-plan-from-specs
-description: Read a PRD and SDD from disk and create a Plan Bee with Epics in the Plans hive to describe the work that needs to be done.
-argument-hint: "<prd-path> <sdd-path>"
+description: Read a PRD and SDD from disk and create a Plan Bee with Epics in the Plans hive. Defaults to single-feature mode; pass --feature "<title>" to scope a single `### Feature: <title>` subsection inside a cumulative PRD/SDD. Without --feature, hard-fails on multi-feature docs — use /bees-plan instead in that case.
+argument-hint: "<prd-path> <sdd-path> [--feature \"<title>\"]"
 ---
 
 # PRD + SDD to Plan
 
 ## Input
 
-This skill takes two absolute file paths as input:
+This skill takes two absolute file paths as positional input, plus an optional named flag:
 
-1. A **PRD** — a Product Requirements Document describing the user/customer outcome, business goal, scope, and acceptance criteria.
-2. An **SDD** — a Software Design Document describing non-negotiable constraints, architectural boundaries, and what must be true about the software.
+1. `<prd-path>` — absolute path to a **PRD** (Product Requirements Document) describing the user/customer outcome, business goal, scope, and acceptance criteria.
+2. `<sdd-path>` — absolute path to an **SDD** (Software Design Document) describing non-negotiable constraints, architectural boundaries, and what must be true about the software.
+3. `--feature "<title>"` (optional) — scope this planning run to a single `### Feature: <title>` subsection inside the PRD and SDD. Use this when invoking the skill standalone against a cumulative PRD/SDD (one that already contains multiple `### Feature:` subsections from prior `/bees-plan` runs) and you want to re-plan only one feature inside it. Without `--feature`, the skill assumes the docs describe a single feature and hard-fails if it detects more than one `### Feature:` subsection in either doc.
 
-Both documents are expected to already be finalized on disk. This workflow does not author these documents — it takes them as given and turns them into a plan.
+Both documents are expected to already be finalized on disk. This skill does not author them — it takes them as given and turns them into a plan.
 
-If the caller does not provide both paths, ask in prose for the missing path(s) and let the user reply in their next turn — do not use `AskUserQuestion`, since file paths are free-text answers, not a finite set of choices. Both paths must resolve to existing files before proceeding.
+If the caller does not provide both paths, ask in prose for the missing path(s) and let the user reply in their next turn — do not use `AskUserQuestion`, since file paths are free-text answers, not a finite set of choices. Both paths must resolve to existing files before proceeding. The `--feature` argument, when provided, is also free-text and should be parsed as the value of the `--feature` flag verbatim (after trimming surrounding whitespace).
 
 ## Workflow
 
@@ -30,9 +31,48 @@ Note: bees-plan-from-specs does **not** require CLAUDE.md `## Build Commands`. b
 
 ### 1. Read PRD and SDD
 
+Branch on whether the caller passed `--feature "<title>"`.
+
+#### 1a — `--feature` NOT provided (default, single-feature mode)
+
 - Read both documents in full.
-- Extract features, requirements, acceptance criteria, and constraints.
-- Look in the repo and read any architectural documents referenced in `CLAUDE.md` under "Documentation Locations" to understand existing design constraints.
+- **Multi-feature guard.** This skill plans a single feature when invoked without `--feature`. If either document contains more than one `### Feature: <title>` subsection (the cumulative-PRD pattern produced by repeated `/bees-plan` invocations), hard-fail with:
+
+  ```
+  Multiple `### Feature:` subsections detected in <path>.
+  /bees-plan-from-specs assumes the PRD/SDD describe a single feature.
+  Use /bees-plan instead — it adds a new feature section to cumulative
+  PRD/SDD docs and creates one Plan Bee scoped to that feature. To
+  re-plan a single feature inside a cumulative PRD/SDD, pass
+  --feature "<title>" to scope this run to one `### Feature:` subsection.
+  ```
+
+  Replace `<path>` with the offending file's absolute path. Do not attempt to guess which subsection the user meant; do not prompt them to pick one — exit and let them re-enter through `/bees-plan` or re-invoke with `--feature`.
+
+  Detection rule: count lines that start with `### Feature: ` followed by at least one non-whitespace character (case-sensitive, exactly three `#` followed by a space, the literal word `Feature:`, a space, then a non-whitespace character) in each of the two documents. A bare `### Feature:` heading with no title (or only trailing whitespace) does not count. If either count is greater than 1, fail. A count of 0 or 1 in both documents is fine — 0 means the doc uses some other structure, 1 means exactly one feature is described.
+
+#### 1b — `--feature "<title>"` provided (scoped mode)
+
+The user has explicitly disambiguated which feature they want, so the multi-feature guard does NOT apply — the docs are expected to be cumulative.
+
+- Trim leading and trailing whitespace from the `<title>` argument before any comparison. If the trimmed title is the empty string (e.g., `--feature ""` or `--feature "   "`), hard-fail with `--feature requires a non-empty title.` — this prevents an empty title from silent-matching the first `### Feature:` heading found.
+- Read both PRD and SDD documents in full from disk.
+- For each document, locate the heading line whose text exactly equals `### Feature: ` followed by the trimmed title. On each candidate heading line, take the text after the `### Feature: ` prefix and trim trailing whitespace from it before comparison — this prevents a heading like `### Feature: Foo  ` (with stray trailing spaces) from failing an exact-equality match against a user-supplied `--feature "Foo"`. Comparison is case-sensitive against that trimmed heading-side title. Only lines starting with exactly three `#` followed by a space and the literal word `Feature:` count as candidate headings (same syntax as the multi-feature guard's detection rule).
+- **Both docs must contain the heading.** If the trimmed title is not found as a `### Feature: <title>` heading in **either** document, hard-fail with:
+
+  ```
+  Feature subsection "<title>" not found in <path>.
+  /bees-plan-from-specs --feature requires the heading
+  `### Feature: <title>` to be present in BOTH the PRD and the SDD.
+  ```
+
+  Replace `<title>` with the trimmed title arg and `<path>` with the absolute path of the doc(s) where the heading is missing — list both paths if both are missing. This BOTH-docs requirement is symmetric with the multi-feature guard (which checks both docs) and avoids silent scope drift: a heading missing in one doc is more likely a typo in the title arg or a doc-sync bug than an intentional asymmetry, and failing loud surfaces it. If the user genuinely has the feature documented in only one doc, they can drop `--feature` (provided the other doc is single-feature or feature-free) or update the docs so both have the heading.
+- **Extract the scoped subsection from each doc.** The subsection body runs from the matched `### Feature: <title>` heading line (exclusive — do not include the heading line itself) to the next `### Feature:` heading line (exclusive — do not include the next heading) or end-of-file, whichever comes first. Treat that scoped per-doc content as the input to all subsequent steps, exactly as if the doc had only contained that one feature in single-feature mode. The Plan Bee body and Epic decomposition are derived from the scoped content, not from the full doc.
+
+#### 1c — common to both modes
+
+- Extract features, requirements, acceptance criteria, and constraints from the (possibly scoped) doc content.
+- Look in the repo and read any architectural documents referenced in `CLAUDE.md` under "Documentation Locations" to understand existing design constraints. These are read in full regardless of `--feature` — they are project-wide context, not per-feature spec content.
 - Before decomposition, align on the outcome. If you cannot clearly state what changes for the user or system when the work is complete, stop and surface questions to the user rather than guessing.
   - From the PRD: user or customer outcome, business goal or KPI, scope and constraints.
   - From the SDD: non-negotiable requirements (security, latency, availability), architectural boundaries, external dependencies.
@@ -43,6 +83,13 @@ Goal: Create one top-level Bee ticket in the Plans hive to track the work.
 
 - Body contains a brief summary of the goal and scope (2-3 sentences max).
 - Do **not** dump the PRD or SDD content into the body — they are accessible via the egg.
+- **If `--feature "<title>"` was used in Step 1**, append a single line to the Plan Bee body of the form:
+
+  ```
+  Scoped to `### Feature: <title>` from <absolute prd path> and <absolute sdd path>.
+  ```
+
+  Use the trimmed title and the actual absolute PRD/SDD paths. This makes it visible at a glance to downstream skills and human reviewers that the Plan Bee covers one feature within a cumulative spec, not the whole spec.
 - There is no `up_deps` to set (this workflow has no Idea Bees).
 
 **Setting the `egg` field:**
@@ -53,7 +100,9 @@ The egg value must be a JSON array containing the absolute paths to the PRD and 
 ["<absolute path to PRD>", "<absolute path to SDD>"]
 ```
 
-Set the Plan Bee's `egg` to the JSON array above, with both paths resolved to their absolute form. The egg resolver configured by `/bees-setup` validates these paths downstream. If it is not configured, direct the user to run `/bees-setup` first.
+Set the Plan Bee's `egg` to the JSON array above, with both paths resolved to their absolute form. The egg always points to the canonical doc files in full — even when `--feature` was used, the egg paths are unchanged, because the scoping is a query-time filter for THIS planning invocation only and does not alter what the canonical specs are. Downstream skills that re-read the egg will see the full PRD and SDD; the `Scoped to ...` body line is the durable signal that the Plan Bee covers a sub-region of those docs.
+
+The egg resolver configured by `/bees-setup` validates these paths downstream. If it is not configured, direct the user to run `/bees-setup` first.
 
 Mark the Plan Bee as `drafted` (its children — the Epics — have not been written yet).
 

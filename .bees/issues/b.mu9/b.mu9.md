@@ -2,10 +2,11 @@
 id: b.mu9
 type: bee
 title: /bees-plan Path A delegation breaks with cumulative PRDs
-status: open
-created_at: '2026-05-03T01:17:11.757996'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-03T01:17:11.757996'
+status: done
+schema_version: '0.1'
 guid: mu9bufwvq7urhrkh25djzuz1py92xwnj
 ---
 
@@ -53,4 +54,3 @@ One of:
 ## Severity
 
 **Medium.** Surfaces silently as either a redundant Plan Bee for an already-planned feature, or as a Plan Bee that conflates multiple features. The author of this issue caught it before any tickets were created, but a less-attentive caller would miss it.
-

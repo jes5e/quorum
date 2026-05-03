@@ -8,7 +8,7 @@ argument-hint: "[<description>]"
 
 This skill handles the full journey from "I have an idea" to "here's a broken-down plan ready for execution." It supports features of any size — from adding Helm charts to a new RPC endpoint.
 
-> **Tip:** if you already have a finalized PRD and SDD on disk, `/bees-plan-from-specs <prd-path> <sdd-path>` is the faster path — it skips the discovery and scope-iteration phases and goes straight to Plan Bee creation. Use `/bees-plan` (this skill) when you're starting from an idea, rough notes, or anything earlier than a finalized spec.
+> **Tip:** if you already have a finalized PRD and SDD on disk that describe a **single feature**, `/bees-plan-from-specs <prd-path> <sdd-path>` is the faster path — it skips the discovery and scope-iteration phases and goes straight to Plan Bee creation. If your PRD/SDD are cumulative (one or more prior `### Feature:` subsections already present) and you want to re-plan exactly one of those subsections, `/bees-plan-from-specs <prd-path> <sdd-path> --feature "<title>"` is the express scoped form — it bypasses the multi-feature guard and reads only the matching `### Feature: <title>` subsection from each doc. Use `/bees-plan` (this skill) when you're starting from an idea or rough notes, or when you're adding a brand-new feature to a cumulative PRD/SDD. `/bees-plan-from-specs` without `--feature` hard-fails on multi-feature docs to avoid re-planning previously-planned features.
 
 ### Usage
 
@@ -181,48 +181,101 @@ After writing the files, update CLAUDE.md `## Documentation Locations`:
 
 ### 5. Create Plan Bee with Epics
 
-There are two paths depending on whether docs got drafted in Step 4. Pick the one that matches your state.
+Create the Plan Bee inline in this session — do **not** delegate to `/bees-plan-from-specs`. That skill assumes the PRD/SDD describe exactly one feature; this skill drives the cumulative-PRD pattern where each invocation appends a new `### Feature:` subsection, so delegating after Step 4 would re-plan every previously-planned feature in the cumulative docs. Inline creation here is the single supported path regardless of whether PRD/SDD exist — the only difference is whether the Plan Bee's `egg` field is populated (PRD/SDD exist) or omitted (no PRD/SDD).
 
-**Path A — PRD and SDD got drafted/updated in Step 4 (or already existed at the start).**
+#### 5a — Create the Plan Bee
 
-Delegate to `/bees-plan-from-specs <absolute-prd-path> <absolute-sdd-path>`. That skill handles the Plan Bee creation, the full Epic decomposition rules (vertical slicing, Epic Viability Checklist, anti-patterns), the dependency wiring, and chains into `/bees-breakdown-epic` automatically. It produces the same artifact (Plan Bee + Epics in the Plans hive) you'd build by hand here.
+Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the temp file after the bees command exits.
 
-Why delegate: `/bees-plan-from-specs` is the canonical home for the "specs → Plan Bee" logic. Delegating keeps a single source of truth and gives you the better Epic-decomposition guidance for free.
+The body should be a brief 2-3 sentence summary of the goal and scope. When `egg` is set, do not dump PRD/SDD content into the body — downstream skills read the linked docs via the egg resolver.
 
-After it returns, skip directly to Step 7 (commit) below — Step 6 (Offer Next Steps) is also handled by `/bees-plan-from-specs`'s chain into `/bees-breakdown-epic`.
+**If PRD/SDD exist for this feature** (Step 4a, or Step 4b option 1 where you just drafted them), set `--egg` to a JSON array containing the absolute PRD and SDD paths in that order:
 
-**Path B — no PRD/SDD exist for this feature (the Plan Bee body is the authoritative spec).**
+```
+["<absolute path to PRD>", "<absolute path to SDD>"]
+```
 
-Create the Plan Bee directly in the Plans hive with `egg=null`. Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the temp file after the bees command exits.
+The egg resolver configured by `/bees-setup` validates these paths downstream. If it is not configured, direct the user to run `/bees-setup` first.
 
 ```bash
-# POSIX (bash / zsh):
+# POSIX (bash / zsh) — with PRD/SDD egg:
 bees create-ticket \
   --ticket-type bee \
   --hive plans \
-  --status ready \
+  --status drafted \
   --title "<feature title>" \
-  --body-file <path>
-  # no --egg flag; egg stays null
+  --body-file <path> \
+  --egg '["<absolute prd path>", "<absolute sdd path>"]'
 
-# Windows (PowerShell):
+# Windows (PowerShell) — with PRD/SDD egg:
 bees create-ticket `
   --ticket-type bee `
   --hive plans `
-  --status ready `
+  --status drafted `
   --title "<feature title>" `
-  --body-file <path>
-  # no --egg flag; egg stays null
+  --body-file <path> `
+  --egg '["<absolute prd path>", "<absolute sdd path>"]'
 ```
 
-Then break the feature into Epics. Use the **same Epic-decomposition rules** as `/bees-plan-from-specs` Step 3:
-- Every Epic must leave the codebase green (all existing tests still pass).
-- One Epic = one outcome (a single coherent user-or-system-visible capability; not a layer like "DB Epic" / "API Epic").
-- Decompose vertically by capability — each Epic delivers end-to-end behavior. Pure-tech refactors are an exception but should go vertical as soon as possible.
-- Make Epics as granular as possible while preserving a single coherent outcome per Epic.
-- Each Epic needs concrete, testable Acceptance Criteria a user can verify or an agent can demonstrate.
+**If no PRD/SDD exist for this feature** (Step 4b option 2 — body-as-spec), omit `--egg` entirely. The Plan Bee body becomes the authoritative scope document, so make it detailed enough that the PM in `/bees-execute` can use it for drift detection.
 
-Create each Epic as a child of the Plan Bee. Use the same temp-file + `--body-file` pattern — author the Epic's scope and acceptance criteria to a temp file, pass the path, then remove the temp file:
+```bash
+# POSIX (bash / zsh) — no egg:
+bees create-ticket \
+  --ticket-type bee \
+  --hive plans \
+  --status drafted \
+  --title "<feature title>" \
+  --body-file <path>
+
+# Windows (PowerShell) — no egg:
+bees create-ticket `
+  --ticket-type bee `
+  --hive plans `
+  --status drafted `
+  --title "<feature title>" `
+  --body-file <path>
+```
+
+Mark the Plan Bee as `drafted` initially — its children (Epics) have not been written yet. Step 5d below promotes it to `ready` once Epics exist.
+
+#### 5b — Break the feature into Epics
+
+Use the same Epic-decomposition rules as `/bees-plan-from-specs` Step 3:
+
+- **Every Epic must leave the codebase green.** All existing tests must still pass after the Epic is complete. Non-negotiable.
+- **One Epic = one outcome.** A single coherent user- or system-visible capability. Avoid Epics organized by system layer (no "Database Epic", "API Epic", "UI Epic", "Documentation Epic", "Testing Epic"). Prefer capability slices like "User performs action and receives feedback" or "System handles error and retry behavior".
+- **Decompose vertically by capability.** Each Epic delivers end-to-end behavior and is independently testable and demo-able.
+  - *Exception — technical refactors.* For pure infrastructure or refactor work, strict vertical slicing may not apply. Pure-tech Epics are allowed provided they leave the codebase green. Go vertical as soon as possible: after foundational Epics, each subsequent Epic should add a demonstrable capability. Bundle infrastructure each slice needs into that slice rather than separating into layer Epics.
+- **Granularity.** Make Epics as granular as possible while preserving a single coherent outcome and a vertical slice per Epic. It's OK to have many Epics — each one should be small enough to celebrate when it lands.
+- **Acceptance Criteria.** Each Epic needs concrete, testable acceptance criteria. Either describe the artifact the user can interact with and the steps they take to validate, or describe how the agent itself will demonstrate completion. "Server starts on http://localhost:8000" is good; "Server is available for use" is bad.
+
+**Epic Viability Checklist** (apply to each Epic before creating it):
+
+- [ ] No standalone testing Epic — testing is folded into the Epic where the work is done.
+- [ ] No standalone documentation Epic — documentation is folded into the Epic where the work is done.
+- [ ] Epics that change config, behavior, or deployment include README/customer-facing doc updates in their scope (not deferred to a separate doc Epic).
+
+**Anti-patterns to detect:**
+
+- Epic chain where intermediate states are untestable.
+- Mixing pervasive refactor with feature work in one Epic.
+
+If the plan is small, one Epic is fine — don't pad the plan with more.
+
+#### 5c — Present Epics for review
+
+Before creating any Epic tickets, present the full proposed Epic list to the user as markdown — title, description, dependencies for each. Use `AskUserQuestion` with options:
+
+- "Yes, create them"
+- "Modify the Epics"
+- "Cancel"
+
+Wait for approval. If the user picks "Modify the Epics", iterate in prose until they approve, then re-prompt with `AskUserQuestion`.
+
+#### 5d — Create Epic tickets and wire dependencies
+
+Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body, pass path, remove temp file). **Do not pass `--egg` on Epics** — the bees CLI accepts `--egg` only on top-level Bees and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's egg, not the Epic's.
 
 ```bash
 # POSIX (bash / zsh):
@@ -244,7 +297,20 @@ bees create-ticket `
   --body-file <path>
 ```
 
-After all Epics exist, set `up_dependencies` between them where blocking relationships apply, then mark the Plan Bee `ready` (its children — the Epics — are now written, even though the Epics' children — Tasks — are not).
+After all Epics exist, analyze blocking relationships and set `up_dependencies` between them. Common patterns:
+
+- Infrastructure blocks features (backend API must exist before features that use it).
+- Foundation blocks UI (data models/services block UI components that display them).
+- Data input blocks processing (upload/import blocks features that process the data).
+- Auth blocks protected features.
+
+For each Epic, ask: "What must be completed before this Epic can be worked on?"
+
+Once dependencies are wired, promote the Plan Bee from `drafted` to `ready` (its children — Epics — are now written, even though the Epics' children — Tasks — are not).
+
+#### 5e — Report
+
+Output a markdown summary listing the Plan Bee, each Epic (ID, title, status, dependencies), and any dependency relationships created.
 
 ### 6. Offer Next Steps
 
