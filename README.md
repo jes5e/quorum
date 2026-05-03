@@ -92,7 +92,12 @@ Copy-Item -Recurse $HOME\projects\bees-workflow\agents\* C:\path\to\your\repo\.c
 
 ### After install
 
-If Claude Code is already running, restart it so the new subagent types from `~/.claude/agents/` (Option A) or `<repo>/.claude/agents/` (Option B) get registered. Custom subagents are loaded at session start; mid-session installs are not hot-reloaded, and the bees-execute / bees-fix-issue / bees-breakdown-epic skills will fail with `Agent type 'engineer' not found` (or similar) until you restart.
+If Claude Code is already running when you copy the files, the new subagent types from `~/.claude/agents/` (Option A) or `<repo>/.claude/agents/` (Option B) won't be registered yet — custom subagents are loaded at session start. You have two options to register them:
+
+- **Run `/agents` in the session** — opens Claude Code's agents UI and hot-reloads the registry. Faster than a full restart; preserves the current session.
+- **Restart Claude Code** — quit and relaunch. Always works.
+
+Either way, until one of these is done, the bees-execute / bees-fix-issue / bees-breakdown-epic skills will fail with `Agent type 'engineer' not found` (or similar).
 
 In any repo where you want to use the workflow, run:
 
