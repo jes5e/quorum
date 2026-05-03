@@ -142,6 +142,26 @@ report: [title, ticket_status, up_dependencies]'
 
 **Cross-platform note.** The single-quoted YAML literal works identically in POSIX bash/zsh and Windows PowerShell single-quoted strings — embedded `$variables` are not expanded by either shell inside single quotes. So query recipes do not need OS-paired variants; one block covers both. (Exception: if a recipe interpolates a shell variable for the ticket ID, the interpolation syntax is shell-specific and the recipe needs OS-paired variants like every other shell snippet.)
 
+## Updating ticket bodies
+
+`bees update-ticket --body <markdown>` and `bees update-ticket --body-file <path>` both **hard-cap the new body at 10000 characters**. If the new body would exceed the cap, the command fails — there is no truncation, no merge, no soft warning.
+
+For bodies that already exceed (or will exceed) 10000 characters, the right command is:
+
+```bash
+bees append-ticket-body --ticket-id <id> --chunk-file <path>
+```
+
+`append-ticket-body` is append-only by design: the existing body is preserved byte-for-byte and the chunk lands as one logical addition. The bees CLI itself prescribes this flow — quoting `bees update-ticket --help`: *"Capped at 10000 characters; for larger bodies, set the body to the first 10000-character chunk and use `bees append-ticket-body` to write the rest."*
+
+**Prose rule for skills that author body updates.** When skill prose tells Claude to "update the ticket body", "append a section to the Epic body", or "persist the finding to the ticket", ship the right command for the size class:
+
+- **Small new body (≤10000 chars total):** `bees update-ticket --ids <id> --body-file <path>` — one invocation, replaces the body wholesale.
+- **Append to a body that may exceed the cap:** `bees append-ticket-body --ticket-id <id> --chunk-file <path>` — append-only, no cap risk on the cumulative size.
+- **Unknown size at write time:** prefer `append-ticket-body` for append-shaped operations even when the current body fits — the future body grows, the chunk does not, and the cap was originally tuned around the expected delta size, not the cumulative ticket length.
+
+Skill prose that says "single `bees update-ticket --body-file` invocation" is wrong if the body is append-shaped or large. The Subtask author should reach for `append-ticket-body` instead and document the choice in skill prose. (Surfaced by `b.5tm` Task ek probe-results persistence — Subtask wording specified `update-ticket --body-file` but the cumulative body would have exceeded the cap, forcing the engineer to deviate to `append-ticket-body` to honor the byte-for-byte preservation contract.)
+
 ## The Scoped-marker contract
 
 A Plan Bee authored via `/bees-plan-from-specs --feature "<title>"` carries a single line in its body of the form:
