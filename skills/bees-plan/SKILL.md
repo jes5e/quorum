@@ -49,21 +49,21 @@ Research (incorporating the user's context):
 - Read CLAUDE.md to understand the project structure and conventions
 - Read relevant source code to understand the current state
 - If the user pointed to reference implementations, read those
-- Check if there's existing work that overlaps. Query both hives and scan returned titles for related scope:
+- Check if there's existing work that overlaps. Query both hives via the bundled dispatcher (resolved at `<this skill's base directory>/../_shared/scripts/ticket_backend.py` — base directory is shown in the skill invocation header at session start) and scan returned titles for related scope:
 
   ```bash
   # All Plan Bees in the plans hive (any status — overlap may be planned, in-progress, or done):
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [type=bee, hive=plans]
   report: [title, ticket_status]'
 
   # All open issues:
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [type=bee, hive=issues, status=open]
   report: [title]'
   ```
 
-  If overlap looks meaningful, `bees show-ticket --ids <id>` on the candidate(s) and discuss with the user whether to extend an existing Bee, depend on it, or proceed with a separate Plan.
+  If overlap looks meaningful, run the dispatcher's `show` verb on the candidate(s) (`python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <id>`) and discuss with the user whether to extend an existing Bee, depend on it, or proceed with a separate Plan.
 - If PRD/SDD exist, read them to understand if this feature relates to existing requirements
 
 Then ask the following clarifying questions as a numbered prose list in a single message — no `AskUserQuestion` call; these are open-ended and the user will answer them in their reply:
@@ -193,11 +193,11 @@ After it returns, skip directly to Step 7 (commit) below — Step 6 (Offer Next 
 
 **Path B — no PRD/SDD exist for this feature (the Plan Bee body is the authoritative spec).**
 
-Create the Plan Bee directly in the Plans hive with `egg=null`. Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the temp file after the bees command exits.
+Create the Plan Bee directly in the Plans hive with `egg=null`. Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to the dispatcher's `create` verb. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the temp file after the dispatcher command exits.
 
 ```bash
 # POSIX (bash / zsh):
-bees create-ticket \
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" create \
   --ticket-type bee \
   --hive plans \
   --status ready \
@@ -206,7 +206,7 @@ bees create-ticket \
   # no --egg flag; egg stays null
 
 # Windows (PowerShell):
-bees create-ticket `
+python "<this skill's base directory>\..\_shared\scripts\ticket_backend.py" create `
   --ticket-type bee `
   --hive plans `
   --status ready `
@@ -226,7 +226,7 @@ Create each Epic as a child of the Plan Bee. Use the same temp-file + `--body-fi
 
 ```bash
 # POSIX (bash / zsh):
-bees create-ticket \
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" create \
   --ticket-type t1 \
   --hive plans \
   --parent <bee-id> \
@@ -235,7 +235,7 @@ bees create-ticket \
   --body-file <path>
 
 # Windows (PowerShell):
-bees create-ticket `
+python "<this skill's base directory>\..\_shared\scripts\ticket_backend.py" create `
   --ticket-type t1 `
   --hive plans `
   --parent <bee-id> `
@@ -263,37 +263,26 @@ Note above the options: each downstream skill re-reads the Plan Bee, Epics, and 
 
 Stage and commit all changes — doc updates and the Plans hive's ticket files. **Do not hardcode the `.bees/plans/` path.** `/bees-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked a sibling path.
 
-Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only stage it if it does:
+Resolve the Plans hive path via the dispatcher's `list-spaces` verb. Run the verb as a single literal command and parse its JSON stdout in your reasoning — locate the entry whose `normalized_name` is `plans` and read its `path` field — rather than piping or redirecting in shell. Then run `git rev-parse --show-toplevel` separately to learn the repo root, and only stage the Plans hive path if it sits inside the repo. Stage `docs/` only if it was modified during this run.
 
 ```bash
-# POSIX (bash / zsh):
-plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
-repo_root=$(git rev-parse --show-toplevel)
-git_add_args="docs/"
-case "$plans_path" in
-  "$repo_root"|"$repo_root"/*) git_add_args="$git_add_args $plans_path" ;;
-esac
-git add $git_add_args
+# POSIX (bash / zsh) and Windows (PowerShell) — single command:
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" list-spaces
+```
+
+```bash
+# POSIX (bash / zsh) — line continuations:
+git add docs/ <plans_path_if_in_repo>
 git commit -m "Plan feature: <title>"
 ```
 
 ```powershell
-# Windows (PowerShell):
-$plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
-$repoRoot = git rev-parse --show-toplevel
-# Normalize separators — git rev-parse returns forward slashes on Windows;
-# bees list-hives may return backslashes. Compare both sides on the same form.
-$plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
-$repoNorm = $repoRoot.Replace('\','/')
-$addArgs = @('docs/')
-if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
-  $addArgs += $plansPath
-}
-git add @addArgs
+# Windows (PowerShell) — line continuations:
+git add docs/ <plans_path_if_in_repo>
 git commit -m "Plan feature: <title>"
 ```
 
-If the Plans hive lives outside the repo, commit the doc/ changes here and remind the user that the Plan Bee ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself). If `docs/` was not modified during this run, drop it from the `add` list as well.
+When comparing the Plans hive path to the repo root, normalize separators — `git rev-parse --show-toplevel` returns forward slashes on Windows while the dispatcher passes through whatever bees recorded (which may be backslashes); compare both sides on the same form before deciding whether to stage. If the Plans hive lives outside the repo, commit the doc/ changes here and remind the user that the Plan Bee ticket is stored separately (the dispatcher persists it through bees; no git tracking needed for the ticket file itself). If `docs/` was not modified during this run, drop it from the `add` list as well.
 
 ### Important Notes
 

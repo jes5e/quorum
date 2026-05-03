@@ -23,7 +23,7 @@ If the caller does not provide both paths, ask in prose for the missing path(s) 
 
 **Preconditions** — hard-fail with `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
-- The Plans hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `plans`). The Plans hive is a **top-level** hive (not nested under Ideas) with child tiers `t1` (Epic / Epics), `t2` (Task / Tasks), `t3` (Subtask / Subtasks).
+- The Plans hive is colonized for this repo (the dispatcher's `list-spaces` verb — `python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" list-spaces`, base directory is shown in the skill invocation header at session start — must return an entry whose `normalized_name` is `plans`). The Plans hive is a **top-level** hive (not nested under Ideas) with child tiers `t1` (Epic / Epics), `t2` (Task / Tasks), `t3` (Subtask / Subtasks).
 - CLAUDE.md contains a `## Documentation Locations` section. Step 1 below reads architecture-doc paths from this section to understand existing design constraints.
 
 Note: bees-plan-from-specs does **not** require CLAUDE.md `## Build Commands`. bees-plan-from-specs creates Plan Bees and Epics — it does not run build/test/lint/format commands. The Build Commands section is a prerequisite for `/bees-execute` and `/bees-fix-issue` when they execute the work, not for planning.
@@ -128,13 +128,13 @@ When all Epics are complete, present them to the user for final review.
 
 ### 4. Create Shell Epics in Plan Bee
 
-#### Creating Epics with the bees CLI
+#### Creating Epics through the dispatcher
 
-Create T1 type child tickets in the Plan Bee with status `drafted` (their children — Tasks — have not been written yet).
+Create T1 type child tickets in the Plan Bee with status `drafted` (their children — Tasks — have not been written yet). Use the bundled dispatcher's `create` verb (`python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" create ...`, base directory is shown in the skill invocation header at session start) — direct `bees ...` shell-outs are forbidden in skill prose.
 
-**Author each Epic body to a temp file and pass `--body-file <path>` to `bees create-ticket`.** Do not inline a multi-paragraph Epic body as a `--body "..."` argument — bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting. Use the `Write` tool to author the body to a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), pass the path via `--body-file`, then remove the temp file after the bees command exits. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+**Author each Epic body to a temp file and pass `--body-file <path>` to the dispatcher's `create` verb.** Do not inline a multi-paragraph Epic body as a `--body "..."` argument — bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting. Use the `Write` tool to author the body to a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), pass the path via `--body-file`, then remove the temp file after the dispatcher command exits. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
 
-**Do not pass `--egg` when creating Epics.** The bees CLI accepts `--egg` only on top-level Bees, not on child-tier tickets (`bees create-ticket --help`: "Only supported on bee (top-level) tickets"). Trying to set it on an Epic hard-errors. The egg lives on the parent Plan Bee — downstream skills (bees-breakdown-epic, bees-execute, bees-fix-issue) trace Epics back to the PRD/SDD by reading the parent's egg, not the Epic's.
+**Do not pass `--egg` when creating Epics.** The underlying ticket backend accepts `--egg` only on top-level Bees, not on child-tier tickets ("Only supported on bee (top-level) tickets"). Trying to set it on an Epic hard-errors. The egg lives on the parent Plan Bee — downstream skills (bees-breakdown-epic, bees-execute, bees-fix-issue) trace Epics back to the PRD/SDD by reading the parent's egg, not the Epic's.
 
 **NOTE**: If the plan is small, there may only be one Epic. You don't need to make multiple.
 

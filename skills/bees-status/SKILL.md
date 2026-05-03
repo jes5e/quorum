@@ -23,25 +23,27 @@ If `/bees-worktree-add`, `/bees-worktree-rm`, or `/bees-fleet` are installed (th
 
 ## How to Determine Current State
 
-Run these queries in parallel to assess progress:
+Run these queries in parallel to assess progress. All four calls go through the bundled ticket-backend dispatcher (`<base-dir>/../_shared/scripts/ticket_backend.py`) using its `list-spaces` and `query` verbs. See the dispatcher's module docstring for argv shape and JSON output shape; skill prose does not restate those here. Replace `<base-dir>` with the literal path from this skill's invocation header. Each invocation is a single `python3` call that works identically on POSIX bash/zsh and Windows PowerShell — one labeled block, no OS-paired variants.
 
 ```bash
-# 1. Check if hives exist
-bees list-hives
+# POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):
+
+# 1. Check if hives exist (list-spaces returns the same `hives` JSON key on the bees backend).
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" list-spaces
 
 # 2. All Plan Bees
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=plans]
 report: [title, ticket_status, children]'
 
 # 3. All Epics under Plan Bees
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=plans]
   - [children]
 report: [title, ticket_status, up_dependencies]'
 
 # 4. All Issue Bees
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=issues]
 report: [title, ticket_status]'
 ```

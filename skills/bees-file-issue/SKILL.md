@@ -33,7 +33,7 @@ The user can call this skill in several ways:
 
 Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
-- The Issues hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `issues`).
+- The Issues hive is colonized for this repo (the dispatcher's `list-spaces` verb — `python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" list-spaces`, base directory is shown in the skill invocation header at session start — must return an entry whose `normalized_name` is `issues`).
 - CLAUDE.md contains a `## Documentation Locations` section. Step 4 (doc-update check) reads architecture/customer-doc paths from this section by exact key.
 
 Note: bees-file-issue does **not** require CLAUDE.md `## Build Commands`. bees-file-issue only files a ticket — it doesn't run any build/test/lint/format command. The Build Commands section is needed by `/bees-fix-issue` and `/bees-execute` when they actually execute the work, not at filing time.
@@ -53,10 +53,10 @@ If called with arguments, use those as the description.
 
 If the description references specific code, files, or behavior:
 - Read the relevant source files to understand the current state
-- Check if there's already an issue ticket for the same problem. Query the open issues in the issues hive and scan returned titles for overlap with the user's description:
+- Check if there's already an issue ticket for the same problem. Query the open issues in the issues hive via the bundled dispatcher (resolved at `<this skill's base directory>/../_shared/scripts/ticket_backend.py` — base directory is shown in the skill invocation header at session start) and scan returned titles for overlap with the user's description:
 
   ```bash
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [type=bee, hive=issues, status=open]
   report: [title]'
   ```
@@ -65,15 +65,15 @@ If the description references specific code, files, or behavior:
 
 ### 3. Create the ticket
 
-Author the structured body to a temp file via the `Write` tool, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt regardless of the user's allowlist, and inlined markdown is also fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both problems. Status-only updates with no body (e.g. `bees update-ticket --ids <id> --status done`) and genuinely single-line bodies can stay on inline `--body`. Steps:
+Author the structured body to a temp file via the `Write` tool, then pass `--body-file <path>` to the dispatcher's `create` verb. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt regardless of the user's allowlist, and inlined markdown is also fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both problems. Status-only updates with no body (e.g. an `update --ids <id> --status done` invocation) and genuinely single-line bodies can stay on inline `--body`. Steps:
 
 1. Pick a temp path under the OS temp dir: `/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows.
 2. Use the `Write` tool to write the structured body to that path.
-3. Run the bees command (the file-flag carries no shell-quoting surface — only the line-continuation character differs between OSes):
+3. Run the dispatcher command (the file-flag carries no shell-quoting surface — only the line-continuation character differs between OSes):
 
    ```bash
    # POSIX (bash / zsh):
-   bees create-ticket \
+   python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" create \
      --ticket-type bee \
      --hive issues \
      --status open \
@@ -81,7 +81,7 @@ Author the structured body to a temp file via the `Write` tool, then pass `--bod
      --body-file <path>
 
    # Windows (PowerShell):
-   bees create-ticket `
+   python "<this skill's base directory>\..\_shared\scripts\ticket_backend.py" create `
      --ticket-type bee `
      --hive issues `
      --status open `
@@ -89,7 +89,7 @@ Author the structured body to a temp file via the `Write` tool, then pass `--bod
      --body-file <path>
    ```
 
-4. Remove the temp file after the bees command exits.
+4. Remove the temp file after the dispatcher command exits.
 
 **Title guidelines:**
 - Under 80 characters
@@ -130,37 +130,26 @@ If the docs describe the buggy behavior as correct (or are missing information t
 
 Stage and commit the ticket file and any doc changes. **Do not hardcode the `.bees/issues/` path.** `/bees-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/issues/` silently stages nothing when the user picked a sibling path.
 
-Resolve the Issues hive path via `bees list-hives`, check whether it lives inside the current git repo, and only stage it if it does:
+Resolve the Issues hive path via the dispatcher's `list-spaces` verb. Run the verb as a single literal command and parse its JSON stdout in your reasoning — locate the entry whose `normalized_name` is `issues` and read its `path` field — rather than piping or redirecting in shell. Then run `git rev-parse --show-toplevel` separately to learn the repo root, and only stage the Issues hive path if it sits inside the repo. Stage `docs/` only if it was modified during this run.
+
+```bash
+# POSIX (bash / zsh) and Windows (PowerShell) — single command:
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" list-spaces
+```
 
 ```bash
 # POSIX (bash / zsh):
-issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
-repo_root=$(git rev-parse --show-toplevel)
-git_add_args="docs/"
-case "$issues_path" in
-  "$repo_root"|"$repo_root"/*) git_add_args="$git_add_args $issues_path" ;;
-esac
-git add $git_add_args
+git add docs/ <issues_path_if_in_repo>
 git commit -m "File issue: <title>"
 ```
 
 ```powershell
 # Windows (PowerShell):
-$issuesPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
-$repoRoot = git rev-parse --show-toplevel
-# Normalize separators — git rev-parse returns forward slashes on Windows;
-# bees list-hives may return backslashes. Compare both sides on the same form.
-$issuesNorm = if ($issuesPath) { $issuesPath.Replace('\','/') } else { '' }
-$repoNorm = $repoRoot.Replace('\','/')
-$addArgs = @('docs/')
-if ($issuesNorm -and ($issuesNorm -eq $repoNorm -or $issuesNorm.StartsWith("$repoNorm/"))) {
-  $addArgs += $issuesPath
-}
-git add @addArgs
+git add docs/ <issues_path_if_in_repo>
 git commit -m "File issue: <title>"
 ```
 
-If the Issues hive lives outside the repo, commit the doc/ changes here and remind the user that the issue ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself). If `docs/` was not modified, drop it from the `add` list as well.
+When comparing the Issues hive path to the repo root, normalize separators — `git rev-parse --show-toplevel` returns forward slashes on Windows while the dispatcher passes through whatever bees recorded (which may be backslashes); compare both sides on the same form before deciding whether to stage. If the Issues hive lives outside the repo, commit the doc/ changes here and remind the user that the issue ticket is stored separately (the dispatcher persists it through bees; no git tracking needed for the ticket file itself). If `docs/` was not modified, drop it from the `add` list as well.
 
 ### 6. Report back
 

@@ -110,7 +110,7 @@ When a Plan Bee is authored via `/bees-plan` for a feature with no separate PRD/
 
 ## Querying tickets
 
-The bees CLI has no `ls`, `search`, `list-tickets`, or hive-scoped enumeration command — anything that smells like one is a guess. To enumerate or filter tickets (e.g., "what open issues exist?", "which Epics under this Bee are ready?"), use `bees execute-freeform-query --query-yaml '<yaml>'`. Recipes and the full filter/graph-stage vocabulary live in `docs/doc-writing-guide.md` `## Querying tickets`; consult it before composing a query rather than guessing subcommands.
+There is no `ls`, `search`, `list-tickets`, or hive-scoped enumeration command — anything that smells like one is a guess. To enumerate or filter tickets (e.g., "what open issues exist?", "which Epics under this Bee are ready?"), use the dispatcher's `query` verb (see `## Backend dispatcher` above). Recipes and the full filter/graph-stage vocabulary live in `docs/doc-writing-guide.md` `## Querying tickets`; consult it before composing a query rather than guessing verbs.
 
 ## Egg resolver
 

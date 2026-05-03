@@ -142,7 +142,7 @@ For each entry in `on_disk_hives`, branch on the hive name:
 
 **Canonical hives (`issues` and `plans`)** — apply the canonical defaults verbatim. The scope glob is the repo root with a trailing `/**`. The `--egg-resolver` path is `<bees-setup-base-dir>/scripts/file_list_resolver.py` (see *Egg Resolver* below for the same convention). Inline the literal at the call site — do not store it in a shell variable across snippets.
 
-**Before the first `bees colonize-hive` call**, verify the resolver script actually exists. A corrupted or partial install would otherwise register hives pointing at a non-existent resolver:
+**Before the first hive registration call**, verify the resolver script actually exists. A corrupted or partial install would otherwise register hives pointing at a non-existent resolver:
 
 ```bash
 # POSIX (bash / zsh):
@@ -154,28 +154,14 @@ test -f "<bees-setup-base-dir>/scripts/file_list_resolver.py" || { echo "file_li
 if (-not (Test-Path "<bees-setup-base-dir>\scripts\file_list_resolver.py")) { Write-Error "file_list_resolver.py not found at <bees-setup-base-dir>\scripts\file_list_resolver.py — bees-workflow install is incomplete. Fall through to the slow path (skip the fast path entirely) and tell the user to re-install per the README." ; exit 1 }
 ```
 
-Then run the per-hive registration:
+Then register each hive through the bundled ticket-backend dispatcher's `setup-spaces` composite verb. The dispatcher lives at `<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py`; see its module docstring for argv shape and JSON output shape — skill prose does not restate them here. `setup-spaces` colonizes the hive and configures status values (and child tiers, when supplied) in a single call. Each invocation is a single `python3` command that works identically on POSIX bash/zsh and Windows PowerShell — one labeled block per hive, no OS-paired variants.
 
 ```bash
-# POSIX (bash / zsh) — for each issues hive:
-bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
-bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
+# POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell) — for each issues hive:
+python3 "<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py" setup-spaces --hive issues --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py" --status-values '["open","done"]'
 
-# POSIX (bash / zsh) — for each plans hive:
-bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
-bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
-bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
-```
-
-```powershell
-# Windows (PowerShell) — for each issues hive:
-bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
-bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
-
-# Windows (PowerShell) — for each plans hive:
-bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
-bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
-bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
+# POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell) — for each plans hive:
+python3 "<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py" setup-spaces --hive plans --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py" --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}' --status-values '["drafted","ready","in_progress","done"]'
 ```
 
 **Unknown hive names** (anything other than `issues` or `plans`) — the canonical defaults do not apply. Do **not** silently re-register with assumed values. Walk the user through registration **inline** in the fast path (the slow path's *Hive Configuration* section is structured around colonizing *missing* hives — wrong shape here, since the on-disk path is already known and only the per-machine config bits are missing).
@@ -198,25 +184,21 @@ For each unknown hive, do this inline:
 
    Wait for the user's reply in the next turn.
 
-4. With the answers in hand, register the hive directly. Use the on-disk `<discovered-path>` from the detector output — do **not** re-prompt the user for it. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+4. With the answers in hand, register the hive through the dispatcher's `setup-spaces` verb. Use the on-disk `<discovered-path>` from the detector output — do **not** re-prompt the user for it. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header. The dispatcher's argv and JSON output shape live in its module docstring at `<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py`; skill prose does not restate them here. `setup-spaces` is a single `python3` invocation that works identically on POSIX bash/zsh and Windows PowerShell.
+
+   If the user gave child tiers as a JSON object (anything other than `none`), pass `--child-tiers`:
 
    ```bash
-   # POSIX (bash / zsh):
-   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
-   # If user gave child tiers as a JSON object (not "none"):
-   bees set-types --scope hive --hive <hive-name> --child-tiers '<user-supplied-json>'
-   bees set-status-values --scope hive --hive <hive-name> --status-values '<user-supplied-json>'
+   # POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):
+   python3 "<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py" setup-spaces --hive <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py" --child-tiers '<user-supplied-json>' --status-values '<user-supplied-json>'
    ```
 
-   ```powershell
-   # Windows (PowerShell):
-   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
-   # If user gave child tiers as a JSON object (not "none"):
-   bees set-types --scope hive --hive <hive-name> --child-tiers '<user-supplied-json>'
-   bees set-status-values --scope hive --hive <hive-name> --status-values '<user-supplied-json>'
-   ```
+   If the user replied `none` for child tiers, omit `--child-tiers`; `setup-spaces` then skips the tier-configuration step (matches the `issues` hive shape):
 
-   If the user replied `none` for child tiers, omit the `bees set-types` call entirely (matches the `issues` hive shape).
+   ```bash
+   # POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):
+   python3 "<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py" setup-spaces --hive <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py" --status-values '<user-supplied-json>'
+   ```
 
 #### Configure per-machine Claude Code settings (condensed prompt)
 
@@ -459,7 +441,7 @@ The skill invocation header at session start tells Claude where this skill lives
 Base directory for this skill: /Users/.../.claude/skills/bees-setup
 ```
 
-`bees-setup`'s own bundled scripts (`file_list_resolver.py`, `detect_fast_path.py`) live at `<this skill's base directory>/scripts/<name>.py`. The `file_list_resolver.py` path is the absolute path passed to `bees colonize-hive --egg-resolver` below. No CLAUDE.md section is written for any helper — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` computes `<bees-execute base>/scripts/force_clean_team.py` and `<bees-execute base>/scripts/check_agent_teams.py`; `bees-fix-issue` computes `<bees-fix-issue base>/../bees-execute/scripts/force_clean_team.py` and `<bees-fix-issue base>/../bees-execute/scripts/check_agent_teams.py`).
+`bees-setup`'s own bundled scripts (`file_list_resolver.py`, `detect_fast_path.py`) live at `<this skill's base directory>/scripts/<name>.py`. The `file_list_resolver.py` path is the absolute path passed to the dispatcher's `setup-spaces --egg-resolver` flag below. No CLAUDE.md section is written for any helper — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` computes `<bees-execute base>/scripts/force_clean_team.py` and `<bees-execute base>/scripts/check_agent_teams.py`; `bees-fix-issue` computes `<bees-fix-issue base>/../bees-execute/scripts/force_clean_team.py` and `<bees-fix-issue base>/../bees-execute/scripts/check_agent_teams.py`).
 
 **Migration.** Earlier versions of `bees-setup` wrote a `## Skill Paths` section to CLAUDE.md containing absolute machine-local paths. That section was removed because committing per-machine paths to a tracked file broke multi-engineer collaboration. If the target repo's CLAUDE.md still has a `## Skill Paths` section from an earlier setup run, delete it as part of this run — the section is no longer used by any skill, and leaving it behind keeps the broken paths in git history.
 
@@ -550,7 +532,7 @@ If the script printed "CLAUDE.md does not exist yet — nothing to migrate." or 
 
 The egg resolver lets a Plan Bee's `egg` field point at one or more source documents on disk (PRD, SDD, etc.). Downstream skills (`/bees-execute`, `/bees-breakdown-epic`) read these files as the authoritative source for the work.
 
-When colonizing hives, pass the resolved path to `file_list_resolver.py` as the `--egg-resolver` flag to `bees colonize-hive`. The path is `<this skill's base directory>/scripts/file_list_resolver.py` (where "this skill" is `bees-setup` — see the section above). The bees CLI persists this value in `~/.bees/config.json`, which is per-user and not committed; each new contributor on a different machine re-runs `/bees-setup` once to register hives on their machine.
+When configuring hives through the dispatcher's `setup-spaces` verb, pass the resolved path to `file_list_resolver.py` as the `--egg-resolver` flag. The path is `<this skill's base directory>/scripts/file_list_resolver.py` (where "this skill" is `bees-setup` — see the section above). The backend persists this value in `~/.bees/config.json`, which is per-user and not committed; each new contributor on a different machine re-runs `/bees-setup` once to register hives on their machine.
 
 If hives already exist and have a stale `egg_resolver` from an earlier installation (different home directory, install location moved, etc.), update their configuration to point to the current resolved path using the same Python one-liner pattern shown below. The bees CLI user config file lives at:
 
@@ -604,21 +586,31 @@ print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
 python -c $pyScript "$env:USERPROFILE\.bees\config.json" "<hive-name>" "<bees-setup-base-dir>\scripts\file_list_resolver.py"
 ```
 
-Verify with a `bees show-ticket` on a Plan Bee that has eggs.
+Verify with a dispatcher `show` invocation on a Plan Bee that has eggs. The dispatcher is at `<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py`; see its module docstring for the `show` verb's argv shape and JSON output shape — skill prose does not restate them here. The invocation is a single `python3` command that works identically on POSIX and PowerShell:
+
+```bash
+# POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):
+python3 "<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py" show --ids <plan-bee-id>
+```
 
 ### Hive Configuration
 
-All bees CLI commands must be run from inside the target repo directory.
+All ticket-backend interactions in this section route through the bundled dispatcher (`<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py`). See the dispatcher's module docstring for argv shape and JSON output shape of each verb — skill prose does not restate them here.
 
 #### Scope requirement
 
-When calling `bees colonize-hive`, **always pass an explicit scope** specific to the target project. The default scope overlaps with other projects' hives and bees will reject the creation if any other project has a hive with the same name.
+When configuring a hive through the dispatcher's `setup-spaces` verb, **always pass an explicit scope** specific to the target project. The default scope overlaps with other projects' hives and the backend will reject the creation if any other project has a hive with the same name.
 
 Pick the narrowest scope glob that covers the entire project directory tree — typically the project root with a trailing `/**`.
 
 #### Create or validate
 
-Check for the existence of the above hives using `bees list-hives` and validate their configs with `bees get-types` and `bees get-status-values`.
+Check for the existence of the above hives using the dispatcher's `list-spaces` verb. The bees backend returns each hive's child-tier and status-value configuration inline in the response (under the `hives` JSON key), so the same call covers both existence and config validation; no separate lookup verbs are needed.
+
+```bash
+# POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):
+python3 "<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py" list-spaces
+```
 
 If any hives are missing:
 - **Use `AskUserQuestion` to ask which location strategy to use** for the missing hive(s). This is a genuine multi-choice prompt — the user is picking a strategy, not typing a path; the actual paths are derived from the strategy. Offer two options (the auto-appended `Type something.` slot already covers users who want a fully custom path — do not add a redundant "Other" option):
@@ -626,24 +618,16 @@ If any hives are missing:
   - **Sibling-to-repo** — `<project-parent>/<repo>-issues` and `<project-parent>/<repo>-plans`. Right when hives should be gitignored or stay per-machine.
 
   If both hives are missing, ask once and apply the chosen strategy to both. If only one is missing, scope the question to just that hive.
-- Once the user chooses, create the hive using the bees CLI. Pass the literal absolute path to `file_list_resolver.py` (the one verified in the *Egg Resolver* section above) as the `--egg-resolver` value so the hive can resolve eggs out of the box. Inline the literal path — do not reference a shell variable like `$RESOLVER`, since each Bash tool invocation is a fresh shell and the variable will be empty here. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+- Once the user chooses, create and configure the hive in a single dispatcher `setup-spaces` call. Pass the literal absolute path to `file_list_resolver.py` (the one verified in the *Egg Resolver* section above) as the `--egg-resolver` value so the hive can resolve eggs out of the box. Inline the literal path — do not reference a shell variable like `$RESOLVER`, since each Bash tool invocation is a fresh shell and the variable will be empty here. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header. Pass `--child-tiers` only when the hive has child tiers (omit it for a leaf-only hive like `issues`):
+
   ```bash
-  # POSIX (bash / zsh):
-  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
-  ```
-  ```powershell
-  # Windows (PowerShell):
-  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
-  ```
-- After colonization, set child tiers and status values:
-  ```bash
-  bees set-types --scope hive --hive <name> --child-tiers '<json>'
-  bees set-status-values --scope hive --hive <name> --status-values '<json>'
+  # POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):
+  python3 "<bees-setup-base-dir>/../_shared/scripts/ticket_backend.py" setup-spaces --hive <name> --path <path> --scope "<scope>" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py" --child-tiers '<json>' --status-values '<json>'
   ```
 
 If a hive exists:
-- Validate its child tiers and status values.
-- If they differ from above, ask user if you may change them.
+- Validate its child tiers and status values from the `list-spaces` response above.
+- If they differ from the canonical defaults, ask the user if you may change them. To re-apply, run `setup-spaces` again with the corrected `--child-tiers` and `--status-values` JSON; the dispatcher's bees backend updates the existing hive in place.
 
 **Important:** This workflow has no Ideas hive. If the target repo already has an Ideas hive from a prior setup, do not remove it — but note that bees-workflow skills will not use it.
 

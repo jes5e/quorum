@@ -27,9 +27,9 @@ The core implementation-shaping role (the team-lead — you) always uses **Opus*
 
 **If caller provides a Bee ID**: Use the Bee ID to find workable Epics — see the "Once you have a Bee ID" recipe below.
 
-**If caller provides no arguments**: Search for ready Plan Bees in the current repo by querying the Plans hive:
+**If caller provides no arguments**: Search for ready Plan Bees in the current repo by querying the Plans hive via the bundled dispatcher (resolved at `<this skill's base directory>/../_shared/scripts/ticket_backend.py` — base directory is shown in the skill invocation header at session start):
 ```bash
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=plans, status=ready]
 report: [title]'
 ```
@@ -38,7 +38,7 @@ If exactly one Bee is found, use it. If multiple, use `AskUserQuestion` to let t
 **Once you have a Bee ID**: Find Epic children of that Bee in the `drafted` state — those are Epics that are written but whose children (Tasks) have not been written yet:
 
 ```bash
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [parent=<bee-id>, type=t1, status=drafted]
 report: [title, up_dependencies]'
 ```
@@ -60,7 +60,7 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
 - Read the parent Bee
 - Read the egg source material linked in the parent Bee. **If the egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Plan Bee body itself is the authoritative scope document — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
 - Identify what implementation work is needed as a list of Tasks.
-- Find any Epics this Epic depends on (check `up_dependencies` field) and use `bees show-ticket --ids <id>` to read them
+- Find any Epics this Epic depends on (check `up_dependencies` field) and use the dispatcher's `show` verb (`python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <id>`) to read them
   - These Epics describe foundational work that will be complete before this Epic you are working on is done
   - So presume that foundational work is done and make a plan to build on top of it
 - Check for sibling overlap: 
@@ -127,14 +127,14 @@ Always spawn the Product Manager.
 
 **IMPORTANT**: You do not break Tasks into Subtasks. This is the job of the Team.
 
-**CRITICAL — Subagent permissions**: Spawn ALL team members with `mode: "plan"`. Team members are read-only researchers. They must never create, update, or delete tickets. Only YOU (the team lead) run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
+**CRITICAL — Subagent permissions**: Spawn ALL team members with `mode: "plan"`. Team members are read-only researchers. They must never create, update, or delete tickets. Only YOU (the team lead) run the dispatcher's `create`, `update`, or any other write verb.
 
-**Authoring Task and Subtask bodies**: Task and Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the file after the bees command exits. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+**Authoring Task and Subtask bodies**: Task and Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every dispatcher `create` invocation you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to the dispatcher. Pick a temp path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the file after the dispatcher command exits. Status-only updates and genuinely single-line bodies can stay on inline `--body`. The dispatcher is resolved at `<this skill's base directory>/../_shared/scripts/ticket_backend.py` — base directory is shown in the skill invocation header at session start.
 
 When spawning team members, include the following restriction in each teammate's spawn prompt:
 
 ```prompt
-You are a READ-ONLY researcher. You must NEVER run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
+You are a READ-ONLY researcher. You must NEVER run any dispatcher write verb (`create`, `update`, etc.) and you must never shell out to `bees ...` directly.
 Your job is to research the codebase and report your proposed subtasks back via SendMessage as text.
 Only the team lead creates tickets.
 ```

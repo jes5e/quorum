@@ -17,7 +17,7 @@ The user can call this skill in four ways:
 Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
 - `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"` in either `~/.claude/settings.json` or the shell environment. The skill spawns a team unconditionally; without Agent Teams enabled, team-creation tools are unavailable and the skill cannot proceed.
-- The Issues hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `issues`).
+- The Issues hive is colonized for this repo (the dispatcher's `list-spaces` verb — `python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" list-spaces`, base directory is shown in the skill invocation header at session start — must return an entry whose `normalized_name` is `issues`).
 - CLAUDE.md contains a `## Documentation Locations` section. The PM and Doc Writer roles read architecture/customer-doc paths from this section by exact key.
 - CLAUDE.md contains a `## Build Commands` section with all five required keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`. The Engineer reads compile/format/lint/test commands from this section by exact key.
 
@@ -50,12 +50,12 @@ Parse the argument string. Split on any run of commas and/or whitespace; discard
 
 Notes for list mode:
 - `/bees-fix-issue b.cnb b.sgq b.xet`, `/bees-fix-issue b.cnb,b.sgq,b.xet`, and `/bees-fix-issue b.cnb, b.sgq  b.xet` all parse to the same three-ID list.
-- Up-front validation: before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). If *no* IDs are valid, exit with an error.
+- Up-front validation: before starting any fixes, run the dispatcher's `show` verb on the full list (`python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <id1> <id2> ...`). If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). If *no* IDs are valid, exit with an error.
 - Between issues, follow the same team-lifecycle cleanup as `all` mode.
 
 To query open issues (used only in no-args and `all` modes — list mode uses the user's explicit list instead):
 ```bash
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=issues, status=open]
 report: [title]'
 ```
@@ -98,7 +98,7 @@ In the question, always state:
 ### 2. Validate Issue
 
 ```bash
-bees show-ticket --ids "<issue-id>"
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids "<issue-id>"
 ```
 
 Check:
@@ -109,7 +109,7 @@ Check:
 
 ```bash
 # After reading the issue, batch-look-up its up_dependencies' statuses:
-bees show-ticket --ids <dep-id-1> <dep-id-2> <...>
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <dep-id-1> <dep-id-2> <...>
 ```
 
 For each up_dependency, check the returned `ticket_status`. The issue is unblocked only if all its `up_dependencies` are in `done` status. An issue with no `up_dependencies` is unblocked by default.
@@ -179,10 +179,10 @@ Before sending any `task_assignment` (or equivalent "start working on the fix" /
 
 The two sources answer different questions:
 
-- **bees ticket status** — "is the work already finished?" The bees ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`):
+- **bees ticket status** — "is the work already finished?" The ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) through the dispatcher's `query` verb:
 
   ```bash
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [id=<issue-id>]
   report: [title, ticket_status]'
   ```
@@ -198,10 +198,10 @@ Otherwise dispatch the assignment.
 
 ##### Quote the ticket body verbatim
 
-The `task_assignment` message must embed the issue body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the issue via:
+The `task_assignment` message must embed the issue body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the issue via the dispatcher's `show` verb:
 
 ```bash
-bees show-ticket --ids <issue-id>
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <issue-id>
 ```
 
 Embed the returned body block in the assignment message as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. If you must add framing prose around the quoted body (e.g., "your gating precondition is met — start now"), keep it strictly outside the quoted block.
@@ -385,14 +385,15 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 
 1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when bees-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Step 7.3). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
 
-2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this session, so the prompt must be self-contained. Starting skeleton (substitute `<pre-session-sha>` and the issue ID list before sending):
+2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this session, so the prompt must be self-contained. Substitute `<pre-session-sha>`, the issue ID list, and `<dispatcher-path>` (the absolute path to `<this skill's base directory>/../_shared/scripts/ticket_backend.py`, resolved at session start from the skill invocation header) before sending:
 
    ```
    You are an independent reviewer for a bees-workflow fix that was just shipped.
 
    Scope: review the diff `git diff <pre-session-sha>..HEAD` (compute it
    yourself via git) against the issue body, or bodies in batch mode — read
-   each via `bees show-ticket --ids <id>`. Issue IDs in this session:
+   each via the bundled dispatcher with the `show` verb:
+   `python3 "<dispatcher-path>" show --ids <id>`. Issue IDs in this session:
    <issue-id-1> <issue-id-2> ...
    The orchestrating team-lead has finished the work — your job is to give it a
    fresh-eyes review with no context of how the work was done.

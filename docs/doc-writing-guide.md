@@ -42,6 +42,12 @@ which bees
 Get-Command bees -ErrorAction SilentlyContinue
 ```
 
+**Dispatcher invocations are a single labeled block, not a paired pair.** Calls to the bundled ticket-backend dispatcher (`python3 "<base-dir>/../_shared/scripts/ticket_backend.py" <verb> ...`) ship as one block covering both shells. Rationale: `python3`, the path-quoting form, and any single-quoted YAML or JSON literal embedded in the argv all behave identically on POSIX bash/zsh and Windows PowerShell, so a paired pair would just duplicate the same text. The OS comment-label requirement still applies — label the snippet for both shells in one comment line above the block (e.g., `# POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):`). The change is "one block, dual-OS label", not "no label at all".
+
+The shell-variable-interpolation exception still applies. If a dispatcher recipe interpolates a shell variable (e.g., a ticket ID stored in `$ID` or `$env:ID`), the interpolation syntax is shell-specific and the recipe needs OS-paired variants like every other shell snippet. This is the same caveat called out in `## Querying tickets`'s cross-platform note.
+
+Non-dispatcher snippets are unchanged: paired POSIX bash + PowerShell variants are still required, and there is still no bash-only fallback.
+
 Rules:
 
 - Always label the OS in a comment line above the snippet, even if the command happens to work in both shells. Future readers shouldn't have to guess intent.
@@ -67,17 +73,21 @@ These keys are a string contract. Don't rename them in any skill — every other
 
 ## Querying tickets
 
-Whenever a skill needs to find tickets in a hive — list open issues, find an Epic's children, trace a child up to its parent, etc. — the verb is always:
+Whenever a skill needs to find tickets — list open issues, find an Epic's children, trace a child up to its parent, etc. — the verb is always the bundled ticket-backend dispatcher's `query` verb:
 
 ```bash
-bees execute-freeform-query --query-yaml '<yaml>'
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml '<yaml>'
 ```
 
-The bees CLI does not have a `list-tickets` command, a `search` command, or a hive-scoped enumeration command. Anything that smells like one is a guess; verify with `bees execute-freeform-query --help` before writing a new recipe.
+`<base-dir>` is the calling skill's own base directory (which Claude Code provides in the skill invocation header). The `<base>/../<sibling>/scripts/<name>.py` shape is the same sibling-resolution convention `## The lookup-key pattern` already documents — no absolute paths in skill prose, no per-machine breakage.
 
-**Prose rule.** When a skill tells Claude to "find", "search", "list", or "look up" tickets, ship the concrete recipe inline at that point. Vague prose ("search the issues hive for a duplicate") forces the agent to invent a CLI verb and is the same anti-pattern CONTRIBUTING.md flags under "Don't replace concrete shell snippets with vague prose."
+The dispatcher is the **only sanctioned enumeration entrypoint** for skill prose. Direct `bees ...` invocations (including `bees execute-freeform-query`) are forbidden in `SKILL.md` files and helper scripts under `skills/<name>/scripts/` — the project-wide rule is in CLAUDE.md `## Backend dispatcher`. The dispatcher absorbs backend routing so skill prose stays backend-neutral; sibling Epic B adds a beads branch behind the same verb interface.
 
-The rule extends past the recipe itself. If a recipe's `report:` projection returns only part of what the prose-after-the-recipe instructs the agent to check (e.g., the projection reports `up_dependencies` as IDs and the prose then asks "verify each dependency is `done`"), ship the follow-up recipe inline too. `bees show-ticket --ids <id1> <id2> ...` is the canonical batch-lookup shape — use it explicitly rather than leaving the agent to derive it.
+The dispatcher's module docstring (top of `skills/_shared/scripts/ticket_backend.py`) is the authoritative source for the seven verbs and their argv / JSON output shapes — do not re-list them here. The `query` verb forwards the YAML payload unchanged, so every recipe below uses the same YAML shape, filter terms, graph stages, and `report:` projection that the underlying query engine accepts.
+
+**Prose rule.** When a skill tells Claude to "find", "search", "list", or "look up" tickets, ship the concrete recipe inline at that point. Vague prose ("search the issues hive for a duplicate") forces the agent to invent a verb and is the same anti-pattern CONTRIBUTING.md flags under "Don't replace concrete shell snippets with vague prose."
+
+The rule extends past the recipe itself. If a recipe's `report:` projection returns only part of what the prose-after-the-recipe instructs the agent to check (e.g., the projection reports `up_dependencies` as IDs and the prose then asks "verify each dependency is `done`"), ship the follow-up recipe inline too. The dispatcher's `show` verb (`python3 "<base-dir>/../_shared/scripts/ticket_backend.py" show --ids <id1> <id2> ...`) is the canonical batch-lookup shape — use it explicitly rather than leaving the agent to derive it.
 
 **Canonical YAML shape.**
 
@@ -89,7 +99,7 @@ stages:
 report: [<fields>]   # optional: add named fields to each returned ticket
 ```
 
-**Filter terms** (AND logic within a stage; documented in `bees execute-freeform-query --help`):
+**Filter terms** (AND logic within a stage):
 
 - `type=bee`, `type=t1`, `type=t2`, `type=t3`
 - `status=<value>` — exact match
@@ -107,40 +117,40 @@ report: [<fields>]   # optional: add named fields to each returned ticket
 - `up_dependencies` — get upstream blockers
 - `down_dependencies` — get downstream dependents
 
-**The `report:` clause is real but undocumented in `--help`.** Without it, the response contains only `ticket_ids` (a flat list of IDs). With `report: [title, ticket_status, up_dependencies, ...]`, the response contains a `tickets` array where each ticket carries the requested fields. Use `report:` whenever the agent will display results to the user, pattern-match titles, or reason about status/dependencies. Omit `report:` when you only need IDs to traverse next.
+**The `report:` clause** controls projection. Without it, the response contains only `ticket_ids` (a flat list of IDs). With `report: [title, ticket_status, up_dependencies, ...]`, the response contains a `tickets` array where each ticket carries the requested fields. Use `report:` whenever the agent will display results to the user, pattern-match titles, or reason about status/dependencies. Omit `report:` when you only need IDs to traverse next.
 
 **Worked examples.**
 
 ```bash
 # All open issues — used by /bees-file-issue (duplicate check) and /bees-fix-issue (no-args / all modes):
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=issues, status=open]
 report: [title]'
 
 # Ready Plan Bees — used by /bees-breakdown-epic and /bees-execute when called without args:
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=plans, status=ready]
 report: [title]'
 
 # Drafted Epic children of a specific Plan Bee — used by /bees-breakdown-epic when caller supplies a Bee ID:
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [parent=<bee-id>, type=t1, status=drafted]
 report: [title, up_dependencies]'
 
 # Trace from an Epic up to its parent Bee — used by /bees-execute when caller supplies an Epic ID:
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [id=<epic-id>]
   - [parent]
 report: [title, ticket_status]'
 
 # Status snapshot — all Plan Bees plus their children (two-stage traversal):
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<base-dir>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [type=bee, hive=plans]
   - [children]
 report: [title, ticket_status, up_dependencies]'
 ```
 
-**Cross-platform note.** The single-quoted YAML literal works identically in POSIX bash/zsh and Windows PowerShell single-quoted strings — embedded `$variables` are not expanded by either shell inside single quotes. So query recipes do not need OS-paired variants; one block covers both. (Exception: if a recipe interpolates a shell variable for the ticket ID, the interpolation syntax is shell-specific and the recipe needs OS-paired variants like every other shell snippet.)
+**Cross-platform note.** Each dispatcher recipe is a single `python3` invocation that works identically on POSIX bash/zsh and Windows PowerShell — `python3` and the path-quoting form behave the same on both, and the single-quoted YAML literal is treated as an opaque string by both shells (embedded `$variables` are not expanded inside single quotes on either side). So query recipes ship as one labeled block, not paired POSIX + PowerShell variants. This is consistent with the dispatcher carve-out in `## OS-conditional shell blocks`. (Exception: if a recipe interpolates a shell variable for the ticket ID, the interpolation syntax is shell-specific and the recipe needs OS-paired variants like every other shell snippet.)
 
 ## Hard-fail preconditions
 

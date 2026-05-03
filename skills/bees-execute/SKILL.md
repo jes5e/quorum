@@ -27,7 +27,7 @@ This skill orchestrates the work for a complete Bee ticket by:
 Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
 - `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to `"1"` in either `~/.claude/settings.json` or the shell environment. The skill spawns a team unconditionally; without Agent Teams enabled, team-creation tools are unavailable and the skill cannot proceed.
-- The Plans hive is colonized for this repo. Check via `bees list-hives` — the output must include a hive whose `normalized_name` is `plans`.
+- The Plans hive is colonized for this repo. Check via the dispatcher's `list-spaces` verb (`python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" list-spaces`, base directory shown in the skill invocation header at session start) — the JSON output must include an entry whose `normalized_name` is `plans`.
 - CLAUDE.md contains a `## Documentation Locations` section. Agents look up paths to architecture docs, customer docs, test guides, etc. by exact key from this section.
 - CLAUDE.md contains a `## Build Commands` section, and that section has all five required bullet keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`. Agents look up build/test/format/lint commands by exact key from this section.
 
@@ -54,7 +54,7 @@ The user will either call without arguments, with a Bee id or with an Epic ID:
 - **If called without arguments**, list all Plan Bees in this repo and ask the user which one to work on:
 
   ```bash
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [type=bee, hive=plans]
   report: [title, ticket_status]'
   ```
@@ -64,7 +64,7 @@ The user will either call without arguments, with a Bee id or with an Epic ID:
 - **If called with a Bee ID**, find that Bee's `ready` Epic children and ask which one to start with:
 
   ```bash
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [parent=<bee-id>, type=t1, status=ready]
   report: [title, up_dependencies]'
   ```
@@ -73,7 +73,7 @@ The user will either call without arguments, with a Bee id or with an Epic ID:
 
   ```bash
   # After getting the Epic candidates, batch-look-up their up_dependencies' statuses:
-  bees show-ticket --ids <dep-id-1> <dep-id-2> <...>
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <dep-id-1> <dep-id-2> <...>
   ```
 
   For each candidate Epic, check the returned `ticket_status` of its dependencies. An Epic is workable only if all its `up_dependencies` are in `done` status (a dependency in `ready` state is a pending blocker, not satisfied). An Epic with no `up_dependencies` is unblocked by default. Present unblocked candidates via `AskUserQuestion` and recommend the one with the fewest downstream dependencies first.
@@ -81,7 +81,7 @@ The user will either call without arguments, with a Bee id or with an Epic ID:
 - **If called with an Epic ID**, walk up to the parent Bee:
 
   ```bash
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [id=<epic-id>]
     - [parent]
   report: [title, ticket_status]'
@@ -127,7 +127,7 @@ In the question, always state:
 Find all Epics under the chosen Bee and recommend the best one to work on first:
 
 ```bash
-bees execute-freeform-query --query-yaml 'stages:
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
   - [parent=<bee-id>, type=t1]
 report: [title, ticket_status, up_dependencies]'
 ```
@@ -140,7 +140,7 @@ From the result set, the Epic to work on must:
 
 ```bash
 # After getting the Epic candidates, batch-look-up their up_dependencies' statuses:
-bees show-ticket --ids <dep-id-1> <dep-id-2> <...>
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <dep-id-1> <dep-id-2> <...>
 ```
 
 For each candidate Epic, check the returned `ticket_status` of its dependencies. An Epic is workable only if all its `up_dependencies` are in `done` status. An Epic with no `up_dependencies` is unblocked by default.
@@ -161,7 +161,7 @@ If ready, mark the Epic status with `status=in_progress` to show work has starte
 ### 3. Form Team to Execute Tasks
 
 Before forming the Team, load all Tasks and Subtasks for the Epic:
-- Use `bees show-ticket --ids <epic-id>` to get the `children` array (Task IDs)
+- Use the dispatcher's `show` verb (`python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <epic-id>`) to get the `children` array (Task IDs)
 - For each Task, fetch its full details including its own `children` array (Subtasks)
 - Read every Subtask — these contain the detailed instructions (Context, What Needs to Change, Key Files, Acceptance Criteria) that the team must follow
 - Sort Tasks in dependency order (check each Task's `up_dependencies`) to ensure no Task is blocked when executed
@@ -195,10 +195,10 @@ Before sending any `task_assignment` (or equivalent "start working on subtask <i
 
 The two sources answer different questions:
 
-- **bees ticket status** — "is the work already finished?" The bees ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`):
+- **bees ticket status** — "is the work already finished?" The ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) through the dispatcher's `query` verb:
 
   ```bash
-  bees execute-freeform-query --query-yaml 'stages:
+  python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" query --query-yaml 'stages:
     - [id=<ticket-id>]
   report: [title, ticket_status]'
   ```
@@ -214,10 +214,10 @@ Otherwise dispatch the assignment.
 
 ##### Quote the ticket body verbatim
 
-The `task_assignment` message must embed the ticket body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the ticket via:
+The `task_assignment` message must embed the ticket body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the ticket via the dispatcher's `show` verb:
 
 ```bash
-bees show-ticket --ids <ticket-id>
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" show --ids <ticket-id>
 ```
 
 Embed the returned body block in the assignment message as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. If you must add framing prose around the quoted body (e.g., "your gating precondition is met — start now"), keep it strictly outside the quoted block.
@@ -399,27 +399,14 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 2. Create one git commit for the Task. **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report). Do NOT re-run the test suite here — the `.T` subtask already validated, and the PM confirmed. Re-running wastes minutes per Task.
    2. Run `git status` to see the full set of modified and untracked files.
-   3. Stage files that are related to this Task — include agent-reported files, formatting changes to files that were touched by this Task's agents, and (only if the Plans hive lives inside this repo) the resolved Plans hive path's contents. Use the same hive-path resolution as `/bees-plan` and `/bees-file-issue`:
+   3. Stage files that are related to this Task — include agent-reported files, formatting changes to files that were touched by this Task's agents, and (only if the Plans hive lives inside this repo) the resolved Plans hive path's contents. Use the same hive-path resolution as `/bees-plan` and `/bees-file-issue`: invoke the dispatcher's `list-spaces` verb as a single literal command, parse the JSON stdout in your reasoning to find the entry whose `normalized_name` is `plans`, read its `path` field, then run `git rev-parse --show-toplevel` separately to learn the repo root. Stage the Plans hive path only if it sits inside the repo. Normalize separators when comparing — `git rev-parse` returns forward slashes on Windows, while the dispatcher passes through whatever bees recorded (which may be backslashes); compare both sides on the same form.
 
       ```bash
-      # POSIX (bash / zsh):
-      plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
-      repo_root=$(git rev-parse --show-toplevel)
-      case "$plans_path" in
-        "$repo_root"|"$repo_root"/*) git add "$plans_path" ;;
-      esac
+      # POSIX (bash / zsh) and Windows (PowerShell) — single command:
+      python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" list-spaces
       ```
 
-      ```powershell
-      # Windows (PowerShell):
-      $plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
-      $repoRoot = git rev-parse --show-toplevel
-      $plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
-      $repoNorm = $repoRoot.Replace('\','/')
-      if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
-        git add $plansPath
-      }
-      ```
+      Then, with the resolved path in hand, stage it conditionally on POSIX or Windows (the only OS-conditional bit left is the line-continuation character `\` vs backtick, both shown earlier in this skill — for a single `git add <path>` no continuation is needed).
 
       **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
    4. Commit with a descriptive message per system/project git guidance.
@@ -512,17 +499,18 @@ After the review loop in step 5 is done and all fixable issues have been address
 
 1. Compute the pre-Bee diff scope. Capture `<pre-bee-sha>` as the HEAD that existed when work began on this Bee (use the SHA recorded at the start of the run, or `HEAD~M` where `M` is the number of Tasks committed in Step 4 — one commit per Task; if you've lost count, walk `git log` back to the commit before the first Task commit landed in Step 4 as a backup). Collect the Bee ID `<bee-id>` and, secondarily, the IDs of the Epics/Tasks under it as `<epic-id-1> <task-id-1> ...` (the Bee body is the primary spec; Epic/Task bodies are secondary context the reviewer can consult when something in the diff is ambiguous).
 
-2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this run, so the prompt must be self-contained. Starting skeleton (substitute `<pre-bee-sha>`, `<bee-id>`, and the Epic/Task IDs before sending):
+2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this run, so the prompt must be self-contained. Substitute `<pre-bee-sha>`, `<bee-id>`, the Epic/Task IDs, and `<dispatcher-path>` (the absolute path to `<this skill's base directory>/../_shared/scripts/ticket_backend.py`, resolved at session start from the skill invocation header) before sending:
 
    ```
    You are an independent reviewer for a bees-workflow Bee that was just shipped.
 
    Scope: review the diff `git diff <pre-bee-sha>..HEAD` (compute it yourself
-   via git) against the Bee body — read it via `bees show-ticket --ids
-   <bee-id>`. The parent Epic/Task bodies are secondary spec sources; consult
-   them via `bees show-ticket --ids <epic-id-1> <task-id-1> ...` only when the
-   diff vs. the Bee body is ambiguous. The orchestrating team-lead has
-   finished the work — your job is to give it a fresh-eyes review with no
+   via git) against the Bee body — read it via the bundled dispatcher with the
+   `show` verb: `python3 "<dispatcher-path>" show --ids <bee-id>`. The parent
+   Epic/Task bodies are secondary spec sources; consult them via
+   `python3 "<dispatcher-path>" show --ids <epic-id-1> <task-id-1> ...` only
+   when the diff vs. the Bee body is ambiguous. The orchestrating team-lead
+   has finished the work — your job is to give it a fresh-eyes review with no
    context of how the work was done.
 
    Flag anything that looks wrong: code defects, prose problems, spec drift
@@ -578,14 +566,14 @@ Then use `AskUserQuestion` with:
 
 Once the user approves the Bee as done:
 
-1. Mark all Epics in the Bee as `status=done`:
+1. Mark all Epics in the Bee as `status=done` via the dispatcher's `update` verb:
 ```bash
-bees update-ticket --ids <epic-id> --status done
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" update --ids <epic-id> --status done
 ```
 
 2. Verify all Epics are now `done`, then mark the Bee itself:
 ```bash
-bees update-ticket --ids <bee-id> --status done
+python3 "<this skill's base directory>/../_shared/scripts/ticket_backend.py" update --ids <bee-id> --status done
 ```
 
 ### 9. Output Final Summary
