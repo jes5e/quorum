@@ -11,7 +11,7 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 ## Repo layout (only what isn't obvious)
 
 - `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user; the body is the instructions Claude follows when the skill is invoked.
-- `skills/<name>/scripts/` — optional cross-platform Python helpers. Four exist today: `bees-setup/scripts/file_list_resolver.py` (the egg resolver), `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection), `bees-execute/scripts/force_clean_team.py` (force-clean stuck Claude Code teams), and `bees-execute/scripts/check_agent_teams.py` (Agent Teams precondition check, sibling-resolved by `bees-fix-issue`).
+- `skills/<name>/scripts/` — optional cross-platform Python helpers. Five exist today: `bees-setup/scripts/file_list_resolver.py` (the egg resolver), `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection), `bees-execute/scripts/force_clean_team.py` (force-clean stuck Claude Code teams), `bees-execute/scripts/check_agent_teams.py` (Agent Teams precondition check, sibling-resolved by `bees-fix-issue`), and `bees-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `bees-execute` and `bees-fix-issue`).
 
 The full workflow chain — `bees-setup` → (`bees-plan` | `bees-plan-from-specs`) → `bees-breakdown-epic` → `bees-execute` → `bees-file-issue` / `bees-fix-issue` — is documented in the README; don't re-derive it from the skill files.
 
@@ -43,7 +43,7 @@ Every Bash tool call in this repo must be a **single literal command** — one b
 
 - One Bash call per command. Sequence multiple commands as multiple Bash calls (in parallel where independent).
 - Pre-set env vars via the shell's `VAR=value command` prefix — still a single literal command, fine.
-- For multi-step or variable-bearing logic, write a Python script to a file (use the `Write` tool) and run the file with one Bash call. Bundled-helper precedent: `file_list_resolver.py`, `detect_fast_path.py`, `force_clean_team.py`, `check_agent_teams.py`.
+- For multi-step or variable-bearing logic, write a Python script to a file (use the `Write` tool) and run the file with one Bash call. Bundled-helper precedent: `file_list_resolver.py`, `detect_fast_path.py`, `force_clean_team.py`, `check_agent_teams.py`, `scoped_marker_resolver.py`.
 - For watching state, prefer `Monitor` over polling loops. For reading a file, prefer `Read` over `cat` / `head` / `tail`. For searching files, prefer the first-class `Grep` tool over `grep | head` / `grep | xargs`. For writing files, prefer `Write` over `echo X > file`.
 
 If you find yourself wanting a compound shell shape, the Python-helper-file path or a first-class tool is almost always the right answer.

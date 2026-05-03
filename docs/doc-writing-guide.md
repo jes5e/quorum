@@ -142,6 +142,42 @@ report: [title, ticket_status, up_dependencies]'
 
 **Cross-platform note.** The single-quoted YAML literal works identically in POSIX bash/zsh and Windows PowerShell single-quoted strings — embedded `$variables` are not expanded by either shell inside single quotes. So query recipes do not need OS-paired variants; one block covers both. (Exception: if a recipe interpolates a shell variable for the ticket ID, the interpolation syntax is shell-specific and the recipe needs OS-paired variants like every other shell snippet.)
 
+## The Scoped-marker contract
+
+A Plan Bee authored via `/bees-plan-from-specs --feature "<title>"` carries a single line in its body of the form:
+
+```
+Scoped to `### Feature: <title>` from <absolute prd path> and <absolute sdd path>.
+```
+
+The marker is the durable signal that the Plan Bee covers a single `### Feature: <title>` subsection inside a cumulative PRD/SDD, even though the Bee's `egg` still points at the full canonical doc paths (egg-paths-stay-full is intentional — the docs themselves remain the source of truth). Downstream skills that read the egg must therefore also check the parent Bee body for this marker and, when present, scope the resolved doc content to the matching subsection before treating it as the spec.
+
+**Marker grammar** (matched verbatim by the bundled parser):
+
+- Line text begins with `Scoped to ` (leading whitespace tolerated).
+- Then a backtick-wrapped `` `### Feature: <title>` `` literal — the inner heading line is wrapped in single backticks; the heading prefix is exactly three `#` followed by a space, the literal word `Feature:`, and a space.
+- Then ` from `.
+- Then `<prd-path>` (absolute path, unquoted).
+- Then ` and `.
+- Then `<sdd-path>` (absolute path, unquoted).
+- Then a terminal `.` (period). Trailing whitespace tolerated.
+
+**Subsection extraction rule** (mirrors `/bees-plan-from-specs` Step 1b):
+
+- The matched `### Feature: <title>` heading line itself is excluded.
+- The body runs until the next line starting with `### Feature: ` (with trailing space; also excluded), or end-of-file, whichever comes first.
+- Heading-side title comparison is case-sensitive against the trimmed text after the `### Feature: ` prefix (trailing whitespace on the heading-side title is tolerated).
+
+**Hard-fail rules** — never silent-fallback to the full doc when the marker is malformed:
+
+- If the marker line is present but the title trims to empty, fail.
+- If either named doc path does not exist on disk, fail.
+- If either named doc exists but does not contain a `### Feature: <title>` heading matching the marker's title, fail with a clear message naming the missing heading, the doc paths checked, and a hint that the docs may have been edited after the Plan Bee was created.
+
+**Bundled parser.** The shared parser/scoper for downstream skills is `skills/bees-breakdown-epic/scripts/scoped_marker_resolver.py`. It takes a single positional argument (path to a file containing the parent Bee body), prints `{"scoped": false}` to stdout when no marker is present, prints `{"scoped": true, "title": "...", "docs": [{"path": "...", "content": "..."}, ...]}` when the marker is present and all hard-fail conditions are clear, and exits 2 with a single human-readable line on stderr otherwise. `bees-breakdown-epic` resolves the script as `<base>/scripts/scoped_marker_resolver.py`. `bees-execute` and `bees-fix-issue` resolve it via the sibling pattern as `<base>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py` (same shape as `bees-fix-issue`'s existing sibling-resolution of `check_agent_teams.py`).
+
+When the marker is present, the consuming skill must operate on the per-doc scoped content for all PM / spec-compare / Epic-decomposition logic, not on the full doc. When the marker is absent, behavior is unchanged — full doc content is the spec.
+
 ## Hard-fail preconditions
 
 Execution skills (`bees-execute`, `bees-fix-issue`) hard-fail with `Run /bees-setup first.` when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them. Preserve that precondition behavior in any edit to those skills.

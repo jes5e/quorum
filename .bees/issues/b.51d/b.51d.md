@@ -2,10 +2,11 @@
 id: b.51d
 type: bee
 title: Downstream skills don't respect Plan Bee 'Scoped to ...' marker (b.mu9 follow-up)
-status: open
-created_at: '2026-05-03T01:59:18.305296'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-03T01:59:18.305296'
+status: done
+schema_version: '0.1'
 guid: 51d97prmesca53c4ud7g3av353fm5qbu
 ---
 
@@ -68,4 +69,3 @@ Constraints carried over from this repo's CLAUDE.md (mandatory):
 
 - b.mu9 (`/bees-plan` Path A delegation breaks with cumulative PRDs) — closed; introduced the marker.
 - This issue closes the cumulative-PRD pattern end-to-end across the planning + breakdown + execute + fix-issue flow.
-

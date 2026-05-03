@@ -26,6 +26,7 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 ## Acceptance criteria (project-level)
 
 - **End-to-end chain works on any supported stack.** On a fresh repo of any supported language (Rust, Node, Python, Go, Java, or unknown), the full chain `/bees-setup` → `/bees-plan` (or `/bees-plan-from-specs`) → `/bees-breakdown-epic` → `/bees-execute` runs to `done` status across all Epics without per-language skill edits.
+- **Cumulative-PRD scoping holds end-to-end.** When a Plan Bee is authored via `/bees-plan-from-specs --feature "<title>"` against cumulative PRD/SDD docs, the single-feature scope is enforced through every downstream skill: `/bees-breakdown-epic` decomposes against only the matching `### Feature: <title>` subsection, and the per-Task PM in `/bees-execute` (and the PM role in `/bees-fix-issue` when an Issue derives from a scoped Plan Bee) compares implementation against the scoped subsection only. Other features in the same cumulative docs do not surface as spec drift.
 
 ## Per-feature scope
 

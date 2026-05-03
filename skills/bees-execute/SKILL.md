@@ -356,6 +356,19 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
     - Read the Parent Epic.
     - Read the Grandparent Bee.
     - Read the source material linked in the Grandparent Bee. **If the Grandparent Bee's egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Bee body itself is the authoritative spec source — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
+    - **Check for the Scoped-marker on the Grandparent Bee.** If the Grandparent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the egg-resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before being used as the spec for spec-compare logic. Run the bundled parser/scoper that ships with sibling skill `bees-breakdown-epic`. Write the Grandparent Bee body to a temp file via the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows), then invoke the helper at `<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-execute`).
+
+      ```bash
+      # POSIX (bash / zsh):
+      python3 "<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py" "/tmp/bees-bee-body-<short-suffix>.md"
+      ```
+
+      ```powershell
+      # Windows (PowerShell):
+      python "<this skill's base directory>\..\bees-breakdown-epic\scripts\scoped_marker_resolver.py" "$env:TEMP\bees-bee-body-<short-suffix>.md"
+      ```
+
+      The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full egg-resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per egg-doc path; compare the Task work against the scoped content only. The helper exits 2 with a clear error on stderr if the marker is malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the team-lead and stop the spec review until the user resolves it; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`. Remove the temp file after the helper exits.
     - Make sure the Test Writer and Doc Writer review the work of the Engineer
       - The Engineer's output needs review by the rest of the team
     - Review quality of Task and Subtasks efforts, make final decision when to present completed Task to caller
