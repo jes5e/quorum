@@ -84,28 +84,9 @@ Hardcoded in `bees-execute` and `bees-fix-issue`:
 
 ## Per-feature design
 
-### Feature: Optional beads backend
-
-**Architecture.** A new `skills/_shared/scripts/ticket_backend.py` dispatcher is the single point of contact between skill prose and a backend CLI. It exposes verb-shaped subcommands — `query`, `create`, `update`, `show`, `list-spaces`, `setup-spaces`, `resolve-spec` — and dispatches to either bees or beads based on the `## Ticket Backend` value in CLAUDE.md. The dispatcher emits stable JSON regardless of backend; skills consume that JSON directly.
-
-**New contract section.** CLAUDE.md gains a third contract section, `## Ticket Backend`, with values `bees` or `beads`. `/bees-setup` writes it; every other skill reads it as the first step of any ticket operation. Missing section produces the same `Run /bees-setup first.` hard-fail as the existing two contract sections.
-
-**Backend-specific topology.**
-
-- **bees backend** preserves the current model: two on-disk hives (`Plans`, `Issues`) registered in `~/.bees/config.json`, each with the `file_list_resolver.py` egg-resolver path and the existing tier/status vocabularies set via `bees set-types` / `bees set-status-values`.
-- **beads backend** uses two beads databases under the repo: `.beads-plans/dolt/` with `issue_prefix=plan-` and `.beads-issues/dolt/` with `issue_prefix=iss-`. Skills address them via the dispatcher, which composes `bd --db <path> ...` calls. Per-database `config.yaml` carries the custom status vocabulary (`drafted:active,ready:active,done:done` on plans; `done:done` on issues — `open` and `in_progress` are built-in). Tier semantics live in labels: every ticket gets `tier:bee` / `tier:t1` / `tier:t2` / `tier:t3` at create-time, used in queries that bees-side use `type=` for.
-
-**Egg resolver location shift.** Bees registers `file_list_resolver.py` as a hive's `egg_resolver` and the bees CLI invokes it on every read. Beads has no such hook. The dispatcher's `resolve-spec` verb runs `file_list_resolver.py` skill-side when the backend is beads. The resolver script itself doesn't change; only its invocation path does.
-
-**`bees-setup` SKILL.md structure.** Retains its overall flow but gains a backend-pick step at the top (auto-detect from on-disk markers if present; prompt otherwise) and backend-conditional sections for prerequisites, fast-path detection, and ticket-space creation. The egg-resolver subsection runs only when backend=bees. Roughly 40% of the skill body becomes backend-conditional (mostly delegated to the dispatcher's `setup-spaces` verb to keep prose lean); the remaining 60% (Agent Teams, teammateMode, Documentation Locations, PRD/SDD bootstrap, Build Commands) is unchanged.
-
-**Skill prose pattern.** Skills currently shell out to `bees ...` directly in OS-paired POSIX/PowerShell snippets. Post-refactor, every backend-touching command becomes a single `python3 "<base-dir>/.../_shared/scripts/ticket_backend.py" <verb> ...` call. The verb arguments and JSON output shape are stable across backends. Skill prose stays thinner; the dispatcher absorbs the backend-specific shell composition.
-
-**Helper script directory.** A new `skills/_shared/scripts/` directory holds cross-skill helpers — `ticket_backend.py` plus any backend-specific submodules. Resolved at runtime from the invoking skill's base directory plus a `../_shared/scripts/` relative jump, consistent with the existing per-skill scripts pattern.
-
-**Sequencing.** The work decomposes into two Epics. Epic A introduces the dispatcher and routes all skill bees-CLI calls through it as a pure refactor — bees remains the only supported backend, no user-visible change. Epic B adds the beads adapter inside the dispatcher, the backend-pick step in `bees-setup`, the `## Ticket Backend` contract section, the new README content, and the `tier:bee`/`tier:t1`/etc. labeling at create-time on both backends.
-
 ### Feature: Test strategy for the skills repo
+
+**Status: paused as of 2026-05-03.** This feature was sequenced after the "Optional beads backend" feature (Plan Bee `b.9xr`), which is itself paused — see `b.9xr`'s Plan Bee body for context. `b.gar`'s Plan Bee body is updated at the conclusion of the Ephemeral-Agent Orchestration feature (currently in active planning) to reflect the new bees-only, post-orchestration architecture before this feature resumes. The architecture below describes the originally-planned dual-backend test strategy and may be re-scoped on resume.
 
 **Architecture.** Three independent test layers, each with its own entrypoint, unified under a top-level `make test` target. Test code lives in two locations: per-helper unit tests sit beside the helper they cover (`skills/<skill>/scripts/test_<helper>.py`); cross-cutting test infrastructure lives at `tests/` at the repo root.
 
@@ -174,3 +155,82 @@ For Windows contributors without `make`, a `tools/run_tests.py` script (Python; 
 - Epic A — Layer 1: pytest infrastructure and unit tests for every bundled helper.
 - Epic B — Layer 2: structural SKILL.md linter (independent of A; can be worked in parallel).
 - Epic C — Layer 2.5 + integration: backend-equivalence harness, top-level `make test`, CLAUDE.md `## Test Commands`, README Contributing paragraph, CI workflow. Blocks on Epic A (uses pytest infrastructure) and Epic B (linter must already be wired to the make target).
+
+### Feature: Ephemeral-Agent Orchestration
+
+**Substrate change.** Three execution skills (`bees-execute`, `bees-fix-issue`, `bees-breakdown-epic`) currently invoke Claude Code's experimental Agent Teams feature (`TeamCreate`, named persistent workers, `SendMessage` between team-lead and workers, shared `TaskList`, `TeamDelete`). This is replaced with the stable `Agent` tool: each work unit is dispatched as a background `Agent(subagent_type=<role>, prompt=<task assignment>, run_in_background=true)` invocation that returns a final result on completion via a harness notification. The orchestrator is the main Claude Code session running the skill — it remains a "team-lead" conceptually but is now a reconciliation-loop driver, not a chat hub.
+
+**Custom subagent types.** Seven role-specific subagent definitions ship at the repo root in `subagents/`:
+
+| File | Model | Purpose |
+|---|---|---|
+| `subagents/engineer.md` | Opus (always) | Implements code changes for a Subtask or set of Subtasks |
+| `subagents/test-writer.md` | Opus (always) | Writes/updates tests for completed Engineer work |
+| `subagents/doc-writer.md` | User's choice (Opus or Sonnet) | Authors or updates documentation |
+| `subagents/pm.md` | User's choice | Per-Task PM review (spec drift, scope creep, in-flight code/doc review invocations) |
+| `subagents/code-reviewer.md` | Opus (always) | Wraps `/bees-code-review` skill invocation |
+| `subagents/doc-reviewer.md` | User's choice | Wraps `/bees-doc-review` skill invocation |
+| `subagents/test-reviewer.md` | Opus (always) | Wraps `/bees-test-review` skill invocation |
+
+Each definition file carries YAML frontmatter (`name`, `description`, `model`, `tools` allowlist) plus a markdown body capturing role-specific instructions (what to read, what to do, what to return). Skill prose in `bees-execute` etc. references subagent types by name (`subagent_type: "engineer"`) without inline role instructions — substantially reducing SKILL.md size.
+
+**Reconciliation loop.** The orchestrator's tick is purely event-driven — it wakes on Agent completion notifications, user input, and tool results. No `/loop`, `ScheduleWakeup`, `CronCreate`, or polling loop. Each tick consists of:
+
+1. **Read state.** Query bees ticket state for the current Epic / Task / Subtasks (`bees execute-freeform-query`); read TaskList for active Agent invocations; check git state if relevant.
+2. **Reconcile.** For each Subtask whose preconditions are met but no Agent is currently working it: dispatch a fresh Agent (or send to a warm one). For each Subtask whose Agent has just returned: persist the result (mark bees ticket `done`, update TaskList task `completed`). For each completed Task: trigger PM review via a fresh PM Agent. For each completed Epic: run inter-Epic interaction checkpoint (orchestrator-direct, no Agent). When all Epics done: spawn the post-Bee review team (three reviewer Agents, all fresh).
+3. **Yield.** No explicit wake scheduling; the harness fires the next tick on the next inbound event (Agent completion or user input).
+
+This is a Kubernetes-controller shape applied to skill orchestration: declarative state goal (bees ticket statuses), continuous reconciliation against actual state, no hand-managed message queues.
+
+**Hub-and-spoke specialist model preserved.** Workers do not communicate with each other. All routing is orchestrator→Agent. The artifact-based handoff (Engineer's commits become Test Writer's input; Test Writer's tests become PM's review material) replaces the message-based handoff. This is structurally identical to the current hub-and-spoke prescription (post-b.11f), achieved through a substrate that doesn't permit peer comms rather than through a "do not message peers" rule the model can drop.
+
+**Cold-start hybrid (warm vs fresh Agents).** Per-Task lifecycle:
+
+- Engineer and Test Writer Agents are spawned with a `name:` (e.g., `engineer-<task-id>`, `test-writer-<task-id>`) at the start of a Task. Subsequent Subtasks within the Task are sent via `SendMessage` to the same named Agent — preserving the file-tree context the Agent already loaded.
+- Doc Writer is fresh per invocation by default; skill prose can opt to warm it for Tasks with multiple doc Subtasks reading the same docs.
+- PM, Code Reviewer, Doc Reviewer, Test Reviewer always fresh. Reviewers must be fresh-eyes by design; PM's per-subtask reviews and final-Task review benefit from a clean slate.
+- At Task scope end: orchestrator sends a "complete" SendMessage to each warm Agent, which returns and exits. No analog of `force_clean_team.py` is needed.
+
+**TaskList as progress UI.** The orchestrator creates one TaskList task per concurrent Agent invocation (e.g., `engineer-qf-subtask-1`, `test-writer-qf-subtask-1`, `pm-qf-subtask-1-review`). Status transitions (`pending → in_progress → completed`) are updated as Agents start and finish; `metadata.activity` carries finer-grained progress (e.g., `"running /bees-code-review (~5 min)"`). Claude Code's native TaskList UI renders these live, providing visual parallelism without an Agent Teams display backend. A one-line tick summary printed to stdout supports `tail -f`-style watching.
+
+**Recursive delegation (probe-then-decide).** The data model (Bee → Epic → Task → Subtask) is naturally hierarchical and the architecture supports an Epic-level sub-orchestrator Agent that internally manages its Tasks via further Agent invocations. Whether the Claude Code harness permits an Agent to spawn further Agents is uncertain at planning time; the implementation will probe this early. If permitted, the Epic-level sub-orchestrator pattern is used as a context-management optimization. If not, the orchestrator runs flat — the existing Epic-boundary context-clear discipline (currently in `bees-execute/SKILL.md`) bounds growth at ~25-30% of the 1M context window per Epic, and the skill ships flat orchestration without functional regression.
+
+**State sources.** Single source of truth for ticket state is bees (read via `bees execute-freeform-query` and `bees show-ticket`). TaskList carries transient orchestration state (which Agent is currently working what, with progress metadata) and is reset between Tasks. Conversation message history carries Agent invocation prompts and return values (subject to harness auto-compaction). The `blocked_on` metadata signal on TaskList tasks is removed — Agents either return with a "blocked" result that the orchestrator handles next tick, or escalate to the user via the orchestrator's prose. There is no idle-then-blocked transition to detect.
+
+**Removed components.**
+
+- `skills/bees-execute/scripts/check_agent_teams.py` — deleted along with all skill-prose references.
+- `skills/bees-execute/scripts/force_clean_team.py` — deleted along with all skill-prose references.
+- `bees-setup` Agent Teams precondition step — removed.
+- `bees-setup` `teammateMode` configuration step — removed.
+- `bees-setup` iTerm2 hard-prompt workaround prose — removed.
+- README's "Required: enable Agent Teams" section — removed.
+- README's "Display backend" section — removed.
+- All `TeamCreate`, `TeamDelete`, named-team-scoped agent prose in `bees-execute`, `bees-fix-issue`, `bees-breakdown-epic` — removed.
+- The `blocked_on` metadata convention in worker Instructions — removed (all three skills).
+- The "graduated escalation when teammates go silent" four-rung ladder in `bees-execute` and `bees-fix-issue` — removed.
+- The "Team-lead message-flow choreography" section in `bees-execute` — removed.
+
+**Updated SDD sections (not in this Plan-stage edit; updated as part of implementation):**
+
+- "Team orchestration in execution skills" — replaced by an "Orchestration in execution skills" section describing the reconciliation-loop pattern, hub-and-spoke via substrate, hybrid cold-start, TaskList progress UI.
+- "Tech stack" — Agent Teams requirement removed; `Agent` tool background invocations and `subagents/` definition files referenced.
+- "Key components" — two helper scripts removed; `subagents/<role>.md` files added.
+- "External dependencies" — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` requirement dropped.
+
+**Updated install layout.**
+
+README install instructions extend to copy `subagents/*` into `~/.claude/subagents/` (global) or `<repo>/.claude/subagents/` (per-project) alongside the existing `skills/*` copy. The two-tier paths parallel the existing skills install pattern. A future plugin packaging maps these directories one-to-one without restructuring.
+
+**Subagent definition format.** Each `subagents/<role>.md` carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus a markdown body. The body is the role-specific Instructions block currently embedded inline in `bees-execute`'s SKILL.md (lines ~290-389). Lifting these blocks into definition files reduces SKILL.md prose by roughly 100-150 lines per file and makes role customization a first-class operation (a downstream user can edit `~/.claude/subagents/engineer.md` to add project-specific guidance without forking the skill).
+
+**Sequencing.** The work decomposes into Epics (final structure determined during /bees-breakdown-epic):
+
+- **Epic A — Subagent definitions and infrastructure.** Author the seven `subagents/*.md` files with role prose lifted from current SKILL.md inline blocks. Update install instructions in README. Probe whether subagents load correctly from `~/.claude/subagents/`. No SKILL.md changes yet — old Agent Teams paths still in place.
+- **Epic B — `bees-execute` rewrite.** Rewrite `bees-execute/SKILL.md` to use the reconciliation-loop pattern with background `Agent` invocations referencing the new subagent types. Drop the message-flow choreography, blocked_on signal, escalation ladder, and helper-script references. Probe recursive delegation; pick flat or nested based on result. Verify against a real Bee.
+- **Epic C — `bees-fix-issue` rewrite.** Same pattern as Epic B at issue scope.
+- **Epic D — `bees-breakdown-epic` rewrite.** Smallest of the three (read-only research team). Apply the same pattern.
+- **Epic E — `bees-setup` cleanup.** Remove Agent Teams precondition step, `teammateMode` config, iTerm2 prose. Delete the two helper scripts.
+- **Epic F — Doc cleanup and `b.gar` body update.** Update existing SDD sections (Tech stack, Key components, Team orchestration, External dependencies) to remove Agent Teams references. Update README. Update `b.gar`'s Plan Bee body to reflect new architecture.
+
+Epic dependencies: B / C / D depend on A (subagent definitions must exist before skills reference them). E and F can land in parallel with B/C/D once A is done. F is last (depends on all preceding work being landed so the doc updates accurately reflect the implementation).

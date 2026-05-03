@@ -29,28 +29,9 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 
 ## Per-feature scope
 
-### Feature: Optional beads backend
-
-**What.** Add optional support for the [beads](https://github.com/gastownhall/beads) ticket backend alongside the existing bees backend. A repo picks one at `/bees-setup` time; the choice persists in CLAUDE.md `## Ticket Backend`. All 11 portable-core skills work transparently on either backend without per-backend skill edits. Both backends cannot coexist in a single repo.
-
-**Why.** Beads is Dolt-backed (version-controlled SQL, native multi-writer, designed for distributed AI agents) — structurally different from bees' file-based ticket model. Some users prefer one, some the other, depending on their concurrency and sync needs. Backend-pluggable extends the project's existing language-agnostic and OS-agnostic portability principles to ticket-system-agnostic. Forcing a single backend forecloses on a real audience.
-
-**Acceptance criteria.**
-
-- Both bees and beads work as backends. The chain `/bees-setup` → `/bees-plan` → `/bees-breakdown-epic` → `/bees-execute` → `/bees-fix-issue` runs end-to-end to `done` on each.
-- CLAUDE.md `## Ticket Backend` is a new contract section with values `bees` or `beads`. Skills hard-fail with `Run /bees-setup first.` when the section is missing — matching the existing pattern for `## Documentation Locations` and `## Build Commands`.
-- Status vocabulary preserved verbatim on both backends: `drafted` / `ready` / `in_progress` / `done` for plans; `open` / `done` for issues.
-- Spec pointer (PRD/SDD egg) preserved on both backends. On beads, the resolver runs skill-side rather than CLI-registered.
-- README updated: intro, Requirements, Why-this-exists bullets, Status-vocabulary column header, `/bees-setup` description, plus a new "Ticket backend" section between "After install" and "The skills."
-
-**Out of scope.**
-
-- Migration of an existing bees-set-up repo to beads (or vice versa). Greenfield-only.
-- Modifications to beads itself, or to bees solely for dual-backend users.
-- Beads' multi-repo / cross-repo aggregation features (`repos.additional`, `routing.mode auto`).
-- Running both backends in the same repo simultaneously.
-
 ### Feature: Test strategy for the skills repo
+
+**Status: paused as of 2026-05-03.** This feature was sequenced after the "Optional beads backend" feature (Plan Bee `b.9xr`), which is itself paused — see `b.9xr`'s Plan Bee body for context. `b.gar`'s Plan Bee body is updated at the conclusion of the Ephemeral-Agent Orchestration feature (currently in active planning) to reflect the new bees-only, post-orchestration architecture before this feature resumes. The acceptance criteria below describe the originally-planned dual-backend test strategy and may be re-scoped on resume.
 
 **What.** Add a layered test strategy for the bees-workflow repo itself. Three layers — Layer 1 (pytest unit tests on every bundled Python helper), Layer 2 (a structural linter validating each `SKILL.md` against the project's design rules), and Layer 2.5 (a backend-equivalence harness running the same dispatcher operations through both bees and beads and asserting equivalent state). All three layers wire to a single `make test` entrypoint. Layer 3 (live Claude Code end-to-end smoke) is explicitly out of scope.
 
@@ -76,3 +57,36 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 - Snapshot testing of full skill output.
 - Migration of existing skill patterns beyond what's needed for the new layers.
 - A proxy / mock test harness — the equivalence harness uses real CLIs against temp directories.
+
+### Feature: Ephemeral-Agent Orchestration
+
+**What.** Replace the experimental Agent Teams orchestration substrate used by `bees-execute`, `bees-fix-issue`, and `bees-breakdown-epic` with ephemeral background invocations of Claude Code's stable `Agent` tool. Each role (engineer, test-writer, doc-writer, pm, code-reviewer, doc-reviewer, test-reviewer) becomes a custom subagent type defined as a markdown file in a top-level `subagents/` directory of this repo, installed alongside skills (and packageable as a future plugin). The team-lead in each execution skill becomes a reconciliation-loop orchestrator that dispatches Agents on demand, reads return values on completion, and tracks state via bees tickets + Claude Code's TaskList. Per-Task warm-Agent reuse via named Agents + SendMessage preserves cold-start efficiency for Engineer and Test Writer roles; reviewers always run cold for fresh-eyes review. TaskList replaces Agent Teams' display backend as the visual progress UI. The `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var, the `teammateMode` display backend setup, the iTerm2-prompt workaround prose, and the `force_clean_team.py` / `check_agent_teams.py` helper scripts are removed entirely. The Plan Bee `b.gar` (Test strategy) gets a body update at the end so it can resume coherently against the new architecture.
+
+**Why.** The current architecture has produced four orchestration-failure tickets in three days (b.11f, b.hf8, b.aic, plus a stuck-PM report on 2026-05-02), each layering more rules onto the same long-lived-worker + event-driven-team-lead substrate. The pattern is structural: workers idle silently with no completion signal, the team-lead has no clock to fire wall-clock nudge ladders, state lives in three places (bees, TaskList, message history) that drift, and lifecycle ceremony around team creation/teardown introduces its own failure modes. Each prior fix added a rule the model can drop under load. Switching to ephemeral background subagents eliminates the architectural mismatch at the substrate level: Agents either return or are still running, the harness wakes the team-lead on every completion, state has a single source of truth (bees), and there is no lifecycle to babysit. The substrate also moves from experimental to stable. End-user experience is preserved at the high-level UX — every feature a user notices today (interactive entry, model choice, isolation handling, per-Task commits, in-flight reviews, cross-Task interaction checks, final fresh-eyes review, spec traceability) is preserved — but the failure modes that produced repeated babysitting tickets stop occurring at the architectural level rather than at the rule-layer level.
+
+**Acceptance criteria.**
+
+- All three execution skills (`bees-execute`, `bees-fix-issue`, `bees-breakdown-epic`) run without `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. No Agent Teams setup is required and no skill fails for lack of it.
+- A multi-Epic Bee (4+ Epics, 12+ Tasks, 60+ Subtasks) completes end-to-end unattended without a stuck-silence stall — no graduated escalation ladder firing, no user prods required.
+- Concurrent specialist work is preserved: multiple Engineer Agents on different subtasks run in parallel; Engineer + Test Writer + Doc Writer can run side-by-side. Verified by overlapping Agent invocation lifecycles in the TaskList UI.
+- All current user-visible features survive at the high-level UX: model choice for support roles (Doc Writer / PM / Doc Reviewer), worktree-vs-branch isolation prompt, scope confirmation, one-commit-per-Task / one-commit-per-issue, in-flight reviews with iteration loops and time-budget short-circuiting, cross-Task and cross-Epic interaction checks, final post-Bee fresh-eyes review, spec-traceability verification in `bees-breakdown-epic`, per-Task summary report including ignored review feedback.
+- `bees-setup` no longer prompts about Agent Teams or `teammateMode`. The skill still bootstraps hives, CLAUDE.md sections, and optional PRD/SDD; the Agent Teams + display backend prompts are gone.
+- `force_clean_team.py` and `check_agent_teams.py` are deleted; all references in skill prose are removed.
+- `README.md` removes the "Required: enable Agent Teams" section and the "Display backend" section. A single sentence near the workflow diagram replaces them with: "The skills orchestrate work via Claude Code's ephemeral background subagents — no special setup is required beyond the bees CLI and Claude Code itself."
+- A new top-level `subagents/` directory ships seven role-definition files (engineer.md, test-writer.md, doc-writer.md, pm.md, code-reviewer.md, doc-reviewer.md, test-reviewer.md). README install instructions cover both manual copy (current pattern) and the future plugin-packaging shape.
+- `b.gar`'s body is updated at the end of this work to reflect the new architecture so it can resume coherently.
+- All three CLAUDE.md design rules still hold: language-agnostic, POSIX + Windows PowerShell, project-neutral.
+- Skills still talk to bees via the existing `bees ...` CLI commands. No `ticket_backend.py` dispatcher seam (that work was on the abandoned beads branch).
+
+**Out of scope.**
+
+- The beads backend. Deferred; this rewrite is bees-only and targets the existing `bees ...` CLI patterns directly. The "Optional beads backend" Plan Bee (`b.9xr`) holds the recovered spec for revival; see its body.
+- The dispatcher seam (`ticket_backend.py`). Removed by abandoning the bee/b.9xr branch; not coming back here.
+- Executing `b.gar`'s test strategy. Only its body gets a content update; the actual test-strategy work happens later under `b.gar` itself.
+- New skills. The 11 portable-core skills stay 11.
+- Performance tuning beyond the cold-start hybrid model. No prompt-caching engineering, no MCP integration, no token-budget instrumentation.
+- Optional skills. `bees-fleet`, `bees-worktree-add`, `bees-worktree-rm` stay outside the portable core.
+- Changes to bees ticket schema. Status vocabulary, hive layout, dependency model unchanged.
+- Cron / `/loop` / scheduled-wake mechanisms. The reconciliation loop wakes on Agent completion notifications + user input; no clock primitives are needed.
+- Recursive delegation beyond a probe. If the harness allows it we use it as an optimization in one well-defined spot; otherwise we proceed flat. We do not redesign around it.
+- Modifications to the three review skills (`bees-code-review`, `bees-doc-review`, `bees-test-review`) beyond ensuring they invoke cleanly from a subagent context. Their prose stays as-is unless a regression demands change.
