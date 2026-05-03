@@ -161,17 +161,17 @@ For Windows contributors without `make`, a `tools/run_tests.py` script (Python; 
 
 **Substrate change.** Three execution skills (`bees-execute`, `bees-fix-issue`, `bees-breakdown-epic`) currently invoke Claude Code's experimental Agent Teams feature (`TeamCreate`, named persistent workers, `SendMessage` between team-lead and workers, shared `TaskList`, `TeamDelete`). This is replaced with the stable `Agent` tool: each work unit is dispatched as a background `Agent(subagent_type=<role>, prompt=<task assignment>, run_in_background=true)` invocation that returns a final result on completion via a harness notification. The orchestrator is the main Claude Code session running the skill — it remains a "team-lead" conceptually but is now a reconciliation-loop driver, not a chat hub.
 
-**Custom subagent types.** Seven role-specific subagent definitions ship at the repo root in `subagents/`:
+**Custom subagent types.** Seven role-specific subagent definitions ship at the repo root in `agents/` (matches Claude Code's canonical custom-subagents directory at `~/.claude/agents/` and `<repo>/.claude/agents/`):
 
 | File | Model | Purpose |
 |---|---|---|
-| `subagents/engineer.md` | Opus (always) | Implements code changes for a Subtask or set of Subtasks |
-| `subagents/test-writer.md` | Opus (always) | Writes/updates tests for completed Engineer work |
-| `subagents/doc-writer.md` | User's choice (Opus or Sonnet) | Authors or updates documentation |
-| `subagents/pm.md` | User's choice | Per-Task PM review (spec drift, scope creep, in-flight code/doc review invocations) |
-| `subagents/code-reviewer.md` | Opus (always) | Wraps `/bees-code-review` skill invocation |
-| `subagents/doc-reviewer.md` | User's choice | Wraps `/bees-doc-review` skill invocation |
-| `subagents/test-reviewer.md` | Opus (always) | Wraps `/bees-test-review` skill invocation |
+| `agents/engineer.md` | Opus (always) | Implements code changes for a Subtask or set of Subtasks |
+| `agents/test-writer.md` | Opus (always) | Writes/updates tests for completed Engineer work |
+| `agents/doc-writer.md` | User's choice (Opus or Sonnet) | Authors or updates documentation |
+| `agents/pm.md` | User's choice | Per-Task PM review (spec drift, scope creep, in-flight code/doc review invocations) |
+| `agents/code-reviewer.md` | Opus (always) | Wraps `/bees-code-review` skill invocation |
+| `agents/doc-reviewer.md` | User's choice | Wraps `/bees-doc-review` skill invocation |
+| `agents/test-reviewer.md` | Opus (always) | Wraps `/bees-test-review` skill invocation |
 
 Each definition file carries YAML frontmatter (`name`, `description`, `model`, `tools` allowlist) plus a markdown body capturing role-specific instructions (what to read, what to do, what to return). Skill prose in `bees-execute` etc. references subagent types by name (`subagent_type: "engineer"`) without inline role instructions — substantially reducing SKILL.md size.
 
@@ -215,19 +215,19 @@ This is a Kubernetes-controller shape applied to skill orchestration: declarativ
 **Updated SDD sections (not in this Plan-stage edit; updated as part of implementation):**
 
 - "Team orchestration in execution skills" — replaced by an "Orchestration in execution skills" section describing the reconciliation-loop pattern, hub-and-spoke via substrate, hybrid cold-start, TaskList progress UI.
-- "Tech stack" — Agent Teams requirement removed; `Agent` tool background invocations and `subagents/` definition files referenced.
-- "Key components" — two helper scripts removed; `subagents/<role>.md` files added.
+- "Tech stack" — Agent Teams requirement removed; `Agent` tool background invocations and `agents/` definition files referenced.
+- "Key components" — two helper scripts removed; `agents/<role>.md` files added.
 - "External dependencies" — `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` requirement dropped.
 
 **Updated install layout.**
 
-README install instructions extend to copy `subagents/*` into `~/.claude/subagents/` (global) or `<repo>/.claude/subagents/` (per-project) alongside the existing `skills/*` copy. The two-tier paths parallel the existing skills install pattern. A future plugin packaging maps these directories one-to-one without restructuring.
+README install instructions extend to copy `agents/*` into `~/.claude/agents/` (global) or `<repo>/.claude/agents/` (per-project) alongside the existing `skills/*` copy. The two-tier paths parallel the existing skills install pattern. A future plugin packaging maps these directories one-to-one without restructuring.
 
-**Subagent definition format.** Each `subagents/<role>.md` carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus a markdown body. The body is the role-specific Instructions block currently embedded inline in `bees-execute`'s SKILL.md (lines ~290-389). Lifting these blocks into definition files reduces SKILL.md prose by roughly 100-150 lines per file and makes role customization a first-class operation (a downstream user can edit `~/.claude/subagents/engineer.md` to add project-specific guidance without forking the skill).
+**Subagent definition format.** Each `agents/<role>.md` carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus a markdown body. The body is the role-specific Instructions block currently embedded inline in `bees-execute`'s SKILL.md (lines ~290-389). Lifting these blocks into definition files reduces SKILL.md prose by roughly 100-150 lines per file and makes role customization a first-class operation (a downstream user can edit `~/.claude/agents/engineer.md` to add project-specific guidance without forking the skill).
 
 **Sequencing.** The work decomposes into Epics (final structure determined during /bees-breakdown-epic):
 
-- **Epic A — Subagent definitions and infrastructure.** Author the seven `subagents/*.md` files with role prose lifted from current SKILL.md inline blocks. Update install instructions in README. Probe whether subagents load correctly from `~/.claude/subagents/`. No SKILL.md changes yet — old Agent Teams paths still in place.
+- **Epic A — Subagent definitions and infrastructure.** Author the seven `agents/*.md` files with role prose lifted from current SKILL.md inline blocks. Update install instructions in README. Probe whether subagents load correctly from `~/.claude/agents/`. No SKILL.md changes yet — old Agent Teams paths still in place.
 - **Epic B — `bees-execute` rewrite.** Rewrite `bees-execute/SKILL.md` to use the reconciliation-loop pattern with background `Agent` invocations referencing the new subagent types. Drop the message-flow choreography, blocked_on signal, escalation ladder, and helper-script references. Probe recursive delegation; pick flat or nested based on result. Verify against a real Bee.
 - **Epic C — `bees-fix-issue` rewrite.** Same pattern as Epic B at issue scope.
 - **Epic D — `bees-breakdown-epic` rewrite.** Smallest of the three (read-only research team). Apply the same pattern.
