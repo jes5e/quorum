@@ -605,7 +605,7 @@ Pick the narrowest scope glob that covers the entire project directory tree — 
 
 #### Create or validate
 
-Check for the existence of the above hives using the dispatcher's `list-spaces` verb. The bees backend returns each hive's child-tier and status-value configuration inline in the response (under the `hives` JSON key), so the same call covers both existence and config validation; no separate lookup verbs are needed.
+Check for the existence of the above hives using the dispatcher's `list-spaces` verb. The response identifies each existing hive by `display_name`, `normalized_name`, `path`, and `scope` — see the dispatcher's module docstring for the exact shape. Per-hive config (child tiers, status values) is not part of the `list-spaces` response in Epic A, so this call covers existence only; config re-application is handled by re-running `setup-spaces` (see *If a hive exists* below).
 
 ```bash
 # POSIX (bash / zsh — macOS, Linux, WSL) and Windows (PowerShell):
@@ -626,8 +626,8 @@ If any hives are missing:
   ```
 
 If a hive exists:
-- Validate its child tiers and status values from the `list-spaces` response above.
-- If they differ from the canonical defaults, ask the user if you may change them. To re-apply, run `setup-spaces` again with the corrected `--child-tiers` and `--status-values` JSON; the dispatcher's bees backend updates the existing hive in place.
+- The dispatcher's `list-spaces` verb does not surface per-hive config (child tiers, status values) in Epic A — only existence and identity (`display_name`, `normalized_name`, `path`, `scope`). Treat existence as sufficient for the create-or-validate decision in this section.
+- To re-apply or adjust config (child tiers, status values, egg resolver) on a hive that already exists, run `setup-spaces` again with the desired `--child-tiers` / `--status-values` / `--egg-resolver` flags; the dispatcher's bees backend updates the existing hive in place.
 
 **Important:** This workflow has no Ideas hive. If the target repo already has an Ideas hive from a prior setup, do not remove it — but note that bees-workflow skills will not use it.
 
