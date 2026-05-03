@@ -38,6 +38,7 @@ Every Bash tool call in this repo must be a **single literal command** — one b
 - Shell variables and expansion: `$VAR`, `${VAR:-default}`, `$?`, `$(...)`, backticks
 - Multi-line `-c` or inline heredocs: `python3 -c '<line1>\n<line2>'`
 - `unset` / `export` mid-chain
+- Backticks inside *double*-quoted strings — bash treats them as command substitution even when they're "obviously" data (e.g., backticks inside a regex like `grep -nE "... \`my_var\` ..."`). The harness's safety matcher reads this as arbitrary-code execution and re-prompts even when `Bash(grep:*)` is allowlisted. Use **single quotes** for any string literal that contains backticks, or escape them as `\` `\``.
 
 **Required shapes:**
 
