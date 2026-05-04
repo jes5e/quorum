@@ -127,9 +127,13 @@ If blocked:
 If not blocked:
 - Mark issue status to signal work has begun (if needed)
 
-### 3. Assess Complexity and Form Team
+### 3. Execute fix via per-issue Agent dispatch
 
-First, analyze the issue and the relevant source code to assess complexity:
+The orchestrator (you, the Director) drives each Issue's fix through a **reconciliation loop** that dispatches **fresh, ephemeral background `Agent` invocations** against the custom subagent types defined in this skill set's sibling `agents/` directory. There is no long-lived team; there are no warmed Agents; there is no peer-to-peer messaging between workers. Unlike `/bees-execute`, an Issue has no Subtask breakdown — there is one implementation pass per Issue, so the dispatch scope here is **per-issue**, not per-Subtask.
+
+#### Assess complexity (orchestrator-direct)
+
+Before dispatching any Agent, analyze the Issue and the relevant source code to assess complexity. The decision is made directly by the orchestrator from skill prose — no Agent is dispatched to make this call. The classification gates whether the Product Manager Agent is dispatched for this Issue (see "Per-issue cold dispatch" below).
 
 **Simple fix** — one of:
 - Single file change (rename, config tweak, delete dead code)
@@ -144,186 +148,148 @@ First, analyze the issue and the relevant source code to assess complexity:
 - Alters behavior described in PRD or SDD
 - Could have non-obvious side effects on other modules
 
-Then form the team based on complexity:
-
-- If source code needs modification → spawn **Engineer**
-- If tests need modification → spawn **Test Writer**
-- Always spawn **Doc Writer** to check if docs need updating
-- **If complex** → also spawn **Product Manager** to review changes against PRD/SDD in real-time and flag scope creep or spec divergence before it gets committed
-
 Do not ask for confirmation.
 
-**IMPORTANT: You must stay in `delegate` mode. Do not take on work, delegate work to Team members.**
+#### Reconciliation loop
 
-#### Team lifecycle
+The loop is **event-driven, not clock-driven**. Each tick has three phases:
 
-Create **one team per issue** (e.g., `issue-xfm`). Use task-scoped agent names (e.g., `engineer-xfm`, `test-writer-xfm`, `doc-writer-xfm`).
+1. **Read state.** Pull the current truth from three sources before deciding what to do:
+   - **bees** — the canonical ticket store. Use `bees show-ticket --ids <issue-id>` to get the Issue body and current `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) for any focused state query, e.g.:
 
-- **Within an issue**: Send shutdown requests to agents when their work is done. Do NOT call `TeamDelete` until the issue is fully resolved.
-- **Between issues** (in batch mode — `all` or list mode):
-  1. Send shutdown requests to all remaining agents
-  2. Call `TeamDelete` to clean up the team
-  3. If `TeamDelete` fails due to stuck agents: (a) resolve the path to `force_clean_team.py` as `<this skill's base directory>/../bees-execute/scripts/force_clean_team.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-fix-issue`), and the script is bundled with sibling skill `bees-execute`. Run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (b) call `TeamDelete` again to clear session state
-  4. Create a new team for the next issue
+     ```bash
+     bees execute-freeform-query --query-yaml 'stages:
+       - [id=<issue-id>]
+     report: [title, ticket_status]'
+     ```
+   - **TaskList** — the orchestrator's progress UI (see "TaskList as progress UI" below). Each in-flight Agent has a corresponding TaskList task whose `status` reflects whether the Agent is `pending` (queued), `in_progress` (running), or `completed` (Agent reported done).
+   - **git state** — the actual diff on disk. Workers communicate by editing files; the diff is the only authoritative record of what they actually did.
 
-#### Team-lead message-flow choreography
+   Mark the Issue `status=in_progress` (if not already set) the first tick the loop dispatches an implementer Agent for it.
 
-Agent Teams is message-driven — a teammate that finishes processing one ping without a follow-up trigger idles silently, even when all preconditions for its next phase are met. There is no "teammate idle" event the team-lead can subscribe to. The team-lead must therefore proactively route work between teammates as the issue progresses. Workers do work; team-lead routes. Do NOT have workers ping each other directly — peer-to-peer messaging bakes in coupling and breaks when a fix has no Test Writer (doc-only or test-only fixes).
+2. **Reconcile.** Compare current state to target state and act:
+   - For every implementer role whose gating precondition is met for this Issue and which has no Agent already in flight for it, dispatch a fresh Agent (see "Per-issue cold dispatch" below).
+   - For every Agent that has reported completion, persist the result: confirm any bees ticket transitions the Agent committed to, mark the corresponding TaskList task `completed`, and unlock any newly-eligible downstream role.
+   - When all implementer Agents (Engineer if dispatched, Test Writer if dispatched, Doc Writer always) have returned for this Issue, advance to Section 4 (the review loop). If the Issue was classified Complex, the per-issue PM Agent is dispatched alongside the implementer Agents (see "Per-issue cold dispatch" below); the PM's report joins the implementer outputs as input to Section 4.
 
-Apply these rules whenever a teammate reports a state transition:
+3. **Yield.** The orchestrator does not poll. After dispatching the work this tick uncovered, return control to the harness and wait for the **Agent completion notification** delivered by the `run_in_background=true` substrate. The notification is what triggers the next tick.
 
-1. **Engineer reports the entire fix's implementation done** (bees-fix-issue has no subtask breakdown — there's one implementation pass per issue) → team-lead pings the Test Writer with "engineer changes done — write/update tests for the fix". If the fix is test-only or has no Test Writer, skip this rung.
-2. **Test Writer reports the entire fix's tests done** → team-lead pings the Doc Writer (if spawned) with "engineer + test changes done — review the diff for doc gaps", and pings the PM (if spawned for a complex fix) with "implementation complete, review against the spec".
-3. **All writers report done for the fix as a whole** → team-lead advances to Step 4 (Review Loop) and forms the review team.
+##### Anti-pattern: no clock primitives
 
-If a writer was not spawned for this fix, advance directly to the next-rung teammate that was spawned.
+The reconciliation loop is driven exclusively by Agent completion notifications. Do **not** use any of:
 
-##### Pre-dispatch state check
+- **`/loop`** — repeats the orchestrator's last turn on a wall-clock cadence.
+- **`ScheduleWakeup`** — fires the orchestrator after a delay.
+- **`CronCreate`** — fires the orchestrator on a recurring schedule.
+- **Polling** — re-reading bees / TaskList / git on a sleep-wait cycle without a triggering event.
 
-Before sending any `task_assignment` (or equivalent "start working on the fix" / "tests are ready, write docs" message) to a worker, the team-lead must consult **two** current-state sources — never dispatch from stale memory. Workers may have already advanced the ticket since the last time the team-lead looked at it, and re-dispatching a `done` ticket wastes a turn or, worse, causes the worker to redo finished work.
+If the work for this tick is dispatched and there is nothing else to reconcile, the correct action is to yield. Background Agents will wake the orchestrator when they finish; that is the only legitimate trigger for the next tick.
 
-The two sources answer different questions:
+#### Per-issue cold dispatch
 
-- **bees ticket status** — "is the work already finished?" The bees ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`):
+For each Issue, the orchestrator spawns one fresh Agent per role at issue scope:
 
-  ```bash
-  bees execute-freeform-query --query-yaml 'stages:
-    - [id=<issue-id>]
-  report: [title, ticket_status]'
-  ```
+```
+Agent(
+  subagent_type=<role>,            # one of: engineer, test-writer, doc-writer, pm
+  run_in_background=true,
+  prompt=<dispatch prompt with the issue body embedded verbatim>,
+)
+```
 
-- **TaskList** — "is the recipient already on it?" TaskList tasks are first-class team-state — each task has `owner` and `status` fields. Read them via the `TaskList` tool against this team's task list; locate the recipient's task by matching `owner=<recipient agent name>` (the same name you would use in `to:` for SendMessage).
+Each role gets its own Agent invocation. The orchestrator does **not** name Agents (`Agent(name=...)` is not used) and does **not** reuse an Agent across roles. There is no `SendMessage` between roles — the worker reads its assignment from the dispatch prompt, edits files, and exits. The diff is the handoff to the next role.
 
-Skip the dispatch when **either** condition holds:
+Which roles to dispatch for a given Issue:
 
-- bees `ticket_status` is `done` — the work is already finished. Advance the choreography rung instead (e.g., if the Engineer has already closed the issue, fire rung 1 to the Test Writer rather than re-pinging the Engineer).
-- TaskList shows the recipient's task with `owner=<recipient>` AND `status=in_progress` — the worker is already on it. A redundant ping interrupts; trust their self-trigger.
+- **Engineer** — dispatched when source code needs modification.
+- **Test Writer** — dispatched when tests need modification.
+- **Doc Writer** — always dispatched. The Doc Writer decides whether docs actually need updating after reading the diff; the orchestrator does not pre-judge.
+- **Product Manager** — dispatched **only for Complex fixes** (per the orchestrator-direct complexity gate above). Skipped entirely for Simple fixes.
 
-Otherwise dispatch the assignment.
+Reviewer Agents (Code Reviewer, Test Reviewer, Doc Reviewer) are introduced in Section 4 — they are dispatched after the implementer Agents return.
 
-##### Quote the ticket body verbatim
+##### Per-issue cold dispatch (vs SDD's warm-Agent intent)
 
-The `task_assignment` message must embed the issue body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the issue via:
+The original SDD intent was warm Agents that would receive `SendMessage` pings between roles, amortizing context-load cost across an Issue. That path requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents) — and this Bee removes that substrate entirely, so `SendMessage`-based warm dispatch is no longer available. The trade-off is conscious: each cold-dispatched Agent re-loads its role file and any referenced docs, which is more tokens than a warm ping, but the architectural simplification (no long-lived team to manage, no shutdown choreography, no peer-to-peer coupling) is worth it; in practice prompt caching mitigates most of the cold-load cost. The divergence from the SDD's warm-Agent intent is intentional and is captured by Issue **`b.x9w`** ("Re-probe SendMessage-without-Agent-Teams as warm-Agent token-cost optimization"); revisit if the constraint changes.
+
+##### Dispatch prompt: quote the issue body verbatim
+
+The dispatch prompt sent to each Agent must embed the Issue body **verbatim** — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the Issue via:
 
 ```bash
 bees show-ticket --ids <issue-id>
 ```
 
-Embed the returned body block in the assignment message as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. If you must add framing prose around the quoted body (e.g., "your gating precondition is met — start now"), keep it strictly outside the quoted block.
+Embed the returned body block in the dispatch prompt as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. Framing prose around the quoted block (e.g., "your gating precondition is met — start now") is fine; the body itself stays untouched. The orchestrator's own progress signal is the TaskList progress UI (see below) — the dispatch prompt does not need to ask the worker to ping back, because Agent completion notifications are delivered automatically by the substrate.
 
-##### Read the `blocked_on` signal each tick
+#### Hub-and-spoke via substrate
 
-Workers signal idle-blocked state by setting `metadata.blocked_on: "<short description of what they need>"` on their TaskList task (TaskUpdate's metadata bag, see worker instructions below). The team-lead must scan TaskList for this signal at the top of each tick — there is no push notification.
+Workers do not message each other. The orchestrator is the hub; each dispatched Agent is a spoke that reads its prompt, edits files, and exits. The diff is the handoff between roles — when the Engineer finishes, the next role (Test Writer, Doc Writer, or PM) reads the resulting diff to do its work. Hub-and-spoke is a **structural property** of ephemeral background Agents, not a rule the orchestrator must remember to enforce: there is no inter-Agent channel for workers to even attempt peer-to-peer coupling on.
 
-Concrete recipe: call the `TaskList` tool against this team's task list. Each returned task carries its `metadata` bag in standard output, so no extra read is needed. Inspect every task and treat any task whose `metadata.blocked_on` is set (non-null, non-empty string) as a block requiring action this tick.
+#### Recursive delegation: not supported
 
-When a `blocked_on` value is present:
+Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents), "Subagents cannot spawn other subagents" — only the top-level orchestrator may dispatch Agents. The skill ships **flat orchestration**: every Agent invocation originates from this skill's reconciliation loop, never from a worker.
 
-1. Read the description. If it names a teammate or deliverable the team-lead can route (e.g., "waiting on engineer's implementation to write tests"), dispatch the unblocker first per the choreography rungs above (still applying the pre-dispatch state check).
-2. If the block is on something only the human caller can resolve (a missing spec decision, an external credential, a design question the team cannot answer), surface it to the human via `AskUserQuestion` or a direct prose message — do not loop silently.
-3. Once the block is cleared, instruct the worker to clear its own `metadata.blocked_on` (set the key to `null` via TaskUpdate) and resume.
+#### Roles dispatched by the orchestrator
 
-The team may consist of any of the following agents:
-- Engineer
-  - Model: Claude Opus
-  - Responsibilities:
-    - Executing implementation changes to fix the issue
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Engineer, that's "the issue has been validated and assigned to you". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on test-writer to confirm fixture name"` or `"need spec decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Read the Issue description using the bees CLI
-    - Review any relevant internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
-    - Review the existing code to determine the current state
-    - Review the engineering best practices guide referenced in CLAUDE.md under "Documentation Locations"
-    - Modify any source code required to fix the issue
-    - **Compile-check discipline:** Look up the **Compile/type-check** command from CLAUDE.md `## Build Commands` and run it after each significant change. Fix errors before moving on. Run the **Lint** command when the implementation is done. If the project's Compile/type-check entry is empty (interpreted languages without a static type-checker), skip that rung — narrow tests still apply.
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
-- Test Writer
-  - Model: Claude Opus
-  - Responsibilities:
-    - Writing tests that verify the issue fix
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "the Engineer has reported its implementation done (or there is no Engineer phase for this fix)". If yes, you are unblocked; start writing tests now, do not wait for further pings from the team-lead.
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer's implementation"` or `"need test-fixture decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
-    - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
-    - Review the work of the Engineer and see if any tests need to be added, deleted or updated based on that work
-    - Review the work of the Engineer to find any gaps, then add, delete or update required tests
-    - **Running long commands (test suites, builds, etc.):** use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invocations of any length up to that, dispatch in the foreground: `Bash(command: "<your project's test command per CLAUDE.md>", timeout: 540000)`. The harness blocks until the command exits and returns the output; if the command hangs, the harness kills it at the timeout boundary. For runs that legitimately exceed 10 min, use `Bash(run_in_background: true)` and **wait silently** for the task-completion notification — read the output file when it arrives. Do not write shell polling loops to wait for completion; the harness handles notification on its own.
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
-- Doc Writer
-  - Model: User's choice (Opus or Sonnet, selected at start)
-  - Note: this differs from `/bees-execute`'s Doc Writer because `/bees-fix-issue` issues have *no pre-planned doc Subtasks* — the Doc Writer reviews the Engineer's diff for doc gaps and updates ad-hoc. `/bees-execute` has pre-planned doc Subtasks that get executed first. The divergence is intentional.
-  - Responsibilities:
-    - Updating documentation if the issue fix changes behavior
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Doc Writer, that's "the Engineer has reported its implementation done (or there is no Engineer phase for this fix)". If yes, you are unblocked; review the diff for doc gaps and start updating docs now, do not wait for further pings from the team-lead.
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer's diff"` or `"need clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Use the doc writing guide referenced in CLAUDE.md under "Documentation Locations"
-    - Review the customer-facing docs referenced in CLAUDE.md under "Documentation Locations" and see if they need any updates
-    - Review the internal architecture docs referenced in CLAUDE.md under "Documentation Locations" and see if they need any updates
-    - Review the work of the Engineer and see if any docs need to be updated based on that work
-    - Update any docs that require updating
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
-- Product Manager (complex fixes only)
-  - Model: User's choice (Opus or Sonnet, selected at start)
-  - Responsibilities:
-    - Reviews the Engineer's changes against the PRD and SDD in real-time
-    - Flags scope creep — changes beyond what the issue requires
-    - Flags spec divergence — code that contradicts the PRD or SDD
-    - Makes final call on whether the fix is ready for review
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the PM, that's "the Engineer has reported its implementation done". If yes, you are unblocked; start your spec review now, do not wait for further pings from the team-lead.
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer's implementation"` or `"need spec clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Read the Issue description using the bees CLI
-    - Read the project's spec docs relevant to the issue. Use the paths configured in CLAUDE.md `## Documentation Locations` — specifically `Internal architecture docs` (the SDD-equivalent path) and `Customer-facing docs` (the README-equivalent path). The Documentation Locations section has no canonical "PRD" key — if the project has a PRD-equivalent at a known path, use it; otherwise the Issue ticket body itself is the authoritative spec source for bees-fix-issue, and the parent Plan Bee body (if the issue derives from one) is secondary. Do NOT hardcode `docs/prd.md` or `docs/sdd.md` — those names are project-specific.
-    - **Scoped-marker discovery via `up_dependencies` (best-effort).** Issues live in the `issues` hive and have no canonical parent-Plan-Bee field in the bees ticket schema. However, an Issue's `up_dependencies` array — its primary role is listing blocker tickets whose statuses you have already validated above — is also a permitted carrier for an optional scope-context link to a Plan Bee in the `plans` hive. **This is a deliberate dual-use of `up_dependencies`** (blocker AND optional scope-context source), documented here so future maintainers do not silently conflate the two roles. A Plan Bee in `up_dependencies` carrying a Scoped-marker means the Issue is being fixed in the scope of one feature within a cumulative spec, not the whole spec. After validating dependency-blocker statuses, iterate `up_dependencies` and, for each entry that resolves to a Bee in the `plans` hive, attempt to detect and apply the marker. The discovery is **best-effort** — a missing marker, a malformed marker, or a non-`plans`-hive `up_dependencies` entry is not a fatal error; the PM falls back to full-doc spec content. Procedure:
+The orchestrator dispatches the following four roles per Issue. The full role contracts (responsibilities, gating preconditions, instructions, shell-command etiquette) live in the role files; the orchestrator's job is to invoke the right role at the right time, not to carry the role's prose.
 
-      1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. The bees CLI exposes hive-of-record via the freeform-query mechanism — see `docs/doc-writing-guide.md` `## Querying tickets`. A canonical recipe:
+- **Engineer** (`agents/engineer.md`) — implements source-code changes for the fix. Model: Opus (always). Does not write tests or docs.
+- **Test Writer** (`agents/test-writer.md`) — writes / updates / deletes tests to verify the fix and reviews the Engineer's diff for missing coverage. Model: Opus (always).
+- **Doc Writer** (`agents/doc-writer.md`) — reviews the Engineer's diff for documentation gaps and updates customer-facing and internal docs as needed. Model: user's choice (Opus or Sonnet, selected at the start of the run).
+- **Product Manager** (`agents/pm.md`) — reviews the fix against the spec source (the Issue body, plus PRD/SDD-equivalent paths from CLAUDE.md `## Documentation Locations`, optionally Scoped-marker-narrowed via a Plan Bee in `up_dependencies`), flags scope creep or spec divergence. Dispatched **only for Complex fixes** (see "Per-issue PM dispatch" below). Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
-         ```bash
-         bees execute-freeform-query --query-yaml 'stages:
-           - [id=<dep-id>, type=bee, hive=plans]
-         report: [title, body]'
-         ```
+Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) are introduced in Section 4.
 
-         If the query returns zero rows for that ID, treat it as a non-`plans`-hive entry and skip to the next ID. Do NOT hard-fail on a non-Plan-Bee `up_dependencies` entry — that's the blocker-only use of the field, which is fine.
+##### Per-issue PM dispatch
 
-      2. For each Plan Bee found, extract the `body` field from the query result (the envelope's `tickets[0].body` markdown string — same shape as `bees show-ticket`). Do NOT dump the whole JSON envelope to the temp file — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Write that body to a temp file via the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows), then invoke the bundled parser/scoper at `<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-fix-issue`).
+When the orchestrator classifies an Issue as **Complex** (per "Assess complexity" above), it dispatches a fresh PM Agent alongside the implementer Agents for that Issue. The dispatch prompt must include the Issue ID, the Issue body verbatim, the Issue's `up_dependencies` array, and `<scoped-marker-resolver-path>` — a placeholder the orchestrator fills in at runtime so `agents/pm.md` can perform its Scoped-marker check (see "Scoped-marker PM dispatch wiring" below). Simple fixes skip the PM dispatch entirely.
 
-         ```bash
-         # POSIX (bash / zsh):
-         python3 "<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py" "/tmp/bees-bee-body-<short-suffix>.md"
-         ```
+#### TaskList as progress UI
 
-         ```powershell
-         # Windows (PowerShell):
-         python "<this skill's base directory>\..\bees-breakdown-epic\scripts\scoped_marker_resolver.py" "$env:TEMP\bees-bee-body-<short-suffix>.md"
-         ```
+The orchestrator uses Claude Code's native **TaskList** as the visible progress UI for the run. There is no separate display backend to configure — TaskList renders in the harness automatically, replacing the team-display surface a prior message-bus substrate would have required.
 
-         Remove the temp file after each helper invocation:
+For every Agent the orchestrator dispatches, it creates exactly **one** TaskList task:
 
-         ```bash
-         # POSIX (bash / zsh):
-         rm "/tmp/bees-bee-body-<short-suffix>.md"
-         ```
+- **`pending`** — created when the orchestrator decides this role is next for the current Issue but before the Agent invocation lands.
+- **`in_progress`** — set the moment the Agent invocation is dispatched (`Agent(...)` returns).
+- **`completed`** — set when the orchestrator processes the Agent's completion notification and confirms the worker's reported deliverables landed (file edits visible in `git status` / `git diff`, any bees ticket transitions the worker committed to are reflected on disk).
 
-         ```powershell
-         # Windows (PowerShell):
-         Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
-         ```
+Use `metadata.activity` on the TaskList task to surface finer-grained progress when a worker emits intermediate signal (e.g., `"running narrow tests on package X"`, `"resolving Scoped-marker via up_dependencies iteration"`). The orchestrator updates this string opportunistically; it is informational, not a routing input.
 
-      3. Parse the helper's JSON output. When `"scoped": true`, use the per-doc scoped content from the `docs` array for the PM's spec review (Internal architecture docs, Customer-facing docs, and any project PRD-equivalent), in place of the corresponding full-doc content. When `"scoped": false`, no marker was present — fall back to full-doc spec content. If the helper hard-fails (exit 2 — the marker is malformed, references a missing doc on disk, or references a missing heading), surface the helper's stderr to the user as part of the PM's report, then fall back to full-doc spec content for the review (best-effort discovery; do not block the fix).
+##### TaskList naming convention
 
-      4. **Tie-break on multiple markers.** If more than one Plan Bee in `up_dependencies` carries a marker (rare), use the FIRST one in `up_dependencies` iteration order — that is, the order the IDs appear in the Issue's `up_dependencies` array as returned by `bees show-ticket`. Subsequent markers are ignored for this Issue; mention the tie-break in the PM's report so the user knows which marker scoped the spec content.
+The naming convention is the **canonical cross-reference** for downstream Sections of this SKILL.md (Section 4's reviewer dispatches and Section 7's TaskList completion at issue close-out consume these names). It is deterministic so two concurrent invocations cannot collide and unambiguous so any reader can map a TaskList entry back to its Issue.
 
-      Do not attempt to discover a parent Plan Bee outside `up_dependencies` (e.g., by string-matching the Issue title against Plan Bee titles) — that produces silent scope drift, which is exactly what the marker exists to prevent.
-    - Review the Engineer's code changes against the spec
-    - If the Engineer changes something not required by the issue, flag it
-    - If the changes contradict the PRD or SDD, determine if the docs or code are wrong
-    - Send a report to the team lead when review is complete
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
+Naming is **issue-scoped** for every role — there is no Subtask breakdown under an Issue, so the parent ticket id used as the scope suffix is always the Issue id:
 
+- **Implementer Agents** (Engineer, Test Writer, Doc Writer) — Name: `<role>-<issue-id>` (e.g., `engineer-veq`, `test-writer-veq`, `doc-writer-veq` for Issue `b.veq`).
+- **PM Agents** (when dispatched for Complex fixes) — Name: `pm-<issue-id>` (e.g., `pm-veq`).
+- **Reviewer Agents** (Code Reviewer, Test Reviewer, Doc Reviewer — see Section 4) — Name: `<reviewer>-<issue-id>` (e.g., `code-reviewer-veq`, `test-reviewer-veq`, `doc-reviewer-veq`).
+
+#### Scoped-marker PM dispatch wiring
+
+When the orchestrator dispatches the per-issue PM Agent (per "Per-issue PM dispatch" above), the dispatch prompt must include the **resolved path** to the Scoped-marker helper as a `<scoped-marker-resolver-path>` substitution. The helper is a sibling-skill bundled script; resolve its path at runtime from this skill's own base directory:
+
+```
+<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py
+```
+
+The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-fix-issue`). Use the `..` traversal pattern to reach the sibling skill — this matches the same sibling-resolution discipline already used elsewhere in the skill set.
+
+```bash
+# POSIX (bash / zsh): the path the orchestrator embeds in the PM dispatch prompt
+<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py
+```
+
+```powershell
+# Windows (PowerShell): the path the orchestrator embeds in the PM dispatch prompt
+<this skill's base directory>\..\bees-breakdown-epic\scripts\scoped_marker_resolver.py
+```
+
+The dispatch prompt's context selects **Path B** of `agents/pm.md`'s Scoped-marker logic. The signal is structural: the prompt names an **Issue ID** and the Issue's **`up_dependencies`** array, and there is **no Grandparent Bee** in the context (Issues have no parent Bee — Path A's grandparent walk is unavailable here). `agents/pm.md` reads that shape and switches to its Path B branch, which iterates `up_dependencies` opportunistically looking for a Plan Bee whose body carries a Scoped marker, with a best-effort fallback to the unscoped spec when no marker is found. Path A (Grandparent Bee, hard-fail when absent) is the `bees-execute` path and does not apply here.
+
+The orchestrator's responsibility ends at passing the resolved path placeholder, the Issue ID, the Issue body verbatim, and the Issue's `up_dependencies` to the PM. The orchestrator does **not** inline the Scoped-marker grammar, the temp-file recipe for staging the spec body, or the helper invocation itself — `agents/pm.md` owns those, and owns the Path A vs Path B selection logic. That separation lets `agents/pm.md` evolve the marker contract and the path-selection rules without dragging this SKILL.md along.
 
 ### 4. Review Loop
 
