@@ -404,40 +404,23 @@ Classify the result into exactly one of three branches (the status vocabulary `d
 
 ### 5. Final Bee-level Code, Doc and Eng reviews
 
-Once all Epics in the Bee are done:
-- `TeamDelete` the last Epic's team (if it still exists). If stuck: (1) run `force_clean_team.py` (located at `<this skill's base directory>/scripts/force_clean_team.py`) via the platform's Python 3 launcher (`python3` POSIX / `python` Windows) with `<team-name>`, (2) `TeamDelete` again to clear session state.
-- Form a new review Team (e.g., `bee-review-<bee-id>`) to check their work. Use bee-scoped agent names (e.g., `code-reviewer-<bee-id>`, `test-reviewer-<bee-id>`, `doc-reviewer-<bee-id>`) — the reviews run at the Bee level (across the whole Bee, not per Task), so the scope suffix is the bee-id rather than a task-id.
+Once all Epics in the Bee are done, dispatch three concurrent ephemeral reviewer Agents per Section 3's dispatch shape, one per reviewer role: `Agent(subagent_type="code-reviewer", run_in_background=true)`, `Agent(subagent_type="test-reviewer", run_in_background=true)`, `Agent(subagent_type="doc-reviewer", run_in_background=true)`. Track each via a TaskList task per Section 3's naming convention (bee-scoped form: `code-reviewer-<bee-id>`, `test-reviewer-<bee-id>`, `doc-reviewer-<bee-id>`).
 
-If you invoked the Engineer in the first team, invoke the Code Reviewer in this team.
-If you invoked the Test Writer in the first team, invoke the Test Reviewer in this team.
-If you invoked the Doc Writer in the first team, invoke the Doc Reviewer in this team.
+Conditional spawn — only dispatch a reviewer whose corresponding implementer was used during the Epic loop:
+- If Engineer Agents were dispatched during the Epic loop, dispatch the code-reviewer Agent now.
+- If Test Writer Agents were dispatched during the Epic loop, dispatch the test-reviewer Agent now.
+- If Doc Writer Agents were dispatched during the Epic loop, dispatch the doc-reviewer Agent now.
 
-- Code Reviewer
-  - Model: Claude Opus (always)
-  - Responsibilities:
-    - Review the output of the Engineer
-    - Provide feedback where the work of the Engineer was not up to standards
-  - Instructions:
-    - Invoke the /bees-code-review skill
-- Test Reviewer
-  - Model: Claude Opus (always)
-  - Responsibilities:
-    - Review the output of the Test Writer
-    - Provide feedback where the work of the Test Writer was not up to standards
-  - Instructions:
-    - Invoke the /bees-test-review skill
-- Doc Reviewer
-  - Model: User's choice (Opus or Sonnet, selected at start)
-  - Responsibilities:
-    - Review the output of the Doc Writer
-    - Provide feedback where the work of the Doc Writer was not up to standards
-  - Instructions:
-    - Invoke the /bees-doc-review skill
+Reviewer role contracts (responsibilities, model assignment, gating, instructions) live in the role files; the orchestrator's job is to dispatch, not to carry the role's prose.
+
+- **Code Reviewer** (`agents/code-reviewer.md`) — reviews the Engineer's output and surfaces gaps against engineering standards.
+- **Test Reviewer** (`agents/test-reviewer.md`) — reviews the Test Writer's output and surfaces gaps against test-quality standards.
+- **Doc Reviewer** (`agents/doc-reviewer.md`) — reviews the Doc Writer's output and surfaces gaps against documentation standards.
+
 - Get the feedback, and make a judgement call about whether that work must be done
-  - If so, **reform or re-use the first team** to do the work
+  - If feedback requires action, dispatch fresh ephemeral implementer Agents per Section 3's dispatch shape (Engineer / Test Writer / Doc Writer / PM as needed). Stay in delegate mode.
     - **IMPORTANT** Stay in delegate mode and do not do the work yourself.
     - If the feedback was minor enough, you may choose to **NOT** spawn the Product Manager on this iteration
-    - Spawn any team members required to do the work you deem necessary from the reviewer team
   - If not, move on to Final Review but you MUST share the ignored feedback for review
   - Note: This could create an infinite loop so you may ignore feedback so long as you present it in Final Review
 
