@@ -56,7 +56,7 @@ Parse the argument string. Split on any run of commas and/or whitespace; discard
 Notes for list mode:
 - `/bees-fix-issue b.cnb b.sgq b.xet`, `/bees-fix-issue b.cnb,b.sgq,b.xet`, and `/bees-fix-issue b.cnb, b.sgq  b.xet` all parse to the same three-ID list.
 - Up-front validation: before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). If *no* IDs are valid, exit with an error.
-- Between issues, follow the same team-lifecycle cleanup as `all` mode.
+- Between issues, no inter-issue cleanup ceremony is needed — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns, and Section 7 closes out the per-issue TaskList tasks at issue close-out.
 
 To query open issues (used only in no-args and `all` modes — list mode uses the user's explicit list instead):
 ```bash
@@ -78,7 +78,7 @@ The core implementation roles (Engineer, Test Writer, Code Reviewer, Test Review
 
 #### Validate isolation strategy
 
-After parsing the argument list and resolving which issues to fix, but **before** validating any individual issue or forming a team, check whether you are running in an isolated context — fixes will produce one git commit per issue, so landing them on the wrong branch is hard to undo. Mirror `/bees-execute`'s isolation block:
+After parsing the argument list and resolving which issues to fix, but **before** validating any individual issue or dispatching any per-issue Agent, check whether you are running in an isolated context — fixes will produce one git commit per issue, so landing them on the wrong branch is hard to undo. Mirror `/bees-execute`'s isolation block:
 
 **Scenario A — Already in a worktree.** You are in a git worktree whose directory name suggests issue-fix work (e.g., `fix-issues`, `bug-sweep`, or contains a fix-issue-related slug). Proceed directly — no action needed.
 
@@ -210,7 +210,7 @@ Reviewer Agents (Code Reviewer, Test Reviewer, Doc Reviewer) are introduced in S
 
 ##### Per-issue cold dispatch (vs SDD's warm-Agent intent)
 
-The original SDD intent was warm Agents that would receive `SendMessage` pings between roles, amortizing context-load cost across an Issue. That path requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents) — and this Bee removes that substrate entirely, so `SendMessage`-based warm dispatch is no longer available. The trade-off is conscious: each cold-dispatched Agent re-loads its role file and any referenced docs, which is more tokens than a warm ping, but the architectural simplification (no long-lived team to manage, no shutdown choreography, no peer-to-peer coupling) is worth it; in practice prompt caching mitigates most of the cold-load cost. The divergence from the SDD's warm-Agent intent is intentional and is captured by Issue **`b.x9w`** ("Re-probe SendMessage-without-Agent-Teams as warm-Agent token-cost optimization"); revisit if the constraint changes.
+The original SDD intent was warm Agents that would receive `SendMessage` pings between roles, amortizing context-load cost across an Issue. That path requires the experimental teams substrate per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents) — and this Bee removes that substrate entirely, so `SendMessage`-based warm dispatch is no longer available. The trade-off is conscious: each cold-dispatched Agent re-loads its role file and any referenced docs, which is more tokens than a warm ping, but the architectural simplification (no long-lived team to manage, no shutdown choreography, no peer-to-peer coupling) is worth it; in practice prompt caching mitigates most of the cold-load cost. The divergence from the SDD's warm-Agent intent is intentional and is captured by Issue **`b.x9w`**; revisit if the constraint changes.
 
 ##### Dispatch prompt: quote the issue body verbatim
 
@@ -323,6 +323,13 @@ Reviewer role contracts (responsibilities, model assignment, gating, instruction
 
 ### 6. Verify docs are still accurate
 
+The work this section requires depends on whether the Issue was classified Simple or Complex by Section 3's complexity gate:
+
+- **Complex fix** — the per-issue PM Agent dispatched in Section 3 has already verified spec alignment as part of its review (the PM reads the spec sources configured under CLAUDE.md `## Documentation Locations` and flags drift in its report). Section 6 is **informational** on this path: confirm the PM's spec-alignment finding landed in the per-issue summary, and skip the standalone check below. The PM's report covers it.
+- **Simple fix** — no PM was dispatched (per Section 3's complexity gate). The orchestrator runs Section 6's spec-vs-code check directly — orchestrator-direct, no Agent. This path is **load-bearing** on simple fixes.
+
+The standalone spec-vs-code check (load-bearing on the simple-fix path; informational confirmation on the complex-fix path):
+
 After the fix is implemented, review the changes against the project's spec docs — the path configured under `Internal architecture docs` in CLAUDE.md `## Documentation Locations` (the SDD-equivalent), and any project PRD-equivalent if present. If the fix diverges from what the docs describe, determine whether:
 
 1. **The docs are correct and the fix is wrong** → fix the code
@@ -369,7 +376,7 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 
 1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when bees-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Step 7.2). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
 
-2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this session, so the prompt must be self-contained. Starting skeleton (substitute `<pre-session-sha>` and the issue ID list before sending):
+2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. The agent will not see anything else from this session, so the prompt must be self-contained. Starting skeleton (substitute `<pre-session-sha>` and the issue ID list before sending):
 
    ```
    You are an independent reviewer for a bees-workflow fix that was just shipped.
@@ -420,6 +427,6 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
      - **Skip** — acknowledge and move on without action
 
 6. Execute the user's choice:
-   - **Fix in this session**: Form a new team and delegate the fixes. Stay in delegate mode. After fixes are done, commit.
+   - **Fix in this session**: Dispatch fresh ephemeral Agents per Section 3's dispatch shape (Engineer / Test Writer / Doc Writer as needed) to address the findings. Stay in delegate mode. After fixes are done, commit.
    - **File as issue tickets**: For each issue, invoke `/bees-file-issue` with the issue description. Report the created ticket IDs to the user.
    - **Skip**: Done.
