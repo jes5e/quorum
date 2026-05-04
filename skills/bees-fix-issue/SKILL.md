@@ -338,15 +338,14 @@ Report what was found:
 
 Once the issue is fixed:
 
-1. Send shutdown requests to all agents on the team.
-2. Mark the issue status as `done`.
-3. Create one git commit for the Issue (including any doc updates). **NEVER push to remote — committing only.** Use this staging procedure:
+1. Mark the issue's bees ticket `status=done` before committing, so any out-of-band ticket-state propagation is consistent. The status flip itself is a metadata change handled by the bees CLI; it does not produce a working-tree change that needs staging (see no-`.bees/`-staging note in step 2.3 below).
+2. Create one git commit for the Issue (including any doc updates). **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report).
    2. Run `git status` to see the full set of modified and untracked files.
-   3. Stage files that are related to this issue — include agent-reported files, `.bees/` ticket changes, and any formatting changes to files that were touched by this issue's agents. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue.
+   3. Stage files related to this issue's actual code, test, and doc changes — agent-reported files plus formatting changes to files that were touched by this issue's agents. **Note (intentional divergence from `bees-execute`):** unlike `bees-execute` (which DOES stage `.bees/` because Tasks/Subtasks accumulate status changes that must land in the per-Task commit), `bees-fix-issue` does **NOT** stage `.bees/`; Issues live in the `issues` hive and have no in-commit ticket-status accumulation, so the issue's status flip from `open` → `done` is captured by the bees CLI metadata transition and does not need a working-tree commit. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue.
    4. Commit with a descriptive message per system/project git guidance.
-4. Call `TeamDelete` to clean up the team. If it fails: (a) run `force_clean_team.py` (located at `<this skill's base directory>/../bees-execute/scripts/force_clean_team.py` — bundled with sibling skill `bees-execute`) via the platform's Python 3 launcher (`python3` POSIX / `python` Windows) with `<team-name>`, (b) `TeamDelete` again.
-5. Output the summary:
+3. Mark the per-issue TaskList tasks (named per Section 3's issue-scoped naming convention — `engineer-<issue-id>`, `test-writer-<issue-id>`, `doc-writer-<issue-id>`, `pm-<issue-id>` if dispatched, plus the reviewer tasks from Section 4: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`) as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns.
+4. Output the summary:
 
 ```markdown
 ## Issue [x] of [total] done: [issue-title]
@@ -358,7 +357,7 @@ Once the issue is fixed:
 **Ignored Review Feedback**: [list items that were flagged but not addressed, or "None"]
 ```
 
-6. In batch mode (`all` or list mode): proceed to the next issue in the batch (go back to step 2). In single mode: continue to step 8.
+5. In batch mode (`all` or list mode): proceed to the next issue in the batch (go back to step 2). In single mode: continue to step 8.
 
 ### 8. Post-Completion Review
 
@@ -368,7 +367,7 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, and reviewer verdicts from the whole run; that context biases it toward "did the four phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the issue body and nothing else — that's the point.
 
-1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when bees-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Step 7.3). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
+1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when bees-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Step 7.2). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
 
 2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose`**. The agent will not see anything else from this session, so the prompt must be self-contained. Starting skeleton (substitute `<pre-session-sha>` and the issue ID list before sending):
 
