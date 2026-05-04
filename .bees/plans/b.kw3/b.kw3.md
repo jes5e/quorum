@@ -7,7 +7,7 @@ children:
 - t1.kw3.dy
 egg: null
 created_at: '2026-05-04T13:00:13.345825'
-status: in_progress
+status: done
 schema_version: '0.1'
 guid: kw3fhwuyrnmpejqaqzy5hewzr2vz1xs9
 ---
