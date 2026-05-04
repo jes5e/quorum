@@ -293,54 +293,27 @@ The orchestrator's responsibility ends at passing the resolved path placeholder,
 
 ### 4. Review Loop
 
-Once the Team is done, form a review Team to check their work.
-If you invoked the Engineer in the first team, invoke the Code Reviewer in this team.
-If you invoked the Test Writer in the first team, invoke the Test Reviewer in this team.
-If you invoked the Doc Writer in the first team, invoke the Doc Reviewer in this team.
+Once the implementer Agents return, dispatch three concurrent ephemeral reviewer Agents per Section 3's dispatch shape, one per reviewer role: `Agent(subagent_type="code-reviewer", run_in_background=true)`, `Agent(subagent_type="test-reviewer", run_in_background=true)`, `Agent(subagent_type="doc-reviewer", run_in_background=true)`. Track each via a TaskList task per Section 3's issue-scoped naming convention: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`.
 
-#### Don't wait silently on idle teammates — graduated escalation
+Conditional spawn — only dispatch a reviewer whose corresponding implementer was used during this issue's implementation pass:
+- If the Engineer Agent ran during this issue's implementation pass, dispatch the code-reviewer Agent now.
+- If the Test Writer Agent ran during this issue's implementation pass, dispatch the test-reviewer Agent now.
+- If the Doc Writer Agent ran during this issue's implementation pass, dispatch the doc-reviewer Agent now.
 
-Reviewers (and writers) sometimes go idle right after receiving a "ready for X" ping without producing their report. The team-lead's job is to notice and escalate, NOT to keep printing "Waiting" turn after turn. Apply this ladder when a teammate is silent past the work they were asked for:
+Corollary: a doc-only fix dispatches only the doc-reviewer; a code+test fix without a Doc Writer pass dispatches only code-reviewer + test-reviewer.
 
-1. **First nudge (~10 min after ping):** light status check. "Just checking — any blockers on your <X> for b.Y? If not, a one-line 'no blockers' is fine."
-2. **Second nudge (~20 min in):** restate the specific deliverable + cite what's blocking. "Waiting on your <PM review report / test counts / doc list> before I can commit b.Y. If you hit a snag, tell me specifically what."
-3. **Third nudge (~30 min in):** firm deadline. "I'll proceed without your report in 5 min unless you respond."
-4. **Proceed and log:** if no substantive response, run the missing work yourself if tractable (Narrow/Full test per CLAUDE.md, doc verify, code review skim) and commit. Note in the commit summary which review was pending. Do NOT block 6 hours hoping someone wakes up.
+The reconciliation-loop tick defined in Section 3 covers Agent completion notification — there is no idle teammate to escalate to. The orchestrator yields after dispatching the reviewer Agents and the harness fires the next tick on the `run_in_background=true` substrate's completion notification.
 
-When a teammate claims to be "waiting on" something async (a long-running test, an external service, etc.), **verify the claim** before accepting it. Use the platform's process-listing tool to confirm the process is actually running:
+Reviewer role contracts (responsibilities, model assignment, gating, instructions) live in the role files; the orchestrator's job is to dispatch, not to carry the role's prose.
 
-- POSIX (bash / zsh): `ps -ef | grep <process-name>`
-- Windows (PowerShell): `Get-Process | Where-Object { $_.ProcessName -like '*<process-name>*' }`
-- Windows (cmd): `tasklist | findstr <process-name>`
-
-Also check the background process's output file if it has one. A claim of "waiting" with no underlying process running is the same as silence.
-
-- Code Reviewer
-  - Model: Claude Opus
-  - Responsibilities:
-    - Review the output of the Engineer
-    - Provide feedback where the work of the Engineer was not up to standards
-  - Instructions:
-    - Invoke the /bees-code-review skill
-- Test Reviewer
-  - Model: Claude Opus
-  - Responsibilities:
-    - Review the output of the Test Writer
-    - Provide feedback where the work of the Test Writer was not up to standards
-  - Instructions:
-    - Invoke the /bees-test-review skill
-- Doc Reviewer
-  - Model: User's choice (Opus or Sonnet, selected at start)
-  - Responsibilities:
-    - Review the output of the Doc Writer
-    - Provide feedback where the work of the Doc Writer was not up to standards
-  - Instructions:
-    - Invoke the /bees-doc-review skill
+- **Code Reviewer** (`agents/code-reviewer.md`) — reviews the Engineer's output and surfaces gaps against engineering standards.
+- **Test Reviewer** (`agents/test-reviewer.md`) — reviews the Test Writer's output and surfaces gaps against test-quality standards.
+- **Doc Reviewer** (`agents/doc-reviewer.md`) — reviews the Doc Writer's output and surfaces gaps against documentation standards.
 
 - Get the feedback, and make a judgement call about whether that work must be done
-  - If so, **reform the first team** to do the work
+  - If feedback requires action, dispatch fresh ephemeral implementer Agents per Section 3's dispatch shape (Engineer / Test Writer / Doc Writer / PM as needed). The PM re-dispatch follows the same complex-vs-simple gate established in Section 3 — if the original fix was simple (no PM dispatched), do NOT dispatch the PM on iteration; if the original fix was complex, the PM may be re-dispatched (and may be skipped per the optional-on-iteration logic below).
     - **IMPORTANT** Stay in delegate mode and do not do the work yourself.
-    - Spawn any team members required to do the work you deem necessary from the reviewer team
+    - If the feedback was minor enough, you may choose to **NOT** spawn the Product Manager on this iteration
   - If not, move on but you MUST include the ignored feedback in the summary
   - Note: This could create an infinite loop so you may ignore feedback so long as you present it in the summary
 
