@@ -16,5 +16,9 @@ __pycache__/
 # user-specific paths or permissions that shouldn't ship)
 .claude/settings.local.json
 
+# Local-machine ephemeral state from Claude Code's task scheduler (cron-based
+# /loop and ScheduleWakeup primitives write a lock file when active)
+.claude/scheduled_tasks*
+
 notes.txt
 
