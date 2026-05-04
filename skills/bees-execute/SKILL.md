@@ -344,8 +344,8 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 
       **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
    4. Commit with a descriptive message per system/project git guidance.
-3. Send shutdown requests to all current agents. Delete completed tasks from the task list.
-4. Output the summary below to the screen and continue to the next Task (spawning new agents with new task-scoped names on the same team).
+3. Mark the per-Task TaskList tasks (named per the convention established in Section 3 — see "TaskList naming convention") as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-Subtask cold dispatches established in Section 3 already complete-and-exit when each Agent returns.
+4. Output the summary below to the screen and advance to the next Task by dispatching fresh ephemeral implementer Agents per the dispatch shape in Section 3.
 
 ```
 ## Task [N] of [total] Complete: [task-title]
