@@ -163,116 +163,134 @@ you must review the work actually done in those Epics to see if this current Epi
 
 If ready, mark the Epic status with `status=in_progress` to show work has started on the Epic
 
-### 3. Form Team to Execute Tasks
+### 3. Execute Tasks via per-Subtask Agent dispatch
 
-Before forming the Team, load all Tasks and Subtasks for the Epic:
-- Use `bees show-ticket --ids <epic-id>` to get the `children` array (Task IDs)
-- For each Task, fetch its full details including its own `children` array (Subtasks)
-- Read every Subtask — these contain the detailed instructions (Context, What Needs to Change, Key Files, Acceptance Criteria) that the team must follow
-- Sort Tasks in dependency order (check each Task's `up_dependencies`) to ensure no Task is blocked when executed
-- Verify at least 1 Task exists with at least 1 Subtask, and all are ready for work: `status!=drafted`
-- Mark the current Task with `status=in_progress` to show work has started
-- Mark the Bee with `status=in_progress` to show work has started (if not already set)
+The orchestrator (you, the Director) drives Tasks through a **reconciliation loop** that dispatches **fresh, ephemeral background `Agent` invocations** against the custom subagent types defined in this skill's sibling `agents/` directory. There is no long-lived team; there are no warmed Agents; there is no peer-to-peer messaging between workers.
 
-#### Team lifecycle
+#### Reconciliation loop
 
-Create **one team per Epic** (e.g., `epic-9v`) and reuse it across all Tasks in that Epic. This avoids repeated team creation/deletion and the shutdown-timing issues that come with it.
+The loop is **event-driven, not clock-driven**. Each tick has three phases:
 
-- **Agent naming**: Use task-scoped names to avoid collision with agents that haven't fully shut down yet. For example, for Task `xb`: `engineer-xb`, `test-writer-xb`, `pm-xb`. This ensures unique routing regardless of shutdown timing.
-- **Between Tasks**: Send shutdown requests to current agents, delete completed tasks from the task list, then spawn new agents with new task-scoped names. Do NOT call `TeamDelete` between Tasks.
-- **At Epic boundary**: Call `TeamDelete` to clean up the team. By this point all agents from the last Task have had ample time to terminate. If `TeamDelete` fails due to a stuck agent: (1) resolve the path to `force_clean_team.py` as `<this skill's base directory>/scripts/force_clean_team.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-execute`). Run it via the platform's Python 3 launcher (`python3 <path> <team-name>` on POSIX, `python <path> <team-name>` or `py -3 <path> <team-name>` on Windows), then (2) call `TeamDelete` again to clear session state. Then proceed to create the next team.
+1. **Read state.** Pull the current truth from three sources before deciding what to do:
+   - **bees** — the canonical ticket store. Use `bees show-ticket --ids <epic-id>` to get the Epic's `children` array (Task IDs); for each Task, fetch its full details including its own `children` array (Subtasks); read every Subtask body, since these carry the detailed instructions (Context, What Needs to Change, Key Files, Acceptance Criteria) the dispatched Agent will follow. Sort Tasks in dependency order (check each Task's `up_dependencies`). Verify at least one Task exists with at least one Subtask and all are non-drafted (`status!=drafted`). Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) for any focused state query, e.g.:
 
-#### Team-lead message-flow choreography
+     ```bash
+     bees execute-freeform-query --query-yaml 'stages:
+       - [id=<ticket-id>]
+     report: [title, ticket_status]'
+     ```
+   - **TaskList** — the orchestrator's progress UI (see "TaskList as progress UI" below). Each in-flight Agent has a corresponding TaskList task whose `status` reflects whether the Agent is `pending` (queued), `in_progress` (running), or `completed` (Agent reported done).
+   - **git state** — the actual diff on disk. Workers communicate by editing files; the diff is the only authoritative record of what they actually did.
 
-Agent Teams is message-driven — a teammate that finishes processing one ping without a follow-up trigger idles silently, even when all preconditions for its next phase are met. There is no "teammate idle" event the team-lead can subscribe to. The team-lead must therefore proactively route work between teammates as subtask states transition. Workers do work; team-lead routes. Do NOT have workers ping each other directly — peer-to-peer messaging bakes in coupling, breaks when a Task has no Test Writer (research-only Tasks), and obscures the orchestration model.
+   Mark the current Task `status=in_progress` and the Bee `status=in_progress` (if not already set) the first time a Task starts.
 
-Apply these rules whenever a teammate reports a state transition:
+2. **Reconcile.** Compare current state to target state and act:
+   - For every Subtask whose dependencies are satisfied and which has no Agent already in flight for it, dispatch a fresh Agent (see "Per-Subtask cold dispatch" below).
+   - For every Agent that has reported completion, persist the result: confirm the bees ticket transitioned to `status=done`, mark the corresponding TaskList task `completed`, and unlock any newly-eligible downstream Subtask.
+   - When all Subtasks of the current Task are `done`, advance to the per-Task PM review by dispatching a fresh PM Agent (see "Per-Task PM dispatch" below).
+   - When all Tasks of the current Epic are `done`, advance to the inter-Epic interaction checkpoint described in Section 4.2.
 
-1. **Engineer reports a subtask is at `status=done`** → team-lead pings the Test Writer with "engineer subtask <id> done — start writing/updating tests for that subtask now". If the Task has no Test Writer (research-only), skip this rung. Re-fire this rung for each Engineer subtask that completes; do not wait for all Engineer subtasks to land before pinging.
-2. **Test Writer reports a subtask is at `status=done`** → team-lead pings the PM with "test subtask <id> done — review the per-subtask diff". Re-fire per Test Writer subtask, same as rung 1.
-3. **All child subtasks at `status=done`** → team-lead pings the PM with "all subtasks done, run reviews and produce the final Task report". This drives the per-Task PM reviews (`bees-code-review` + `bees-doc-review` per the PM Instructions block) and the per-Task summary.
+3. **Yield.** The orchestrator does not poll. After dispatching the work this tick uncovered, return control to the harness and wait for the **Agent completion notification** delivered by the `run_in_background=true` substrate. The notification is what triggers the next tick.
 
-If a teammate reports done and the next-rung teammate is in a known-not-spawned state for this Task, advance directly without an extra ping (e.g., research-only Task with no Test Writer: Engineer-done routes straight to PM).
+##### Anti-pattern: no clock primitives
 
-##### Pre-dispatch state check
+The reconciliation loop is driven exclusively by Agent completion notifications. Do **not** use any of:
 
-Before sending any `task_assignment` (or equivalent "start working on subtask <id>") message to a worker, the team-lead must consult **two** current-state sources — never dispatch from stale memory. Workers may have already advanced the ticket since the last time the team-lead looked at it, and re-dispatching a `done` ticket wastes a turn or, worse, causes the worker to redo finished work.
+- **`/loop`** — repeats the orchestrator's last turn on a wall-clock cadence.
+- **`ScheduleWakeup`** — fires the orchestrator after a delay.
+- **`CronCreate`** — fires the orchestrator on a recurring schedule.
+- **Polling** — re-reading bees / TaskList / git on a sleep-wait cycle without a triggering event.
 
-The two sources answer different questions:
+If the work for this tick is dispatched and there is nothing else to reconcile, the correct action is to yield. Background Agents will wake the orchestrator when they finish; that is the only legitimate trigger for the next tick.
 
-- **bees ticket status** — "is the work already finished?" The bees ticket schema has no concept of an assignee/owner; ticket state is just `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`):
+#### Per-Subtask cold dispatch
 
-  ```bash
-  bees execute-freeform-query --query-yaml 'stages:
-    - [id=<ticket-id>]
-  report: [title, ticket_status]'
-  ```
+For each ready implementer Subtask, the orchestrator spawns a fresh Agent at Subtask scope:
 
-- **TaskList** — "is the recipient already on it?" TaskList tasks are first-class team-state — each task has `owner` and `status` fields. Read them via the `TaskList` tool against this team's task list; locate the recipient's task by matching `owner=<recipient agent name>` (the same name you would use in `to:` for SendMessage).
-
-Skip the dispatch when **either** condition holds:
-
-- bees `ticket_status` is `done` — the work is already finished. Advance the choreography rung instead (e.g., if the Engineer subtask is already `done`, fire rung 1 to the Test Writer rather than re-pinging the Engineer).
-- TaskList shows the recipient's task with `owner=<recipient>` AND `status=in_progress` — the worker is already on it. A redundant ping interrupts; trust their self-trigger.
-
-Otherwise dispatch the assignment.
-
-##### Quote the ticket body verbatim
-
-The `task_assignment` message must embed the ticket body verbatim — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the ticket via:
-
-```bash
-bees show-ticket --ids <ticket-id>
+```
+Agent(
+  subagent_type=<role>,            # one of: engineer, test-writer, doc-writer
+  run_in_background=true,
+  prompt=<dispatch prompt with the Subtask body embedded verbatim>,
+)
 ```
 
-Embed the returned body block in the assignment message as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. If you must add framing prose around the quoted body (e.g., "your gating precondition is met — start now"), keep it strictly outside the quoted block.
+Each Subtask gets its own Agent invocation. The orchestrator does **not** name Agents (`Agent(name=...)` is not used) and does **not** reuse an Agent across Subtasks. There is no `SendMessage` between Subtasks — the worker reads its assignment from the dispatch prompt, edits files, and exits. The diff is the handoff to the next role.
 
-##### Read the `blocked_on` signal each tick
+The PM and the reviewers (introduced in Section 5) are also dispatched fresh: the PM gets a new Agent at every per-Task review boundary, and reviewers get a new Agent at every Bee-level review.
 
-Workers signal idle-blocked state by setting `metadata.blocked_on: "<short description of what they need>"` on their TaskList task (TaskUpdate's metadata bag, see worker instructions below). The team-lead must scan TaskList for this signal at the top of each tick — there is no push notification.
+##### Per-Subtask cold dispatch (vs SDD's warm-Agent intent)
 
-Concrete recipe: call the `TaskList` tool against this team's task list. Each returned task carries its `metadata` bag in standard output, so no extra read is needed. Inspect every task and treat any task whose `metadata.blocked_on` is set (non-null, non-empty string) as a block requiring action this tick.
+The original SDD intent was warm Agents that would receive `SendMessage` pings between Subtasks, amortizing context-load cost across a Task. That path requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents) — and Epic 8s removes that substrate entirely, so `SendMessage`-based warm dispatch is no longer available. The trade-off is conscious: each cold-dispatched Agent re-loads its role file and any referenced docs, which is more tokens than a warm ping, but the architectural simplification (no team lifecycle, no shutdown choreography, no peer-to-peer coupling) is worth it; in practice prompt caching mitigates most of the cold-load cost. The divergence from the SDD's warm-Agent intent is intentional and is captured by Issue **`b.x9w`** ("Re-probe SendMessage-without-Agent-Teams as warm-Agent token-cost optimization") and a divergence note recorded in the SDD; revisit if the constraint changes.
 
-When a `blocked_on` value is present:
+##### Dispatch prompt: quote the ticket body verbatim
 
-1. Read the description. If it names a teammate or deliverable the team-lead can route (e.g., "waiting on test-writer for subtask <id>"), dispatch the unblocker first per the choreography rungs above (still applying the pre-dispatch state check).
-2. If the block is on something only the human caller can resolve (a missing spec decision, an external credential, a design question the team cannot answer), surface it to the human via `AskUserQuestion` or a direct prose message — do not loop silently.
-3. Once the block is cleared, instruct the worker to clear its own `metadata.blocked_on` (set the key to `null` via TaskUpdate) and resume.
+The dispatch prompt sent to each Agent must embed the ticket body **verbatim** — paraphrasing silently corrupts identifier names (function names, flag names, type names) that the worker will then use literally. Read the ticket via `bees show-ticket --ids <ticket-id>` and embed the returned body in the prompt as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. Framing prose around the quoted block (e.g., "your gating precondition is met — start now") is fine; the body itself stays untouched. The orchestrator's own progress signal is the TaskList progress UI (see below) — the dispatch prompt does not need to ask the worker to ping back, because Agent completion notifications are delivered automatically by the substrate.
 
-#### Don't wait silently on idle teammates — graduated escalation
+#### Hub-and-spoke via substrate
 
-Pings can be missed. When a teammate has gone silent past the work it was asked for, the team-lead's job is to notice and escalate, NOT to keep printing "Waiting" turn after turn. Apply this ladder:
+Workers do not message each other. The orchestrator is the hub; each dispatched Agent is a spoke that reads its prompt, edits files, and exits. The diff is the handoff between roles — when the Engineer finishes a Subtask, the next role (Test Writer, Doc Writer, or PM) reads the resulting diff to do its work. Hub-and-spoke is a **structural property** of ephemeral background Agents, not a rule the orchestrator must remember to enforce: there is no inter-Agent channel for workers to even attempt peer-to-peer coupling on.
 
-1. **First nudge (~10 min after ping):** light status check. "Just checking — any blockers on your <X> for this Task / Epic? If not, a one-line 'no blockers' is fine."
-2. **Second nudge (~20 min in):** restate the specific deliverable + cite what's blocking. "Waiting on your <PM review report / test counts / doc list> before I can commit this Task. If you hit a snag, tell me specifically what."
-3. **Third nudge (~30 min in):** firm deadline. "I'll proceed without your report in 5 min unless you respond."
-4. **Proceed and log:** if no substantive response, run the missing work yourself if tractable (Narrow/Full test per CLAUDE.md, doc verify, code review skim) and commit. Note in the Task summary which review was pending. Do NOT block hours hoping someone wakes up.
+#### Recursive delegation: not supported
 
-When a teammate claims to be "waiting on" something async (a long-running test, an external service, etc.), **verify the claim** before accepting it. Use the platform's process-listing tool to confirm the process is actually running:
+Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents), "Subagents cannot spawn other subagents" — only the top-level orchestrator may dispatch Agents. The skill ships **flat orchestration**: every Agent invocation originates from this skill's reconciliation loop, never from a worker. The bound on flat-orchestration context growth is **Section 4.2's Epic-boundary context-clear discipline**, which clears the orchestrator's context window between Epics so the loop's working set stays bounded across long Bees.
 
-- POSIX (bash / zsh): `ps -ef | grep <process-name>`
-- Windows (PowerShell): `Get-Process | Where-Object { $_.ProcessName -like '*<process-name>*' }`
-- Windows (cmd): `tasklist | findstr <process-name>`
+#### Roles dispatched by the orchestrator
 
-Also check the background process's output file if it has one. A claim of "waiting" with no underlying process running is the same as silence.
+The orchestrator dispatches the following four roles during a Task. The full role contracts (responsibilities, gating preconditions, instructions, shell-command etiquette) live in the role files; the orchestrator's job is to invoke the right role at the right time, not to carry the role's prose.
 
-Create agents on the team to work on an individual Task.
-**IMPORTANT: You must stay in `delegate` mode. Do not take on work, delegate work to Team members.**
+- **Engineer** (`agents/engineer.md`) — implements source-code Subtasks. Model: Opus (always). Does not write tests or docs.
+- **Test Writer** (`agents/test-writer.md`) — implements test Subtasks and reviews the Engineer's diff for missing test coverage. Model: Opus (always).
+- **Doc Writer** (`agents/doc-writer.md`) — implements documentation Subtasks and reviews the Engineer's diff for documentation gaps. Model: user's choice (Opus or Sonnet, selected at the start of the run).
+- **Product Manager** (`agents/pm.md`) — reviews the Task's work against the spec source (the Bee's egg-resolved PRD/SDD, or the Bee body itself when the egg is null/empty), drives `bees-code-review` and `bees-doc-review` per Task, and produces the per-Task summary report. Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
-Choose which Team members are required.
-- If source code is being modified or created, spawn the Engineer.
-  - **The Engineer is responsible for source code. It does *not* know how to update unit tests or docs!**
-- If test code is being modified or created, spawn one or more Test Writers.
-  - **The Test Writer is responsible for unit tests. It does *not* know how to update source doe or docs!**
-  - If there are multiple files that need updating, the Task should have one Subtask per file
-  - If so, spawn multiple Test Writers to work on each Subtask and File in parallel
-  - It might be necessary to order them so that the first one creates or modifies any shared fixtures
-- If docs need to be modified or created, spawn the Doc Writer.
-- If this is the first time forming the team, **always** spawn the Product Manager.
-  - If you are re-forming the team to address Code, Doc and Test Reviewer feedback you may **optionally** choose to not spawn the Product Manager, if the work is minor enough and will not impact Product functionality
+Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) are introduced in Section 5 (final Bee-level reviews).
 
-The team may consist of any of the following agents, but the Product Manager must always be spawned.
-**Use task-scoped names** when spawning (e.g., for Task `xb`: `engineer-xb`, `test-writer-xb`, `pm-xb`):
+##### Per-Task PM dispatch
+
+When all child Subtasks of the current Task are `status=done`, dispatch a fresh PM Agent to do the per-Task review and produce the Task summary. The dispatch prompt must include the Task ID, the list of completed Subtask IDs, and `<scoped-marker-resolver-path>` — a placeholder the orchestrator fills in at runtime so `agents/pm.md` can perform its Scoped-marker check (see "Scoped-marker PM dispatch wiring" below).
+
+#### TaskList as progress UI
+
+The orchestrator uses Claude Code's native **TaskList** as the visible progress UI for the run. There is no separate display backend to configure — TaskList renders in the harness automatically, replacing the team-display surface a prior message-bus substrate would have required.
+
+For every Agent the orchestrator dispatches, it creates exactly **one** TaskList task:
+
+- **`pending`** — created when the orchestrator decides this Subtask is next but before the Agent invocation lands.
+- **`in_progress`** — set the moment the Agent invocation is dispatched (`Agent(...)` returns).
+- **`completed`** — set when the orchestrator processes the Agent's completion notification and confirms the bees ticket transitioned to `status=done`.
+
+Use `metadata.activity` on the TaskList task to surface finer-grained progress when a worker emits intermediate signal (e.g., `"running narrow tests on package X"`, `"resolving Scoped-marker for grandparent bee"`). The orchestrator updates this string opportunistically; it is informational, not a routing input.
+
+##### TaskList naming convention
+
+The naming convention is the **canonical cross-reference** for downstream Tasks (later Sections of this SKILL.md and other skills in the workflow consume these names). It is deterministic so two concurrent invocations cannot collide and unambiguous so any reader can map a TaskList entry back to its bee ticket:
+
+- **Implementer Agents** (Engineer, Test Writer, Doc Writer) — **Subtask scope**. Name: `<role>-<subtask-id>` (e.g., `engineer-t3.abc.def.gh`, `test-writer-t3.abc.def.ij`, `doc-writer-t3.abc.def.kl`). Each Subtask gets its own implementer Agent and its own TaskList task; subtask-id makes the name unique even when sibling Subtasks of the same Task run concurrently.
+- **PM Agents** — **Task scope**. Name: `pm-<task-id>` (e.g., `pm-t2.abc.def.gh`). The PM reviews the whole Task at once, so its scope suffix is the parent Task's id.
+- **Reviewer Agents** (Code Reviewer, Test Reviewer, Doc Reviewer — see Section 5) — **Bee scope**. Name: `<reviewer>-<bee-id>` (e.g., `code-reviewer-b.abc`, `test-reviewer-b.abc`, `doc-reviewer-b.abc`). Reviewers run once per Bee at the final Bee-level review, so the scope suffix is the Bee id.
+
+#### Scoped-marker PM dispatch wiring
+
+When the orchestrator dispatches the per-Task PM Agent (per "Per-Task PM dispatch" above), the dispatch prompt must include the **resolved path** to the Scoped-marker helper as a `<scoped-marker-resolver-path>` substitution. The helper is a sibling-skill bundled script; resolve its path at runtime from this skill's own base directory:
+
+```
+<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py
+```
+
+The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-execute`). Use the `..` traversal pattern to reach the sibling skill — this matches the same sibling-resolution discipline already used elsewhere in the skill set.
+
+```bash
+# POSIX (bash / zsh): the path the orchestrator embeds in the PM dispatch prompt
+<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py
+```
+
+```powershell
+# Windows (PowerShell): the path the orchestrator embeds in the PM dispatch prompt
+<this skill's base directory>\..\bees-breakdown-epic\scripts\scoped_marker_resolver.py
+```
+
+The orchestrator's responsibility ends at passing the resolved path placeholder to the PM. The orchestrator does **not** inline the Scoped-marker grammar, the temp-file recipe for staging the Bee body, or the helper invocation itself — `agents/pm.md` owns those. That separation lets `agents/pm.md` evolve the marker contract without dragging this SKILL.md along.
 
 #### Testing discipline — avoid redundant full-workspace runs
 
@@ -291,131 +309,6 @@ Apply the same principle to **Lint**, **Format**, and any docs-build command: sc
 #### Running long commands
 
 Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invocations of any length up to that, dispatch in the foreground: `Bash(command: "<your project's test command per CLAUDE.md>", timeout: 540000)`. The harness blocks until the command exits and returns the output; if the command hangs, the harness kills it at the timeout boundary. For runs that legitimately exceed 10 min, use `Bash(run_in_background: true)` and wait silently for the task-completion notification — Read the output file when it arrives. Do not write shell polling loops to wait for completion; the harness handles notification on its own.
-
-- Engineer
-  - Model: Claude Opus (always)
-  - Responsibilities:
-    - Executing implementation Subtasks for a task (if required)
-      - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Engineer, that's "an implementation Subtask exists at `status=ready` (or you have an `in_progress` one mid-flight)". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on test-writer for subtask <id>"` or `"need spec decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Read the Subtask description using the bees CLI — it contains Context, What Needs to Change, Key Files, and Acceptance Criteria
-    - Review any relevant internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
-    - Review the existing code to determine the current state
-    - Review the engineering best practices guide referenced in CLAUDE.md under "Documentation Locations"
-    - Execute each implementation Subtask following the instructions in its description
-    - There may be one or many implementation subtasks
-    - Mark each Subtask as `status=in_progress` when starting it and `status=done` when done
-    - **Compile-check discipline:** Look up the **Compile/type-check** command from CLAUDE.md `## Build Commands` and run it after each subtask. Fix errors before moving on. If the project's Compile/type-check entry is empty (interpreted languages without a static type-checker), skip this rung — the **Narrow test** rung still applies. Also run **Lint** at narrow scope after each subtask where supported.
-    - **Scope your test/lint runs narrowly** while iterating — use the **Narrow test** and **Lint** commands from CLAUDE.md `## Build Commands` (e.g. for a Rust crate, **Narrow test** typically resolves to `cargo test -p <crate>`; for a Node project, to `vitest run <path>`). The full-suite run happens once at the Task's `.T` subtask. See "Testing discipline — avoid redundant full-workspace runs" above.
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
-- Test Writer
-  - Model: Claude Opus (always)
-  - Responsibilities:
-    - Executing testing Subtasks for a task (if required)
-      - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Test Writer, that's "at least one Engineer subtask for this Task is at `status=done` and its corresponding test work has not yet been started". If yes, you are unblocked; start writing/updating tests for that subtask now, do not wait for a ping from the team-lead. (When the Task is test-only with no Engineer subtasks, treat your own ready Subtasks as the gating precondition.)
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer for subtask <id>"` or `"need test-fixture decision: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
-    - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
-    - Execute all test subtasks to change, add or delete tests
-    - Review the work of the Engineer and see if any tests need to be added, deleted or updated based on that work
-      - It is possible the testing subtasks were incomplete
-      - Review the work of the Engineer to find any gaps, then add, delete or updated required tests
-    - Mark each Subtask as `status=in_progress` when starting it and `status=done` when done
-    - **Scope your test/lint runs narrowly** while iterating — use the **Narrow test** and **Lint** commands from CLAUDE.md `## Build Commands`. The authoritative workspace-wide run happens once at the Task's `.T` subtask. See "Testing discipline — avoid redundant full-workspace runs" above.
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
-- Doc Writer
-  - Model: User's choice (Opus or Sonnet, selected at start)
-  - Note: this differs from `/bees-fix-issue`'s Doc Writer because `/bees-execute` Tasks have *pre-planned doc Subtasks* in the breakdown — the Doc Writer's primary job is to execute those, then review the Engineer's diff for additional gaps. `/bees-fix-issue` has no pre-planned subtasks, so its Doc Writer reviews ad-hoc only. The divergence is intentional.
-  - Responsibilities:
-    - Execute documentation Subtasks for a task (if required)
-      - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check whether your gating precondition is met — for the Doc Writer, that's "a pre-planned doc Subtask is at `status=ready` (or `in_progress` mid-flight), OR all in-flight Engineer/Test Writer subtasks for this Task are at `status=done` so a diff-review pass is unblocked". If yes, you are unblocked; start your work now, do not wait for further pings from the team-lead.
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer diff for doc review"` or `"need clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Use the doc writing guide referenced in CLAUDE.md under "Documentation Locations"
-    - Execute any customer-facing docs subtasks
-    - Execute any internal architecture docs subtasks
-    - Review the work of the Engineer and see if any docs need to be updated based on that work
-      - It is possible the doc subtasks were incomplete
-      - Review the work of the Engineer to find any gaps, then update docs
-    - Mark each Subtask as `status=in_progress` when starting it and `status=done` when done
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
-- Product Manager
-  - Model: User's choice (Opus or Sonnet, selected at start)
-  - Responsibilities:
-    - Responsible for reviewing Task work against the spec source — either the PRD/SDD linked from the Grandparent Bee's egg, or the Grandparent Bee body itself when the egg is null/empty
-    - Ensures that the work that was done meets the requirements
-    - Surface design questions back to the Caller
-      - If the team proposes different approaches to a problem, surface this back up to the caller with an AskUserQuestion
-    - Responsible for providing report to share back up to calling Agent
-    - Ultimately responsible for the quality of the Task work and correctness of the output of the Team
-  - Instructions:
-    - **Self-trigger:** at the top of every turn, check both PM gating preconditions: (a) at least one subtask has reached `status=done` from both the Engineer side and (where applicable) the Test Writer side, and you have not yet reviewed its per-subtask diff (per-subtask diff review is unblocked); (b) all child subtasks of the Task are at `status=done` (Step 5 reviews and the final Task report are unblocked). If either is met, you are unblocked for that lane; start it now, do not wait for further pings from the team-lead.
-    - **Surface blocked state via `blocked_on` metadata.** When you cannot make progress because you are waiting on another teammate or human input, set `metadata.blocked_on: "<short description>"` on your TaskList task via TaskUpdate (e.g., `"waiting on engineer + test-writer to finish subtasks before final review"` or `"need spec clarification: <question>"`). The team-lead scans for this signal each tick and routes the unblocker. Clear the field (set to `null`) once you resume work. Do not invent ad-hoc messages — the metadata field is the protocol.
-    - Get the Task using the bees CLI and read it.
-    - Read all Subtasks (children of the Task) — these contain the detailed work instructions.
-    - Read the Parent Epic.
-    - Read the Grandparent Bee.
-    - Read the source material linked in the Grandparent Bee. **If the Grandparent Bee's egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Bee body itself is the authoritative spec source — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
-    - **Check for the Scoped-marker on the Grandparent Bee.** If the Grandparent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the egg-resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before being used as the spec for spec-compare logic. Run the bundled parser/scoper that ships with sibling skill `bees-breakdown-epic`. Extract the `body` field from the `bees show-ticket --ids <grandparent-bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows). Do NOT dump the whole JSON envelope to the temp file — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Then invoke the helper at `<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-execute`).
-
-      ```bash
-      # POSIX (bash / zsh):
-      python3 "<this skill's base directory>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py" "/tmp/bees-bee-body-<short-suffix>.md"
-      ```
-
-      ```powershell
-      # Windows (PowerShell):
-      python "<this skill's base directory>\..\bees-breakdown-epic\scripts\scoped_marker_resolver.py" "$env:TEMP\bees-bee-body-<short-suffix>.md"
-      ```
-
-      The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full egg-resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per egg-doc path; compare the Task work against the scoped content only. The helper exits 2 with a clear error on stderr if the marker is malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the team-lead and stop the spec review until the user resolves it; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`. Remove the temp file after the helper exits:
-
-      ```bash
-      # POSIX (bash / zsh):
-      rm "/tmp/bees-bee-body-<short-suffix>.md"
-      ```
-
-      ```powershell
-      # Windows (PowerShell):
-      Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
-      ```
-    - Make sure the Test Writer and Doc Writer review the work of the Engineer
-      - The Engineer's output needs review by the rest of the team
-    - Review quality of Task and Subtasks efforts, make final decision when to present completed Task to caller
-    - Review the Task and Subtasks execution to ensure that the work:
-      - Aligns with the requirements
-      - Does not introduce more functionality than asked for
-        - e.g The PRD calls for no legacy support but the Engineers proposes a task for backwards compatibility.
-        - Call this out as unacceptable
-      - Review all Tasks once they are complete against the Epic to ensure that:
-        - The work will meet the Acceptance Criteria
-        - The work covers all functionality required by the Epic
-        - The work does not introduce any functionality not required or explicitly disallowed in the Epic
-    - Uses the bees-code-review and bees-doc-review skill after work has been done for quality control
-      - NOTE: These skills could infinitely return work items
-      - Product Manager must use judgement when deciding whether to ask the Team to make the improvements or not
-      - **Time budget — short-circuit when reviews run hot.** If a single `/bees-code-review` or `/bees-doc-review` invocation returns more than ~10 work items, OR runs more than ~5 turns of back-and-forth, stop iterating in that lane: triage the returned list down to blocker-severity items only (correctness bugs, spec violations, contract-key violations), ask the Team to address those, and defer suggestions / nits / style work to ignored-feedback for the Task summary. These thresholds are guidance, not a hard contract — pick the firmer side when the review is clearly thrashing on subjective feedback, the looser side when each item is high-signal.
-      - If the Product Manager decides to ignore bees-code-review or bees-doc-review feedback, this MUST be included in the end of task summary report for review
-    - **Trust the Task's `.T` subtask output** — do NOT re-run the full workspace test suite / clippy by default. The `.T` subtask is the authoritative workspace-wide validation run. Only re-run if you have a specific reason (engineer reported skipping something, stale `.bees/` state, etc.). See "Testing discipline — avoid redundant full-workspace runs" above.
-    - **Cross-Task and cross-Epic interaction check** — per-Task code review naturally focuses on the Task's own diff. The PM is responsible for the wider view. Before approving a Task, explicitly verify:
-      - **Contract consistency with sibling Tasks in the same Epic.** Read the other Tasks in this Epic. For each function/API this Task modifies, find sibling Tasks that call or assume behavior from it and verify those assumptions still hold. Example: if this Task reorders steps inside an `auth_middleware`, a sibling Task whose request-handler docstring says "by this point the request is signature-verified" must be cross-checked against the new ordering.
-      - **Contract consistency with completed sibling Epics.** If prior Epics in this Bee already landed code that interacts with what this Task changes, re-read the relevant diffs (via `git log` / `git diff` on the branch) and verify the interactions.
-      - **Cumulative resource accounting.** If this Task adds acquires from a bounded resource (connection pool, semaphore, queue slot, in-memory map, etc.), sum across all call sites — including call sites in sibling Tasks and sibling Epics — and flag lifetime mismatches or starvation scenarios. Example: a new long-lived consumer sharing a pool with short-lived transaction writers will starve writers at steady state.
-      - **Symmetric lifecycle coverage.** If this Task introduces a new resource (persistent key, file, pool entry, in-memory entry, etc.), grep the codebase for every cleanup/teardown path for the adjacent resource class and verify this new resource is handled symmetrically. Example: adding a new `cache:user:{id}:permissions` key class in the write path requires the cache-invalidation path, the user-deletion path, and any periodic-purge job to all DELETE this key class — otherwise stale-permissions data leaks past role changes.
-      - **New-pattern-exposes-old-code.** If this Task introduces a new call pattern for an *unchanged* function (new frequency, new argument combination, new temporal pattern), mentally run that unchanged function under the new pattern and flag any latent assumptions the new pattern breaks. Example: `get_user_profile(id)` is fine when called once per request from the request hot path, but a new batch endpoint that calls it for hundreds of IDs in a tight loop may miss the per-request memoization reset and leak stale data from the prior request into the next.
-    - **Shell-command etiquette:** when running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc. Before reaching for shell, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (loops, branches, polling, command substitution, chained pipelines). Reach for shell only when no tool fits.
-    - Provide report when done. Must include:
-      - Any ignored reviewer feedback
-      - Any contentious topics between team members
-      - Any design decisions that were made that conflicted with work described in tickets
-      - Any incomplete work
-      - Any cross-Task / cross-Epic interaction issues discovered during the wider-view check, and the resolution
-
 
 ### 4. Per-Task and Per-Epic Cleanup
 

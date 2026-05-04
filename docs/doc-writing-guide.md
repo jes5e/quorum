@@ -255,12 +255,14 @@ Use these terms consistently. Mixing synonyms forces readers (and Claude) to men
 - **Bee** — a ticket inside a hive. A "Plan Bee" is a top-level Bee in the Plans hive. An "Epic" is a t1 child of a Plan Bee.
 - **Egg** — a Bee's `egg` field, which points at one or more on-disk source documents (PRD, SDD, etc.). Resolved by the egg resolver script. May be null/empty — when null on a Plan Bee, the **Plan Bee body itself becomes the authoritative spec**.
 - **Target repo** — the repo a user runs `/bees-*` commands against. Distinct from this repo (the skill set itself).
-- **Agent Teams** — Claude Code's experimental concurrent-agent feature, gated by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. `bees-execute` and `bees-fix-issue` use it for parallel Engineer / Test Writer / Doc Writer / PM execution.
+- **Agent Teams** — Claude Code's experimental concurrent-agent feature, gated by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. `bees-fix-issue` uses it for parallel Engineer / Test Writer / Doc Writer / PM execution. `bees-execute` does not use Agent Teams — it dispatches per-Subtask ephemeral Agents instead.
 
 ## When you're updating an existing skill
 
 1. **Read the README's skill table first.** If your edit changes user-visible behavior (name, description, what the skill does), the table is part of the change.
 2. **Read CLAUDE.md.** It captures project-internal guidance that applies to every skill edit (cross-platform rules, contract keys, model assignments, etc.).
-3. **Agent Teams is required** for `bees-execute` and `bees-fix-issue`. Both skills spawn a team unconditionally — there is no single-agent fallback path. Don't introduce conditional "if-Teams-off" branches when editing those skills; rely on the precondition check to hard-fail when Agent Teams isn't enabled.
+3. **Substrate is required, not optional** for the execution skills. Each skill has a single precondition gate that hard-fails when its substrate is unavailable; skill prose downstream of the gate must not branch on substrate availability.
+   - **`bees-fix-issue`**: Agent Teams is required. The skill spawns a team unconditionally — there is no single-agent fallback path. Don't introduce conditional "if-Teams-off" branches when editing this skill; rely on the precondition check to hard-fail when `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` isn't set.
+   - **`bees-execute`**: per-Subtask ephemeral Agent dispatch is the unconditional substrate (the orchestrator dispatches a fresh `Agent(subagent_type=<role>, run_in_background=true)` per Subtask). The precondition check that hard-fails is a **subagent-registry check** — the seven required custom subagent types (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`) must be registered in the running Claude Code session. It is no longer a `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env-var check. Don't introduce conditional fallback branches when editing this skill; rely on the subagent-registry check to hard-fail when any required subagent type is missing.
 4. **Don't introduce stack-specific helpers** to the portable core (Rust changelogs, Node license tooling, etc.). Those route to companion repos per the README.
 5. **Don't introduce a tmux dependency** to any of the 11 portable-core skills.
