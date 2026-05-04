@@ -23,8 +23,23 @@ You will receive some instructions on which set of work to review — a list of 
 Analyze changed code files and return a focused list of actionable improvement work items.
 Understand the work context from the user input.
 Review all commits and changed files.
-- Focus only on source code files. Ignore natural language documentation and unit test code.
-If no code files were changed, output "No code files to review" and exit.
+
+### Scope: what counts as "code" for this review
+
+Source code is anything the system *executes* or *follows as program text*. This is broader than just files with traditional code extensions:
+
+- **Language-specific source files** (Python, TypeScript, Go, Rust, Java, C/C++, etc.) — always in scope.
+- **Helper scripts** (shell, PowerShell, batch, AWK, etc.) — always in scope.
+- **Skill / subagent program source** in skill repos: `skills/<name>/SKILL.md` files are the program text Claude Code follows when a skill is invoked, and `agents/<name>.md` files are the program text Claude Code follows when a custom subagent is dispatched — both are source code in those repos, not natural-language documentation. Treat them as in scope. The repo's `CLAUDE.md` is the canonical signal that a repo's markdown is skill / subagent program source — if it has a `## Review criteria for skill changes` section (or equivalent), the markdown under `skills/`, `agents/`, or similar is code, not docs.
+- **Configuration that drives runtime behavior** — schema files, build manifests, lint configs — in scope when the change affects executable behavior.
+
+For markdown skill / subagent program source (`SKILL.md`, `agents/<name>.md`), apply the check categories below selectively. **Apply** these categories: #2 Architecture & Design (cross-section consistency, contract drift), #4 Code Quality (DRY / duplication / ambiguous prose only — long-function and magic-number sub-checks don't apply to prose), #7 Cross-File / Cross-Call-Site Interactions (especially reverse-dependency checks on contract-key renames and cross-skill cross-references), plus prose unambiguity and any project-specific design rules surfaced by `CLAUDE.md` (project-neutrality, OS-pairing, language-agnosticism, etc.). **Skip** categories that are language-specific by construction: #1 Dead/Obsolete Code, #3 Security & Correctness, #5 Error Handling, #6 Performance — they don't apply to natural-language prose.
+
+Out of scope for `/bees-code-review`:
+- **Unit test code** — covered by `/bees-test-review`.
+- **User-facing natural-language documentation** like `README.md` and architecture docs — covered by `/bees-doc-review`.
+
+If the change set has no reviewable files after applying the broadened scope above (no source code, no helper scripts, no skill / subagent program source, no behavior-affecting config), output "No code files to review" and exit. Do **not** exit early just because the diff is markdown — markdown skill / subagent program source is in scope.
 
 ### Step 0a: Re-read the change set against current state
 

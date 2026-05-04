@@ -420,7 +420,7 @@ Once the issue is fixed:
 
 After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final fresh-context generalist sweep across all changes made during this bees-fix-issue session.
 
-**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` ignores natural-language documentation by design, which is unsafe for doc-heavy fixes). Spawn a fresh general-purpose agent with a self-contained prompt instead.
+**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` is scoped to source code, `/bees-doc-review` to user-facing docs, `/bees-test-review` to test files — none of them runs the cross-lane sweep this step needs). Spawn a fresh general-purpose agent with a self-contained prompt instead.
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, and reviewer verdicts from the whole run; that context biases it toward "did the four phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the issue body and nothing else — that's the point.
 
@@ -443,6 +443,13 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
    renames of keys in CLAUDE.md `## Documentation Locations` or `## Build
    Commands`), cross-file inconsistencies, missing edits the issue called for.
    One generalist pass covers code AND docs AND tests — do not lane-scope.
+
+   Note: in skill repos (where the diff includes `skills/<name>/SKILL.md` or
+   `agents/<name>.md` files), those markdown files are skill / subagent program
+   source code, not natural-language documentation. Review them with the same
+   rigor as language-specific source — broken cross-references, drifted
+   contracts, ambiguous prose, and CLAUDE.md design-rule violations are all
+   in scope.
 
    Do NOT do a general repo audit. Stay focused on the diff.
 

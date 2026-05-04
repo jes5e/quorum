@@ -446,7 +446,7 @@ If you invoked the Doc Writer in the first team, invoke the Doc Reviewer in this
 
 After the review loop in step 5 is done and all fixable issues have been addressed by the team, run one final fresh-context generalist sweep across all changes made by this Bee. This is an independent quality gate — separate from the per-Task and per-Epic review cycles above.
 
-**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` ignores natural-language documentation by design, which is unsafe for doc-heavy Bees). Spawn a fresh general-purpose agent with a self-contained prompt instead.
+**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` is scoped to source code, `/bees-doc-review` to user-facing docs, `/bees-test-review` to test files — none of them runs the cross-lane sweep this step needs). Spawn a fresh general-purpose agent with a self-contained prompt instead.
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, PM verdict, and per-Task reviewer verdicts from the whole Bee run; that context biases it toward "did the phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the Bee body and nothing else — that's the point.
 
@@ -470,6 +470,13 @@ After the review loop in step 5 is done and all fixable issues have been address
    renames of keys in CLAUDE.md `## Documentation Locations` or `## Build
    Commands`), cross-file inconsistencies, missing edits the Bee called for.
    One generalist pass covers code AND docs AND tests — do not lane-scope.
+
+   Note: in skill repos (where the diff includes `skills/<name>/SKILL.md` or
+   `agents/<name>.md` files), those markdown files are skill / subagent program
+   source code, not natural-language documentation. Review them with the same
+   rigor as language-specific source — broken cross-references, drifted
+   contracts, ambiguous prose, and CLAUDE.md design-rule violations are all
+   in scope.
 
    Do NOT do a general repo audit. Stay focused on the diff.
 

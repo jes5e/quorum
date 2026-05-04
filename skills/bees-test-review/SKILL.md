@@ -23,8 +23,17 @@ You will receive some instructions on which set of work to review — a list of 
 Analyze changed test files and return a focused list of actionable improvement work items.
 Understand the work context from the user input.
 Review all commits and changed test files.
-- Focus only on test files. Ignore source code files and natural language documentation.
-If no test files were changed, output "No test files to review" and exit.
+
+### Scope: what counts as a test for this review
+
+Test files are files that exercise other code via assertions — `test_*.py`, `*.test.ts`, `*_test.go`, files under `tests/` directories, etc. Always in scope.
+
+**Out of scope:**
+- Source code files (`/bees-code-review`'s territory).
+- User-facing natural-language documentation (`/bees-doc-review`'s territory).
+- `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source*, which `/bees-code-review` reviews. They are not test files even when they document expected behavior.
+
+If the change set has no reviewable test files after applying this scope, output "No test files to review" and exit.
 
 ### Step 0a: Re-read the change set against current state
 

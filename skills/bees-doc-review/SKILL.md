@@ -21,6 +21,12 @@ This skill **returns work items** — it does not apply fixes itself. The team l
 
 Analyze what changed, compare against current docs, return list of specific documentation gaps.
 
+### Scope: what is documentation for this review
+
+This review covers user-facing natural-language documentation: `README.md`, architecture docs (e.g. `docs/sdd.md`), and any other docs the project's `CLAUDE.md` lists under `## Documentation Locations` for end-user / contributor reading.
+
+**Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/bees-code-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
+
 ### Readme
 Readme is for human users to understand how to install and run the project
 - No implementation details
