@@ -371,12 +371,14 @@ The Director (you) runs this check directly — no new team:
    - **Contract drift** between what this Epic's code assumes and what a prior Epic's code actually does (especially ordering contracts, docstring claims, and "this should never happen" comments).
    - **Resource compounding** across Epics: if this Epic adds acquires from a resource that a prior Epic already uses, model the aggregate.
    - **Symmetric-change gaps**: if this Epic added a new resource class (key pattern, pool, queue, etc.), search prior Epics' cleanup paths for missing handling.
-3. If any issue is found, spin up the Engineer (via a fresh team using the just-disbanded pattern) to fix it before continuing to the next Epic. Do not defer to the Final Bee-level review — fixing at the Epic boundary keeps the scope local to the two Epics involved.
+3. If any issue is found, dispatch a fresh ephemeral Engineer Agent per Section 3's dispatch shape to fix it before continuing to the next Epic. Do not defer to the Final Bee-level review — fixing at the Epic boundary keeps the scope local to the two Epics involved.
 4. Record any fixes as additional commits on the branch, clearly labeled.
 
 After the checkpoint passes (clean or fixed):
 
 Mark the just-completed Epic as `status=done`, then re-query *all* Epics under the Bee to classify the post-Epic state. Do not assume "no workable Epic remains" means "Bee is finished" — Epics in `status=drafted` (still need `/bees-breakdown-epic`) must not fall through to final review.
+
+**Epic-boundary context-clear discipline.** Because Section 3 ships flat orchestration (no recursive delegation), the orchestrator's working context grows monotonically across Epics — every Subtask dispatch, every PM review, and every reconciliation tick adds to the loop's running set. The Epic boundary is the natural reset point: at this point all child Tasks are complete, all per-Task commits are landed, and the only state worth carrying into the next Epic is the bees ticket store (which is on-disk and re-queryable). The discipline that bounds flat-orchestration context growth is therefore: **at each Epic boundary, before continuing to the next workable Epic, clear the orchestrator's working context**. This keeps the loop's running set bounded at roughly **~25-30% of the 1M context window per Epic**, which is the budget Section 3's "Recursive delegation: not supported" subsection refers to. The branch-2 "continue" path below explicitly invokes this discipline; treat it as the canonical pre-step-2 reset across all long Bees.
 
 ```bash
 bees execute-freeform-query --query-yaml 'stages:
@@ -392,13 +394,11 @@ Classify the result into exactly one of three branches (the status vocabulary `d
 
    > Epic `<just-completed-epic-id>` is complete, but Epics `<drafted-or-blocked-ids>` in this Bee are still `drafted` (or blocked on drafted dependencies) and need breakdown before this Bee can be closed. Run `/bees-breakdown-epic <bee-id>` (a fresh session is reasonable to keep context clean) to break down the remaining Epics, then re-run `/bees-execute <bee-id>`.
 
-   Call `TeamDelete` on the just-finished Epic's team (with the same `force_clean_team.py` fallback as branch 2 if it sticks), then exit the skill.
+   Then exit the skill.
 
-2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so:
-   1. Call `TeamDelete` to clean up the just-finished Epic's team. If it fails due to stuck agents: (1) run `force_clean_team.py` (located at `<this skill's base directory>/scripts/force_clean_team.py` — base directory shown in the skill invocation header) via the platform's Python 3 launcher (`python3` on POSIX, `python` or `py -3` on Windows) with `<team-name>` as the argument, then (2) call `TeamDelete` again to clear session state.
-   2. Clear your context window and go back to step 2 (which will create a new team for the next Epic).
+2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so, clear your working context per the Epic-boundary context-clear discipline established in Section 3, then return to step 2.
 
-   If the user declines, call `TeamDelete` on the just-finished Epic's team (with the same `force_clean_team.py` fallback as branch 1 if it sticks), then move to final Bee review.
+   If the user declines, move to final Bee review.
 
 3. **All Epics under this Bee are `done`** — proceed to Step 5 final Bee review.
 
