@@ -148,6 +148,10 @@ Each `bees-plan` invocation that produces docs adds a new `### Feature: <title>`
 
 The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you can override the defaults if your project uses a different structure (e.g., `specs/` instead of `docs/`).
 
+### Where bundled helper scripts live
+
+A few skills ship Python helpers (e.g., `file_list_resolver.py`, `force_clean_team.py`, `scoped_marker_resolver.py`) under `skills/<skill-name>/scripts/` inside the bees-workflow install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your bees-workflow checkout.
+
 ## Coming soon: optional skills
 
 The current 11 skills are the portable core — they work on any project, any language, any platform with no extra tooling beyond the bees CLI and Claude Code. Optional skills are planned for users who want more — these will likely require additional tooling per skill, clearly labeled:
