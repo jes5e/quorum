@@ -52,7 +52,7 @@ These look like inconsistencies if you compare two skills side-by-side without c
 - **`/bees-plan` (interactive scope-shaping) vs `/bees-plan-from-specs` (express path with finalized PRD+SDD on disk).** Two entry points to the same Plan Bee + Epics output. `/bees-plan` is the discovery path; `/bees-plan-from-specs` is the "I already nailed the scope" path. Keep both — collapsing them into one pushes too much complexity into a single skill.
 - **Language-conditional examples in `/bees-setup`.** The stack-detection table IS supposed to be Rust/Node/Python/Go specific — it's defining what the user's `## Build Commands` section should resolve to in each stack. Generalizing it to "the appropriate command for your language" defeats the point.
 - **Egg lives on the Plan Bee, not on Epics.** The bees CLI accepts `--egg` only on top-level Bees, not on child-tier tickets. Every Epic in a Plan Bee can trace back to the same PRD/SDD by reading the parent's egg. Don't try to set egg on Epics.
-- **`/bees-breakdown-epic` is the only skill where team members run in `mode: "plan"`.** Subagents during breakdown are read-only researchers; only the team-lead runs ticket-mutating commands. Other execution skills (`/bees-execute`, `/bees-fix-issue`) let team members create commits, not tickets — different scope of authority.
+- **`/bees-breakdown-epic` is the only skill where dispatched subagents run in `mode: "plan"`.** Subagents during breakdown are read-only researchers; only the orchestrating skill runs ticket-mutating commands. Other execution skills (`/bees-execute`, `/bees-fix-issue`) let dispatched subagents create commits, not tickets — different scope of authority.
 
 ## Anti-patterns
 

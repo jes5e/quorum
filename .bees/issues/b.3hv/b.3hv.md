@@ -2,10 +2,11 @@
 id: b.3hv
 type: bee
 title: Drop Teams-era vocabulary from README.md and CONTRIBUTING.md
-status: open
-created_at: '2026-05-05T16:16:57.365702'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-05T16:16:57.365702'
+status: done
+schema_version: '0.1'
 guid: 3hvd2p4y1r7my2s875s2deeqvscumr74
 ---
 
@@ -55,4 +56,3 @@ Doc-only edits to `README.md` and `CONTRIBUTING.md`:
 - `CONTRIBUTING.md:55` — rewrite the bullet to use subagent vocabulary throughout while preserving the intentional-asymmetry framing (read-only `mode: "plan"` for breakdown vs. commit-allowed for execute / fix-issue).
 
 No skill prose, helper scripts, or agent definitions need to change. No update to `docs/prd.md` or `docs/sdd.md` is implied — this is pure doc-vocabulary cleanup, not a behavior or architecture change.
-
