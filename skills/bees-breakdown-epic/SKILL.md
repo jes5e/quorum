@@ -345,15 +345,98 @@ This review ensures nothing from the spec is lost during the Task/Subtask decomp
 - [ ] Testing subtasks support maximum parallelization on execution by making one subtask per test file to be modified
 - [ ] Spec Traceability Review completed with all requirements at OK status (sources from PRD/SDD if eggs present, from the Plan Bee body otherwise)
 
-### 6. Offer Next Steps
+### 6. Commit New Ticket Files
 
-After the Epic (or all Epics, if breaking down a whole Bee) is fully broken down, present the user with clear options. Use `AskUserQuestion`.
+Before rendering the next-steps menu, stage and commit the ticket files this skill just produced (the new Tasks and Subtasks, plus the parent Epic's status update). The recommended next step in Step 7 is "open a fresh session", and ending the session with uncommitted ticket files leaves the next session to discover and reason about them — so commit now, while context is fresh.
+
+**Do not hardcode the Plans-hive path.** `/bees-setup` lets users place hives in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked an out-of-repo location.
+
+Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only `git add` if so. Mirrors `bees-file-issue` Step 5's pattern.
+
+```bash
+# POSIX (bash / zsh):
+plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
+repo_root=$(git rev-parse --show-toplevel)
+case "$plans_path" in
+  "$repo_root"|"$repo_root"/*)
+    git add "$plans_path"
+    git commit -m "Break down <epic-id>: <epic-title>"
+    ;;
+  *)
+    # Plans hive lives outside the repo — skip git; surface the note in Step 7.
+    ;;
+esac
+```
+
+```powershell
+# Windows (PowerShell):
+$plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+$repoRoot = git rev-parse --show-toplevel
+# Normalize separators — git rev-parse returns forward slashes on Windows;
+# bees list-hives may return backslashes. Compare both sides on the same form.
+$plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
+$repoNorm = $repoRoot.Replace('\','/')
+if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
+  git add "$plansPath"
+  git commit -m "Break down <epic-id>: <epic-title>"
+} else {
+  # Plans hive lives outside the repo — skip git; surface the note in Step 7.
+}
+```
+
+Substitute the actual Epic ID and title into the commit message. Single literal `git commit` command, no compound chains.
+
+If the Plans hive lives **outside** the repo, skip the git commands and remember to surface a one-line note in Step 7 so the user knows the new tickets are persisted by the bees CLI but not git-tracked here.
+
+### 7. Offer Next Steps
+
+After the Epic (or all Epics, if breaking down a whole Bee) is fully broken down and the new ticket files have been committed (or noted as out-of-repo), present the user with clear options. Use `AskUserQuestion`.
 
 Note above the options: `/bees-execute` re-reads the Bee, Epics, and Tasks from the bees CLI and reads CLAUDE.md from disk, so prior conversation context is not load-bearing across the boundary. A fresh Claude Code session is the recommended default — it gives the executing agents full context budget for per-Task implementation, review cycles, and the team-lead's running judgment. Continuing to break down the next Epic in this session is lower-risk (same skill, similar context footprint), but a fresh session is still preferred for big Bees.
 
-- **In a fresh session, execute the whole Bee** (Recommended) — run `/bees-execute <bee-id>` (e.g. `b.duy`) in a new Claude Code session. `/bees-execute` walks every Epic in the Bee in dependency order.
-- **In a fresh session, start at a specific Epic** — run `/bees-execute <epic-id>` (e.g. `t1.duy.c9`) in a new session. `/bees-execute` accepts an Epic ID too; it finds the parent Bee automatically and starts from that Epic's position in the plan. All Epics still run — this just biases the entry point.
+If Step 6 found the Plans hive lives outside the repo, also include a one-line note here: *"The new ticket files are persisted by the bees CLI but the Plans hive lives outside this git repo, so they were not committed by this skill."*
+
+#### Pick the Recommended option
+
+The "Recommended" badge depends on whether breaking down the *next* Epic right now risks rework. Specifically: when the just-broken-down Epic's implementation will lock contract details (new infrastructure, API surface, schema, framework, etc.) that drafted siblings consume, breaking those siblings down before that contract solidifies produces stale Tasks. To decide:
+
+1. Query drafted sibling Epics under the same parent Bee:
+
+   ```bash
+   bees execute-freeform-query --query-yaml 'stages:
+     - [parent=<bee-id>, type=t1, status=drafted]
+   report: [title, up_dependencies]'
+   ```
+
+2. Filter to siblings whose `up_dependencies` includes the just-broken-down Epic's ID. If there are none, skip directly to the **No-reshape-risk case** branch in step 4.
+
+3. For each such dependent sibling, fetch its body via `bees show-ticket --ids <sibling-epic-id>` and read it alongside the just-broken-down Epic's body. Judge — this is a team-lead call, not a hardcoded rule, treated the same as other judgment calls in this skill — whether the upstream Epic's implementation will materially reshape the contract the sibling consumes. Indicators of reshape risk:
+   - Upstream Epic introduces new infrastructure, API surface, schema, framework, or subagent/tool definitions that the sibling explicitly rewrites-to-consume.
+   - Sibling Epic's scope reads like "rewrite X to use the new Y" where Y is what the upstream Epic produces.
+   - Contract details (signatures, file shapes, lifecycle, error vocabulary) the sibling would have to guess at are precisely what the upstream Epic locks in.
+
+   Pure ordering coupling — sibling depends on upstream only because work must serialize, not because it consumes a still-in-flux contract — does **not** count as reshape risk.
+
+4. Branch the Recommended badge:
+   - **Reshape-risk case** (any dependent sibling judged to consume an in-flux contract): Recommended option is **"In a fresh session, execute this Epic first; defer downstream breakdown"**. Include a one-line rationale naming the at-risk siblings (by ID and short title) and the contract concern (e.g., *"siblings `<id-a>` and `<id-b>` rewrite-to-consume the new framework this Epic produces; breaking them down before implementation lands risks stale Tasks."*).
+   - **No-reshape-risk case** (default — no dependent siblings, or dependencies are pure ordering): Recommended badge stays on the bulk-execute option as today. Do **not** surface an extra confirm-or-defer prompt the user can't meaningfully answer.
+
+#### Menu options
+
+Always include all six options below. The Recommended badge moves between the first two (whole-Bee execute vs. this-Epic-first execute) per the branch above. Each option carries a one-line "best when …" clause so the user can compare trade-offs without external context.
+
+- **In a fresh session, execute the whole Bee** — run `/bees-execute <bee-id>` (e.g. `b.duy`) in a new Claude Code session. `/bees-execute` walks every Epic in the Bee in dependency order.
+  - *Best when* the remaining drafted Epics either don't depend on this one, or their dependencies are pure ordering — no contract-reshape risk to defer for.
+  - *Recommended in the no-reshape-risk case.*
+- **In a fresh session, execute this Epic first; defer downstream breakdown** — run `/bees-execute <epic-id>` (e.g. `t1.duy.c9`) in a new session, scoped to the Epic just broken down. After it lands, return to break down the dependent siblings against the now-stable contract.
+  - *Best when* drafted siblings rewrite-to-consume what this Epic produces and the contract is still in flux — execute now, then break down siblings against the locked-in contract.
+  - *Recommended in the reshape-risk case.* Name the at-risk siblings inline.
+- **In a fresh session, start at a specific Epic** — run `/bees-execute <epic-id>` in a new session. `/bees-execute` accepts an Epic ID; it finds the parent Bee automatically and starts from that Epic's position in the plan. All Epics still run — this just biases the entry point.
+  - *Best when* the user wants the bulk-execute walk but with a specific entry point (e.g., the just-broken-down Epic, or an upstream foundational Epic).
 - **In a fresh session, break down the next Epic** — run `/bees-breakdown-epic <next-epic-id>` in a new session if more Epics in this Bee remain in `drafted` state. Same-session continuation is also reasonable here since the skill is repeating with similar context growth per Epic.
+  - *Best when* the user wants to finish planning before any execution starts and there's no contract-reshape risk that would make the next Epic's Tasks go stale.
 - **Review first** — let the user review the plan before proceeding.
+  - *Best when* the user wants to scan the new Tasks and Subtasks for shape/scope before committing to an execution path.
 - **Done for now** — plan is saved; user will come back later.
+  - *Best when* the user is at a natural stopping point and will return in a later session.
 
