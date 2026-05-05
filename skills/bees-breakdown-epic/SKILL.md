@@ -8,8 +8,6 @@ argument-hint: "[<epic-id> | <bee-id>]"
 
 Your job is to break down an Epic ticket into Tasks and Subtasks.
 
-## Workflow
-
 ## Preconditions
 
 Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
@@ -40,16 +38,18 @@ claude agents
 
 After running the command, scan its output for the seven required names; hard-fail if any are missing. If `claude agents` itself is unavailable (older Claude Code build, etc.), skip the upfront check — the procedural gate still catches the failure at first dispatch.
 
+## Workflow
+
 ### 0. Choose agent model preference
 
-Before starting work, ask the user which model to use for the support roles spawned during breakdown (research teammates, Product Manager when applicable). Use `AskUserQuestion`:
+Before starting work, ask the user which model to use for the support roles spawned during breakdown (research Agents, Product Manager when applicable). Use `AskUserQuestion`:
 
-- Question: "Which model should support agents (research teammates, PM, Doc Writer-equivalent) use?"
+- Question: "Which model should support agents (research Agents, PM, Doc Writer-equivalent) use?"
 - Options:
   - **Opus (Recommended)** — highest quality, slower, more expensive
   - **Sonnet** — fast and cost-effective, good for straightforward tasks
 
-The core implementation-shaping role (the team-lead — you) always uses **Opus**. Store the user's choice and apply it when spawning research teammates throughout this breakdown.
+The core implementation-shaping role (the orchestrator — you) always uses **Opus**. Store the user's choice and apply it when spawning research Agents throughout this breakdown.
 
 ### 1. Determine Which Epic to Break Down
 
@@ -172,128 +172,153 @@ Task 1: Implement CSV export functionality
   - Exported CSV files open correctly in Excel/Google Sheets
 ```
 
-### 4. Create Task Team to Break Task into Subtasks
+### 4. Break each Task into Subtasks via per-Task ephemeral research Agent dispatch
 
-Form a team to write the Subtasks for this Epic. Your responsibilities are:
-  - Surface design questions back to the Caller
-    - If the team proposes different approaches to a problem, surface this back up to the caller with an AskUserQuestion
-  - Responsible for coordinating the team and ensuring all work is complete, but the Product Manager has final authority on quality and completeness
-- Instructions:
-    - Carrying forward architectural decisions:
-      - If the caller provides architectural decisions or constraints (e.g., "make parameter X optional with fallback Y"), explicitly reference it in every affected subtask description. 
-      - Do not paraphrase or partially apply — use the caller's exact specification.
+For each Task drafted in Step 3, the orchestrator (you) drives Subtask authorship through a **reconciliation loop** that dispatches **fresh, ephemeral background `Agent` invocations** against the custom subagent types defined in this skill set's sibling `agents/` directory. There is no long-lived team; there are no warmed Agents; there is no peer-to-peer messaging between workers. This mirrors the dispatch shape used by `/bees-execute` Section 3, scoped to **research-only mode** — workers read code and return JSON-structured findings as text, and only YOU run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
 
-#### Team
-If source code needs to be changed, include the Engineer. If not, the Engineer is optional.
-If unit test code needs to be changed, include the Test Writer. If not, the Test Writer is optional.
-Always include the Doc Writer if the Epic changes source code, configuration, or deployment — the Doc Writer decides what docs need updating (README, architecture docs, etc.). Don't pre-judge whether docs need changes; that assessment is the Doc Writer's job. The Doc Writer is only optional for Epics that are purely research or planning with no code/config changes.
-Always spawn the Product Manager.
+Your responsibilities are:
 
-**IMPORTANT**: You do not break Tasks into Subtasks. This is the job of the Team.
+- Surface design questions back to the Caller. If dispatched research Agents propose different approaches to the same problem, surface the divergence back up to the caller with an `AskUserQuestion`.
+- Coordinate the dispatched research Agents and ensure all work is complete, **but the Product Manager has final authority on quality and completeness** of the proposed Subtask breakdown.
+- **Carry forward architectural decisions.** If the caller provides architectural decisions or constraints (e.g., "make parameter X optional with fallback Y"), explicitly reference them in every affected subtask description. Do not paraphrase or partially apply — use the caller's exact specification.
 
-**CRITICAL — Subagent permissions**: Spawn ALL team members with `mode: "plan"`. Team members are read-only researchers. They must never create, update, or delete tickets. Only YOU (the team lead) run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
+**You do not author Subtasks yourself.** Subtask proposals come from the dispatched research Agents; the orchestrator's job is to invoke the right role at the right time, integrate the returned JSON findings, and create the actual bees tickets.
 
-**Authoring Task and Subtask bodies**: Task and Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows), creating the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows). Do **not** remove the file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+#### Reconciliation loop
 
-When spawning team members, include the following restriction in each teammate's spawn prompt:
+The loop is **event-driven, not clock-driven**. Each tick has three phases:
 
-```prompt
-You are a READ-ONLY researcher. You must NEVER run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
-Your job is to research the codebase and report your proposed subtasks back via SendMessage as text.
-Only the team lead creates tickets.
+1. **Read state.** Pull the current truth from the relevant sources before deciding what to do:
+   - **bees** — the canonical ticket store. Use `bees show-ticket --ids <epic-id>` to get the Epic's `children` array (Task IDs); for each Task, fetch its full body. Identify the next Task that still has no Subtasks proposed (or whose proposed-Subtasks set is incomplete pending PM review). Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) for any focused state query.
+   - **TaskList** — the orchestrator's progress UI (see "TaskList as progress UI" below). Each in-flight research Agent has a corresponding TaskList task whose `status` reflects whether the Agent is `pending` (queued), `in_progress` (running), or `completed` (Agent reported done with its JSON findings).
+   - **Returned findings** — the JSON-structured text each completed research Agent returned. These are the load-bearing handoff: the orchestrator consumes the JSON to compose `bees create-ticket --body-file` invocations.
+
+2. **Reconcile.** Compare current state to target state and act:
+   - For the current Task, dispatch the relevant subset of research Agents (Engineer / Test Writer / Doc Writer) per the role-selection rules below. PM dispatch is reserved for the Task-level review boundary.
+   - For every research Agent that has reported completion, persist the result: parse the returned JSON, author Subtask body files via the `Write` tool, run `bees create-ticket --body-file <path>` for each proposed Subtask (the orchestrator is the only thing that mutates bees state), and mark the corresponding TaskList task `completed`.
+   - When all implementer-research Agents for the current Task have returned and the orchestrator has created the proposed Subtasks, dispatch a fresh PM research Agent for the per-Task PM review (see "Per-Task PM dispatch" below).
+   - When the PM signs off on the Task's Subtask set, advance to the next Task.
+   - When all Tasks of the current Epic have a PM-approved Subtask set, advance to Section 5.
+
+3. **Yield.** The orchestrator does not poll. After dispatching the work this tick uncovered, return control to the harness and wait for the **Agent completion notification** delivered by the `run_in_background=true` substrate. The notification is what triggers the next tick.
+
+##### Anti-pattern: no clock primitives
+
+The reconciliation loop is driven exclusively by Agent completion notifications. Do **not** use any of:
+
+- **`/loop`** — repeats the orchestrator's last turn on a wall-clock cadence.
+- **`ScheduleWakeup`** — fires the orchestrator after a delay.
+- **`CronCreate`** — fires the orchestrator on a recurring schedule.
+- **Polling** — re-reading bees / TaskList / returned findings on a sleep-wait cycle without a triggering event.
+
+If the work for this tick is dispatched and there is nothing else to reconcile, the correct action is to yield. Background research Agents will wake the orchestrator when they finish; that is the only legitimate trigger for the next tick.
+
+#### Per-Task cold dispatch (research-only)
+
+For each Task, the orchestrator spawns one fresh research Agent per applicable role at Task scope:
+
+```
+Agent(
+  subagent_type=<role>,            # one of: engineer, test-writer, doc-writer, pm
+  run_in_background=true,
+  prompt=<research-mode preamble + ticket body verbatim>,
+)
 ```
 
-Also include the following Subtasks guidance in each teammate's spawn prompt:
+Role selection per Task:
+
+- If source code needs to be changed, dispatch `subagent_type: "engineer"`. If not, the Engineer is optional.
+- If unit-test code needs to be changed, dispatch `subagent_type: "test-writer"`. If not, the Test Writer is optional.
+- If the Task changes source code, configuration, or deployment, dispatch `subagent_type: "doc-writer"` — the Doc Writer decides what docs need updating (customer-facing docs, internal architecture docs, etc.). Do not pre-judge whether docs need changes; that assessment is the Doc Writer's job. The Doc Writer is only optional for Tasks that are purely research or planning with no code/config changes.
+- Always dispatch `subagent_type: "pm"` at the per-Task review boundary, after the implementer roles have returned and the orchestrator has created their proposed Subtasks.
+
+The full role contracts (responsibilities, gating preconditions, instructions) live in the role files; the orchestrator's job is to invoke the right role at the right time, not to carry the role's prose. Each `subagent_type` name above corresponds to a contract file:
+
+- **`subagent_type: "engineer"`** → `agents/engineer.md`
+- **`subagent_type: "test-writer"`** → `agents/test-writer.md`
+- **`subagent_type: "doc-writer"`** → `agents/doc-writer.md`
+- **`subagent_type: "pm"`** → `agents/pm.md`
+
+Each Task gets its own per-role Agent invocation. The orchestrator does **not** name Agents (`Agent(name=...)` is not used) and does **not** reuse an Agent across Tasks. There is no `SendMessage` between research Agents — each worker reads its assignment from the dispatch prompt, returns its JSON findings, and exits.
+
+##### Research-mode preamble
+
+The research-mode preamble in the dispatch prompt is what makes a research dispatch a research dispatch. The Implementation note on the parent Epic body explicitly states this is signaled via prompt rather than by introducing separate research-mode subagent types — trust the prompt; do **not** introduce `engineer-researcher`, `test-writer-researcher`, etc. The same `engineer` / `test-writer` / `doc-writer` / `pm` subagent types used by `/bees-execute` are reused here, gated to read-only behaviour by the preamble.
+
+The preamble must include the following research-mode instructions verbatim:
 
 ```prompt
-Subtask represent discrete sets of work required to achieve the Task outcome.
+You are operating in READ-ONLY RESEARCH MODE.
 
-- Do not include code snippets or file numbers. Code is going to change as execution proceeds. Assume the LLM working on the code will be capable of finding the code.
-- Do not describe exactly how to implement the solution. The LLM working on the solution will be an expert. Just provide the scope of work and any requirements or acceptance criteria.
-Examples include:
-- Writing or updated a method
-- Changing code to use a new method or method signature
-- Updating a document
-- Updating a test file
-
-Sample subtask:
-title: Modify test_api.py to include required changes
-body: Update existing API test coverage to account for CSV export support. 
-Ensure tests validate correct format selection, response structure, headers, and error handling without impacting existing JSON export behavior.
-acceptance criteria:
-- API tests cover successful CSV export responses.
-- Tests validate presence of header row and correct row counts.
-- Tests confirm JSON export behavior remains unchanged.
-- All API tests pass after updates.
+- You MUST NOT modify any files. Do not invoke `Edit`, `Write`, or any
+  file-mutating tool against project sources or docs.
+- You MUST NOT mutate bees state. Do not run `bees create-ticket`,
+  `bees update-ticket`, or `bees delete-ticket`. Only the orchestrator
+  creates and updates tickets.
+- You MUST return your findings as JSON-structured text — a single JSON
+  object describing the proposed Subtasks (one entry per proposed Subtask,
+  each with a title, body following the mandatory Subtask Description
+  Template, and any up_dependencies on sibling proposed Subtasks). Return
+  the JSON as your final assistant message; do not write it to a file.
+- Read code, read docs referenced in CLAUDE.md `## Documentation Locations`,
+  and consult `docs/doc-writing-guide.md` for query recipes if you need to
+  enumerate tickets. That is the full extent of your tool use.
 ```
 
+##### Dispatch prompt: quote the ticket body verbatim
 
-##### Team Composition
+The dispatch prompt sent to each research Agent must embed the parent Task body **verbatim** — paraphrasing silently corrupts identifier names (function names, flag names, type names, file paths) that the worker will then reason about literally. Read the Task via `bees show-ticket --ids <task-id>` and embed the returned body in the prompt as a quoted block immediately after the research-mode preamble. Do not summarise, paraphrase, or "clean up" identifier spellings. Framing prose around the quoted block (e.g., "you are dispatched in research mode for this Task") is fine; the body itself stays untouched. The orchestrator's progress signal is the TaskList progress UI (see below) — the dispatch prompt does not need to ask the worker to ping back, because Agent completion notifications are delivered automatically by the substrate.
 
-The team should consist of the following agents:
+##### Procedural-gate fallback
 
-- Engineer
-  - Model: Claude Opus
-  - Responsibilities:
-    - Writing implementation Subtasks for a task (if required)
-      - Tasks that only involve research (no code or doc changes) may omit all of these subtasks.
-  - Instructions:
-    - Review any relevant internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
-    - Review the existing code to determine the current state
-    - Review the engineering best practices guide referenced in CLAUDE.md under "Documentation Locations"
-    - Write subtasks for each logical implementation step.
-    - There may be one or many implementation subtasks
-- Test Writer
-  - Model: Claude Opus
-  - Responsibilities:
-    - Writing testing Subtasks for a task (if required)
-  - Instructions:
-    - Use the test writing guide referenced in CLAUDE.md under "Documentation Locations"
-    - Use the test review guide referenced in CLAUDE.md under "Documentation Locations"
-    - Write or modify any required unit tests
-    - Write or modify any required Integration tests
-    - Add a subtask **for each test file or logical group of test file** that needs to be modified based on the work described by the Engineer
-      - The substask will provide high level instructions to:
-        - Update any tests that cover the work done in the parent Task
-        - Delete any tests that are now made obsolete by work done in the parent Task
-        - Add any tests to cover functionality that is currently not tested based on the work done in the parent Task
-    - Add a final substask to run the full unit test suite and fix any failures. Integration tests will be handled by the calling function.
-       - This subtask tells the agent to ensure 100% unit tests passing before completing, this means fixing broken tests
-       - If for some reason the agent cannot get 100% unit tests passing it should report the failure to the Team Lead
-- Doc Writer
-  - Model: Claude Opus
-  - Responsibilities:
-    - Writing documentation Subtasks for a task (if required)
-  - Instructions:
-    - Use the doc writing guide referenced in CLAUDE.md under "Documentation Locations"
-    - Readme:
-      - If the Task modifies user-facing code or installation and setup:
-        - Review the customer-facing docs referenced in CLAUDE.md under "Documentation Locations"
-        - Write a subtask describing how the customer-facing docs should be updated based on the work done in this Task
-    - Architecture Docs:
-      - If the Task modifies source code:
-        - Review the internal architecture docs referenced in CLAUDE.md under "Documentation Locations"
-        - Write a subtask for each architecture doc that needs to be updated based on the work done in this Task
-- Product Manager
-  - Model: Claude Opus
-  - Responsibilities:
-    - Responsible for reviewing Tasks against the PRD and SDD
-    - Ensures that the work being described meets the requirements
-  - Instructions:
-    - Read any source documents provided in the top level Bee
-    - Review the Task and Subtasks to ensure that the work proposed: 
-      - Aligns with the requirements
-      - Does not introduce more functionality than asked for
-        - e.g The PRD calls for no legacy support but the Engineers proposes a task for backwards compatibility.
-        - Call this out as unacceptable
-      - Review all Tasks once they are complete against the Epic to ensure that:
-        - The work will meet the Acceptance Criteria
-        - The work covers all functionality required by the Epic
-        - The work does not introduce any functionality not required or explicitly disallowed in the Epic
-    - Review the subtasks created by the Test Writer
-      - Ensure they have done their best to create a subtask per test file that needs to be changed
+If the first research dispatch (or any later dispatch) returns an `Agent type '<name>' not found`-style error from the Agent tool for any of the four research roles (`engineer`, `test-writer`, `doc-writer`, `pm`), STOP at the procedural gate and emit the hard-fail message defined in this skill's `## Preconditions` section — do not fall back to `general-purpose`, do not skip the dispatch, do not improvise a substitute role. This is the load-bearing primary verification mechanism for the subagents precondition: the `claude agents` upfront fast-fail catches most cases before the first dispatch, but the procedural gate is what ultimately enforces the contract honestly against Claude Code's session-load semantics.
 
+#### Hub-and-spoke via substrate
 
+Workers do not message each other. The orchestrator is the hub; each dispatched research Agent is a spoke that reads its prompt, returns findings as text, and exits. The JSON-structured findings text is the handoff to the orchestrator's next reconciliation tick — when an implementer-research Agent returns its proposed-Subtask JSON, the orchestrator parses it, authors body files, and runs `bees create-ticket`; when the PM research Agent returns its traceability findings, the orchestrator acts on them by dispatching gap-fill research Agents or transitioning tickets to `ready`. Hub-and-spoke is a **structural property** of ephemeral background research Agents, not a rule the orchestrator must remember to enforce: there is no inter-Agent channel for workers to even attempt peer-to-peer coupling on.
+
+#### Recursive delegation: not supported
+
+Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents), "Subagents cannot spawn other subagents" — only the top-level orchestrator may dispatch Agents. The skill ships **flat orchestration**: every research Agent invocation originates from this skill's reconciliation loop, never from a worker. The bound on flat-orchestration context growth in this skill is the per-Epic scope of the loop itself — when this skill returns at Section 7, the orchestrator's working context is released back to the caller's session, so the loop's running set stays bounded by a single Epic's breakdown.
+
+#### Per-Task PM dispatch
+
+When the implementer-research Agents (Engineer / Test Writer / Doc Writer, as applicable) have all returned for the current Task and the orchestrator has created the proposed Subtasks via `bees create-ticket`, dispatch a fresh PM research Agent. The dispatch prompt must include the Task ID, the list of proposed Subtask IDs the orchestrator just created, and the research-mode preamble — the PM, like the other roles, is read-only here. The PM's job is to review the proposed Subtask set against the Epic's spec source (the Bee's egg-resolved PRD/SDD, or the Bee body itself when the egg is null/empty) and return JSON findings flagging gaps, over-reach, or duplicated scope; the orchestrator is what acts on those findings (creating, updating, or deleting Subtasks per the PM's verdict).
+
+#### Authoring Subtask bodies
+
+Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows), creating the `.bees-workflow` subdir if absent:
+
+```bash
+# POSIX (bash / zsh):
+mkdir -p /tmp/.bees-workflow
+```
+
+```powershell
+# Windows (PowerShell):
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+```
+
+Do **not** remove the file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+
+#### TaskList as progress UI
+
+The orchestrator uses Claude Code's native **TaskList** as the visible progress UI for the run. There is no separate display backend to configure — TaskList renders in the harness automatically.
+
+For every research Agent the orchestrator dispatches, it creates exactly **one** TaskList task:
+
+- **`pending`** — created when the orchestrator decides this research dispatch is next but before the Agent invocation lands.
+- **`in_progress`** — set the moment the Agent invocation is dispatched (`Agent(...)` returns).
+- **`completed`** — set when the orchestrator processes the Agent's completion notification, parses the returned JSON, and (for implementer roles) creates the proposed Subtasks.
+
+##### TaskList naming convention
+
+The naming convention is the **canonical cross-reference** for downstream Tasks (later Sections of this SKILL.md and other skills in the workflow consume these names). It is deterministic so two concurrent invocations cannot collide and unambiguous so any reader can map a TaskList entry back to its bees ticket:
+
+- **Implementer research Agents** (Engineer, Test Writer, Doc Writer) — **Task scope**. Name: `<role>-research-<task-id>` — concretely, `engineer-research-<task-id>`, `test-writer-research-<task-id>`, `doc-writer-research-<task-id>` (e.g., `engineer-research-t2.abc.def`, `test-writer-research-t2.abc.def`, `doc-writer-research-t2.abc.def`). Each Task gets its own implementer research Agent per applicable role; the `task-id` suffix makes the name unique even when sibling Tasks of the same Epic are processed back-to-back.
+- **PM research Agents** — **Epic scope**. Name: `pm-research-<epic-id>` (e.g., `pm-research-t1.abc`). The PM reviews each proposed Subtask set within the context of the whole Epic, so its scope suffix is the parent Epic id; the orchestrator creates a new PM research Agent per Task-level review boundary, but the TaskList name disambiguates by Epic.
+
+The `-research-` infix distinguishes these dispatches from the implementation-time dispatches in `/bees-execute` (which use `<role>-<subtask-id>` and `pm-<task-id>` per `bees-execute` Section 3's `##### TaskList naming convention`). A reader scanning a mixed TaskList can tell at a glance whether a given entry is breakdown-time research or execute-time implementation.
 
 #### Mandatory Subtask Description Template
 
@@ -315,30 +340,53 @@ Specific files, functions, and changes required. Include line numbers where know
 ```
 
 #### Task Loop
-Spawn one persistent team to handle all Tasks. Work through each Task sequentially with the same team, planning subtasks one Task at a time, **without asking the User for permission**. 
-Only stop to review with the User once all Tasks are done.
 
-### 5. Review Epic 
+Work through each Task in the Epic sequentially via the reconciliation loop above. Each Task gets its own per-role research dispatches and its own PM review boundary; do **not** ask the User for permission between Tasks. Only stop to review with the User once all Tasks in the Epic have a PM-approved Subtask set, then proceed to Section 5.
 
-When all Tasks are complete,   
-- Review quality of Task and Subtasks, make final decision when to present completed Task to caller
-- You must defer to the Product Manager on whether a Task is final and complete
+### 5. Review Epic
 
-After Epic is complete, then create Tasks.
-Each Task should be a Child of the Epic it is for (and the Epic should be marked as Parent).
-If Tasks must be completed sequentially, add up and down dependencies to relevant tickets.
+When all Tasks have a per-Task PM-approved Subtask set from Section 4's reconciliation loop, run an **Epic-wide Spec Traceability Review** before any further `bees create-ticket` invocations and before any status transitions to `ready`. The review is the gate that catches spec coverage gaps the per-Task reviews could not see — a requirement that lives in the Epic-wide spec but does not naturally fall under any single Task can pass every per-Task PM review while still being absent from the proposed Subtask set as a whole.
 
-#### Set Status
-- Set the Epic to `ready` (it is now written and its children — the Tasks — are written)
-- Set each Task to `ready` (it is written and its children — the Subtasks — are written)
-- Set each Subtask to `ready` (it is written and has no children)
+Under research-only orchestration the Section 5 review is driven by a **fresh, ephemeral PM research Agent** — same dispatch shape as Section 4's `#### Per-Task PM dispatch`, scoped here to the whole Epic. The orchestrator (you) does not author the traceability table itself; the PM Agent returns it as JSON-structured findings, and the orchestrator consumes those findings to decide what to do next. If the PM flags GAP rows, the orchestrator dispatches additional research Agents to author the missing Subtask bodies, then re-dispatches the PM until all rows are OK. **Only after PM sign-off** does the orchestrator run `bees create-ticket` for any gap-fill Subtasks and transition Epic + Tasks + Subtasks to `ready`. Reviewing first and creating-or-amending tickets second avoids the delete-and-recreate churn that "create everything, then traceability-review, then patch" produces.
 
-Show the Tasks you just created to the User in detail and ask them if they want to make modifications.
+You must defer to the Product Manager on whether the Epic's Subtask coverage is final and complete. The orchestrator's role is to dispatch, integrate findings, and act on them — not to substitute its own judgment for the PM's verdict.
 
+#### Spec Traceability Review (PM dispatch, gap-fill loop)
 
-#### Spec Traceability Review
+**This step is mandatory after every Epic is broken down.** It runs **before** any further `bees create-ticket` invocations in this section and **before** any status transitions to `ready`.
 
-**This step is mandatory after every Epic is broken down.** Before moving to the next Epic:
+##### Step 1 — Dispatch a fresh PM research Agent
+
+Spawn a fresh PM Agent in research mode at Epic scope. Use the same dispatch shape as Section 4's `#### Per-Task PM dispatch`:
+
+```
+Agent(
+  subagent_type="pm",
+  run_in_background=true,
+  prompt=<research-mode preamble + Epic-wide review prompt below>,
+)
+```
+
+Create exactly one TaskList task for this dispatch, named `pm-research-<epic-id>` per Section 4's `##### TaskList naming convention` (Epic-scope PM naming). Mark it `in_progress` when the `Agent(...)` invocation lands and `completed` when the orchestrator processes the Agent's returned JSON.
+
+The dispatch prompt must include:
+
+- The research-mode preamble verbatim (see Section 4's `##### Research-mode preamble`).
+- The Epic ID and the full set of Task IDs + Subtask IDs the orchestrator created in Section 4.
+- The Epic body verbatim (read via `bees show-ticket --ids <epic-id>`).
+- The parent Bee body verbatim (read via `bees show-ticket --ids <bee-id>`) so the PM can see the egg/eggs and detect the Scoped-marker.
+- The literal placeholder `<scoped-marker-resolver-path>`, **substituted by the orchestrator** to the resolved helper path before dispatch — the PM Agent uses it to detect and apply any Scoped-marker on the parent Bee, just as the orchestrator did in Section 2.
+- The Spec Traceability Review prose below (verbatim — it is the PM's review contract).
+
+##### Step 2 — Resolving `<scoped-marker-resolver-path>` (own-skill resolution)
+
+Resolve the placeholder against **this skill's own base directory**: `<this skill's base directory>/scripts/scoped_marker_resolver.py`. The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-breakdown-epic`).
+
+**This differs from `bees-execute` and `bees-fix-issue`.** Those two skills resolve the same helper as a *sibling* of their own base directory — `<base>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py` — because the helper is shipped by `bees-breakdown-epic` and they consume it across skills. Here, in `bees-breakdown-epic` itself, the helper lives **inside this skill**, so resolution drops the `..` hop and points at this skill's own `scripts/` subdirectory. Do not copy `bees-execute` / `bees-fix-issue`'s sibling-resolution string into this skill — it would resolve to a path that does not exist on disk.
+
+##### Step 3 — Spec Traceability Review prose (embedded in PM dispatch prompt)
+
+The following prose is the PM's review contract. Embed it verbatim in the PM dispatch prompt; do not paraphrase.
 
 1. Re-read the Epic description, including its scope and acceptance criteria.
 2. Identify every specific requirement the Epic depends on. **Source depends on whether the parent Plan Bee has eggs:**
@@ -354,15 +402,36 @@ Show the Tasks you just created to the User in detail and ask them if they want 
 | <requirement>       | SDD §Y           | MISSING            | GAP    |
 ```
 
-5. If any requirement is marked GAP:
-   - Create the missing subtask(s) immediately.
-   - Set their status to `ready` and wire dependencies.
-   - Re-report the updated table showing all gaps resolved.
+5. If any requirement is marked GAP, return the table flagging the GAP rows and a brief description of each missing requirement. Do not create tickets — research mode is read-only; the orchestrator handles ticket creation.
 
-6. Only proceed to the next Epic after all requirements show OK status.
+6. Sign off only when every row's `Status` is `OK`.
 
 This review ensures nothing from the spec is lost during the Task/Subtask decomposition. The subtask descriptions are what the executing agents will follow — if a requirement is not in a subtask, it will not be implemented. The review applies whether the spec source is a PRD/SDD pair on disk or the Plan Bee body itself.
 
+##### Step 4 — Gap-fill iteration loop
+
+When the PM Agent returns its JSON findings, the orchestrator consumes the traceability table:
+
+- **All rows `OK`** → PM signed off. Skip to Step 5.
+- **One or more `GAP` rows** → for each gap, dispatch a fresh research Agent in the appropriate role to author the missing Subtask body:
+  - Code change required → `subagent_type: "engineer"` in research mode.
+  - Test code change required → `subagent_type: "test-writer"` in research mode.
+  - Documentation change required → `subagent_type: "doc-writer"` in research mode.
+  - Use the same dispatch shape as Section 4 (`run_in_background=true`, research-mode preamble, ticket-body verbatim quoting). Name each TaskList task `<role>-research-<task-id>` against whichever Task the gap-fill Subtask will live under (per Section 4's naming convention). If the gap-fill Subtask spans Tasks or does not belong to any existing Task, surface that back to the caller via `AskUserQuestion` rather than guessing.
+- When all gap-fill research Agents have returned, **re-dispatch a fresh PM research Agent** (new TaskList task, new `pm-research-<epic-id>` entry — the previous one is already `completed`) with the updated proposed-Subtask set. Loop back to Step 4's first bullet.
+
+The loop terminates when the PM returns a traceability table with every row at `OK`. Do **not** short-circuit the loop by trusting the orchestrator's own read of the table — the PM is the authority on sign-off.
+
+##### Step 5 — Create gap-fill tickets, then transition to `ready`
+
+Only after PM sign-off (all rows `OK`):
+
+1. For each gap-fill Subtask body the research Agents authored during Step 4, run `bees create-ticket --body-file <path>` against the appropriate parent Task — author bodies to temp files under `<tempdir>/.bees-workflow/` per Section 4's `#### Authoring Subtask bodies` convention. Wire each new Subtask's `parent` to the owning Task ID, and add `up_dependencies` where another Subtask must complete first.
+2. Set the Epic to `ready` (it is now written and its children — the Tasks — are written).
+3. Set each Task to `ready` (it is written and its children — the Subtasks — are written).
+4. Set each Subtask to `ready` (it is written and has no children).
+
+Show the Tasks you just created (Section 4's per-Task Subtasks plus any gap-fill Subtasks created in Step 5.1) to the User in detail and ask them if they want to make modifications.
 
 #### Checklist Before Returning
 
@@ -370,10 +439,10 @@ This review ensures nothing from the spec is lost during the Task/Subtask decomp
 - [ ] If Task modifies code, all mandatory subtasks created (implementation steps, architecture docs review, unit test review, run full test suite)
 - [ ] Documentation subtasks have up_dependencies on implementation (implementation must complete first)
 - [ ] Testing subtasks have up_dependencies on implementation/add-tests (implementation and test creation must complete first)
-- [ ] All descriptions follow the mandatory template (see below)
+- [ ] All descriptions follow the mandatory template (see `#### Mandatory Subtask Description Template` above)
 - [ ] NO git commit subtasks created (commits handled automatically by executors)
 - [ ] Testing subtasks support maximum parallelization on execution by making one subtask per test file to be modified
-- [ ] Spec Traceability Review completed with all requirements at OK status (sources from PRD/SDD if eggs present, from the Plan Bee body otherwise)
+- [ ] Spec Traceability Review completed (PM Agent dispatched, gap-fill loop converged, all rows at OK status, sources from PRD/SDD if eggs present, from the Plan Bee body otherwise) **before** the gap-fill `bees create-ticket` invocations and **before** the status transitions to `ready`
 
 ### 6. Commit New Ticket Files
 
@@ -422,7 +491,7 @@ If the Plans hive lives **outside** the repo, skip the git commands and remember
 
 After the Epic (or all Epics, if breaking down a whole Bee) is fully broken down and the new ticket files have been committed (or noted as out-of-repo), present the user with clear options. Use `AskUserQuestion`.
 
-Note above the options: `/bees-execute` re-reads the Bee, Epics, and Tasks from the bees CLI and reads CLAUDE.md from disk, so prior conversation context is not load-bearing across the boundary. A fresh Claude Code session is the recommended default — it gives the executing agents full context budget for per-Task implementation, review cycles, and the team-lead's running judgment. Continuing to break down the next Epic in this session is lower-risk (same skill, similar context footprint), but a fresh session is still preferred for big Bees.
+Note above the options: `/bees-execute` re-reads the Bee, Epics, and Tasks from the bees CLI and reads CLAUDE.md from disk, so prior conversation context is not load-bearing across the boundary. A fresh Claude Code session is the recommended default — it gives the executing agents full context budget for per-Task implementation, review cycles, and the orchestrator's running judgment. Continuing to break down the next Epic in this session is lower-risk (same skill, similar context footprint), but a fresh session is still preferred for big Bees.
 
 If Step 6 found the Plans hive lives outside the repo, also include a one-line note here: *"The new ticket files are persisted by the bees CLI but the Plans hive lives outside this git repo, so they were not committed by this skill."*
 
@@ -440,7 +509,7 @@ The "Recommended" badge depends on whether breaking down the *next* Epic right n
 
 2. Filter to siblings whose `up_dependencies` includes the just-broken-down Epic's ID. If there are none, skip directly to the **No-reshape-risk case** branch in step 4.
 
-3. For each such dependent sibling, fetch its body via `bees show-ticket --ids <sibling-epic-id>` and read it alongside the just-broken-down Epic's body. Judge — this is a team-lead call, not a hardcoded rule, treated the same as other judgment calls in this skill — whether the upstream Epic's implementation will materially reshape the contract the sibling consumes. Indicators of reshape risk:
+3. For each such dependent sibling, fetch its body via `bees show-ticket --ids <sibling-epic-id>` and read it alongside the just-broken-down Epic's body. Judge — this is an orchestrator call, not a hardcoded rule, treated the same as other judgment calls in this skill — whether the upstream Epic's implementation will materially reshape the contract the sibling consumes. Indicators of reshape risk:
    - Upstream Epic introduces new infrastructure, API surface, schema, framework, or subagent/tool definitions that the sibling explicitly rewrites-to-consume.
    - Sibling Epic's scope reads like "rewrite X to use the new Y" where Y is what the upstream Epic produces.
    - Contract details (signatures, file shapes, lifecycle, error vocabulary) the sibling would have to guess at are precisely what the upstream Epic locks in.
