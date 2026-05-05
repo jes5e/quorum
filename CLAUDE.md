@@ -12,6 +12,7 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 
 - `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user; the body is the instructions Claude follows when the skill is invoked.
 - `skills/<name>/scripts/` — optional cross-platform Python helpers. Three exist today: `bees-setup/scripts/file_list_resolver.py` (the egg resolver), `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection), and `bees-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `bees-execute` and `bees-fix-issue`).
+- `agents/<role>.md` — Claude Code custom-subagents directory. Seven role contracts (`engineer.md`, `test-writer.md`, `doc-writer.md`, `pm.md`, `code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md`) dispatched as ephemeral background Agents by `bees-execute`, `bees-fix-issue`, and `bees-breakdown-epic`. Each file carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus the role's Instructions block.
 
 The full workflow chain — `bees-setup` → (`bees-plan` | `bees-plan-from-specs`) → `bees-breakdown-epic` → `bees-execute` → `bees-file-issue` / `bees-fix-issue` — is documented in the README; don't re-derive it from the skill files.
 

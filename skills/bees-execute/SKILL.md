@@ -396,7 +396,7 @@ Classify the result into exactly one of three branches (the status vocabulary `d
 
    Then exit the skill.
 
-2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so, clear your working context per the Epic-boundary context-clear discipline established in Section 3, then return to step 2.
+2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so, clear your working context per the Epic-boundary context-clear discipline established above in this Section 4.2, then return to step 2.
 
    If the user declines, move to final Bee review.
 
