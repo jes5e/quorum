@@ -341,7 +341,7 @@ Report what was found:
 
 Once the issue is fixed:
 
-1. Mark the issue's bees ticket `status=done` before committing, so any out-of-band ticket-state propagation is consistent. The status flip itself is a metadata change handled by the bees CLI; it does not produce a working-tree change that needs staging (see no-`.bees/`-staging note in step 2.3 below).
+1. Mark the issue's bees ticket `status=done` before committing, so any out-of-band ticket-state propagation is consistent. **Re-read the Issue's current status first** (`bees show-ticket --ids <issue-id>`) and skip the `bees update-ticket --status done` call if the status is already `done` — workers occasionally overstep their role contract and flip the status themselves, so the orchestrator's close-out flip should be idempotent against that case rather than failing or double-flipping. The status flip itself is a metadata change handled by the bees CLI; it does not produce a working-tree change that needs staging (see no-`.bees/`-staging note in step 2.3 below).
 2. Create one git commit for the Issue (including any doc updates). **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report).
    2. Run `git status` to see the full set of modified and untracked files.
