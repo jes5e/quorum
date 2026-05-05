@@ -2,10 +2,11 @@
 id: b.pn4
 type: bee
 title: Document bundled-helper-script location in README's 'Where docs live' section
-status: open
-created_at: '2026-05-04T16:44:54.195794'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-04T16:44:54.195794'
+status: done
+schema_version: '0.1'
 guid: pn4rmhm4ngb2n86b8zcxr4z6j61na67f
 ---
 
@@ -32,4 +33,3 @@ Doc-only change. Single file (`README.md`). No source code, no helper scripts, n
 - README.md has a short paragraph (or subsection) covering the bundled-helper-scripts location and self-resolution behavior.
 - Wording is project-neutral and consistent with the rest of the README's voice.
 - No other files modified.
-

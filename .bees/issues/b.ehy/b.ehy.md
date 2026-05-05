@@ -5,7 +5,7 @@ title: 'bees-breakdown-epic end-of-skill: per-option rationale, foundation-Epic 
 parent: null
 egg: null
 created_at: '2026-05-03T13:17:08.032566'
-status: open
+status: done
 schema_version: '0.1'
 guid: ehy3itaec5c2vi1bce5kzr5aw549uuk8
 ---
@@ -76,4 +76,3 @@ Acceptance criteria:
 - Same-session-vs-fresh-session preamble preserved.
 - Before the menu renders, new Task/Subtask files and the Epic's status update are staged and committed (when the Plans hive lives in-repo). When the hive lives out-of-repo, the skill surfaces a one-line note and skips the git commands.
 - All shell snippets ship as paired POSIX bash + Windows PowerShell blocks, per repo design rule 2.
-

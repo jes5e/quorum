@@ -2,10 +2,11 @@
 id: b.dkw
 type: bee
 title: Standardize transient scratch files under <tempdir>/.bees-workflow/, never delete
-status: open
-created_at: '2026-05-03T14:27:18.837295'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-03T14:27:18.837295'
+status: done
+schema_version: '0.1'
 guid: dkw8krya1ucbnvkc7j8w6cy5qdopc7dc
 ---
 
@@ -49,4 +50,3 @@ This approach was chosen over a per-skill cleanup-with-allowlist design because 
 5. Remove any "remove the temp file after the bees command exits" instructions from skill prose.
 
 Key files: this repo's `CLAUDE.md`, `README.md`, `skills/bees-file-issue/SKILL.md`, plus whatever the audit in step 2 surfaces.
-
