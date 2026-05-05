@@ -21,6 +21,8 @@ A portable [Claude Code](https://claude.com/claude-code) skill set for running a
                        (anytime, for bugs/follow-ups)
 ```
 
+The skills orchestrate work via Claude Code's ephemeral background subagents — no special setup is required beyond the bees CLI and Claude Code itself.
+
 ## Why this exists
 
 [Apiary](https://github.com/gabemahoney/apiary), built by the bees creator, is the original bees skill set and remains a great fit for many projects. **bees-workflow is an alternative**, shaped by these priorities:
@@ -39,24 +41,6 @@ If you want the lightweight, ephemeral-spec, async-team-spawning experience of A
 - **Claude Code** ([install](https://claude.com/claude-code))
 - **bees CLI** (`pipx install bees-md`) — see [bees](https://github.com/gabemahoney/bees) for documentation. Requires Python 3.10+.
 - **POSIX shell** (bash/zsh on macOS/Linux/WSL) **or PowerShell** (native Windows). Either works; every shell snippet in the skills is provided in both forms.
-
-## Required: enable Agent Teams
-
-`bees-execute` and `bees-fix-issue` use Claude Code's **Agent Teams** feature to run Engineer / Test Writer / Doc Writer / PM concurrently against each Task. Both skills spawn a team unconditionally — without Agent Teams enabled, neither can proceed.
-
-`/bees-setup` configures this for you. It checks `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` in your Claude Code user-settings file (`~/.claude/settings.json` on POSIX, `%USERPROFILE%\.claude\settings.json` on Windows) and offers to set it to `"1"` if it isn't. Re-run `/bees-setup` any time you want to flip it on.
-
-## Display backend
-
-Agent Teams renders concurrent agent activity through one of three `teammateMode` values in `~/.claude/settings.json`:
-
-- `"in-process"` — inline status panel inside the same Claude Code session. No terminal multiplexer required, no setup prompts, works on every terminal. **bees-workflow recommends this** for smooth onboarding.
-- `"tmux"` — split-pane mode. Each teammate runs in its own pane via `tmux` (Linux, Terminal.app) or `it2` (iTerm2). Requires the relevant multiplexer to be installed and, on iTerm2, the Python API enabled. Unsupported in VS Code's integrated terminal, Windows Terminal, and Ghostty.
-- `"auto"` — Claude Code's default. Picks split-pane on terminals it recognizes as supporting it, otherwise falls back to in-process.
-
-`/bees-setup` configures this for you. If `teammateMode` is unset or `"auto"`, you'll be offered the choice with `"in-process"` as the recommended default.
-
-**Why we don't recommend `"auto"`.** On macOS + iTerm2, the first team spawn under `"auto"` triggers an "iTerm2 Split Pane Setup" prompt. Picking Cancel aborts the team spawn entirely (returning `Teammate spawn cancelled - iTerm2 setup required`) — it does *not* simply decline a visual upgrade, and the calling skill stalls with no recovery. An upstream [Claude Code verification bug](https://github.com/anthropics/claude-code/issues/27413) compounds the problem: the prompt may re-appear even after `it2` is installed. `"in-process"` sidesteps both.
 
 ## Install
 
@@ -111,7 +95,7 @@ It will colonize hives (Plans + Issues), write a `## Documentation Locations` an
 
 | Skill | What it does |
 |---|---|
-| `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, Agent Teams + display backend, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. On a new machine in an already-set-up repo, `/bees-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through. |
+| `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. On a new machine in an already-set-up repo, `/bees-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through. |
 | `/bees-plan` | Interactive scope discovery for an idea, refactor, or feature without finalized specs. Also the right entry point when your cumulative PRD/SDD already describe one or more prior features — appends a new `### Feature:` subsection scoped to the new one. Produces a Plan Bee with Epics. |
 | `/bees-plan-from-specs` | Express path for when you already have a finalized PRD and SDD on disk. Default mode targets a **single-feature** PRD+SDD and hard-fails on PRDs **or SDDs** containing multiple `### Feature:` subsections. Pass `--feature "<title>"` to scope a single subsection inside a cumulative PRD+SDD — useful for re-planning one feature without going back through `/bees-plan`'s discovery loop. Produces a Plan Bee with Epics. |
 | `/bees-breakdown-epic` | Decompose a single Epic into Tasks and Subtasks with the mandatory description template applied. Commits the new ticket files at end-of-skill (when the Plans hive lives in-repo) and presents a next-steps menu with per-option rationale. |
@@ -150,7 +134,7 @@ The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you 
 
 ### Where bundled helper scripts live
 
-A few skills ship Python helpers (e.g., `file_list_resolver.py`, `force_clean_team.py`, `scoped_marker_resolver.py`) under `skills/<skill-name>/scripts/` inside the bees-workflow install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your bees-workflow checkout.
+A few skills ship Python helpers (e.g., `file_list_resolver.py`, `detect_fast_path.py`, `scoped_marker_resolver.py`) under `skills/<skill-name>/scripts/` inside the bees-workflow install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your bees-workflow checkout.
 
 ### Scratch files
 
