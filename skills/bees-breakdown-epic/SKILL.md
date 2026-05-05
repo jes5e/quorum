@@ -61,29 +61,33 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
 - Read the egg source material linked in the parent Bee. **If the egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Plan Bee body itself is the authoritative scope document — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
 - **Check for the Scoped-marker on the parent Bee.** If the parent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the egg-resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before treating it as the spec. Run the bundled parser/scoper to do the detection and scoping in one step:
 
-  Extract the `body` field from the `bees show-ticket --ids <bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows). Do NOT dump the whole JSON envelope to the temp file — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Then invoke the helper. Resolve the helper at `<this skill's base directory>/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-breakdown-epic`).
+  Extract the `body` field from the `bees show-ticket --ids <bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent first:
 
   ```bash
   # POSIX (bash / zsh):
-  python3 "<this skill's base directory>/scripts/scoped_marker_resolver.py" "/tmp/bees-bee-body-<short-suffix>.md"
+  mkdir -p /tmp/.bees-workflow
   ```
 
   ```powershell
   # Windows (PowerShell):
-  python "<this skill's base directory>\scripts\scoped_marker_resolver.py" "$env:TEMP\bees-bee-body-<short-suffix>.md"
+  New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
   ```
 
-  The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full egg-resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per egg-doc path; use that scoped content for all subsequent Task decomposition, sibling-overlap checks, and the Spec Traceability Review (cite `### Feature: <title>` subsection coordinates rather than the full PRD/SDD when the marker is present). The helper exits 2 with a clear error on stderr if the marker is present but malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the user and stop; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`. Remove the temp file after the helper exits:
+  Do NOT dump the whole JSON envelope to the temp file — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Then invoke the helper. Resolve the helper at `<this skill's base directory>/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-breakdown-epic`).
 
   ```bash
   # POSIX (bash / zsh):
-  rm "/tmp/bees-bee-body-<short-suffix>.md"
+  python3 "<this skill's base directory>/scripts/scoped_marker_resolver.py" "/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md"
   ```
 
   ```powershell
   # Windows (PowerShell):
-  Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
+  python "<this skill's base directory>\scripts\scoped_marker_resolver.py" "$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md"
   ```
+
+  The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full egg-resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per egg-doc path; use that scoped content for all subsequent Task decomposition, sibling-overlap checks, and the Spec Traceability Review (cite `### Feature: <title>` subsection coordinates rather than the full PRD/SDD when the marker is present). The helper exits 2 with a clear error on stderr if the marker is present but malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the user and stop; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`.
+
+  Do **not** remove the temp file after the helper exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 - **Check external-system contracts against authoritative docs.** When the Epic body references a third-party platform feature (a tool API, a CLI flag set, a harness behavior, an environment-variable contract), search the system's authoritative docs before authoring Tasks — `WebSearch` and `WebFetch` are available. Look for: canonical install paths, file shapes / frontmatter formats, lifecycle requirements (e.g., does a session restart load new files, or does a hot-reload command exist?), error-message vocabulary the rewrite needs to match. Two outcomes:
   - The docs answer the contract definitively → fold the answer into the spec; skip any "probe whether it works" Tasks the breakdown might otherwise create.
   - The docs leave specific behavior unspecified → keep the probe Task, but use what the docs *did* say to design tight assertions (`does the harness register this exact frontmatter shape at this exact path with this exact session-lifecycle behavior?`) rather than broad discovery probes (`does anything happen when I dispatch this?`). Tight probes distinguish failure causes; broad probes force a guess-and-check loop.
@@ -159,7 +163,7 @@ Always spawn the Product Manager.
 
 **CRITICAL — Subagent permissions**: Spawn ALL team members with `mode: "plan"`. Team members are read-only researchers. They must never create, update, or delete tickets. Only YOU (the team lead) run `bees create-ticket`, `bees update-ticket`, or `bees delete-ticket`.
 
-**Authoring Task and Subtask bodies**: Task and Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the file after the bees command exits. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+**Authoring Task and Subtask bodies**: Task and Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows), creating the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows). Do **not** remove the file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
 
 When spawning team members, include the following restriction in each teammate's spawn prompt:
 

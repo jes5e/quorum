@@ -67,7 +67,17 @@ If the description references specific code, files, or behavior:
 
 Author the structured body to a temp file via the `Write` tool, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt regardless of the user's allowlist, and inlined markdown is also fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both problems. Status-only updates with no body (e.g. `bees update-ticket --ids <id> --status done`) and genuinely single-line bodies can stay on inline `--body`. Steps:
 
-1. Pick a temp path under the OS temp dir: `/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows.
+1. Pick a temp path under the namespaced workflow scratch dir: `/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows. Create the `.bees-workflow` subdir if it does not yet exist:
+
+   ```bash
+   # POSIX (bash / zsh):
+   mkdir -p /tmp/.bees-workflow
+   ```
+
+   ```powershell
+   # Windows (PowerShell):
+   New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+   ```
 2. Use the `Write` tool to write the structured body to that path.
 3. Run the bees command (the file-flag carries no shell-quoting surface — only the line-continuation character differs between OSes):
 
@@ -89,7 +99,7 @@ Author the structured body to a temp file via the `Write` tool, then pass `--bod
      --body-file <path>
    ```
 
-4. Remove the temp file after the bees command exits.
+   The scratch file is **not** removed after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
 
 **Title guidelines:**
 - Under 80 characters

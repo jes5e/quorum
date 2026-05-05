@@ -5,7 +5,7 @@ model: opus
 tools: [Bash, Read, Skill, Grep, Write]
 ---
 
-The Product Manager is the per-Task quality gate dispatched by an orchestrating execution skill (`/bees-execute` or `/bees-fix-issue`) after the Engineer / Test Writer / Doc Writer have produced their work for a Task. The job is review-and-judgment — no source code, tests, or docs are modified by this subagent. The `Skill` tool is in the allowlist so the PM can dispatch `/bees-code-review` and `/bees-doc-review` in-flight during the per-Task review pass. The `Write` tool is in the allowlist because the Scoped-marker helper consumes a temp file the PM produces from the spec-source ticket body (see "Spec-source scoping" below).
+The Product Manager is the per-Task quality gate dispatched by an orchestrating execution skill (`/bees-execute` or `/bees-fix-issue`) after the Engineer / Test Writer / Doc Writer have produced their work for a Task. The job is review-and-judgment — no source code, tests, or docs are modified by this subagent. The `Skill` tool is in the allowlist so the PM can dispatch `/bees-code-review` and `/bees-doc-review` in-flight during the per-Task review pass. The `Write` tool is in the allowlist because the Scoped-marker helper consumes a temp file the PM produces from the spec-source ticket body — written to the namespaced workflow scratch dir `<tempdir>/.bees-workflow/` and never deleted (see "Spec-source scoping" below).
 
 ## Model default and runtime override
 
@@ -54,18 +54,28 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `bees-bre
 
 1. Extract the `body` field from `bees show-ticket --ids <grandparent-bee-id>` JSON output (the envelope's `tickets[0].body` markdown string). **Do NOT dump the whole JSON envelope to the temp file** — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching.
 
-2. Write that body to a temp file using the `Write` tool. Use `/tmp/bees-bee-body-<short-suffix>.md` on POSIX and `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows, where `<short-suffix>` is the Grandparent Bee ID's short suffix (or another collision-resistant token).
+2. Write that body to a temp file using the `Write` tool, under the namespaced workflow scratch dir. Use `/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md` on POSIX and `$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md` on Windows, where `<short-suffix>` is the Grandparent Bee ID's short suffix (or another collision-resistant token). Create the `.bees-workflow` subdir if absent first:
+
+   ```bash
+   # POSIX (bash / zsh):
+   mkdir -p /tmp/.bees-workflow
+   ```
+
+   ```powershell
+   # Windows (PowerShell):
+   New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+   ```
 
 3. Invoke the helper. Prefer the orchestrator-passed path placeholder; otherwise use one of the canonical-install-location fallbacks per "Helper-resolution-path strategy" above.
 
    ```bash
    # POSIX (bash / zsh):
-   python3 "<scoped-marker-resolver-path>" "/tmp/bees-bee-body-<short-suffix>.md"
+   python3 "<scoped-marker-resolver-path>" "/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md"
    ```
 
    ```powershell
    # Windows (PowerShell):
-   python "<scoped-marker-resolver-path>" "$env:TEMP\bees-bee-body-<short-suffix>.md"
+   python "<scoped-marker-resolver-path>" "$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md"
    ```
 
 4. Parse the helper's exit code and JSON output:
@@ -73,17 +83,7 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `bees-bre
    - **Exit 0, `"scoped": true`** — the JSON's `docs` array carries the scoped subsection content per egg-doc path. Compare the Task work against the scoped content only.
    - **Exit 2 — HARD-FAIL.** The marker is malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc. Surface the helper's stderr to the orchestrator and **stop the spec review until the user resolves it**. Do NOT silent-fallback to the full doc — the user explicitly opted into a scoped review by emitting the marker, and a silent fallback would violate that opt-in contract.
 
-5. Remove the temp file after the helper exits, regardless of exit code.
-
-   ```bash
-   # POSIX (bash / zsh):
-   rm "/tmp/bees-bee-body-<short-suffix>.md"
-   ```
-
-   ```powershell
-   # Windows (PowerShell):
-   Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
-   ```
+5. Do **not** remove the temp file after the helper exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 
 ### Path B — bees-fix-issue `up_dependencies`-based opportunistic marker discovery
 
@@ -108,29 +108,31 @@ After the orchestrator has validated dependency-blocker statuses upstream, itera
 
    If the query returns zero rows for that ID, treat it as a non-`plans`-hive entry and skip to the next ID. Do NOT hard-fail on a non-Plan-Bee `up_dependencies` entry — that is the blocker-only use of the field, which is fine.
 
-2. For each Plan Bee found, extract the `body` field from the query result (the envelope's `tickets[0].body` markdown string — same shape as `bees show-ticket`). **Do NOT dump the whole JSON envelope to the temp file** — JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Write that body to a temp file using the `Write` tool (`/tmp/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-bee-body-<short-suffix>.md` on Windows; pick a `<short-suffix>` that is unique per Plan Bee so concurrent iterations do not collide), then invoke the helper using the orchestrator-passed path (or the documented fallback).
+2. For each Plan Bee found, extract the `body` field from the query result (the envelope's `tickets[0].body` markdown string — same shape as `bees show-ticket`). **Do NOT dump the whole JSON envelope to the temp file** — JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Write that body to a temp file under the namespaced workflow scratch dir using the `Write` tool (`/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md` on Windows; pick a `<short-suffix>` that is unique per Plan Bee so concurrent iterations do not collide). Create the `.bees-workflow` subdir if absent first:
 
    ```bash
    # POSIX (bash / zsh):
-   python3 "<scoped-marker-resolver-path>" "/tmp/bees-bee-body-<short-suffix>.md"
+   mkdir -p /tmp/.bees-workflow
    ```
 
    ```powershell
    # Windows (PowerShell):
-   python "<scoped-marker-resolver-path>" "$env:TEMP\bees-bee-body-<short-suffix>.md"
+   New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
    ```
 
-   Remove the temp file after the helper exits, regardless of exit code:
+   Then invoke the helper using the orchestrator-passed path (or the documented fallback).
 
    ```bash
    # POSIX (bash / zsh):
-   rm "/tmp/bees-bee-body-<short-suffix>.md"
+   python3 "<scoped-marker-resolver-path>" "/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md"
    ```
 
    ```powershell
    # Windows (PowerShell):
-   Remove-Item "$env:TEMP\bees-bee-body-<short-suffix>.md"
+   python "<scoped-marker-resolver-path>" "$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md"
    ```
+
+   Do **not** remove the temp file after the helper exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 
 3. Parse the helper's exit code and JSON output:
    - **Exit 0, `"scoped": true`** — use the per-doc scoped content from the `docs` array for the PM's spec review (Internal architecture docs, Customer-facing docs, and any project PRD-equivalent), in place of the corresponding full-doc content.

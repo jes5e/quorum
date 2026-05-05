@@ -185,7 +185,7 @@ Create the Plan Bee inline in this session — do **not** delegate to `/bees-pla
 
 #### 5a — Create the Plan Bee
 
-Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the OS temp dir (`/tmp/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\bees-body-<short-suffix>.md` on Windows), and remove the temp file after the bees command exits.
+Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 
 The body should be a brief 2-3 sentence summary of the goal and scope. When `egg` is set, do not dump PRD/SDD content into the body — downstream skills read the linked docs via the egg resolver.
 
@@ -275,7 +275,7 @@ Wait for approval. If the user picks "Modify the Epics", iterate in prose until 
 
 #### 5d — Create Epic tickets and wire dependencies
 
-Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body, pass path, remove temp file). **Do not pass `--egg` on Epics** — the bees CLI accepts `--egg` only on top-level Bees and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's egg, not the Epic's.
+Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body to `<tempdir>/.bees-workflow/`, pass path; do not delete after). **Do not pass `--egg` on Epics** — the bees CLI accepts `--egg` only on top-level Bees and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's egg, not the Epic's.
 
 ```bash
 # POSIX (bash / zsh):
