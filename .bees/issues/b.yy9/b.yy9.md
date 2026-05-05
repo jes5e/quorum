@@ -2,10 +2,11 @@
 id: b.yy9
 type: bee
 title: bees-breakdown-epic Step 7 recommends execute when it should recommend break-down-next; rationale truncates in header
-status: open
-created_at: '2026-05-05T16:16:29.414353'
-schema_version: '0.1'
+parent: null
 egg: null
+created_at: '2026-05-05T16:16:29.414353'
+status: done
+schema_version: '0.1'
 guid: yy98rexzdik99r4ainf1x7k91f4hgdh8
 ---
 
@@ -66,4 +67,3 @@ Edit `skills/bees-breakdown-epic/SKILL.md` Step 7:
 Out of scope for this issue:
 - Tightening the option count (currently six core options + auto-appended "Type something" / "Chat about this"). Worth doing later but not load-bearing for the recommendation-direction fix.
 - Changes to the reshape-risk judgment criteria themselves — they are working as intended.
-

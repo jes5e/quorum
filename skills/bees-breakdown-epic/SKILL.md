@@ -497,7 +497,7 @@ If Step 6 found the Plans hive lives outside the repo, also include a one-line n
 
 #### Pick the Recommended option
 
-The "Recommended" badge depends on whether breaking down the *next* Epic right now risks rework. Specifically: when the just-broken-down Epic's implementation will lock contract details (new infrastructure, API surface, schema, framework, etc.) that drafted siblings consume, breaking those siblings down before that contract solidifies produces stale Tasks. To decide:
+The "Recommended" badge depends on two facts about the parent Bee: whether any drafted sibling Epics remain, and — if they do — whether breaking down the *next* Epic right now risks rework. Specifically: when the just-broken-down Epic's implementation will lock contract details (new infrastructure, API surface, schema, framework, etc.) that drafted siblings consume, breaking those siblings down before that contract solidifies produces stale Tasks. If no drafted siblings remain at all, planning is done and the natural next move is bulk execution; if drafted siblings remain with pure-ordering dependencies only, the natural next move is to keep breaking down. To decide:
 
 1. Query drafted sibling Epics under the same parent Bee:
 
@@ -507,7 +507,7 @@ The "Recommended" badge depends on whether breaking down the *next* Epic right n
    report: [title, up_dependencies]'
    ```
 
-2. Filter to siblings whose `up_dependencies` includes the just-broken-down Epic's ID. If there are none, skip directly to the **No-reshape-risk case** branch in step 4.
+2. If the query in step 1 returned no drafted siblings at all, skip directly to the **No-drafted-siblings case** branch in step 4. Otherwise, filter to siblings whose `up_dependencies` includes the just-broken-down Epic's ID. If there are drafted siblings but none depend on the just-broken-down Epic, treat that as the **Drafted-siblings-remain, no reshape risk** case in step 4 and skip step 3.
 
 3. For each such dependent sibling, fetch its body via `bees show-ticket --ids <sibling-epic-id>` and read it alongside the just-broken-down Epic's body. Judge — this is an orchestrator call, not a hardcoded rule, treated the same as other judgment calls in this skill — whether the upstream Epic's implementation will materially reshape the contract the sibling consumes. Indicators of reshape risk:
    - Upstream Epic introduces new infrastructure, API surface, schema, framework, or subagent/tool definitions that the sibling explicitly rewrites-to-consume.
@@ -516,24 +516,28 @@ The "Recommended" badge depends on whether breaking down the *next* Epic right n
 
    Pure ordering coupling — sibling depends on upstream only because work must serialize, not because it consumes a still-in-flux contract — does **not** count as reshape risk.
 
-4. Branch the Recommended badge:
-   - **Reshape-risk case** (any dependent sibling judged to consume an in-flux contract): Recommended option is **"In a fresh session, execute this Epic first; defer downstream breakdown"**. Include a one-line rationale naming the at-risk siblings (by ID and short title) and the contract concern (e.g., *"siblings `<id-a>` and `<id-b>` rewrite-to-consume the new framework this Epic produces; breaking them down before implementation lands risks stale Tasks."*).
-   - **No-reshape-risk case** (default — no dependent siblings, or dependencies are pure ordering): Recommended badge stays on the bulk-execute option as today. Do **not** surface an extra confirm-or-defer prompt the user can't meaningfully answer.
+4. Branch the Recommended badge across three cases:
+   - **No-drafted-siblings case** (the query in step 1 returned zero drafted siblings under this Bee): Recommended option is **"In a fresh session, execute the whole Bee"**. Rationale (for the option's `Best when …` subtitle): planning is done — every Epic in this Bee is broken down and ready to ship.
+   - **Drafted-siblings-remain, reshape-risk case** (drafted siblings exist and at least one dependent sibling is judged to consume an in-flux contract): Recommended option is **"In a fresh session, execute this Epic first; defer downstream breakdown"**. Rationale (for the option's `Best when …` subtitle): name the at-risk siblings (by ID and short title) and the contract concern in one short sentence (e.g., *"siblings `<id-a>` / `<id-b>` rewrite-to-consume the new framework this Epic produces; breaking them down before implementation lands risks stale Tasks."*).
+   - **Drafted-siblings-remain, no-reshape-risk case** (drafted siblings exist; either none depend on the just-broken-down Epic, or every dependency is pure ordering coupling): Recommended option is **"In a fresh session, break down the next Epic"**. Rationale (for the option's `Best when …` subtitle): name which siblings are still drafted (by ID) and note that their Tasks won't go stale because the dependency is pure ordering, not contract reshape.
+
+5. Surface the rationale **only** as the Recommended option's `Best when …` subtitle (one short sentence, ≤ ~150 chars so it fits the option-card UI). Do **not** emit a freestanding rationale paragraph above the `AskUserQuestion` menu — the Claude Code UI does not render long header prose reliably and has been observed truncating mid-sentence, leaving the user unable to read the reasoning. Keep any prose above the menu limited to the standing notes from the parent Step 7 section (the fresh-session note and, if applicable, the out-of-repo Plans-hive note); do not add a new paragraph that explains the Recommended pick. Do **not** surface an extra confirm-or-defer prompt the user can't meaningfully answer.
 
 #### Menu options
 
-Always include all six options below. The Recommended badge moves between the first two (whole-Bee execute vs. this-Epic-first execute) per the branch above. Each option carries a one-line "best when …" clause so the user can compare trade-offs without external context.
+Always include all six options below. The Recommended badge moves across three of the options (whole-Bee execute, this-Epic-first execute, break-down-the-next-Epic) per the three-way branch above. Each option carries a one-line "best when …" clause so the user can compare trade-offs without external context. When an option is the Recommended pick for the current run, replace its generic `Best when …` clause with the case-specific rationale called out in step 4 of *Pick the Recommended option* (which siblings are at risk / which siblings are still drafted with pure-ordering dependencies / etc.) — that subtitle is the only place the rationale is surfaced.
 
 - **In a fresh session, execute the whole Bee** — run `/bees-execute <bee-id>` (e.g. `b.duy`) in a new Claude Code session. `/bees-execute` walks every Epic in the Bee in dependency order.
-  - *Best when* the remaining drafted Epics either don't depend on this one, or their dependencies are pure ordering — no contract-reshape risk to defer for.
-  - *Recommended in the no-reshape-risk case.*
+  - *Best when* every Epic in the Bee is already broken down and the plan is ready to ship.
+  - *Recommended when no drafted Epics remain under the parent Bee.*
 - **In a fresh session, execute this Epic first; defer downstream breakdown** — run `/bees-execute <epic-id>` (e.g. `t1.duy.c9`) in a new session, scoped to the Epic just broken down. After it lands, return to break down the dependent siblings against the now-stable contract.
   - *Best when* drafted siblings rewrite-to-consume what this Epic produces and the contract is still in flux — execute now, then break down siblings against the locked-in contract.
-  - *Recommended in the reshape-risk case.* Name the at-risk siblings inline.
+  - *Recommended when drafted siblings present reshape risk.* Name the at-risk siblings inline.
 - **In a fresh session, start at a specific Epic** — run `/bees-execute <epic-id>` in a new session. `/bees-execute` accepts an Epic ID; it finds the parent Bee automatically and starts from that Epic's position in the plan. All Epics still run — this just biases the entry point.
   - *Best when* the user wants the bulk-execute walk but with a specific entry point (e.g., the just-broken-down Epic, or an upstream foundational Epic).
 - **In a fresh session, break down the next Epic** — run `/bees-breakdown-epic <next-epic-id>` in a new session if more Epics in this Bee remain in `drafted` state. Same-session continuation is also reasonable here since the skill is repeating with similar context growth per Epic.
   - *Best when* the user wants to finish planning before any execution starts and there's no contract-reshape risk that would make the next Epic's Tasks go stale.
+  - *Recommended when drafted siblings remain with no reshape risk.* Name the still-drafted siblings inline.
 - **Review first** — let the user review the plan before proceeding.
   - *Best when* the user wants to scan the new Tasks and Subtasks for shape/scope before committing to an execution path.
 - **Done for now** — plan is saved; user will come back later.
