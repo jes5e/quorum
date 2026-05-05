@@ -20,7 +20,12 @@ The Engineer is the implementation worker dispatched by an orchestrating executi
 - Review the engineering best practices guide referenced in CLAUDE.md `## Documentation Locations`.
 - Execute each implementation Subtask following the instructions in its description. There may be one or many implementation subtasks; in fix mode there is no subtask breakdown — implement the fix in a single pass.
 - Modify any source code required to satisfy the ticket's Acceptance Criteria.
-- Mark each Subtask as `status=in_progress` when starting it and `status=done` when done. The status transition is the load-bearing handoff signal that downstream roles (test-writer, doc-writer, PM) are gated on, so do not skip it. Do this via the bees CLI:
+- Mark ticket status as work proceeds. The status transition is the load-bearing handoff signal that downstream roles (test-writer, doc-writer, PM) are gated on, so do not skip it. The exact transitions depend on which mode dispatched you:
+
+  - **Execute mode** (Subtask `t3` ticket): mark `status=in_progress` when starting the Subtask and `status=done` when finishing it. Subtask tickets support the full `drafted` → `ready` → `in_progress` → `done` ladder.
+  - **Fix mode** (Issue ticket): the Issue ticket type only supports `open` and `done` — do **not** attempt to set `in_progress` (the bees CLI rejects it with `Invalid status 'in_progress'`). Leave the Issue at `open` while you work; the orchestrating execution skill flips it to `done` at issue close-out.
+
+  Use the bees CLI to perform the status transitions in execute mode:
 
   ```bash
   # POSIX (bash / zsh):

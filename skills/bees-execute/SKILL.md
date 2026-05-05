@@ -165,7 +165,7 @@ If ready, mark the Epic status with `status=in_progress` to show work has starte
 
 ### 3. Execute Tasks via per-Subtask Agent dispatch
 
-The orchestrator (you, the Director) drives Tasks through a **reconciliation loop** that dispatches **fresh, ephemeral background `Agent` invocations** against the custom subagent types defined in this skill's sibling `agents/` directory. There is no long-lived team; there are no warmed Agents; there is no peer-to-peer messaging between workers.
+The orchestrator (you, the Director) drives Tasks through a **reconciliation loop** that dispatches **fresh, ephemeral background `Agent` invocations** against the custom subagent types defined in this skill set's sibling `agents/` directory. There is no long-lived team; there are no warmed Agents; there is no peer-to-peer messaging between workers.
 
 #### Reconciliation loop
 
@@ -316,7 +316,7 @@ Use the Bash tool's `timeout` parameter (max 600000 ms = 10 min). For test invoc
 
 When a Task and all its Subtasks are done (all reviewer feedback addressed or ignored):
 
-1. Mark the Task as `status=done` (Subtasks were marked done by each agent as they completed their work). **Do this before committing** so the `.bees/` status changes are included in the commit.
+1. Mark the Task as `status=done` (Subtasks were marked done by each agent as they completed their work, except doc Subtasks where the orchestrator does the flip on behalf of the doc-writer per `agents/doc-writer.md`'s no-`Bash` routing). **Do this before committing** so the `.bees/` status changes are included in the commit.
 2. Create one git commit for the Task. **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report). Do NOT re-run the test suite here — the `.T` subtask already validated, and the PM confirmed. Re-running wastes minutes per Task.
    2. Run `git status` to see the full set of modified and untracked files.

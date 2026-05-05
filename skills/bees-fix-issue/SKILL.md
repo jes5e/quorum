@@ -56,7 +56,7 @@ Parse the argument string. Split on any run of commas and/or whitespace; discard
 Notes for list mode:
 - `/bees-fix-issue b.cnb b.sgq b.xet`, `/bees-fix-issue b.cnb,b.sgq,b.xet`, and `/bees-fix-issue b.cnb, b.sgq  b.xet` all parse to the same three-ID list.
 - Up-front validation: before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). If *no* IDs are valid, exit with an error.
-- Between issues, no inter-issue cleanup ceremony is needed — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns, and Section 7 closes out the per-issue TaskList tasks at issue close-out.
+- Between issues, no inter-issue cleanup ceremony is needed — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns, and Section 6 closes out the per-issue TaskList tasks at issue close-out.
 
 To query open issues (used only in no-args and `all` modes — list mode uses the user's explicit list instead):
 ```bash
@@ -165,7 +165,7 @@ The loop is **event-driven, not clock-driven**. Each tick has three phases:
    - **TaskList** — the orchestrator's progress UI (see "TaskList as progress UI" below). Each in-flight Agent has a corresponding TaskList task whose `status` reflects whether the Agent is `pending` (queued), `in_progress` (running), or `completed` (Agent reported done).
    - **git state** — the actual diff on disk. Workers communicate by editing files; the diff is the only authoritative record of what they actually did.
 
-   Mark the Issue `status=in_progress` (if not already set) the first tick the loop dispatches an implementer Agent for it.
+   The Issue ticket type only supports two statuses — `open` and `done` — so there is no in-flight bees status to set while work is underway. The TaskList progress UI carries the in-flight signal (per-Agent `pending` / `in_progress` / `completed`), and the orchestrator flips the Issue from `open` to `done` only at issue close-out (per Section 6).
 
 2. **Reconcile.** Compare current state to target state and act:
    - For every implementer role whose gating precondition is met for this Issue and which has no Agent already in flight for it, dispatch a fresh Agent (see "Per-issue cold dispatch" below).
@@ -235,7 +235,7 @@ Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-cod
 The orchestrator dispatches the following four roles per Issue. The full role contracts (responsibilities, gating preconditions, instructions, shell-command etiquette) live in the role files; the orchestrator's job is to invoke the right role at the right time, not to carry the role's prose.
 
 - **Engineer** (`agents/engineer.md`) — implements source-code changes for the fix. Model: Opus (always). Does not write tests or docs.
-- **Test Writer** (`agents/test-writer.md`) — writes / updates / deletes tests to verify the fix and reviews the Engineer's diff for missing coverage. Model: Opus (always).
+- **Test Writer** (`agents/test-writer.md`) — writes / updates / deletes tests to verify the fix and reviews the Engineer's diff for missing coverage. At minimum, ensures there is at least one test that fails before the Engineer's fix and passes after — this is the regression guard that prevents the same bug from recurring. Model: Opus (always).
 - **Doc Writer** (`agents/doc-writer.md`) — reviews the Engineer's diff for documentation gaps and updates customer-facing and internal docs as needed. Model: user's choice (Opus or Sonnet, selected at the start of the run).
 - **Product Manager** (`agents/pm.md`) — reviews the fix against the spec source (the Issue body, plus PRD/SDD-equivalent paths from CLAUDE.md `## Documentation Locations`, optionally Scoped-marker-narrowed via a Plan Bee in `up_dependencies`), flags scope creep or spec divergence. Dispatched **only for Complex fixes** (see "Per-issue PM dispatch" below). Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
@@ -259,7 +259,7 @@ Use `metadata.activity` on the TaskList task to surface finer-grained progress w
 
 ##### TaskList naming convention
 
-The naming convention is the **canonical cross-reference** for downstream Sections of this SKILL.md (Section 4's reviewer dispatches and Section 7's TaskList completion at issue close-out consume these names). It is deterministic so two concurrent invocations cannot collide and unambiguous so any reader can map a TaskList entry back to its Issue.
+The naming convention is the **canonical cross-reference** for downstream Sections of this SKILL.md (Section 4's reviewer dispatches and Section 6's TaskList completion at issue close-out consume these names). It is deterministic so two concurrent invocations cannot collide and unambiguous so any reader can map a TaskList entry back to its Issue.
 
 Naming is **issue-scoped** for every role — there is no Subtask breakdown under an Issue, so the parent ticket id used as the scope suffix is always the Issue id:
 
@@ -317,16 +317,12 @@ Reviewer role contracts (responsibilities, model assignment, gating, instruction
   - If not, move on but you MUST include the ignored feedback in the summary
   - Note: This could create an infinite loop so you may ignore feedback so long as you present it in the summary
 
-### 5. Testing the issue
-- Ensure there is at least one test that fails before the issue fix and passes after
-  - This ensures we will not introduce this particular regression again in the future
-
-### 6. Verify docs are still accurate
+### 5. Verify docs are still accurate
 
 The work this section requires depends on whether the Issue was classified Simple or Complex by Section 3's complexity gate:
 
-- **Complex fix** — the per-issue PM Agent dispatched in Section 3 has already verified spec alignment as part of its review (the PM reads the spec sources configured under CLAUDE.md `## Documentation Locations` and flags drift in its report). Section 6 is **informational** on this path: confirm the PM's spec-alignment finding landed in the per-issue summary, and skip the standalone check below. The PM's report covers it.
-- **Simple fix** — no PM was dispatched (per Section 3's complexity gate). The orchestrator runs Section 6's spec-vs-code check directly — orchestrator-direct, no Agent. This path is **load-bearing** on simple fixes.
+- **Complex fix** — the per-issue PM Agent dispatched in Section 3 has already verified spec alignment as part of its review (the PM reads the spec sources configured under CLAUDE.md `## Documentation Locations` and flags drift in its report). Section 5 is **informational** on this path: confirm the PM's spec-alignment finding landed in the per-issue summary, and skip the standalone check below. The PM's report covers it.
+- **Simple fix** — no PM was dispatched (per Section 3's complexity gate). The orchestrator runs Section 5's spec-vs-code check directly — orchestrator-direct, no Agent. This path is **load-bearing** on simple fixes.
 
 The standalone spec-vs-code check (load-bearing on the simple-fix path; informational confirmation on the complex-fix path):
 
@@ -341,7 +337,7 @@ Report what was found:
 - "Docs verified accurate — no changes needed"
 - OR "Updated [doc path] §X.Y to reflect [change]" — name the actual file (e.g. the configured Internal architecture docs path) rather than a generic "SDD §20".
 
-### 7. After Issue is fixed
+### 6. After Issue is fixed
 
 Once the issue is fixed:
 
@@ -366,7 +362,7 @@ Once the issue is fixed:
 
 5. In batch mode (`all` or list mode): proceed to the next issue in the batch (go back to step 2). In single mode: continue to step 8.
 
-### 8. Post-Completion Review
+### 7. Post-Completion Review
 
 After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final fresh-context generalist sweep across all changes made during this bees-fix-issue session.
 

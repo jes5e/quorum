@@ -52,11 +52,13 @@ Copy the skills and subagent definitions into your user-level Claude Code direct
 # POSIX (bash / zsh):
 git clone https://github.com/jes5e/bees-workflow ~/projects/bees-workflow
 cp -r ~/projects/bees-workflow/skills/* ~/.claude/skills/
+mkdir -p ~/.claude/agents
 cp -r ~/projects/bees-workflow/agents/* ~/.claude/agents/
 
 # Windows (PowerShell):
 git clone https://github.com/jes5e/bees-workflow $HOME\projects\bees-workflow
 Copy-Item -Recurse $HOME\projects\bees-workflow\skills\* $HOME\.claude\skills\
+New-Item -ItemType Directory -Force -Path "$HOME\.claude\agents" | Out-Null
 Copy-Item -Recurse $HOME\projects\bees-workflow\agents\* $HOME\.claude\agents\
 ```
 
@@ -67,10 +69,12 @@ If you want to try bees-workflow on one repo without affecting others, copy the 
 ```bash
 # POSIX:
 cp -r ~/projects/bees-workflow/skills/* /path/to/your/repo/.claude/skills/
+mkdir -p /path/to/your/repo/.claude/agents
 cp -r ~/projects/bees-workflow/agents/* /path/to/your/repo/.claude/agents/
 
 # Windows (PowerShell):
 Copy-Item -Recurse $HOME\projects\bees-workflow\skills\* C:\path\to\your\repo\.claude\skills\
+New-Item -ItemType Directory -Force -Path "C:\path\to\your\repo\.claude\agents" | Out-Null
 Copy-Item -Recurse $HOME\projects\bees-workflow\agents\* C:\path\to\your\repo\.claude\agents\
 ```
 

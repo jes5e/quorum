@@ -235,7 +235,9 @@ README install instructions extend to copy `agents/*` into `~/.claude/agents/` (
 
 **Subagent definition format.** Each `agents/<role>.md` carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus a markdown body. The body is the role-specific Instructions block currently embedded inline in `bees-execute`'s SKILL.md (lines ~290-389). Lifting these blocks into definition files reduces SKILL.md prose by roughly 100-150 lines per file and makes role customization a first-class operation (a downstream user can edit `~/.claude/agents/engineer.md` to add project-specific guidance without forking the skill).
 
-**Sequencing.** The work decomposes into Epics (final structure determined during /bees-breakdown-epic):
+**Planning-time sequencing record (historical).** The bullets below were the planning-stage Epic decomposition and dependency graph for this feature. All six Epics have since landed; the record is retained as historical context (not a current plan) so future maintainers can trace how the work was broken down. The shipped state is described in the main-body paragraphs above and in the top-level "Tech stack", "Key components", "Orchestration in execution skills", and "External dependencies" sections of this SDD.
+
+The work decomposed into Epics (final structure determined during /bees-breakdown-epic):
 
 - **Epic A — Subagent definitions and infrastructure.** Author the seven `agents/*.md` files with role prose lifted from current SKILL.md inline blocks. Update install instructions in README. Probe whether subagents load correctly from `~/.claude/agents/`. No SKILL.md changes yet — old Agent Teams paths still in place.
 - **Epic B — `bees-execute` rewrite.** Rewrite `bees-execute/SKILL.md` to use the reconciliation-loop pattern with background `Agent` invocations referencing the new subagent types. Drop the message-flow choreography, blocked_on signal, escalation ladder, and helper-script references. Probe recursive delegation; pick flat or nested based on result. Verify against a real Bee.
