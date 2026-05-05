@@ -10,6 +10,36 @@ Your job is to break down an Epic ticket into Tasks and Subtasks.
 
 ## Workflow
 
+## Preconditions
+
+Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
+
+- The seven required custom subagent types are registered in the running Claude Code session: `engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`. Custom subagents are loaded at Claude Code session start (from `~/.claude/agents/` for global installs and `<repo>/.claude/agents/` for per-project installs), so a fresh install requires a Claude Code restart (or `/agents` to hot-reload) before the skill can dispatch them. Although this skill only dispatches a subset of these roles in research mode, the precondition is uniform across the three execution skills (`/bees-execute`, `/bees-fix-issue`, `/bees-breakdown-epic`) so a "user forgot to restart Claude Code" misconfiguration is caught identically regardless of entry point. If any of the seven is missing at run-time, the orchestrator STOPS at the precondition gate and emits the hard-fail message — there is no fallback to `general-purpose`, no skipping the dispatch, and no improvising substitute roles. The hard-fail message must direct the user to (a) verify the install per `README.md` `## Install` AND (b) restart Claude Code or run `/agents` to hot-reload, e.g.: `Run /bees-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.`
+- The Plans hive is colonized for this repo. Check via `bees list-hives` — the output must include a hive whose `normalized_name` is `plans`.
+- CLAUDE.md contains a `## Documentation Locations` section. Agents look up paths to architecture docs, customer docs, test guides, etc. by exact key from this section.
+- CLAUDE.md contains a `## Build Commands` section, and that section has all five required bullet keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`. Agents look up build/test/format/lint commands by exact key from this section.
+
+Rationale: the workflow reads project-specific commands and doc paths from CLAUDE.md instead of hardcoding language-specific tooling, so the skill works on Rust, Node, Python, Go, etc. without per-skill editing. Auto-detection alone is unsafe on polyglot projects, monorepos, and projects with custom build systems (Bazel, Buck, Nx, etc.) — silently running the wrong commands would mask real failures. The Build Commands section is required, not optional.
+
+Do not attempt to recover from a missing precondition by improvising commands or guessing paths — fail fast and direct the user to `/bees-setup` so the configuration is captured deliberately.
+
+**Verifying the subagents precondition.** Verification is a hybrid of two complementary mechanisms:
+
+- **Procedural gate (load-bearing primary).** If a dispatch later in the run hits an `Agent type '<name>' not found`-style error from the Agent tool for any of the seven required subagent types, the orchestrator STOPS, emits the hard-fail message above, and exits — no fallback to `general-purpose`, no skipping the dispatch, no substitute role. This gate is honest about Claude Code's session-load semantics (subagents are loaded at session start from `~/.claude/agents/` and `<repo>/.claude/agents/`; mid-session installs require a restart or `/agents` hot-reload) and cannot be bypassed by token-budget pressure or model creativity, because it fires at the natural failure point.
+- **Upfront fast-fail (opportunistic, belt-and-braces).** Before any dispatch is attempted, run `claude agents` to enumerate registered subagents and verify each of the seven literal names (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`) is present. The command prints one line per agent in the form `  <name> · <model>` under a `User agents:` heading, exits cleanly without spawning an interactive UI, and is safe to invoke from inside a running Claude Code session. If any of the seven names is absent from the output, hard-fail per the message above. This catches the missing-restart case upfront and saves the user one wasted dispatch turn.
+
+```bash
+# POSIX (bash / zsh):
+claude agents
+```
+
+```powershell
+# Windows (PowerShell):
+claude agents
+```
+
+After running the command, scan its output for the seven required names; hard-fail if any are missing. If `claude agents` itself is unavailable (older Claude Code build, etc.), skip the upfront check — the procedural gate still catches the failure at first dispatch.
+
 ### 0. Choose agent model preference
 
 Before starting work, ask the user which model to use for the support roles spawned during breakdown (research teammates, Product Manager when applicable). Use `AskUserQuestion`:
