@@ -4,6 +4,7 @@ type: bee
 title: Side-effect-free /bees-plan and /bees-file-issue with preserved context
 down_dependencies:
 - b.uxa
+- b.2w1
 parent: null
 children:
 - t1.31f.ho
