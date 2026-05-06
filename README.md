@@ -95,6 +95,18 @@ In any repo where you want to use the workflow, run:
 
 It will colonize hives (Plans + Issues), write a `## Documentation Locations` and `## Build Commands` section to CLAUDE.md, and offer to bootstrap baseline PRD/SDD docs from your existing codebase. Safe to re-run if you skip a step and want to come back to it later.
 
+### Upgrading from older bees-workflow versions
+
+Earlier revisions of bees-workflow registered a custom egg resolver (`file_list_resolver.py`) and stored spec-doc pointers in a per-ticket `egg` field. The bees CLI has since replaced both with a built-in `file-path` resolver and a per-ticket `reference_materials` field; the workflow now uses those exclusively, and the custom resolver has been removed.
+
+If you have existing tickets created under the old schema, run `bees update-config` once before using the upgraded skills:
+
+```bash
+bees update-config
+```
+
+The migration converts each ticket's old `egg` array into one `reference_materials` entry per file and clears the obsolete custom-resolver registration from `~/.bees/config.json`. New repos and machines that never ran an older version are unaffected.
+
 ## The skills
 
 | Skill | What it does |
