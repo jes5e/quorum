@@ -2,6 +2,8 @@
 id: b.31f
 type: bee
 title: Side-effect-free /bees-plan and /bees-file-issue with preserved context
+down_dependencies:
+- b.uxa
 parent: null
 children:
 - t1.31f.ho
