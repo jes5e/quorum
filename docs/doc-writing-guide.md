@@ -182,7 +182,7 @@ The marker is the durable signal that the Plan Bee covers a single `### Feature:
 - Then `<sdd-path>` (path, unquoted; absolute or relative to repo root — relative is preferred for portability across machines).
 - Then a terminal `.` (period). Trailing whitespace tolerated.
 
-**Path resolution.** The parser accepts a `--repo-root <path>` argument that anchors relative paths in the marker. When omitted, relative paths resolve against the parser's current working directory. Skill invocations from inside the repo work without `--repo-root` (CWD = repo root), but invocations from a sub-directory or outside the repo must pass `--repo-root` explicitly. Absolute paths in the marker work regardless of `--repo-root`.
+**Path resolution.** The parser accepts a `--repo-root <path>` argument that anchors relative paths in the marker. When omitted, the parser auto-detects the repo root via `git rev-parse --show-toplevel` from CWD; on any git failure (not a git repo, git not installed) it falls back to CWD. Result: skill invocations from anywhere inside a git repo (root or sub-directory) work without `--repo-root`; non-git target repos work as long as the parser's CWD is the repo root. Pass `--repo-root` explicitly to override the auto-detection. Absolute paths in the marker work regardless of `--repo-root`.
 
 **Subsection extraction rule** (mirrors `/bees-plan-from-specs` Step 1b):
 

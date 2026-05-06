@@ -15,15 +15,19 @@ skills.
 Path forms
 ----------
 The PRD and SDD paths in the marker may be absolute or relative.
-Relative paths resolve against `--repo-root` (or the current working
-directory if `--repo-root` is omitted). The output `path` field is
-always the resolved absolute path regardless of the input form.
+Relative paths resolve against `--repo-root` when provided. When
+`--repo-root` is omitted, the parser auto-detects the repo root by
+running `git rev-parse --show-toplevel`; on any git failure (not a
+git repo, git not installed) it falls back to the current working
+directory. The output `path` field is always the resolved absolute
+path regardless of the input form.
 
 Input
 -----
 Positional arg 1: path to a file containing the parent Bee body.
 Optional `--repo-root <path>`: repo root for resolving relative
-marker paths. Defaults to the current working directory.
+marker paths. When omitted, the parser auto-detects via
+`git rev-parse --show-toplevel`, falling back to CWD on git failure.
 
 Output (stdout, JSON)
 ---------------------
@@ -77,6 +81,7 @@ Usage:
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -91,6 +96,21 @@ HEADING_PREFIX = "### Feature: "
 def fail(message: str) -> int:
     print(message, file=sys.stderr)
     return 2
+
+
+def detect_repo_root_via_git() -> Path | None:
+    """Try `git rev-parse --show-toplevel` from CWD. None on any failure."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return None
+    out = result.stdout.strip()
+    return Path(out) if out else None
 
 
 def find_marker(body: str):
@@ -164,7 +184,11 @@ def main() -> int:
     if not args.body_file:
         return fail("Usage: scoped_marker_resolver.py <bee-body-file> [--repo-root <path>]")
 
-    repo_root = Path(args.repo_root).resolve() if args.repo_root else Path.cwd()
+    if args.repo_root:
+        repo_root = Path(args.repo_root).resolve()
+    else:
+        detected = detect_repo_root_via_git()
+        repo_root = (detected or Path.cwd()).resolve()
     bee_body_path = Path(args.body_file)
     try:
         body = bee_body_path.read_text(encoding="utf-8-sig")
@@ -212,11 +236,13 @@ def main() -> int:
         return fail(
             "Scoped-marker references doc(s) that do not exist on disk: "
             + ", ".join(missing_paths)
-            + ". The Plan Bee may have been created against a different "
-            "checkout, or the doc was moved/deleted after the Plan Bee was "
-            "authored. If marker paths are relative, the resolver resolves "
-            "them against --repo-root (or the current working directory if "
-            "--repo-root is omitted) — make sure that base is correct. "
+            + f" (resolved against repo_root={repo_root}). The Plan Bee may "
+            "have been created against a different checkout, or the doc was "
+            "moved/deleted after the Plan Bee was authored. If marker paths "
+            "are relative, the resolver anchors them against --repo-root, "
+            "falling back to `git rev-parse --show-toplevel` (or the current "
+            "working directory if git is unavailable). Pass --repo-root "
+            "explicitly to override. "
             'Note also: if a doc path contains the substring " and ", the '
             'marker grammar uses " and " as a separator between PRD and SDD '
             "and the parser splits on the first occurrence."
