@@ -1,6 +1,6 @@
 ---
 name: pm
-description: Perform per-Task PM review of the work just produced by the Engineer / Test Writer / Doc Writer, including spec traceability against the Grandparent Bee's egg-resolved docs (or the Bee body when the egg is null/empty), scope-creep and spec-divergence checks, cross-Task / cross-Epic interaction checks, time-budget-bounded orchestration of `/bees-code-review` and `/bees-doc-review` via the `Skill` tool, and producing a final per-Task report. Reads CLAUDE.md `## Documentation Locations` and `## Build Commands` to resolve doc paths and project commands. Does NOT modify source code, tests, or docs — those are owned by the engineer, test-writer, and doc-writer subagents.
+description: Perform per-Task PM review of the work just produced by the Engineer / Test Writer / Doc Writer, including spec traceability against the docs linked from the Grandparent Bee's `reference_materials` (or the Bee body when `reference_materials` is null/empty), scope-creep and spec-divergence checks, cross-Task / cross-Epic interaction checks, time-budget-bounded orchestration of `/bees-code-review` and `/bees-doc-review` via the `Skill` tool, and producing a final per-Task report. Reads CLAUDE.md `## Documentation Locations` and `## Build Commands` to resolve doc paths and project commands. Does NOT modify source code, tests, or docs — those are owned by the engineer, test-writer, and doc-writer subagents.
 model: opus
 tools: [Bash, Read, Skill, Grep, Write]
 ---
@@ -13,7 +13,7 @@ This subagent ships with `model: opus` as the default, but the runtime model is 
 
 ## Responsibilities
 
-- Review Task work against the spec source — either the egg-resolved docs linked from the Grandparent Bee, or the Grandparent Bee body itself when the egg is null/empty.
+- Review Task work against the spec source — either the docs linked from the Grandparent Bee's `reference_materials`, or the Grandparent Bee body itself when `reference_materials` is null/empty.
 - Ensure the work meets the Task's requirements and the Parent Epic's Acceptance Criteria.
 - Surface design questions back to the orchestrator when the team proposes alternative approaches that need user input.
 - Orchestrate in-flight `/bees-code-review` and `/bees-doc-review` invocations against the Task's diff, with a time-budget short-circuit when reviews run hot.
@@ -26,11 +26,11 @@ This subagent ships with `model: opus` as the default, but the runtime model is 
 - Read all Subtasks (children of the Task) — these contain the detailed work instructions.
 - Read the Parent Epic.
 - Read the Grandparent Bee.
-- Read the source material linked in the Grandparent Bee. **If the Grandparent Bee's egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Bee body itself is the authoritative spec source — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
+- Read the source material linked from the Grandparent Bee's `reference_materials`. **If the Grandparent Bee's `reference_materials` is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Bee body itself is the authoritative spec source — read it carefully in place of the `reference_materials` sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
 
 ## Spec-source scoping (Scoped-marker integration)
 
-A spec source can be **scoped** to one feature inside a cumulative PRD/SDD via a Scoped-marker line in a Plan Bee body (emitted by `/bees-plan-from-specs --feature "<title>"` and friends). When a marker is present, the egg-resolved doc content for spec-compare logic must be restricted to the matching `### Feature: <title>` subsection in each named doc; otherwise the full doc applies. Marker grammar (prefix tolerance, backtick wrapping, single space after `### Feature:`, terminal period, subsection extraction rule, hard-fail rules) is documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract` — that doc is the source of truth; do not re-derive the parsing rules here.
+A spec source can be **scoped** to one feature inside a cumulative PRD/SDD via a Scoped-marker line in a Plan Bee body (emitted by `/bees-plan-from-specs --feature "<title>"` and friends). When a marker is present, the resolved doc content for spec-compare logic must be restricted to the matching `### Feature: <title>` subsection in each named doc; otherwise the full doc applies. Marker grammar (prefix tolerance, backtick wrapping, single space after `### Feature:`, terminal period, subsection extraction rule, hard-fail rules) is documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract` — that doc is the source of truth; do not re-derive the parsing rules here.
 
 Two execution skills dispatch this PM subagent, with **different marker-handling semantics that must coexist** in this body:
 
@@ -79,8 +79,8 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `bees-bre
    ```
 
 4. Parse the helper's exit code and JSON output:
-   - **Exit 0, `"scoped": false`** — no marker was present. Proceed with the full egg-resolved doc content as the spec source for spec-compare logic.
-   - **Exit 0, `"scoped": true`** — the JSON's `docs` array carries the scoped subsection content per egg-doc path. Compare the Task work against the scoped content only.
+   - **Exit 0, `"scoped": false`** — no marker was present. Proceed with the full resolved doc content as the spec source for spec-compare logic.
+   - **Exit 0, `"scoped": true`** — the JSON's `docs` array carries the scoped subsection content per doc path. Compare the Task work against the scoped content only.
    - **Exit 2 — HARD-FAIL.** The marker is malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc. Surface the helper's stderr to the orchestrator and **stop the spec review until the user resolves it**. Do NOT silent-fallback to the full doc — the user explicitly opted into a scoped review by emitting the marker, and a silent fallback would violate that opt-in contract.
 
 5. Do **not** remove the temp file after the helper exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.

@@ -93,7 +93,7 @@ The full slow-path walk-through is wrong for this case — CLAUDE.md is already 
 
 #### Detect
 
-Run the bundled detector script with the target repo's absolute path. The script lives at `<this skill's base directory>/scripts/detect_fast_path.py` (where "this skill" is `bees-setup` — see *Resolve bundled helper script paths* below for the same runtime-resolution convention used by the egg resolver). Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+Run the bundled detector script with the target repo's absolute path. The script lives at `<this skill's base directory>/scripts/detect_fast_path.py` (where "this skill" is `bees-setup` — see *Resolve bundled helper script paths* below for the runtime-resolution convention). Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
 
 ```bash
 # POSIX (bash / zsh):
@@ -140,40 +140,28 @@ Print this paragraph to the user verbatim:
 
 For each entry in `on_disk_hives`, branch on the hive name:
 
-**Canonical hives (`issues` and `plans`)** — apply the canonical defaults verbatim. The scope glob is the repo root with a trailing `/**`. The `--egg-resolver` path is `<bees-setup-base-dir>/scripts/file_list_resolver.py` (see *Egg Resolver* below for the same convention). Inline the literal at the call site — do not store it in a shell variable across snippets.
+**Canonical hives (`issues` and `plans`)** — apply the canonical defaults verbatim. The scope glob is the repo root with a trailing `/**`.
 
-**Before the first `bees colonize-hive` call**, verify the resolver script actually exists. A corrupted or partial install would otherwise register hives pointing at a non-existent resolver:
-
-```bash
-# POSIX (bash / zsh):
-test -f "<bees-setup-base-dir>/scripts/file_list_resolver.py" || { echo "file_list_resolver.py not found at <bees-setup-base-dir>/scripts/file_list_resolver.py — bees-workflow install is incomplete. Fall through to the slow path (skip the fast path entirely) and tell the user to re-install per the README."; exit 1; }
-```
-
-```powershell
-# Windows (PowerShell):
-if (-not (Test-Path "<bees-setup-base-dir>\scripts\file_list_resolver.py")) { Write-Error "file_list_resolver.py not found at <bees-setup-base-dir>\scripts\file_list_resolver.py — bees-workflow install is incomplete. Fall through to the slow path (skip the fast path entirely) and tell the user to re-install per the README." ; exit 1 }
-```
-
-Then run the per-hive registration:
+Run the per-hive registration:
 
 ```bash
 # POSIX (bash / zsh) — for each issues hive:
-bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
 
 # POSIX (bash / zsh) — for each plans hive:
-bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
 bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
 ```
 
 ```powershell
 # Windows (PowerShell) — for each issues hive:
-bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+bees colonize-hive --name issues --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
 
 # Windows (PowerShell) — for each plans hive:
-bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
 bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
 ```
@@ -198,11 +186,11 @@ For each unknown hive, do this inline:
 
    Wait for the user's reply in the next turn.
 
-4. With the answers in hand, register the hive directly. Use the on-disk `<discovered-path>` from the detector output — do **not** re-prompt the user for it. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+4. With the answers in hand, register the hive directly. Use the on-disk `<discovered-path>` from the detector output — do **not** re-prompt the user for it:
 
    ```bash
    # POSIX (bash / zsh):
-   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**"
    # If user gave child tiers as a JSON object (not "none"):
    bees set-types --scope hive --hive <hive-name> --child-tiers '<user-supplied-json>'
    bees set-status-values --scope hive --hive <hive-name> --status-values '<user-supplied-json>'
@@ -210,7 +198,7 @@ For each unknown hive, do this inline:
 
    ```powershell
    # Windows (PowerShell):
-   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+   bees colonize-hive --name <hive-name> --path "<discovered-path>" --scope "<repo-root>/**"
    # If user gave child tiers as a JSON object (not "none"):
    bees set-types --scope hive --hive <hive-name> --child-tiers '<user-supplied-json>'
    bees set-status-values --scope hive --hive <hive-name> --status-values '<user-supplied-json>'
@@ -238,7 +226,7 @@ This skill set works in two install modes:
 - **Global install** — skills live under `~/.claude/skills/<skill-name>/` (per-user, recommended for single-user machines)
 - **Per-project install** — skills live under `<repo>/.claude/skills/<skill-name>/`
 
-Helper scripts (`file_list_resolver.py`, `detect_fast_path.py`, `scoped_marker_resolver.py`) ship bundled inside their owning skill's `scripts/` directory. Each skill that needs a bundled script computes the path at runtime from its own base directory — no probing, no persistence to CLAUDE.md.
+Helper scripts (`detect_fast_path.py`, `scoped_marker_resolver.py`) ship bundled inside their owning skill's `scripts/` directory. Each skill that needs a bundled script computes the path at runtime from its own base directory — no probing, no persistence to CLAUDE.md.
 
 The skill invocation header at session start tells Claude where this skill lives, e.g.:
 
@@ -246,7 +234,7 @@ The skill invocation header at session start tells Claude where this skill lives
 Base directory for this skill: /Users/.../.claude/skills/bees-setup
 ```
 
-`bees-setup`'s own bundled scripts (`file_list_resolver.py`, `detect_fast_path.py`) live at `<this skill's base directory>/scripts/<name>.py`. The `file_list_resolver.py` path is the absolute path passed to `bees colonize-hive --egg-resolver` below. No CLAUDE.md section is written for any helper — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` and `bees-fix-issue` compute `<bees-breakdown-epic base>/scripts/scoped_marker_resolver.py` from their own base directory — a one-hop sibling resolution into another skill's `scripts/` subtree).
+`bees-setup`'s own bundled script (`detect_fast_path.py`) lives at `<this skill's base directory>/scripts/<name>.py`. No CLAUDE.md section is written for any helper — sibling skills resolve their own bundled scripts the same way (e.g., `bees-execute` and `bees-fix-issue` compute `<bees-breakdown-epic base>/scripts/scoped_marker_resolver.py` from their own base directory — a one-hop sibling resolution into another skill's `scripts/` subtree).
 
 **Migration.** Earlier versions of `bees-setup` wrote a `## Skill Paths` section to CLAUDE.md containing absolute machine-local paths. That section was removed because committing per-machine paths to a tracked file broke multi-engineer collaboration. If the target repo's CLAUDE.md still has a `## Skill Paths` section from an earlier setup run, delete it as part of this run — the section is no longer used by any skill, and leaving it behind keeps the broken paths in git history.
 
@@ -333,66 +321,6 @@ python -c $pyScript CLAUDE.md
 
 If the script printed "CLAUDE.md does not exist yet — nothing to migrate." or "No ## Skill Paths section found — nothing to do.", skip ahead. Otherwise (the section was actually removed), mention to the user: "Removed obsolete `## Skill Paths` section from CLAUDE.md — paths are now resolved at runtime per-machine. Consider squashing this change with other in-flight work; don't push the delete on its own if the section was already pushed earlier."
 
-### Egg Resolver
-
-The egg resolver lets a Plan Bee's `egg` field point at one or more source documents on disk (PRD, SDD, etc.). Downstream skills (`/bees-execute`, `/bees-breakdown-epic`) read these files as the authoritative source for the work.
-
-When colonizing hives, pass the resolved path to `file_list_resolver.py` as the `--egg-resolver` flag to `bees colonize-hive`. The path is `<this skill's base directory>/scripts/file_list_resolver.py` (where "this skill" is `bees-setup` — see the section above). The bees CLI persists this value in `~/.bees/config.json`, which is per-user and not committed; each new contributor on a different machine re-runs `/bees-setup` once to register hives on their machine.
-
-If hives already exist and have a stale `egg_resolver` from an earlier installation (different home directory, install location moved, etc.), update their configuration to point to the current resolved path using the same Python one-liner pattern shown below. The bees CLI user config file lives at:
-
-- POSIX: `~/.bees/config.json`
-- Windows: `%USERPROFILE%\.bees\config.json`
-
-The absolute path to `file_list_resolver.py` is `<bees-setup-base-dir>/scripts/file_list_resolver.py` on POSIX or `<bees-setup-base-dir>\scripts\file_list_resolver.py` on Windows. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header — do not try to derive it from environment variables or store it in a shell variable. Each Bash tool invocation in Claude Code is a fresh shell, so a `RESOLVER=...` set in one snippet is empty when referenced from a later snippet; inline the literal path at every site that needs it.
-
-First, verify the resolver script exists at that path. If it's missing, the bees-workflow install is incomplete; tell the user to re-install per the README and stop:
-
-```bash
-# POSIX (bash / zsh):
-test -f "<bees-setup-base-dir>/scripts/file_list_resolver.py" || { echo "file_list_resolver.py not found at <bees-setup-base-dir>/scripts/file_list_resolver.py — bees-workflow install is incomplete; tell the user to re-install per the README and stop."; exit 1; }
-```
-
-```powershell
-# Windows (PowerShell):
-if (-not (Test-Path "<bees-setup-base-dir>\scripts\file_list_resolver.py")) { Write-Error "file_list_resolver.py not found at <bees-setup-base-dir>\scripts\file_list_resolver.py — bees-workflow install is incomplete; tell the user to re-install per the README and stop." ; exit 1 }
-```
-
-Then update the bees config file with a Python one-liner — direct text editing has no atomicity story and corrupts the JSON on a wrong escape. Pass the literal resolver path as the third positional argument (do not rely on a shell variable carried over from the earlier snippet):
-
-```bash
-# POSIX (bash / zsh):
-python3 -c '
-import json, sys
-p = sys.argv[1]
-hive_name = sys.argv[2]
-new_resolver = sys.argv[3]
-with open(p) as f: data = json.load(f)
-data.setdefault("hives", {}).setdefault(hive_name, {})["egg_resolver"] = new_resolver
-with open(p, "w") as f: json.dump(data, f, indent=2)
-print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
-' "$HOME/.bees/config.json" "<hive-name>" "<bees-setup-base-dir>/scripts/file_list_resolver.py"
-```
-
-```powershell
-# Windows (PowerShell):
-# IMPORTANT: use a single-quoted here-string @'...'@ around the Python source so
-# PowerShell does NOT expand $variables inside the script body before invoking Python.
-$pyScript = @'
-import json, sys
-p = sys.argv[1]
-hive_name = sys.argv[2]
-new_resolver = sys.argv[3]
-with open(p) as f: data = json.load(f)
-data.setdefault("hives", {}).setdefault(hive_name, {})["egg_resolver"] = new_resolver
-with open(p, "w") as f: json.dump(data, f, indent=2)
-print(f"Updated {hive_name}.egg_resolver = {new_resolver}")
-'@
-python -c $pyScript "$env:USERPROFILE\.bees\config.json" "<hive-name>" "<bees-setup-base-dir>\scripts\file_list_resolver.py"
-```
-
-Verify with a `bees show-ticket` on a Plan Bee that has eggs.
-
 ### Hive Configuration
 
 All bees CLI commands must be run from inside the target repo directory.
@@ -413,14 +341,14 @@ If any hives are missing:
   - **Sibling-to-repo** — `<project-parent>/<repo>-issues` and `<project-parent>/<repo>-plans`. Right when hives should be gitignored or stay per-machine.
 
   If both hives are missing, ask once and apply the chosen strategy to both. If only one is missing, scope the question to just that hive.
-- Once the user chooses, create the hive using the bees CLI. Pass the literal absolute path to `file_list_resolver.py` (the one verified in the *Egg Resolver* section above) as the `--egg-resolver` value so the hive can resolve eggs out of the box. Inline the literal path — do not reference a shell variable like `$RESOLVER`, since each Bash tool invocation is a fresh shell and the variable will be empty here. Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+- Once the user chooses, create the hive using the bees CLI:
   ```bash
   # POSIX (bash / zsh):
-  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "<bees-setup-base-dir>/scripts/file_list_resolver.py"
+  bees colonize-hive --name <name> --path <path> --scope "<scope>"
   ```
   ```powershell
   # Windows (PowerShell):
-  bees colonize-hive --name <name> --path <path> --scope "<scope>" --egg-resolver "<bees-setup-base-dir>\scripts\file_list_resolver.py"
+  bees colonize-hive --name <name> --path <path> --scope "<scope>"
   ```
 - After colonization, set child tiers and status values:
   ```bash
@@ -737,7 +665,7 @@ The next-step recommendation depends on whether the user already has spec docs (
   /bees-plan-from-specs <path-to-PRD> <path-to-SDD>
   ```
 
-  `/bees-plan-from-specs` reads both documents, creates a Plan Bee in the Plans hive with the two paths as its `egg`, decomposes the work into Epics, and chains into `/bees-breakdown-epic`. This is the right choice when scope and design are already nailed down and just need to be turned into a plan.
+  `/bees-plan-from-specs` reads both documents, creates a Plan Bee in the Plans hive with the two paths as its `reference_materials`, decomposes the work into Epics, and chains into `/bees-breakdown-epic`. This is the right choice when scope and design are already nailed down and just need to be turned into a plan.
 
   If your PRD/SDD already describe multiple features, use `/bees-plan` (or `/bees-plan-from-specs --feature "<title>"` to scope to one) — bare `/bees-plan-from-specs <PRD> <SDD>` assumes a single-feature spec and will hard-fail on cumulative docs.
 
@@ -749,7 +677,7 @@ The next-step recommendation depends on whether the user already has spec docs (
   /bees-plan [optional one-line description]
   ```
 
-  `/bees-plan` is interactive — it asks clarifying questions to define scope, optionally drafts PRD/SDD updates if the project has those docs, then creates a Plan Bee with Epics. The Plan Bee body itself becomes the authoritative scope document when no PRD/SDD exist (the Bee's `egg` field stays empty), and downstream skills (`/bees-breakdown-epic`, `/bees-execute`) will use the Bee body as the spec source. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
+  `/bees-plan` is interactive — it asks clarifying questions to define scope, optionally drafts PRD/SDD updates if the project has those docs, then creates a Plan Bee with Epics. The Plan Bee body itself becomes the authoritative scope document when no PRD/SDD exist (the Bee's `reference_materials` stays empty), and downstream skills (`/bees-breakdown-epic`, `/bees-execute`) will use the Bee body as the spec source. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
 
   Run `/bees-plan` in a fresh Claude Code session. `/bees-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/bees-plan` does deep codebase exploration and scope iteration, so a fresh session gives it full context budget for that work.
 

@@ -47,7 +47,7 @@ Rules:
 - Always label the OS in a comment line above the snippet, even if the command happens to work in both shells. Future readers shouldn't have to guess intent.
 - Quote variable expansion correctly per shell. PowerShell's `$env:USERPROFILE` is not the same as bash's `$HOME`.
 - When a snippet embeds Python or another scripting language, use a single-quoted PowerShell here-string (`@'…'@`) so PowerShell doesn't pre-expand `$variables` in the script body before invoking the interpreter. The bees-setup skill has the canonical example.
-- Don't carry shell variables across snippet boundaries. Each Bash tool invocation in Claude Code is a fresh shell, so a `VAR=...` set in one fenced block is empty when referenced from a later one. If a value is needed in multiple snippets (a resolver path, a hive ID, etc.), inline the literal at every site or pass it as a positional argument to the snippet's invocation. The bug surfaces silently — e.g., `--egg-resolver ""` reaches downstream commands and the failure manifests far from the cause.
+- Don't carry shell variables across snippet boundaries. Each Bash tool invocation in Claude Code is a fresh shell, so a `VAR=...` set in one fenced block is empty when referenced from a later one. If a value is needed in multiple snippets (a path, a hive ID, etc.), inline the literal at every site or pass it as a positional argument to the snippet's invocation. The bug surfaces silently when the receiving command accepts an empty argument as valid input — the real failure manifests far from the cause.
 - Helper logic that doesn't fit naturally as a shell one-liner belongs in a Python script under `skills/<name>/scripts/`, not as a wall of OS-paired shell.
 
 ## The lookup-key pattern (no hardcoded language commands)
@@ -170,7 +170,7 @@ A Plan Bee authored via `/bees-plan-from-specs --feature "<title>"` carries a si
 Scoped to `### Feature: <title>` from <absolute prd path> and <absolute sdd path>.
 ```
 
-The marker is the durable signal that the Plan Bee covers a single `### Feature: <title>` subsection inside a cumulative PRD/SDD, even though the Bee's `egg` still points at the full canonical doc paths (egg-paths-stay-full is intentional — the docs themselves remain the source of truth). Downstream skills that read the egg must therefore also check the parent Bee body for this marker and, when present, scope the resolved doc content to the matching subsection before treating it as the spec.
+The marker is the durable signal that the Plan Bee covers a single `### Feature: <title>` subsection inside a cumulative PRD/SDD, even though the Bee's `reference_materials` still points at the full canonical doc paths (paths-stay-full is intentional — the docs themselves remain the source of truth). Downstream skills that read `reference_materials` must therefore also check the parent Bee body for this marker and, when present, scope the resolved doc content to the matching subsection before treating it as the spec.
 
 **Marker grammar** (matched verbatim by the bundled parser):
 
@@ -253,7 +253,7 @@ Use these terms consistently. Mixing synonyms forces readers (and Claude) to men
 - **Skill** — one of the directories under `skills/<name>/`. Has a `SKILL.md` and optionally `scripts/`.
 - **Hive** — a bees collection. The workflow uses two: **Plans** (top-level, with t1/t2/t3 = Epic/Task/Subtask) and **Issues** (no children).
 - **Bee** — a ticket inside a hive. A "Plan Bee" is a top-level Bee in the Plans hive. An "Epic" is a t1 child of a Plan Bee.
-- **Egg** — a Bee's `egg` field, which points at one or more on-disk source documents (PRD, SDD, etc.). Resolved by the egg resolver script. May be null/empty — when null on a Plan Bee, the **Plan Bee body itself becomes the authoritative spec**.
+- **Reference materials** — a Bee's `reference_materials` field, which points at one or more on-disk source documents (PRD, SDD, etc.). Each entry is resolved per-item by the bees CLI's built-in `file-path` resolver (the default). May be null/empty — when null on a Plan Bee, the **Plan Bee body itself becomes the authoritative spec**.
 - **Target repo** — the repo a user runs `/bees-*` commands against. Distinct from this repo (the skill set itself).
 
 ## When you're updating an existing skill

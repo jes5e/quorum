@@ -242,7 +242,7 @@ The orchestrator dispatches the following four roles during a Task. The full rol
 - **Engineer** (`agents/engineer.md`) — implements source-code Subtasks. Model: Opus (always). Does not write tests or docs.
 - **Test Writer** (`agents/test-writer.md`) — implements test Subtasks and reviews the Engineer's diff for missing test coverage. Model: Opus (always).
 - **Doc Writer** (`agents/doc-writer.md`) — implements documentation Subtasks and reviews the Engineer's diff for documentation gaps. Model: user's choice (Opus or Sonnet, selected at the start of the run).
-- **Product Manager** (`agents/pm.md`) — reviews the Task's work against the spec source (the Bee's egg-resolved PRD/SDD, or the Bee body itself when the egg is null/empty), drives `bees-code-review` and `bees-doc-review` per Task, and produces the per-Task summary report. Model: user's choice (Opus or Sonnet, selected at the start of the run).
+- **Product Manager** (`agents/pm.md`) — reviews the Task's work against the spec source (the PRD/SDD linked from the Bee's `reference_materials`, or the Bee body itself when `reference_materials` is null/empty), drives `bees-code-review` and `bees-doc-review` per Task, and produces the per-Task summary report. Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
 Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) are introduced in Section 5 (final Bee-level reviews).
 

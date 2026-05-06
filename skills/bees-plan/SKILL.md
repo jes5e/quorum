@@ -111,7 +111,7 @@ If updates are needed:
 1. Draft the updates (PRD, SDD, and/or README) — for PRD/SDD, **add a new "Feature: <title>" subsection under the existing "Per-feature scope" / "Per-feature design" headers** rather than overwriting earlier content. The docs are cumulative across features.
 2. Show them to the user for approval
 3. Apply them to the doc files
-4. The Plan Bee's `egg` field will reference the updated docs
+4. The Plan Bee's `reference_materials` will reference the updated docs
 
 If no doc updates are needed:
 - The PM in `/bees-execute` will still reference the existing PRD/SDD as the spec source for drift detection.
@@ -124,7 +124,7 @@ This typically means the user picked "Defer" or "Skip permanently" during `/bees
 
    *If you'd prefer comprehensive baseline docs covering the whole project rather than just this feature*, suggest the user run `/bees-setup` first — its bootstrap subsection does a deep codebase exploration and structured Q&A to produce starter docs that describe the project as a whole. Then re-invoke `/bees-plan`.
 
-2. **Skip — body-as-spec for this feature** — Plan Bee body becomes the authoritative scope document; `egg` stays null. Note honestly: this means the Plan Bee is its own island. Future features won't have a cumulative project spec to anchor against; PMs in `/bees-execute` and `/bees-fix-issue` won't see what this feature established. Fine for one-off features or throwaway work; risky for multi-feature projects.
+2. **Skip — body-as-spec for this feature** — Plan Bee body becomes the authoritative scope document; `reference_materials` stays null. Note honestly: this means the Plan Bee is its own island. Future features won't have a cumulative project spec to anchor against; PMs in `/bees-execute` and `/bees-fix-issue` won't see what this feature established. Fine for one-off features or throwaway work; risky for multi-feature projects.
 
 Use this content for the seeded PRD if option 1 is chosen (write to `docs/prd.md`):
 
@@ -181,46 +181,44 @@ After writing the files, update CLAUDE.md `## Documentation Locations`:
 
 ### 5. Create Plan Bee with Epics
 
-Create the Plan Bee inline in this session — do **not** delegate to `/bees-plan-from-specs`. That skill assumes the PRD/SDD describe exactly one feature; this skill drives the cumulative-PRD pattern where each invocation appends a new `### Feature:` subsection, so delegating after Step 4 would re-plan every previously-planned feature in the cumulative docs. Inline creation here is the single supported path regardless of whether PRD/SDD exist — the only difference is whether the Plan Bee's `egg` field is populated (PRD/SDD exist) or omitted (no PRD/SDD).
+Create the Plan Bee inline in this session — do **not** delegate to `/bees-plan-from-specs`. That skill assumes the PRD/SDD describe exactly one feature; this skill drives the cumulative-PRD pattern where each invocation appends a new `### Feature:` subsection, so delegating after Step 4 would re-plan every previously-planned feature in the cumulative docs. Inline creation here is the single supported path regardless of whether PRD/SDD exist — the only difference is whether the Plan Bee's `reference_materials` is populated (PRD/SDD exist) or omitted (no PRD/SDD).
 
 #### 5a — Create the Plan Bee
 
 Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 
-The body should be a brief 2-3 sentence summary of the goal and scope. When `egg` is set, do not dump PRD/SDD content into the body — downstream skills read the linked docs via the egg resolver.
+The body should be a brief 2-3 sentence summary of the goal and scope. When `reference_materials` is set, do not dump PRD/SDD content into the body — downstream skills read the linked docs from `reference_materials`.
 
-**If PRD/SDD exist for this feature** (Step 4a, or Step 4b option 1 where you just drafted them), set `--egg` to a JSON array containing the absolute PRD and SDD paths in that order:
+**If PRD/SDD exist for this feature** (Step 4a, or Step 4b option 1 where you just drafted them), set `--reference-materials` to a JSON array of one dict per file, each with a single `value` key holding the path. Paths may be absolute or relative to the repo root — the bees CLI's built-in `file-path` resolver (the default) handles either. Pass the paths in PRD-then-SDD order so downstream consumers can rely on the positional convention:
 
 ```
-["<absolute path to PRD>", "<absolute path to SDD>"]
+[{"value": "<path to PRD>"}, {"value": "<path to SDD>"}]
 ```
-
-The egg resolver configured by `/bees-setup` validates these paths downstream. If it is not configured, direct the user to run `/bees-setup` first.
 
 ```bash
-# POSIX (bash / zsh) — with PRD/SDD egg:
+# POSIX (bash / zsh) — with PRD/SDD reference_materials:
 bees create-ticket \
   --ticket-type bee \
   --hive plans \
   --status drafted \
   --title "<feature title>" \
   --body-file <path> \
-  --egg '["<absolute prd path>", "<absolute sdd path>"]'
+  --reference-materials '[{"value":"<prd path>"},{"value":"<sdd path>"}]'
 
-# Windows (PowerShell) — with PRD/SDD egg:
+# Windows (PowerShell) — with PRD/SDD reference_materials:
 bees create-ticket `
   --ticket-type bee `
   --hive plans `
   --status drafted `
   --title "<feature title>" `
   --body-file <path> `
-  --egg '["<absolute prd path>", "<absolute sdd path>"]'
+  --reference-materials '[{"value":"<prd path>"},{"value":"<sdd path>"}]'
 ```
 
-**If no PRD/SDD exist for this feature** (Step 4b option 2 — body-as-spec), omit `--egg` entirely. The Plan Bee body becomes the authoritative scope document, so make it detailed enough that the PM in `/bees-execute` can use it for drift detection.
+**If no PRD/SDD exist for this feature** (Step 4b option 2 — body-as-spec), omit `--reference-materials` entirely. The Plan Bee body becomes the authoritative scope document, so make it detailed enough that the PM in `/bees-execute` can use it for drift detection.
 
 ```bash
-# POSIX (bash / zsh) — no egg:
+# POSIX (bash / zsh) — no reference_materials:
 bees create-ticket \
   --ticket-type bee \
   --hive plans \
@@ -228,7 +226,7 @@ bees create-ticket \
   --title "<feature title>" \
   --body-file <path>
 
-# Windows (PowerShell) — no egg:
+# Windows (PowerShell) — no reference_materials:
 bees create-ticket `
   --ticket-type bee `
   --hive plans `
@@ -275,7 +273,7 @@ Wait for approval. If the user picks "Modify the Epics", iterate in prose until 
 
 #### 5d — Create Epic tickets and wire dependencies
 
-Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body to `<tempdir>/.bees-workflow/`, pass path; do not delete after). **Do not pass `--egg` on Epics** — the bees CLI accepts `--egg` only on top-level Bees and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's egg, not the Epic's.
+Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body to `<tempdir>/.bees-workflow/`, pass path; do not delete after). **Do not pass `--reference-materials` on Epics** — the bees CLI accepts `--reference-materials` only on top-level Bees (`bees create-ticket --help`: "Only supported on bee (top-level) tickets") and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's `reference_materials`, not the Epic's.
 
 ```bash
 # POSIX (bash / zsh):

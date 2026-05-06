@@ -82,7 +82,7 @@ The user has explicitly disambiguated which feature they want, so the multi-feat
 Goal: Create one top-level Bee ticket in the Plans hive to track the work.
 
 - Body contains a brief summary of the goal and scope (2-3 sentences max).
-- Do **not** dump the PRD or SDD content into the body — they are accessible via the egg.
+- Do **not** dump the PRD or SDD content into the body — they are accessible via `reference_materials`.
 - **If `--feature "<title>"` was used in Step 1**, append a single line to the Plan Bee body of the form:
 
   ```
@@ -92,17 +92,17 @@ Goal: Create one top-level Bee ticket in the Plans hive to track the work.
   Use the trimmed title and the actual absolute PRD/SDD paths. This makes it visible at a glance to downstream skills and human reviewers that the Plan Bee covers one feature within a cumulative spec, not the whole spec.
 - There is no `up_deps` to set (this workflow has no Idea Bees).
 
-**Setting the `egg` field:**
+**Setting `reference_materials`:**
 
-The egg value must be a JSON array containing the absolute paths to the PRD and SDD, in that order:
+The reference_materials value must be a JSON array of one dict per file, each with a single `value` key holding the path. Paths may be absolute or relative to the repo root — the bees CLI's built-in `file-path` resolver (the default) handles either. Pass the paths in PRD-then-SDD order:
 
 ```
-["<absolute path to PRD>", "<absolute path to SDD>"]
+[{"value": "<path to PRD>"}, {"value": "<path to SDD>"}]
 ```
 
-Set the Plan Bee's `egg` to the JSON array above, with both paths resolved to their absolute form. The egg always points to the canonical doc files in full — even when `--feature` was used, the egg paths are unchanged, because the scoping is a query-time filter for THIS planning invocation only and does not alter what the canonical specs are. Downstream skills that re-read the egg will see the full PRD and SDD; the `Scoped to ...` body line is the durable signal that the Plan Bee covers a sub-region of those docs.
+Set the Plan Bee's `reference_materials` to the JSON array above. `reference_materials` always points to the canonical doc files in full — even when `--feature` was used, the paths are unchanged, because the scoping is a query-time filter for THIS planning invocation only and does not alter what the canonical specs are. Downstream skills that re-read `reference_materials` will see the full PRD and SDD; the `Scoped to ...` body line is the durable signal that the Plan Bee covers a sub-region of those docs.
 
-The egg resolver configured by `/bees-setup` validates these paths downstream. If it is not configured, direct the user to run `/bees-setup` first.
+Pass the array via `--reference-materials '<json>'` on `bees create-ticket`. The built-in `file-path` resolver validates that each path exists.
 
 Mark the Plan Bee as `drafted` (its children — the Epics — have not been written yet).
 
@@ -183,7 +183,7 @@ Create T1 type child tickets in the Plan Bee with status `drafted` (their childr
 
 **Author each Epic body to a temp file and pass `--body-file <path>` to `bees create-ticket`.** Do not inline a multi-paragraph Epic body as a `--body "..."` argument — bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting. Use the `Write` tool to author the body to a path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows), creating the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows), then pass the path via `--body-file`. Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
 
-**Do not pass `--egg` when creating Epics.** The bees CLI accepts `--egg` only on top-level Bees, not on child-tier tickets (`bees create-ticket --help`: "Only supported on bee (top-level) tickets"). Trying to set it on an Epic hard-errors. The egg lives on the parent Plan Bee — downstream skills (bees-breakdown-epic, bees-execute, bees-fix-issue) trace Epics back to the PRD/SDD by reading the parent's egg, not the Epic's.
+**Do not pass `--reference-materials` when creating Epics.** The bees CLI accepts `--reference-materials` only on top-level Bees, not on child-tier tickets (`bees create-ticket --help`: "Only supported on bee (top-level) tickets"). Trying to set it on an Epic hard-errors. `reference_materials` lives on the parent Plan Bee — downstream skills (bees-breakdown-epic, bees-execute, bees-fix-issue) trace Epics back to the PRD/SDD by reading the parent's `reference_materials`, not the Epic's.
 
 **NOTE**: If the plan is small, there may only be one Epic. You don't need to make multiple.
 

@@ -11,7 +11,7 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 ## Repo layout (only what isn't obvious)
 
 - `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user; the body is the instructions Claude follows when the skill is invoked.
-- `skills/<name>/scripts/` — optional cross-platform Python helpers. Three exist today: `bees-setup/scripts/file_list_resolver.py` (the egg resolver), `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection), and `bees-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `bees-execute` and `bees-fix-issue`).
+- `skills/<name>/scripts/` — optional cross-platform Python helpers. Two exist today: `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection) and `bees-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `bees-execute` and `bees-fix-issue`).
 - `agents/<role>.md` — Claude Code custom-subagents directory. Seven role contracts (`engineer.md`, `test-writer.md`, `doc-writer.md`, `pm.md`, `code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md`) dispatched as ephemeral background Agents by `bees-execute`, `bees-fix-issue`, and `bees-breakdown-epic`. Each file carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus the role's Instructions block.
 
 The full workflow chain — `bees-setup` → (`bees-plan` | `bees-plan-from-specs`) → `bees-breakdown-epic` → `bees-execute` → `bees-file-issue` / `bees-fix-issue` — is documented in the README; don't re-derive it from the skill files.
@@ -45,7 +45,7 @@ Every Bash tool call in this repo must be a **single literal command** — one b
 
 - One Bash call per command. Sequence multiple commands as multiple Bash calls (in parallel where independent).
 - Pre-set env vars via the shell's `VAR=value command` prefix — still a single literal command, fine.
-- For multi-step or variable-bearing logic, write a Python script to a file (use the `Write` tool) and run the file with one Bash call. Bundled-helper precedent: `file_list_resolver.py`, `detect_fast_path.py`, `scoped_marker_resolver.py`.
+- For multi-step or variable-bearing logic, write a Python script to a file (use the `Write` tool) and run the file with one Bash call. Bundled-helper precedent: `detect_fast_path.py`, `scoped_marker_resolver.py`.
 - For watching state, prefer `Monitor` over polling loops. For reading a file, prefer `Read` over `cat` / `head` / `tail`. For searching files, prefer the first-class `Grep` tool over `grep | head` / `grep | xargs`. For writing files, prefer `Write` over `echo X > file`.
 
 If you find yourself wanting a compound shell shape, the Python-helper-file path or a first-class tool is almost always the right answer.
@@ -107,7 +107,7 @@ These keys appear in the *target repo's* CLAUDE.md (not this one). `bees-setup` 
 - `Narrow test`
 - `Full test`
 
-**Bundled helper scripts are NOT contract keys.** Earlier revisions wrote a `## Skill Paths` section to CLAUDE.md containing absolute paths to `bees-breakdown-epic/scripts/scoped_marker_resolver.py` and `bees-setup/scripts/file_list_resolver.py`. That section was removed (b.963) because committing per-machine paths to a tracked file broke multi-engineer collaboration. Each skill now resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header. See `## Querying tickets` and `## The lookup-key pattern` in `docs/doc-writing-guide.md` for the runtime-resolution conventions skills must follow.
+**Bundled helper scripts are NOT contract keys.** Earlier revisions wrote a `## Skill Paths` section to CLAUDE.md containing absolute paths to bundled helper scripts. That section was removed (b.963) because committing per-machine paths to a tracked file broke multi-engineer collaboration. Each skill now resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header. See `## Querying tickets` and `## The lookup-key pattern` in `docs/doc-writing-guide.md` for the runtime-resolution conventions skills must follow.
 
 `bees-execute` and `bees-fix-issue` hard-fail with `Run /bees-setup first.` if either of the two contract sections (`Documentation Locations`, `Build Commands`), or any required key inside them, is missing from the target repo's CLAUDE.md. Preserve that precondition behavior in any edit to those skills.
 
@@ -118,15 +118,11 @@ The workflow uses two hives in the target repo:
 - **Plans** (top-level — *not* nested in an Ideas hive). Tier ladder: t1 = Epic, t2 = Task, t3 = Subtask. Statuses: `drafted` → `ready` → `in_progress` → `done`.
 - **Issues**. No children. Statuses: `open` → `done`.
 
-When a Plan Bee is authored via `/bees-plan` for a feature with no separate PRD/SDD, the Bee's `egg` is null/empty and the **Plan Bee body itself becomes the authoritative spec**. Several skills (`bees-execute`'s PM role, `bees-breakdown-epic`) explicitly substitute "the Plan Bee body" for "the PRD/SDD" in that case — keep the substitution prose intact when editing those skills.
+When a Plan Bee is authored via `/bees-plan` for a feature with no separate PRD/SDD, the Bee's `reference_materials` is null/empty and the **Plan Bee body itself becomes the authoritative spec**. Several skills (`bees-execute`'s PM role, `bees-breakdown-epic`) explicitly substitute "the Plan Bee body" for "the PRD/SDD" in that case — keep the substitution prose intact when editing those skills.
 
 ## Querying tickets
 
 The bees CLI has no `ls`, `search`, `list-tickets`, or hive-scoped enumeration command — anything that smells like one is a guess. To enumerate or filter tickets (e.g., "what open issues exist?", "which Epics under this Bee are ready?"), use `bees execute-freeform-query --query-yaml '<yaml>'`. Recipes and the full filter/graph-stage vocabulary live in `docs/doc-writing-guide.md` `## Querying tickets`; consult it before composing a query rather than guessing subcommands.
-
-## Egg resolver
-
-`skills/bees-setup/scripts/file_list_resolver.py` is the egg resolver bundled with the skills. Hives in the target repo are colonized with this script's absolute path as their `egg_resolver`, so a Bee's `egg` field can point to one or more on-disk docs (PRD, SDD, etc.). If you change the resolver's contract (input/output shape), `bees-setup` must also be updated to migrate existing hive configs in `~/.bees/config.json`.
 
 ## Model assignment in execution skills
 

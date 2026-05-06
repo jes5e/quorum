@@ -88,8 +88,8 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
 - Get that Epic from the Bees server and read it.
 - Parse Epic title, description, and requirements.
 - Read the parent Bee
-- Read the egg source material linked in the parent Bee. **If the egg is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Plan Bee body itself is the authoritative scope document — read it carefully in place of the egg sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
-- **Check for the Scoped-marker on the parent Bee.** If the parent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the egg-resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before treating it as the spec. Run the bundled parser/scoper to do the detection and scoping in one step:
+- Read the source material linked from the parent Bee's `reference_materials`. **If `reference_materials` is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Plan Bee body itself is the authoritative scope document — read it carefully in place of the `reference_materials` sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
+- **Check for the Scoped-marker on the parent Bee.** If the parent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before treating it as the spec. Run the bundled parser/scoper to do the detection and scoping in one step:
 
   Extract the `body` field from the `bees show-ticket --ids <bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent first:
 
@@ -115,7 +115,7 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
   python "<this skill's base directory>\scripts\scoped_marker_resolver.py" "$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md"
   ```
 
-  The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full egg-resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per egg-doc path; use that scoped content for all subsequent Task decomposition, sibling-overlap checks, and the Spec Traceability Review (cite `### Feature: <title>` subsection coordinates rather than the full PRD/SDD when the marker is present). The helper exits 2 with a clear error on stderr if the marker is present but malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the user and stop; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`.
+  The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per doc path; use that scoped content for all subsequent Task decomposition, sibling-overlap checks, and the Spec Traceability Review (cite `### Feature: <title>` subsection coordinates rather than the full PRD/SDD when the marker is present). The helper exits 2 with a clear error on stderr if the marker is present but malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the user and stop; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`.
 
   Do **not** remove the temp file after the helper exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 - **Check external-system contracts against authoritative docs.** When the Epic body references a third-party platform feature (a tool API, a CLI flag set, a harness behavior, an environment-variable contract), search the system's authoritative docs before authoring Tasks — `WebSearch` and `WebFetch` are available. Look for: canonical install paths, file shapes / frontmatter formats, lifecycle requirements (e.g., does a session restart load new files, or does a hot-reload command exist?), error-message vocabulary the rewrite needs to match. Two outcomes:
@@ -283,7 +283,7 @@ Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-cod
 
 #### Per-Task PM dispatch
 
-When the implementer-research Agents (Engineer / Test Writer / Doc Writer, as applicable) have all returned for the current Task and the orchestrator has created the proposed Subtasks via `bees create-ticket`, dispatch a fresh PM research Agent. The dispatch prompt must include the Task ID, the list of proposed Subtask IDs the orchestrator just created, and the research-mode preamble — the PM, like the other roles, is read-only here. The PM's job is to review the proposed Subtask set against the Epic's spec source (the Bee's egg-resolved PRD/SDD, or the Bee body itself when the egg is null/empty) and return JSON findings flagging gaps, over-reach, or duplicated scope; the orchestrator is what acts on those findings (creating, updating, or deleting Subtasks per the PM's verdict).
+When the implementer-research Agents (Engineer / Test Writer / Doc Writer, as applicable) have all returned for the current Task and the orchestrator has created the proposed Subtasks via `bees create-ticket`, dispatch a fresh PM research Agent. The dispatch prompt must include the Task ID, the list of proposed Subtask IDs the orchestrator just created, and the research-mode preamble — the PM, like the other roles, is read-only here. The PM's job is to review the proposed Subtask set against the Epic's spec source (the PRD/SDD linked from the Bee's `reference_materials`, or the Bee body itself when `reference_materials` is null/empty) and return JSON findings flagging gaps, over-reach, or duplicated scope; the orchestrator is what acts on those findings (creating, updating, or deleting Subtasks per the PM's verdict).
 
 #### Authoring Subtask bodies
 
@@ -374,7 +374,7 @@ The dispatch prompt must include:
 - The research-mode preamble verbatim (see Section 4's `##### Research-mode preamble`).
 - The Epic ID and the full set of Task IDs + Subtask IDs the orchestrator created in Section 4.
 - The Epic body verbatim (read via `bees show-ticket --ids <epic-id>`).
-- The parent Bee body verbatim (read via `bees show-ticket --ids <bee-id>`) so the PM can see the egg/eggs and detect the Scoped-marker.
+- The parent Bee body verbatim (read via `bees show-ticket --ids <bee-id>`) so the PM can see `reference_materials` and detect the Scoped-marker.
 - The literal placeholder `<scoped-marker-resolver-path>`, **substituted by the orchestrator** to the resolved helper path before dispatch — the PM Agent uses it to detect and apply any Scoped-marker on the parent Bee, just as the orchestrator did in Section 2.
 - The Spec Traceability Review prose below (verbatim — it is the PM's review contract).
 
@@ -389,9 +389,9 @@ Resolve the placeholder against **this skill's own base directory**: `<this skil
 The following prose is the PM's review contract. Embed it verbatim in the PM dispatch prompt; do not paraphrase.
 
 1. Re-read the Epic description, including its scope and acceptance criteria.
-2. Identify every specific requirement the Epic depends on. **Source depends on whether the parent Plan Bee has eggs:**
-   - **Eggs present (PRD/SDD on disk)**: requirements come from those documents — cite section numbers from the PRD and SDD.
-   - **Eggs null/empty (no PRD/SDD)**: requirements come from the Plan Bee body itself (and the Epic body) — cite the Bee's relevant scope/acceptance-criteria bullets.
+2. Identify every specific requirement the Epic depends on. **Source depends on whether the parent Plan Bee has `reference_materials`:**
+   - **`reference_materials` present (PRD/SDD on disk)**: requirements come from those documents — cite section numbers from the PRD and SDD.
+   - **`reference_materials` null/empty (no PRD/SDD)**: requirements come from the Plan Bee body itself (and the Epic body) — cite the Bee's relevant scope/acceptance-criteria bullets.
 3. For each requirement, verify there is at least one subtask that explicitly covers it.
 4. Report the results as a traceability table. Use the column header that matches the source:
 
@@ -442,7 +442,7 @@ Show the Tasks you just created (Section 4's per-Task Subtasks plus any gap-fill
 - [ ] All descriptions follow the mandatory template (see `#### Mandatory Subtask Description Template` above)
 - [ ] NO git commit subtasks created (commits handled automatically by executors)
 - [ ] Testing subtasks support maximum parallelization on execution by making one subtask per test file to be modified
-- [ ] Spec Traceability Review completed (PM Agent dispatched, gap-fill loop converged, all rows at OK status, sources from PRD/SDD if eggs present, from the Plan Bee body otherwise) **before** the gap-fill `bees create-ticket` invocations and **before** the status transitions to `ready`
+- [ ] Spec Traceability Review completed (PM Agent dispatched, gap-fill loop converged, all rows at OK status, sources from PRD/SDD if `reference_materials` present, from the Plan Bee body otherwise) **before** the gap-fill `bees create-ticket` invocations and **before** the status transitions to `ready`
 
 ### 6. Commit New Ticket Files
 
