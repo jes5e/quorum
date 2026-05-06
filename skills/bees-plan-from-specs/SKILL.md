@@ -86,10 +86,10 @@ Goal: Create one top-level Bee ticket in the Plans hive to track the work.
 - **If `--feature "<title>"` was used in Step 1**, append a single line to the Plan Bee body of the form:
 
   ```
-  Scoped to `### Feature: <title>` from <absolute prd path> and <absolute sdd path>.
+  Scoped to `### Feature: <title>` from <prd path> and <sdd path>.
   ```
 
-  Use the trimmed title and the actual absolute PRD/SDD paths. This makes it visible at a glance to downstream skills and human reviewers that the Plan Bee covers one feature within a cumulative spec, not the whole spec.
+  Use the trimmed title and the same path form used in the Plan Bee's `reference_materials` (relative-to-repo-root for in-repo docs, absolute for out-of-repo docs). The bundled parser at `skills/bees-breakdown-epic/scripts/scoped_marker_resolver.py` accepts both forms — relative paths anchor against `--repo-root` (or the parser's CWD when `--repo-root` is omitted), absolute paths are used as-is. The marker line makes it visible at a glance to downstream skills and human reviewers that the Plan Bee covers one feature within a cumulative spec, not the whole spec.
 - There is no `up_deps` to set (this workflow has no Idea Bees).
 
 **Setting `reference_materials`:**

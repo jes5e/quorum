@@ -177,10 +177,12 @@ The marker is the durable signal that the Plan Bee covers a single `### Feature:
 - Line text begins with `Scoped to ` (leading whitespace tolerated).
 - Then a backtick-wrapped `` `### Feature: <title>` `` literal — the inner heading line is wrapped in single backticks; the heading prefix is exactly three `#` followed by a space, the literal word `Feature:`, and a space.
 - Then ` from `.
-- Then `<prd-path>` (absolute path, unquoted).
+- Then `<prd-path>` (path, unquoted; absolute or relative to repo root — relative is preferred for portability across machines).
 - Then ` and `.
-- Then `<sdd-path>` (absolute path, unquoted).
+- Then `<sdd-path>` (path, unquoted; absolute or relative to repo root — relative is preferred for portability across machines).
 - Then a terminal `.` (period). Trailing whitespace tolerated.
+
+**Path resolution.** The parser accepts a `--repo-root <path>` argument that anchors relative paths in the marker. When omitted, relative paths resolve against the parser's current working directory. Skill invocations from inside the repo work without `--repo-root` (CWD = repo root), but invocations from a sub-directory or outside the repo must pass `--repo-root` explicitly. Absolute paths in the marker work regardless of `--repo-root`.
 
 **Subsection extraction rule** (mirrors `/bees-plan-from-specs` Step 1b):
 
@@ -194,7 +196,7 @@ The marker is the durable signal that the Plan Bee covers a single `### Feature:
 - If either named doc path does not exist on disk, fail.
 - If either named doc exists but does not contain a `### Feature: <title>` heading matching the marker's title, fail with a clear message naming the missing heading, the doc paths checked, and a hint that the docs may have been edited after the Plan Bee was created.
 
-**Bundled parser.** The shared parser/scoper for downstream skills is `skills/bees-breakdown-epic/scripts/scoped_marker_resolver.py`. It takes a single positional argument (path to a file containing the parent Bee body), prints `{"scoped": false}` to stdout when no marker is present, prints `{"scoped": true, "title": "...", "docs": [{"path": "...", "content": "..."}, ...]}` when the marker is present and all hard-fail conditions are clear, and exits 2 with a single human-readable line on stderr otherwise. `bees-breakdown-epic` resolves the script as `<base>/scripts/scoped_marker_resolver.py`. `bees-execute` and `bees-fix-issue` resolve it via the sibling pattern as `<base>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py`.
+**Bundled parser.** The shared parser/scoper for downstream skills is `skills/bees-breakdown-epic/scripts/scoped_marker_resolver.py`. It takes a positional argument (path to a file containing the parent Bee body) plus an optional `--repo-root <path>` flag for resolving relative marker paths (defaults to the parser's current working directory when omitted). It prints `{"scoped": false}` to stdout when no marker is present, prints `{"scoped": true, "title": "...", "docs": [{"path": "<absolute path>", "content": "..."}, ...]}` when the marker is present and all hard-fail conditions are clear (the `path` field is always the resolved absolute path regardless of input form), and exits 2 with a single human-readable line on stderr otherwise. `bees-breakdown-epic` resolves the script as `<base>/scripts/scoped_marker_resolver.py`. `bees-execute` and `bees-fix-issue` resolve it via the sibling pattern as `<base>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py`.
 
 When the marker is present, the consuming skill must operate on the per-doc scoped content for all PM / spec-compare / Epic-decomposition logic, not on the full doc. When the marker is absent, behavior is unchanged — full doc content is the spec.
 

@@ -12,9 +12,18 @@ bees-fix-issue) must scope each named doc's content to the matching
 canonical spec. This script is the shared parser/scoper for all three
 skills.
 
+Path forms
+----------
+The PRD and SDD paths in the marker may be absolute or relative.
+Relative paths resolve against `--repo-root` (or the current working
+directory if `--repo-root` is omitted). The output `path` field is
+always the resolved absolute path regardless of the input form.
+
 Input
 -----
 Positional arg 1: path to a file containing the parent Bee body.
+Optional `--repo-root <path>`: repo root for resolving relative
+marker paths. Defaults to the current working directory.
 
 Output (stdout, JSON)
 ---------------------
@@ -44,7 +53,8 @@ Failure modes
 -------------
 - Bee-body file unreadable -> exit 2 ("could not read <path>: ...").
 - Marker present but malformed (cannot extract title/paths) -> exit 2.
-- Marker references a doc that does not exist on disk -> exit 2.
+- Marker references a doc that does not exist on disk (after relative
+  paths are resolved against repo_root) -> exit 2.
 - Marker references a doc but the heading `### Feature: <title>` is not
   present in that doc -> exit 2 with a clear message naming the missing
   heading, the doc paths checked, and a hint that the docs may have been
@@ -60,10 +70,11 @@ Subsection extraction rule (mirrors `/bees-plan-from-specs` Step 1b):
   text after the `### Feature: ` prefix.
 
 Usage:
-    python3 scoped_marker_resolver.py <bee-body-file>   # POSIX
-    python  scoped_marker_resolver.py <bee-body-file>   # Windows
+    python3 scoped_marker_resolver.py <bee-body-file> [--repo-root <path>]
+    python  scoped_marker_resolver.py <bee-body-file> [--repo-root <path>]
 """
 
+import argparse
 import json
 import re
 import sys
@@ -126,10 +137,35 @@ def extract_subsection(doc_text: str, title: str):
 
 
 def main() -> int:
-    if len(sys.argv) != 2 or not sys.argv[1]:
-        return fail("Usage: scoped_marker_resolver.py <bee-body-file>")
+    parser = argparse.ArgumentParser(
+        description="Detect and apply the Plan Bee Scoped-marker.",
+        add_help=True,
+    )
+    parser.add_argument(
+        "body_file",
+        help="path to a file containing the parent Bee body",
+    )
+    parser.add_argument(
+        "--repo-root",
+        default=None,
+        help=(
+            "Repo root for resolving relative marker paths. Defaults to "
+            "the current working directory."
+        ),
+    )
+    try:
+        args = parser.parse_args()
+    except SystemExit as e:
+        # argparse exits 2 on usage error, which matches our failure
+        # contract — but emit our standard one-liner shape so callers
+        # parsing stderr see the same format.
+        return e.code if isinstance(e.code, int) else 2
 
-    bee_body_path = Path(sys.argv[1])
+    if not args.body_file:
+        return fail("Usage: scoped_marker_resolver.py <bee-body-file> [--repo-root <path>]")
+
+    repo_root = Path(args.repo_root).resolve() if args.repo_root else Path.cwd()
+    bee_body_path = Path(args.body_file)
     try:
         body = bee_body_path.read_text(encoding="utf-8-sig")
     except OSError as e:
@@ -156,6 +192,9 @@ def main() -> int:
 
     for raw_path in doc_paths:
         p = Path(raw_path)
+        if not p.is_absolute():
+            p = repo_root / p
+        p = p.resolve()
         if not p.is_file():
             missing_paths.append(raw_path)
             continue
@@ -175,10 +214,12 @@ def main() -> int:
             + ", ".join(missing_paths)
             + ". The Plan Bee may have been created against a different "
             "checkout, or the doc was moved/deleted after the Plan Bee was "
-            "authored. Note: this can also happen if a PRD or SDD absolute "
-            'path contains the substring " and " — the marker grammar uses '
-            '" and " as a separator and the parser splits on the first '
-            "occurrence."
+            "authored. If marker paths are relative, the resolver resolves "
+            "them against --repo-root (or the current working directory if "
+            "--repo-root is omitted) — make sure that base is correct. "
+            'Note also: if a doc path contains the substring " and ", the '
+            'marker grammar uses " and " as a separator between PRD and SDD '
+            "and the parser splits on the first occurrence."
         )
 
     if missing_heading_paths:
