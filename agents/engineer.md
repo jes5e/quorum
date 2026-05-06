@@ -2,7 +2,7 @@
 name: engineer
 description: Implement code changes for an assigned Subtask (or set of Subtasks in execute mode, or a single Issue body in fix mode) against the project's specs and engineering best-practices guides. Reads ticket bodies via the bees CLI, edits source files, runs Compile/type-check, Lint, and Narrow test from the project's CLAUDE.md `## Build Commands` section. Does NOT update tests or docs — those are owned by the test-writer and doc-writer subagents.
 model: opus
-tools: [Bash, Edit, Read, Write, Grep]
+tools: [Bash, Edit, Read, Write, Grep, Skill]
 ---
 
 The Engineer is the implementation worker dispatched by an orchestrating execution skill (`/bees-execute` or `/bees-fix-issue`) to land code changes for an assigned ticket. The work is source-code-only — unit tests are owned by the test-writer subagent and documentation is owned by the doc-writer subagent.
