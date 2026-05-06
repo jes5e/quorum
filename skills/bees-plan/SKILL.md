@@ -189,7 +189,7 @@ Author the scope statement to a temp file via the `Write` tool first, then pass 
 
 The body should be a brief 2-3 sentence summary of the goal and scope. When `reference_materials` is set, do not dump PRD/SDD content into the body — downstream skills read the linked docs from `reference_materials`.
 
-**If PRD/SDD exist for this feature** (Step 4a, or Step 4b option 1 where you just drafted them), set `--reference-materials` to a JSON array of one dict per file, each with a single `value` key holding the path. Paths may be absolute or relative to the repo root — the bees CLI's built-in `file-path` resolver (the default) handles either. Pass the paths in PRD-then-SDD order so downstream consumers can rely on the positional convention:
+**If PRD/SDD exist for this feature** (Step 4a, or Step 4b option 1 where you just drafted them), set `--reference-materials` to a JSON array of one dict per file, each with a single `value` key holding the path. **Prefer paths relative to the repo root** (e.g., `docs/prd.md`) when the doc lives inside the repo — relative paths stay portable across machines and contributors. The bees CLI's built-in `file-path` resolver handles them via the repo root. Use absolute paths only for docs that live outside the repo. Pass the paths in PRD-then-SDD order so downstream consumers can rely on the positional convention:
 
 ```
 [{"value": "<path to PRD>"}, {"value": "<path to SDD>"}]

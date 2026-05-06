@@ -8,10 +8,10 @@ argument-hint: "<prd-path> <sdd-path> [--feature \"<title>\"]"
 
 ## Input
 
-This skill takes two absolute file paths as positional input, plus an optional named flag:
+This skill takes two file paths as positional input, plus an optional named flag. Paths may be relative to the current repo root (preferred for in-repo docs — portable across machines) or absolute (right for docs that live outside the repo):
 
-1. `<prd-path>` — absolute path to a **PRD** (Product Requirements Document) describing the user/customer outcome, business goal, scope, and acceptance criteria.
-2. `<sdd-path>` — absolute path to an **SDD** (Software Design Document) describing non-negotiable constraints, architectural boundaries, and what must be true about the software.
+1. `<prd-path>` — path to a **PRD** (Product Requirements Document) describing the user/customer outcome, business goal, scope, and acceptance criteria.
+2. `<sdd-path>` — path to an **SDD** (Software Design Document) describing non-negotiable constraints, architectural boundaries, and what must be true about the software.
 3. `--feature "<title>"` (optional) — scope this planning run to a single `### Feature: <title>` subsection inside the PRD and SDD. Use this when invoking the skill standalone against a cumulative PRD/SDD (one that already contains multiple `### Feature:` subsections from prior `/bees-plan` runs) and you want to re-plan only one feature inside it. Without `--feature`, the skill assumes the docs describe a single feature and hard-fails if it detects more than one `### Feature:` subsection in either doc.
 
 Both documents are expected to already be finalized on disk. This skill does not author them — it takes them as given and turns them into a plan.
@@ -94,7 +94,7 @@ Goal: Create one top-level Bee ticket in the Plans hive to track the work.
 
 **Setting `reference_materials`:**
 
-The reference_materials value must be a JSON array of one dict per file, each with a single `value` key holding the path. Paths may be absolute or relative to the repo root — the bees CLI's built-in `file-path` resolver (the default) handles either. Pass the paths in PRD-then-SDD order:
+The reference_materials value must be a JSON array of one dict per file, each with a single `value` key holding the path. **Prefer paths relative to the repo root** for in-repo docs (portable across machines); use absolute paths only for docs outside the repo. Use the same path form the caller supplied where possible — don't silently rewrite an in-repo absolute path to relative or vice versa, since the user's intent matters for diagnostics. The bees CLI's built-in `file-path` resolver (the default) handles either. Pass the paths in PRD-then-SDD order:
 
 ```
 [{"value": "<path to PRD>"}, {"value": "<path to SDD>"}]
