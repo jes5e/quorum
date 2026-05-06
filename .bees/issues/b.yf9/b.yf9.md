@@ -3,13 +3,12 @@ id: b.yf9
 type: bee
 title: 'Post-completion review: spawn fresh generalist agent instead of /bees-code-review'
 parent: null
-egg: null
 created_at: '2026-05-01T10:32:49.439820'
 status: done
 schema_version: '0.1'
 guid: yf981x6hbphk387mw36uww1q4ufeaqq2
+reference_materials: null
 ---
-
 ## Description
 
 The post-completion review step in /bees-fix-issue (Step 8) and /bees-execute (Step 6) currently invokes /bees-code-review. Two compounding problems with that:

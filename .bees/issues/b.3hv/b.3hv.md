@@ -3,13 +3,12 @@ id: b.3hv
 type: bee
 title: Drop Teams-era vocabulary from README.md and CONTRIBUTING.md
 parent: null
-egg: null
 created_at: '2026-05-05T16:16:57.365702'
 status: done
 schema_version: '0.1'
 guid: 3hvd2p4y1r7my2s875s2deeqvscumr74
+reference_materials: null
 ---
-
 ## Description
 
 Several lines in `README.md` and `CONTRIBUTING.md` still refer to the workflow's "team", "team members", "team-lead", and "implementation team" — vocabulary inherited from when bees-workflow used Claude Code's experimental Agent Teams feature. The repo has since switched to ephemeral background subagents (custom subagents under `agents/<role>.md`, dispatched via the Agent tool), and these doc lines are now stale.

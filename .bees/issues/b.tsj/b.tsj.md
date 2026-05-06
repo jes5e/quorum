@@ -1,15 +1,15 @@
 ---
 id: b.tsj
 type: bee
-title: Skills use vague 'search hive' prose without concrete query recipes, causing Claude to invent bees CLI verbs
+title: Skills use vague 'search hive' prose without concrete query recipes, causing
+  Claude to invent bees CLI verbs
 parent: null
-egg: null
 created_at: '2026-04-30T21:19:44.483444'
 status: done
 schema_version: '0.1'
 guid: tsj4y2xj624fqef8o2rzsgk93nyo7p4r
+reference_materials: null
 ---
-
 ## Description
 
 Several skills tell Claude to "search the hive", "find the Bee", "find Epics in `ready` state", etc. — but don't give a concrete `bees` CLI command to run. Claude has to guess the verb. The bees CLI doesn't have an obvious "list tickets in a hive" command (the right answer is `bees execute-freeform-query --query-yaml '...'`), so the guess routinely lands on a non-existent verb like `bees list-tickets`. This was surfaced when running `/bees-file-issue` for the first time — Step 2 ("Check if there's already an issue ticket for this issue (search existing issues hive)") at `skills/bees-file-issue/SKILL.md:55` made the agent guess `bees list-tickets`, which exited 2 with the full subcommand-list dump.

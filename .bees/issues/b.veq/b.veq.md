@@ -1,15 +1,15 @@
 ---
 id: b.veq
 type: bee
-title: 'Review skills (code/test/doc): re-read current state at review time + flag Black-25 except paren-strip'
+title: 'Review skills (code/test/doc): re-read current state at review time + flag
+  Black-25 except paren-strip'
 parent: null
-egg: null
 created_at: '2026-05-02T13:36:25.555129'
 status: done
 schema_version: '0.1'
 guid: veq3drde7ke1yi49dkw26hg3649tvw1h
+reference_materials: null
 ---
-
 ## Description
 
 A user running `bees-execute` on another project reported that the PM / reviewer agent (`pm-hn`) reviewed an intermediate state of the change instead of the final committed / staged state. Specifically, the review fired against a post-Black-strip pre-restructure snapshot, so feedback was about code the engineer had already moved past.

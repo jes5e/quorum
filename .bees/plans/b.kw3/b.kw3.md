@@ -5,13 +5,12 @@ title: 'Demo: CHANGELOG.md skeleton with Epic 8s entry'
 parent: null
 children:
 - t1.kw3.dy
-egg: null
 created_at: '2026-05-04T13:00:13.345825'
 status: done
 schema_version: '0.1'
 guid: kw3fhwuyrnmpejqaqzy5hewzr2vz1xs9
+reference_materials: null
 ---
-
 ## Demo target — Epic 8s end-to-end validation
 
 This Bee is a stand-in created to validate the rewritten `/bees-execute` skill end-to-end (b.5tm Epic 8s acceptance criterion #7). It produces real, useful output: a `CHANGELOG.md` file at the repo root with an Unreleased section documenting the Epic 8s substrate switch.

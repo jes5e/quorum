@@ -5,10 +5,9 @@ title: Re-probe SendMessage-without-Agent-Teams as warm-Agent token-cost optimiz
 status: open
 created_at: '2026-05-03T16:11:37.802648'
 schema_version: '0.1'
-egg: null
 guid: x9wngmdh2gtry51hkmyy4fnmhuwrtky9
+reference_materials: null
 ---
-
 ## Description
 
 Track the open question of whether Claude Code's `SendMessage` tool will eventually become available without `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. If it does, the bees-execute / bees-fix-issue / bees-breakdown-epic skills should be enhanced to add warm-Agent dispatch as a token-cost optimization, restoring the original SDD intent that Epic 8s (b.5tm) had to diverge from.

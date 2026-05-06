@@ -3,13 +3,12 @@ id: b.mu9
 type: bee
 title: /bees-plan Path A delegation breaks with cumulative PRDs
 parent: null
-egg: null
 created_at: '2026-05-03T01:17:11.757996'
 status: done
 schema_version: '0.1'
 guid: mu9bufwvq7urhrkh25djzuz1py92xwnj
+reference_materials: null
 ---
-
 ## Description
 
 The `/bees-plan` skill's Step 5 Path A unconditionally delegates to `/bees-plan-from-specs <prd-path> <sdd-path>` when the project has PRD and SDD docs. This works for single-feature PRDs but breaks for the project's intended cumulative-PRD pattern — which is one of the project's stated priorities (per `README.md`: "Cumulative project-level docs. PRD/SDD live as files in `docs/`, accumulate sections as features are planned").

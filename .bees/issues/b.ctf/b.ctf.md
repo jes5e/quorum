@@ -1,15 +1,15 @@
 ---
 id: b.ctf
 type: bee
-title: bees-execute Epic-discovery prose says 'filter by up_dependencies status' but recipe returns only dep IDs
+title: bees-execute Epic-discovery prose says 'filter by up_dependencies status' but
+  recipe returns only dep IDs
 parent: null
-egg: null
 created_at: '2026-04-30T21:57:24.752272'
 status: done
 schema_version: '0.1'
 guid: ctf8vvceewc71um6b668h9hjnzw7x3p3
+reference_materials: null
 ---
-
 ## Description
 
 Surfaced during code review of commit 861e49f (b.tsj fix). The new query recipes in `skills/bees-execute/SKILL.md` ask the agent to filter Epics by their dependencies' statuses, but the recipes only project `up_dependencies` as IDs — leaving the agent to invent the status-lookup step. Same vague-prose anti-pattern b.tsj was filed for, applied here at the *prose-after-the-recipe* level rather than at the recipe level.

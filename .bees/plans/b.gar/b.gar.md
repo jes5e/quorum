@@ -7,15 +7,16 @@ children:
 - t1.gar.9u
 - t1.gar.hc
 - t1.gar.y1
-egg:
-- /Users/jesseg/code/bees-workflow/docs/prd.md
-- /Users/jesseg/code/bees-workflow/docs/sdd.md
 created_at: '2026-05-02T14:35:15.596968'
 status: ready
 schema_version: '0.1'
 guid: gar4i66e8qut657irna2i8ate97b4hjq
+reference_materials:
+- value:
+  - /Users/jesseg/code/bees-workflow/docs/prd.md
+  - /Users/jesseg/code/bees-workflow/docs/sdd.md
+  resolver: file_list_resolver
 ---
-
 The Ephemeral-Agent Orchestration rewrite (parent Bee `b.5tm`) has shipped on `main`. The bees-workflow repo is now a bees-only project running on top of Claude Code's stable `Agent` tool; the abandoned beads-backend feature (Plan Bee `b.9xr`) remains paused, and the dispatcher seam (`ticket_backend.py`) it would have introduced does not exist on `main`. This body re-scopes `b.gar` for that bees-only world.
 
 ## Goal

@@ -6,15 +6,16 @@ parent: null
 children:
 - t1.9xr.p6
 - t1.9xr.4e
-egg:
-- /Users/jesseg/code/bees-workflow/docs/prd.md
-- /Users/jesseg/code/bees-workflow/docs/sdd.md
 created_at: '2026-05-02T14:09:41.628044'
 status: ready
 schema_version: '0.1'
 guid: 9xr3vcmmpgympucy7314ji7dt5z2otz4
+reference_materials:
+- value:
+  - /Users/jesseg/code/bees-workflow/docs/prd.md
+  - /Users/jesseg/code/bees-workflow/docs/sdd.md
+  resolver: file_list_resolver
 ---
-
 Add optional support for the beads ticket backend (https://github.com/gastownhall/beads) alongside the existing bees backend. A repo picks one at /bees-setup time; the choice persists in CLAUDE.md ## Ticket Backend. All 11 portable-core skills work transparently on either backend via a new skills/_shared/scripts/ticket_backend.py dispatcher. Both backends cannot coexist in a single repo.
 
 **Status: paused as of 2026-05-03.** The implementation branch (`bee/b.9xr`) was abandoned to prioritize the Ephemeral-Agent Orchestration rewrite, which targets stability of the bees-only workflow on `main`. The PRD and SDD subsections that previously described this feature were reverted from `docs/prd.md` and `docs/sdd.md` to keep `main`'s docs consistent with the bees-only state. Their content is preserved verbatim below so this Plan Bee can be revived later without re-deriving the spec — when work resumes, copy each section back into the corresponding PRD/SDD per-feature block (`## Per-feature scope` and `## Per-feature design` respectively) and proceed.

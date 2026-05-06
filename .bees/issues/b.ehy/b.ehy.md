@@ -1,15 +1,15 @@
 ---
 id: b.ehy
 type: bee
-title: 'bees-breakdown-epic end-of-skill: per-option rationale, foundation-Epic detection, and missing commit step'
+title: 'bees-breakdown-epic end-of-skill: per-option rationale, foundation-Epic detection,
+  and missing commit step'
 parent: null
-egg: null
 created_at: '2026-05-03T13:17:08.032566'
 status: done
 schema_version: '0.1'
 guid: ehy3itaec5c2vi1bce5kzr5aw549uuk8
+reference_materials: null
 ---
-
 ## Description
 
 Two related gaps in `bees-breakdown-epic`'s end-of-skill behavior:

@@ -2,5 +2,25 @@
   "normalized_name": "plans",
   "display_name": "plans",
   "created_at": "2026-04-30T20:53:19.626569",
-  "version": "0.1"
+  "version": "0.1",
+  "child_tiers": {
+    "t1": [
+      "Epic",
+      "Epics"
+    ],
+    "t2": [
+      "Task",
+      "Tasks"
+    ],
+    "t3": [
+      "Subtask",
+      "Subtasks"
+    ]
+  },
+  "status_values": [
+    "drafted",
+    "ready",
+    "in_progress",
+    "done"
+  ]
 }

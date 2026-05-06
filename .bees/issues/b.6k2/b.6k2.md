@@ -3,13 +3,12 @@ id: b.6k2
 type: bee
 title: Runtime agents emit shell commands that defeat user Bash allow rules
 parent: null
-egg: null
 created_at: '2026-05-01T17:02:29.489069'
 status: done
 schema_version: '0.1'
 guid: 6k2kd181r99xnv6aq48bjabzkng99yz3
+reference_materials: null
 ---
-
 ## Description
 Engineer (and other runtime agents spawned by `bees-execute` / `bees-fix-issue`) routinely generate shell commands that defeat the user's Bash allow rules in Claude Code's permission matcher, forcing the user to approve every run even when a broad rule like `Bash(python3 *)` is in place.
 

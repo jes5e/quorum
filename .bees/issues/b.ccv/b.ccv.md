@@ -3,13 +3,12 @@ id: b.ccv
 type: bee
 title: Rename code-review/doc-review/test-review skills to bees-* prefix
 parent: null
-egg: null
 created_at: '2026-04-30T22:03:08.576769'
 status: done
 schema_version: '0.1'
 guid: ccvj52677qk6s44e4q3vdx7rgyxkd4zd
+reference_materials: null
 ---
-
 ## Description
 
 The three review skills `code-review`, `doc-review`, `test-review` ship as part of the bees-workflow package but are not prefixed with `bees-`. The original rationale in `CONTRIBUTING.md` `## Considered and rejected` claims they were left unprefixed because they are *"general-purpose review skills useful standalone."* Reading the actual SKILL.md files invalidates that claim:

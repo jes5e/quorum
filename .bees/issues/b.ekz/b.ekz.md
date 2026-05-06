@@ -1,15 +1,15 @@
 ---
 id: b.ekz
 type: bee
-title: Agent Teams preflight in bees-execute / bees-fix-issue trips Bash expansion-obfuscation matcher
+title: Agent Teams preflight in bees-execute / bees-fix-issue trips Bash expansion-obfuscation
+  matcher
 parent: null
-egg: null
 created_at: '2026-05-01T17:56:24.800729'
 status: done
 schema_version: '0.1'
 guid: ekzs71i4pbhkzxs1wdw8n5xq8vm6zt5y
+reference_materials: null
 ---
-
 ## Description
 
 The Agent Teams precondition check at the top of `bees-execute` and `bees-fix-issue` runs in the **parent** Claude Code session — before any team is spawned — and uses shell shapes that defeat user Bash allow rules. b.6k2 added a \"Shell-command etiquette\" bullet to each runtime worker role's Instructions to steer spawned agents away from these exact patterns, but the bullet only travels with worker prompts. The preflight, two screens up in the same `SKILL.md`, was not touched and still uses the offending shapes.

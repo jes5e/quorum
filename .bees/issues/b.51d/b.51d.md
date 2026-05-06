@@ -3,13 +3,12 @@ id: b.51d
 type: bee
 title: Downstream skills don't respect Plan Bee 'Scoped to ...' marker (b.mu9 follow-up)
 parent: null
-egg: null
 created_at: '2026-05-03T01:59:18.305296'
 status: done
 schema_version: '0.1'
 guid: 51d97prmesca53c4ud7g3av353fm5qbu
+reference_materials: null
 ---
-
 ## Description
 
 Downstream skills (`bees-breakdown-epic`, `bees-execute`, `bees-fix-issue`) do not respect the `Scoped to `### Feature: <title>` from <prd> and <sdd>.` marker that `/bees-plan-from-specs --feature "<title>"` now writes into the Plan Bee body (shipped as part of b.mu9).

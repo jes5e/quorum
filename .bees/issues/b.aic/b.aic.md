@@ -1,15 +1,15 @@
 ---
 id: b.aic
 type: bee
-title: 'Extend b.6k2 etiquette bullet: prefer first-class tools over shell control flow'
+title: 'Extend b.6k2 etiquette bullet: prefer first-class tools over shell control
+  flow'
 parent: null
-egg: null
 created_at: '2026-05-01T18:01:25.663093'
 status: done
 schema_version: '0.1'
 guid: aicthwaa4x498qbwiqyimr1wcva9ihta
+reference_materials: null
 ---
-
 ## Description
 
 b.6k2 added a *Shell-command etiquette* bullet to all eight runtime worker roles in `skills/bees-execute/SKILL.md` and `skills/bees-fix-issue/SKILL.md` (Engineer, Test Writer, Doc Writer, Product Manager — four sites per skill). The bullet steers workers away from shell **shapes** (`$VAR`, `$(...)`, `$?`, compound `&&`/`||`, embedded newlines, diagnostic tails). It does not steer workers away from **reaching for shell at all when a first-class Claude Code tool would do the job**.

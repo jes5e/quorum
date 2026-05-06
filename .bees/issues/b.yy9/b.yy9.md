@@ -1,15 +1,15 @@
 ---
 id: b.yy9
 type: bee
-title: bees-breakdown-epic Step 7 recommends execute when it should recommend break-down-next; rationale truncates in header
+title: bees-breakdown-epic Step 7 recommends execute when it should recommend break-down-next;
+  rationale truncates in header
 parent: null
-egg: null
 created_at: '2026-05-05T16:16:29.414353'
 status: done
 schema_version: '0.1'
 guid: yy98rexzdik99r4ainf1x7k91f4hgdh8
+reference_materials: null
 ---
-
 ## Description
 
 `bees-breakdown-epic` Step 7's `Pick the Recommended option` block uses 2-way branching (reshape-risk vs. no-reshape-risk), with the "Recommended" badge landing on an execute option in **both** branches. When drafted sibling Epics remain and their dependencies are pure ordering (no contract-reshape risk), the user's intent is to default to **continuing breakdown** of the next Epic — not to start execution. Today the skill recommends bulk-execute in that case, which is the wrong default.

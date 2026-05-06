@@ -3,13 +3,12 @@ id: b.c4z
 type: bee
 title: Adopt --body-file / --chunk-file across this repo's ticket-creation skills
 parent: null
-egg: null
 created_at: '2026-05-02T10:17:53.837748'
 status: done
 schema_version: '0.1'
 guid: c4zjrn6q4trz8ffz2sozho4eqp44sfsv
+reference_materials: null
 ---
-
 ## Description
 
 Upstream bees shipped file-input variants for every body-text CLI flag (gabemahoney/bees PR #6, closes #2):

@@ -1,15 +1,15 @@
 ---
 id: b.dkw
 type: bee
-title: Standardize transient scratch files under <tempdir>/.bees-workflow/, never delete
+title: Standardize transient scratch files under <tempdir>/.bees-workflow/, never
+  delete
 parent: null
-egg: null
 created_at: '2026-05-03T14:27:18.837295'
 status: done
 schema_version: '0.1'
 guid: dkw8krya1ucbnvkc7j8w6cy5qdopc7dc
+reference_materials: null
 ---
-
 ## Description
 
 Skills currently write `--body-file` scratch (and other transient files) into the OS temp dir at unpredictable, unnamespaced paths (e.g., `/tmp/bees-body-<suffix>.md`). This makes the artifacts hard to identify after a run, hard to clean up safely, and impossible to allowlist with a tight pattern. The skill prose has no shared rule for *where* these files go or *who* cleans them up, so each skill ad-libs.

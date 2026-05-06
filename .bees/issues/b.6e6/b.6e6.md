@@ -5,13 +5,12 @@ title: Polish nits in /bees-setup fast-path prose and detect_fast_path.py
 up_dependencies:
 - b.kpt
 parent: null
-egg: null
 created_at: '2026-05-01T17:28:23.704190'
 status: done
 schema_version: '0.1'
 guid: 6e6jcv5x9qrfftybqreitdusshooc5b2
+reference_materials: null
 ---
-
 ## Description
 
 Three polish-level findings from the post-completion review of `b.kpt` (commits `8d5f446` and `240f0bd`). All non-blocking; deferred from that session by the team-lead with the user's agreement, and bundled here so they don't rot. Pick up whenever the b.kpt fast-path prose is next being touched.

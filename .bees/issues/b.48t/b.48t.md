@@ -3,13 +3,12 @@ id: b.48t
 type: bee
 title: 'bees-execute: don''t suggest closing Plan Bee when drafted Epics still exist'
 parent: null
-egg: null
 created_at: '2026-05-02T23:53:59.186300'
 status: done
 schema_version: '0.1'
 guid: 48tfudrfbgnj1udodkvbpjzwmfcnjw9y
+reference_materials: null
 ---
-
 ## Description
 
 `bees-execute` mistakes "no more *workable* Epics" for "Bee is done." When a Plan Bee contains multiple Epics but only the first one has been broken down via `/bees-breakdown-epic`, the remaining Epics are still in `status=drafted`. After the first Epic completes, the skill proceeds to final review and asks the user to mark the Bee done — instead of telling them to break down the remaining Epics first.

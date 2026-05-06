@@ -3,13 +3,12 @@ id: b.11f
 type: bee
 title: PM agents idle mid-Task; bees-execute lacks team-lead orchestration
 parent: null
-egg: null
 created_at: '2026-05-01T16:43:22.774627'
 status: done
 schema_version: '0.1'
 guid: 11fjce8bzcmgamir65uoqfxf1r7mmtm3
+reference_materials: null
 ---
-
 ## Description
 
 bees-execute SKILL.md describes each team role (Engineer, Test Writer, Doc Writer, Product Manager) as a job description (responsibilities + instructions) but never prescribes the message-flow choreography between them. The team-lead is left to improvise spawn prompts and inter-phase pings. Combined with Agent Teams' message-driven model — agents only run when they receive a message — any teammate that finishes processing one ping without a follow-up trigger idles silently, even when all preconditions for its next phase are met.

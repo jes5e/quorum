@@ -5,13 +5,12 @@ title: /bees-setup should detect new-machine case and offer fast-path re-registr
 down_dependencies:
 - b.6e6
 parent: null
-egg: null
 created_at: '2026-05-01T16:19:06.836236'
 status: done
 schema_version: '0.1'
 guid: kptbfot4gdgdnuydd79q861esjqre622
+reference_materials: null
 ---
-
 ## Description
 
 When a user pulls a bees-workflow repo onto a new machine (or another engineer pulls it for the first time), the on-disk `.bees/<hive>/` directories are present and the hive markers (`.bees/<hive>/.hive/identity.json`) exist, but the per-machine `~/.bees/config.json` has no scope entry for this repo. Result: every bees command silently behaves as if no tickets exist (`bees list-hives` returns `{"hives": [], "message": "No hives configured"}`), and downstream skills (`/bees-execute`, `/bees-fix-issue`, `/bees-file-issue`, `/bees-breakdown-epic`) hard-fail with `Run /bees-setup first.`

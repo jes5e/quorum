@@ -3,13 +3,12 @@ id: b.wc4
 type: bee
 title: Skill boundaries default to same-session continuation, burning context unnecessarily
 parent: null
-egg: null
 created_at: '2026-05-01T15:44:54.941078'
 status: done
 schema_version: '0.1'
 guid: wc4gtmnheny9awgqsjrspgkv283hoqh2
+reference_materials: null
 ---
-
 ## Description
 
 Several skill boundaries in the bees-workflow chain recommend (or auto-trigger) running the next skill in the **same** Claude Code session. Each downstream skill re-reads its state from the bees CLI and from disk (Plan Bee body, Epics, ticket schemas, CLAUDE.md), so nothing in the conversation context is load-bearing across the boundary. Carrying the prior skill's conversation forward just consumes context budget that the next (heavier) skill needs.

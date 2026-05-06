@@ -3,13 +3,12 @@ id: b.963
 type: bee
 title: bees-setup writes machine-local paths to committed CLAUDE.md (## Skill Paths)
 parent: null
-egg: null
 created_at: '2026-04-30T21:14:25.887691'
 status: done
 schema_version: '0.1'
 guid: 963k6c881x2dj99aaxupsrrx9vdh9jq9
+reference_materials: null
 ---
-
 ## Description
 
 `/bees-setup` resolves the absolute filesystem paths to bundled helper scripts and writes them into a `## Skill Paths` section of the target repo's CLAUDE.md. CLAUDE.md is committed to git, so the absolute paths — which are necessarily machine-local — get pushed to the remote. Any other engineer who clones the repo gets paths under `/Users/<original-author>/.claude/skills/...` (or the equivalent on the original author's OS), which won't exist on their machine.

@@ -1,15 +1,15 @@
 ---
 id: b.hf8
 type: bee
-title: 'bees-execute team-lead/dispatcher: state-aware dispatch, verbatim ticket-body quoting, blocked_on signal'
+title: 'bees-execute team-lead/dispatcher: state-aware dispatch, verbatim ticket-body
+  quoting, blocked_on signal'
 parent: null
-egg: null
 created_at: '2026-05-02T13:36:22.499525'
 status: done
 schema_version: '0.1'
 guid: hf8vkbf6at3ztvq9k5pjd9y42kq9ptc8
+reference_materials: null
 ---
-
 ## Description
 
 A user running `bees-execute` on another project reported three related defects in the team-lead / dispatcher loop. All three share a root cause: the dispatcher does not consult current ticket state at dispatch time, so it sends `task_assignment` messages based on stale or fabricated information.

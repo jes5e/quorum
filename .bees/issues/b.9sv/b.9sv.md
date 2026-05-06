@@ -1,15 +1,15 @@
 ---
 id: b.9sv
 type: bee
-title: 'Agent Teams hard requirement: enforce in skills, configure teammateMode in bees-setup, drop fallback claims'
+title: 'Agent Teams hard requirement: enforce in skills, configure teammateMode in
+  bees-setup, drop fallback claims'
 parent: null
-egg: null
 created_at: '2026-04-30T23:18:36.691498'
 status: done
 schema_version: '0.1'
 guid: 9svamzf6dhkc9qpe65fsmec5tu2r33rr
+reference_materials: null
 ---
-
 ## Description
 
 Two related findings about the bees-workflow's relationship with Claude Code's experimental Agent Teams feature, both surfaced while debugging a `/bees-fix-issue all` run that stalled on the macOS + iTerm2 Split Pane Setup prompt:

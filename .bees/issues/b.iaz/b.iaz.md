@@ -1,15 +1,15 @@
 ---
 id: b.iaz
 type: bee
-title: AskUserQuestion misused for open-ended questions across skills (renders confusing 'Pick Other' UX)
+title: AskUserQuestion misused for open-ended questions across skills (renders confusing
+  'Pick Other' UX)
 parent: null
-egg: null
 created_at: '2026-05-01T12:09:33.348285'
 status: done
 schema_version: '0.1'
 guid: iazhxdfa3r9xqvsuwn4sv8st6byax76p
+reference_materials: null
 ---
-
 ## Description
 
 Several skills wrap genuinely open-ended questions in `AskUserQuestion`, which is a multiple-choice tool. Claude Code auto-appends `Type something.` (free-text input) and `Chat about this` (escape) to every `AskUserQuestion` call. When a skill adds its own redundant "type your own answer" options on top of that, the result is a self-referential UI where option descriptions point at a labeled-but-nonexistent "Other" choice (the free-text slot is rendered as `Type something.`, not `Other`).

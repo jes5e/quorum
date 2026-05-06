@@ -1,15 +1,15 @@
 ---
 id: b.ap8
 type: bee
-title: 'bees-setup post-b.963: $RESOLVER lost across shell calls; ## Skill Paths deletion has no concrete procedure'
+title: 'bees-setup post-b.963: $RESOLVER lost across shell calls; ## Skill Paths deletion
+  has no concrete procedure'
 parent: null
-egg: null
 created_at: '2026-04-30T21:56:50.855421'
 status: done
 schema_version: '0.1'
 guid: ap8e4xtx9q63b6bijdkxo3dzuu2mr5yc
+reference_materials: null
 ---
-
 ## Description
 
 Two follow-up findings on the b.963 fix (commit f2cbba7) in `skills/bees-setup/SKILL.md`. Both surfaced during code review of f2cbba7. Bundled per the workflow's house style (same file, same commit, same migration-from-`## Skill Paths` theme).
