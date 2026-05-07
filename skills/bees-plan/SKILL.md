@@ -143,7 +143,7 @@ Iterate until the user approves.
 
 ### 4. Author Specs
 
-Step 4 anchors the feature's PRD and SDD as ticketed artifacts in the Specs hive rather than writing them directly to project docs at planning time. The flow is: (a) detect or create a **Spec Bee** that holds the PRD and SDD as `t1=Doc` children, (b) invoke `/bees-write-prd` and `/bees-write-sdd` via the Skill tool to author those children (sibling Subtask), (c) promote the Spec Bee from `drafted` to `ready` once both writers return successfully (sibling Subtask). The rationale: ticketed specs let `/bees-plan` run side-effect-free against project docs (planning a feature without executing it leaves `docs/prd.md` / `docs/sdd.md` untouched), and they let multiple unrelated features be planned in parallel without their spec edits stepping on each other.
+Step 4 anchors the feature's PRD and SDD as ticketed artifacts in the Specs hive rather than writing them directly to project docs at planning time. The flow is: (a) detect or create a **Spec Bee** that holds the PRD and SDD as `t1=Doc` children, (b) invoke `/bees-write-prd` and `/bees-write-sdd` via the Skill tool to author those children, (c) promote the Spec Bee from `drafted` to `ready` once both writers return successfully. The rationale: ticketed specs let `/bees-plan` run side-effect-free against project docs (planning a feature without executing it leaves `docs/prd.md` / `docs/sdd.md` untouched), and they let multiple unrelated features be planned in parallel without their spec edits stepping on each other.
 
 #### 4a — Detect or create the Spec Bee
 
@@ -189,7 +189,7 @@ bees create-ticket --ticket-type bee --hive specs --status drafted --title "<fea
 
 **Do not pass `--reference-materials` on the Spec Bee.** The Spec Bee's children — the PRD and SDD `t1=Doc` tickets — are themselves the reference materials. The Spec Bee is its own anchor for downstream `bees`-resolver lookups; downstream skills (Plan Bee creation in Step 5, `/bees-execute`'s PM role) trace from the Plan Bee's `reference_materials` array (which carries the Spec Bee ID via the `bees` resolver) into the Spec Bee and from there to its `t1=Doc` children.
 
-Capture the Spec Bee ID returned by `bees create-ticket` (or the existing ID from the reuse branch) — it is consumed by the writer-skill invocations sub-step (next sibling Subtask) and the Spec Bee promotion sub-step (final sibling Subtask).
+Capture the Spec Bee ID returned by `bees create-ticket` (or the existing ID from the reuse branch) — it is consumed by the writer-skill invocations sub-step (4b) and the Spec Bee promotion sub-step (4c).
 
 #### 4b — Author the PRD and SDD via the writer skills
 
@@ -223,7 +223,7 @@ The `distilled-scope` block MUST cover, at minimum, the conversation-distilled s
 
 **Error handling.** If either Skill-tool call returns an error, or the writer reports a non-`ready` final status (i.e., the user cancelled at one of the writer's approval gates), surface the error to the user with the writer's failure detail and **abort Step 4** — do not proceed to the Spec Bee promotion sub-step or to Step 5. The Spec Bee parent remains in `drafted` so the user can re-run `/bees-plan` later and pick `Reuse existing Spec Bee` from sub-step 4a's heuristic prompt to resume from the Spec Bee that already exists. If `/bees-write-prd` succeeds but `/bees-write-sdd` fails, the PRD child remains `ready` and the SDD child either does not exist or remains `drafted` — re-running `/bees-plan` will pick up the partial state cleanly via the writer skills' own idempotency (Step 5's Branch B in each writer).
 
-The captured `prd_ticket_id`, `prd_status`, `sdd_ticket_id`, and `sdd_status` values are consumed by the Spec Bee promotion sub-step (final sibling Subtask), which gates the Spec Bee's own `drafted → ready` transition on both child statuses being `ready`.
+The captured `prd_ticket_id`, `prd_status`, `sdd_ticket_id`, and `sdd_status` values are consumed by the Spec Bee promotion sub-step (4c), which gates the Spec Bee's own `drafted → ready` transition on both child statuses being `ready`.
 
 #### 4c — Promote the Spec Bee from drafted to ready
 

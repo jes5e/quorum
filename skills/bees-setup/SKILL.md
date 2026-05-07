@@ -729,7 +729,7 @@ The next-step recommendation depends on whether the user already has spec docs (
   /bees-plan [optional one-line description]
   ```
 
-  `/bees-plan` is interactive — it asks clarifying questions to define scope, optionally drafts PRD/SDD updates if the project has those docs, then creates a Plan Bee with Epics. The Plan Bee body itself becomes the authoritative scope document when no PRD/SDD exist (the Bee's `reference_materials` stays empty), and downstream skills (`/bees-breakdown-epic`, `/bees-execute`) will use the Bee body as the spec source. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
+  `/bees-plan` is interactive — it asks clarifying questions to define scope, then creates a **Spec Bee** in the Specs hive with PRD and SDD as `t1=Doc` children (authored via inline delegation to `/bees-write-prd` and `/bees-write-sdd`), and a **Plan Bee** in the Plans hive with Epics whose `reference_materials` points at the Spec Bee via the `bees` resolver. Downstream skills (`/bees-breakdown-epic`, `/bees-execute`) follow the resolver chain into the Spec Bee and its `t1=Doc` children to read spec content. Project-level PRD/SDD on disk are not mutated at plan time; the post-implementation `doc-writer` agent folds completed work back into them later. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
 
   Run `/bees-plan` in a fresh Claude Code session. `/bees-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/bees-plan` does deep codebase exploration and scope iteration, so a fresh session gives it full context budget for that work.
 

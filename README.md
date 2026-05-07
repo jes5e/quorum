@@ -11,7 +11,7 @@ A portable [Claude Code](https://claude.com/claude-code) skill set for running a
 (planning from an idea)               (PRD + SDD already on disk)
        │                                          │
        ▼                                          │
-Spec Bee  (Specs hive, t1)                        │
+Spec Bee  (Specs hive, top-level)                 │
   ├── PRD  (t1=Doc, via /bees-write-prd)          │
   └── SDD  (t1=Doc, via /bees-write-sdd)          │
        │                                          │
@@ -19,7 +19,7 @@ Spec Bee  (Specs hive, t1)                        │
        │   → Spec Bee (resolver: bees)            │   → on-disk PRD/SDD
        │                                          │     (resolver: file-path)
        ▼                                          ▼
-              Plan Bee (Plans hive, t1)
+          Plan Bee  (Plans hive, top-level)
                           │
                           ▼
               /bees-breakdown-epic    ← Epic → Tasks/Subtasks
@@ -105,7 +105,7 @@ In any repo where you want to use the workflow, run:
 /bees-setup
 ```
 
-It will colonize hives (Plans + Issues), write a `## Documentation Locations` and `## Build Commands` section to CLAUDE.md, and offer to bootstrap baseline PRD/SDD docs from your existing codebase. Safe to re-run if you skip a step and want to come back to it later.
+It will colonize hives (Plans + Issues + Specs), write a `## Documentation Locations` and `## Build Commands` section to CLAUDE.md, and offer to bootstrap baseline PRD/SDD docs from your existing codebase. Safe to re-run if you skip a step and want to come back to it later.
 
 ### Upgrading from older bees-workflow versions
 
