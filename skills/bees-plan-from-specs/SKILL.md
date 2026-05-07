@@ -6,6 +6,16 @@ argument-hint: "<prd-path> <sdd-path> [--feature \"<title>\"]"
 
 # PRD + SDD to Plan
 
+## Overview
+
+This skill is the entry point for users who **already have a PRD and SDD on disk** — authored by hand, by external tooling, or accumulated across prior planning runs — and want to turn them into a Plan Bee with Epics ready for `/bees-breakdown-epic` and `/bees-execute`. It does **not** author the PRD or SDD; it consumes them as given.
+
+Positioning relative to `/bees-plan`:
+
+- **`/bees-plan`** — for "I want to design from scratch with Claude." It runs the discovery and scope-iteration conversation, then anchors the resulting PRD and SDD as `t1=Doc` children of a Spec Bee in the Specs hive (the Plan Bee's `reference_materials` points at the Spec Bee via the `bees` resolver). Use this when you're starting from an idea or rough notes.
+- **`/bees-plan-from-specs`** (this skill) — for "I already have PRD and SDD on disk; turn them into a Plan Bee directly." It skips discovery and scope iteration, reads the PRD/SDD files, and creates a Plan Bee whose `reference_materials` carries the file paths via the implicit `file-path` resolver. Use this when finalized spec docs already exist on disk.
+- **Cumulative-PRD/SDD pattern** — a single PRD/SDD pair on disk that grows over time as multiple `### Feature: <title>` subsections accumulate is now driven **only** by external authoring (or hand edits) plus `/bees-plan-from-specs --feature "<title>"`. `/bees-plan` no longer auto-appends features to shared cumulative project docs — it routes per-feature PRD/SDD content through ticketed Spec Bee children instead, so the historical "run `/bees-plan` repeatedly to grow a cumulative PRD/SDD" pattern is no longer auto-generated. If you maintain a cumulative PRD/SDD on disk, edit it externally and re-enter through this skill with `--feature "<title>"` to scope a planning run to one subsection.
+
 ## Input
 
 This skill takes two file paths as positional input, plus an optional named flag. Paths may be relative to the current repo root (preferred for in-repo docs — portable across machines) or absolute (right for docs that live outside the repo):
