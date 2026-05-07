@@ -58,3 +58,31 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 - Snapshot testing of full skill output.
 - Migration of existing skill patterns beyond what's needed for the new layers.
 - A proxy / mock test harness — the equivalence harness uses real CLIs against temp directories.
+
+### Feature: Side-effect-free /bees-plan and /bees-file-issue with preserved context
+
+**What.** Redesign `/bees-plan` and `/bees-file-issue` so that neither skill mutates the project's cumulative PRD, SDD, or README at plan time or filing time, and so that the rich context of pre-skill-invocation conversations is preserved end-to-end through downstream execution agents. Per-feature spec content is now authored as `t1=Doc` children (PRD and SDD, differentiated by exact title-match) of a new top-level Spec Bee in a new **Specs** hive; the Plan Bee's `reference_materials` field points at the Spec Bee via a new `bees` resolver of the form `[{"value":"<spec-bee-id>","resolver":"bees"}]`. Two new composable sub-skills — `/bees-write-prd` and `/bees-write-sdd` — author and revise the per-feature PRD/SDD ticket bodies; `/bees-plan` invokes them inline via the Skill tool when initial specs are being authored, and they remain solo-invokable for later revisions (`/bees-write-prd <spec-bee-id>`). The cumulative project-level PRD/SDD continue to exist but are appended to *after-the-fact* by the `doc-writer` agent during execution, reflecting what was actually built rather than forward intent. `/bees-file-issue` is mid-conversation aware (no re-asking discovery questions when context already exists) and supports optional `## Background and rationale` and `## Decisions and rejected alternatives` sections in the body template; doc-divergence observations are now captured in a `## Doc divergence noted` section in the Issue body for `/bees-fix-issue`'s doc-writer to act on, rather than mutating docs at filing time.
+
+**Why.** Three classes of problem motivated the redesign. (1) Drafting a plan that may never execute — or won't execute for weeks — was writing future-state design into project docs that nominally describe current behavior, with manual and error-prone reverts; parallel planning compounded the problem by layering future state for two unbuilt features on top of one another. (2) The "every session is cold" principle forced thorough planning conversations through a "2-3 sentence summary" funnel into the Plan Bee body, losing rationale, rejected alternatives, and constraints; downstream PM agents and engineers re-litigated decisions or re-introduced rejected approaches because no record survived. (3) `/bees-file-issue` had a smaller analog of both — Step 4 mutated docs at filing time when an issue surfaced doc divergence, and the body's shallow template lost the analytical depth of the originating discussion.
+
+**Acceptance criteria.**
+
+- `/bees-plan` no longer writes to the cumulative PRD, SDD, or README. Running it on a Plan that's never executed leaves project docs untouched.
+- `/bees-plan` creates a Spec Bee with PRD and SDD `t1=Doc` child tickets, plus a Plan Bee with Epic children whose `reference_materials` is `[{"value":"<spec-bee-id>","resolver":"bees"}]`.
+- `/bees-write-prd` and `/bees-write-sdd` exist as composable sub-skills — invokable solo for spec revisions and inline by `/bees-plan` for initial authoring.
+- `/bees-plan` distills pre-invocation conversation context into the PRD/SDD child tickets when invoked mid-conversation, instead of restarting discovery from scratch.
+- PRD and SDD child-ticket bodies include explicit sections for decisions, rejected alternatives, and rationale — not just requirements.
+- `agents/pm.md` and `skills/bees-breakdown-epic/SKILL.md` perform two-hop lookup: read `reference_materials`, follow the `bees` resolver to the Spec Bee, walk the Spec Bee's `t1=Doc` children for PRD/SDD content. The existing `file-path` resolver path and the body-as-spec fallback (when `reference_materials` is null/empty) remain functional.
+- `agents/doc-writer.md` is responsible for appending or updating `### Feature: <title>` subsections in the cumulative project PRD and SDD post-implementation, reflecting what was actually built.
+- `/bees-file-issue` Step 4 no longer mutates docs; doc-divergence observations are captured in a `## Doc divergence noted` section in the Issue body for `/bees-fix-issue`'s doc-writer to act on.
+- `/bees-file-issue` is mid-conversation aware and supports optional `## Background and rationale` / `## Decisions and rejected alternatives` body sections.
+- `/bees-setup` colonizes the Specs hive on new repos and detect-and-adds it on existing repos; `/bees-execute`, `/bees-fix-issue`, and `/bees-breakdown-epic` hard-fail with `Run /bees-setup first.` (with a trailing `— Specs hive is not colonized for this repo.` clause) when the Specs hive is missing.
+- `/bees-plan-from-specs` continues to work unchanged for the file-based PRD/SDD path, including the `--feature "<title>"` cumulative-spec scoping flow. The Scoped-marker / `scoped_marker_resolver.py` infrastructure is retained — only `/bees-plan` no longer emits markers (because it no longer co-mingles feature content into shared cumulative docs).
+
+**Out of scope.**
+
+- A `/bees-spec-review` quality-review pass over PRD/SDD ticket bodies, parallel to `/bees-code-review`, `/bees-test-review`, `/bees-doc-review`. Useful eventually, but separable from the bug fix this feature delivers — deferred to a follow-up Issue.
+- A `/bees-file-issue --from-github <url>` (or generic `--reference <url>`) external-reference mode symmetric with `/bees-plan-from-specs`. Real gap, but separable from this feature — deferred to a follow-up Issue.
+- Migrating the existing Plan Bees `b.5tm`, `b.9xr`, `b.gar`, `b.kw3` to the new Spec Bee structure. They remain on the old shape; the new flow applies forward.
+- Building a GitHub-issue resolver or any other new resolver. The design accommodates them via the existing `reference_materials` abstraction; concrete resolvers are separate work.
+- A formal Issue-to-Plan promotion path. The manual workaround (close the Issue, file a Plan referencing it) remains.
