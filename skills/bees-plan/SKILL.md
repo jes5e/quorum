@@ -93,7 +93,7 @@ Now research — informed by the user's context from step 1.
 
 **Check for existing docs:** Look for a PRD and SDD in the repo (check CLAUDE.md for paths, or look in `docs/`). If they don't exist and CLAUDE.md doesn't reference them, ask the user:
 
-- "Does this project have a PRD or SDD (Software Design Document)? It's totally fine if not — I can plan the feature without them. The scope will live in the Plan Bee itself."
+- "Does this project have a PRD or SDD (Software Design Document)? It's totally fine if not — I can plan the feature without them."
 
 If the user provides paths, read them so subsequent research and clarifying questions can reference the existing requirements. If they say no or the docs don't exist, no further branching is needed here — Step 4 always creates a Spec Bee with PRD and SDD `t1=Doc` children regardless of whether project-level PRD/SDD docs exist on disk, so there are no "doc-related steps later" to skip.
 
