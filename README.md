@@ -107,6 +107,8 @@ bees update-config
 
 The migration converts each ticket's old `egg` array into one `reference_materials` entry per file and clears the obsolete custom-resolver registration from `~/.bees/config.json`. New repos and machines that never ran an older version are unaffected.
 
+If your repo was set up before the `Specs` hive existed, re-run `/bees-setup` — it detects the missing `Specs` hive, prompts for its path, and leaves your existing `Plans` and `Issues` hives untouched.
+
 ## The skills
 
 | Skill | What it does |
@@ -131,11 +133,14 @@ The three reviewers (`bees-code-review`, `bees-doc-review`, `bees-test-review`) 
 |---|---|
 | **Plans** (Plan Bees, Epics, Tasks, Subtasks) | `drafted` → `ready` → `in_progress` → `done` |
 | **Issues** (issue tickets) | `open` → `done` |
+| **Specs** (Spec Bees, Docs) | `drafted` → `ready` |
 
 `drafted` = written but children (next tier down) not yet broken down.
 `ready` = fully planned and ready for the next stage.
 `in_progress` = actively being worked on.
 `done` = completed.
+
+The **Specs** hive (display name `Specs`, normalized name `specs`) holds Spec Bees, each containing per-feature spec docs as `t1=Doc` children. PRD and SDD are both `t1=Doc` children differentiated by ticket title (`PRD` vs `SDD`), not by tier. The hive's allowed resolver is `bees`, so a Plan Bee's `reference_materials` can point at a Spec Bee.
 
 ## Where docs live
 
