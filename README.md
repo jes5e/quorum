@@ -3,22 +3,34 @@
 A portable [Claude Code](https://claude.com/claude-code) skill set for running an end-to-end SDLC on top of [bees](https://github.com/gabemahoney/bees) tickets — plan, break down, execute, review, fix, repeat. Works on any project, any language, any POSIX or Windows shell.
 
 ```
-/bees-setup           ← one-time per repo (safe to re-run)
+/bees-setup                  ← one-time per repo (safe to re-run)
        │
-       ├── /bees-plan              ← planning from an idea
-       │       OR
-       └── /bees-plan-from-specs   ← planning from a finalized PRD + SDD
-                              │
-                              ▼
-                    /bees-breakdown-epic     ← Epic → Tasks/Subtasks
-                              │
-                              ▼
-                       /bees-execute         ← do the work, with reviews
-                              │
-                              ▼
-                    /bees-file-issue + /bees-fix-issue
-                              ↑
-                       (anytime, for bugs/follow-ups)
+       ├──────────────────────────────────────────┐
+       ▼                                          ▼
+/bees-plan                            /bees-plan-from-specs
+(planning from an idea)               (PRD + SDD already on disk)
+       │                                          │
+       ▼                                          │
+Spec Bee  (Specs hive, t1)                        │
+  ├── PRD  (t1=Doc, via /bees-write-prd)          │
+  └── SDD  (t1=Doc, via /bees-write-sdd)          │
+       │                                          │
+       │ reference_materials                      │ reference_materials
+       │   → Spec Bee (resolver: bees)            │   → on-disk PRD/SDD
+       │                                          │     (resolver: file-path)
+       ▼                                          ▼
+              Plan Bee (Plans hive, t1)
+                          │
+                          ▼
+              /bees-breakdown-epic    ← Epic → Tasks/Subtasks
+                          │
+                          ▼
+              /bees-execute           ← do the work, with reviews
+                          │
+                          ▼
+              /bees-file-issue + /bees-fix-issue
+                          ↑
+                   (anytime, for bugs/follow-ups)
 ```
 
 The skills orchestrate work via Claude Code's ephemeral background subagents — no special setup is required beyond the bees CLI and Claude Code itself.
@@ -148,10 +160,10 @@ The **Specs** hive (display name `Specs`, normalized name `specs`) holds Spec Be
 
 If you opt into doc creation (recommended — see [Why this exists](#why-this-exists) above), the workflow creates and maintains:
 
-- `docs/prd.md` — project-level Product Requirements. Grows as features are planned.
-- `docs/sdd.md` — project-level Software Design. Grows as features are designed.
+- `docs/prd.md` — project-level Product Requirements. Grows as features ship.
+- `docs/sdd.md` — project-level Software Design. Grows as features ship.
 
-Each `bees-plan` invocation that produces docs adds a new `### Feature: <title>` subsection under the cumulative `## Per-feature scope` (PRD) and `## Per-feature design` (SDD) headers — never overwrites earlier content. Old features stay documented; new features add to the record.
+Per-feature PRD/SDD content is authored at plan time as `t1=Doc` children of a Spec Bee in the Specs hive (PRD and SDD as separate Docs), not appended to the cumulative project-level docs. After implementation lands, the post-implementation `doc-writer` agent dispatched by `/bees-execute` and `/bees-fix-issue` folds the shipped feature into the cumulative project PRD and SDD (paths configured under CLAUDE.md `## Documentation Locations`) by adding a new `### Feature: <title>` subsection under the cumulative `## Per-feature scope` (PRD) and `## Per-feature design` (SDD) headers — never overwriting earlier content. Old features stay documented; new features add to the record only once they ship.
 
 The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you can override the defaults if your project uses a different structure (e.g., `specs/` instead of `docs/`).
 
