@@ -4,10 +4,11 @@ type: bee
 title: Verify doc-writer idempotency on pre-redesign Plan Bees (b.9xr, b.gar)
 up_dependencies:
 - b.31f
-status: open
-created_at: '2026-05-07T12:02:54.848076'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-07T12:02:54.848076'
+status: done
+schema_version: '0.1'
 guid: tbrcp6gv8a98by1yax57b9tk5if4bche
 ---
 
@@ -107,4 +108,3 @@ or scope-merged elsewhere), this Issue can be closed without action.
 `up_deps`: `b.31f`. Cannot run until that Plan Bee is `done` — Epic 6
 is what introduces the doc-writer auto-append behavior this Issue
 verifies.
-

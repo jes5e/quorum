@@ -7,7 +7,7 @@ up_dependencies:
 parent: null
 reference_materials: null
 created_at: '2026-05-07T13:23:40.068255'
-status: open
+status: done
 schema_version: '0.1'
 guid: tak8c9nvbnviyeu4pm2b9gyxz2x99wk2
 ---
@@ -147,4 +147,3 @@ One small commit / Issue-fix run that:
 `up_dependencies`: `b.31f`. Cannot be fully verified until that Plan Bee
 is `done`, since the redesign that motivates these doc updates lives in
 it. (`b.31f` is now `done`, so this Issue is unblocked.)
-

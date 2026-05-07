@@ -4,10 +4,11 @@ type: bee
 title: Add /bees-spec-review skill (apiary /req-review analog)
 up_dependencies:
 - b.31f
-status: open
-created_at: '2026-05-06T17:38:04.881184'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-06T17:38:04.881184'
+status: done
+schema_version: '0.1'
 guid: uxaubc93oz8ff6hrghtd92nnkvxy4fij
 ---
 
@@ -73,4 +74,3 @@ Once `b.31f` is in steady use:
 `up_deps`: `b.31f`. This Issue cannot proceed until that Plan Bee
 is `done` and the new spec-authoring skills have been exercised
 enough to identify real failure modes.
-

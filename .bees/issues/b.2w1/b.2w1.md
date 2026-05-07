@@ -4,10 +4,11 @@ type: bee
 title: 'Backfill cumulative ### Feature: subsections in PRD/SDD for b.31f'
 up_dependencies:
 - b.31f
-status: open
-created_at: '2026-05-06T17:46:31.092134'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-06T17:46:31.092134'
+status: done
+schema_version: '0.1'
 guid: 2w1mqgdy8vqph8fkjefko4crqtxp321q
 ---
 
@@ -94,4 +95,3 @@ Once `b.31f` is fully `done` and committed:
 `up_deps`: `b.31f`. Cannot proceed until that Plan Bee is `done` —
 the union-diff and the new doc-writer behavior both depend on every
 Epic having landed.
-

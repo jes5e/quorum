@@ -2,10 +2,11 @@
 id: b.qs8
 type: bee
 title: '/bees-file-issue: add --reference URL mode for external sources (GitHub, Linear, etc.)'
-status: open
-created_at: '2026-05-06T17:38:05.970102'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-06T17:38:05.970102'
+status: done
+schema_version: '0.1'
 guid: qs82oryj5iioydxupfqqivh8zv776dvu
 ---
 
@@ -85,4 +86,3 @@ None. This Issue is independent of `b.31f` and can land in parallel.
 The two changes don't conflict — `b.31f` makes the existing in-
 conversation path richer; this Issue adds a new external-reference
 path alongside it.
-

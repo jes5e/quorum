@@ -2,10 +2,11 @@
 id: b.iv4
 type: bee
 title: 'Refactor /bees-file-issue: fold Step 4 into Step 3 (option-a structural cleanup)'
-status: open
-created_at: '2026-05-07T11:30:24.765544'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-07T11:30:24.765544'
+status: done
+schema_version: '0.1'
 guid: iv4o16qh5b8dug5f8njoqff8i4hd5eqh
 ---
 
@@ -102,4 +103,3 @@ If none of these triggers fire, the option (b) shape is fine to leave.
 None. `b.31f` does not need to be `done` first — Steps 3-4 in their
 post-Epic-8 shape are already in place. This Issue is forward-looking
 cleanup, runnable any time the trigger condition is met.
-
