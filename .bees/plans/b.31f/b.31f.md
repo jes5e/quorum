@@ -18,7 +18,7 @@ children:
 - t1.31f.g8
 reference_materials: null
 created_at: '2026-05-06T17:32:38.048868'
-status: in_progress
+status: done
 schema_version: '0.1'
 guid: 31fywhgtz3ipqo8afnwcgbf1ft9dcx2s
 ---
