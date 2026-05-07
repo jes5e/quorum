@@ -17,7 +17,57 @@ This skill handles the full journey from "I have an idea" to "here's a broken-do
 
 ## Workflow
 
-### 1. Gather Context from the User FIRST
+### 0. Detect mid-conversation context
+
+Before treating this invocation as a cold solo run, judge whether the current Claude Code session already contains substantive context about the feature this Plan Bee is meant to capture. The two downstream branches (distill vs restart) below are gated on this judgment.
+
+**Indicative signals that the heuristic should fire (distill, don't restart):**
+
+- Rich back-and-forth in the same session about the feature's scope, rationale, alternatives considered, users / personas, or success criteria.
+- The user's invocation message (or `/bees-plan <description>` argument) contains substantive scope information beyond a one-line title — e.g., a paragraph or more describing the feature, including motivation, constraints, or rejected alternatives.
+- An explicit hint that this is a continuation of a planning discussion (e.g., the user has been iterating on scope with the assistant before invoking the skill).
+
+**Err toward distilling.** When the choice is ambiguous, tilt toward the distill branch rather than the restart branch — a wasted distill draft is cheaper for the user to revise or reject than restarting a 30-minute discovery conversation from scratch. Future maintainers must not tighten this heuristic into a stricter "only fire when X is unambiguously true" gate, which would defeat the design intent. The same err-toward-distill principle is mirrored in `/bees-write-prd`'s and `/bees-write-sdd`'s Step 0; keep this skill's phrasing in lockstep so users get a consistent distill-vs-restart experience across planning and spec authoring. (Step 4 of this skill invokes those writer skills inline via the Skill tool with the distilled scope, so a divergence here would mean the user gets asked discovery questions twice — once in this skill's restart branch and again when a writer skill mis-detects and runs its own restart branch.)
+
+The heuristic's output feeds the two branches below:
+
+- **Distill branch (0a)** — heuristic fires. Skip Steps 1 and 2 entirely, distill the prior conversation into a scope summary, present it for approval, then jump to Step 3 (final scope-approval gate) with the approved distillation as the scope statement.
+- **Restart branch (0b)** — heuristic does not fire. Run Steps 1 and 2 as written, then proceed to Step 3 normally.
+
+Steps 3, 4, 5, 6, and 7 run identically on both branches.
+
+#### 0a — Distill branch (heuristic fires)
+
+Skip Step 1's "Before I start researching, is there anything I should know?" prompt and Step 2's numbered clarifying-questions list — the prior conversation already contains the substance, and re-asking would force the user to repeat themselves. Instead:
+
+1. Read the prior context (the in-session conversation, plus any `<description>` argument passed when the skill was invoked). Distill it into a scope summary covering, at minimum:
+
+   - **Feature title** — a short noun phrase suitable for the Plan Bee title and the Spec Bee title.
+   - **What** — one paragraph describing the feature (what it does, in user-observable terms).
+   - **Why** — the motivation (what problem this solves, who has it, why it matters now).
+   - **Acceptance criteria** — concrete, measurable, testable conditions for "done".
+   - **Out of scope** — explicit exclusions surfaced during the planning conversation.
+   - **Decisions** — key design or scope decisions the user made during the conversation.
+   - **Rejected alternatives** — alternative approaches, scopes, or designs that were considered and rejected, with the reasoning for each.
+   - **Constraints** — design constraints, technology preferences, timeline considerations, or related-work dependencies the user surfaced.
+
+   Format the distilled scope as a markdown block with each of those eight items as a labeled `### <Section>` heading (or `**<Section>:**` bold-prefix line, whichever reads cleaner) so Step 4's Skill-tool invocations of `/bees-write-prd` and `/bees-write-sdd` can extract each section deterministically when they consume it as the `distilled-scope` payload. Multi-paragraph content under each heading is welcome. Sections with no content from the prior conversation should be rendered explicitly with `none` / `not applicable for this feature` rather than omitted, so the writer skills can tell apart `the planner forgot` from `there is genuinely nothing here`.
+
+2. Present the distilled scope to the user via `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage` (it's multi-choice only). Finite choices:
+
+   - **Approve** — the distilled scope is good as-is. Carry the distillation forward as the scope statement and proceed to Step 3 (the final scope-approval gate). Step 3's `AskUserQuestion` still fires as a final user-facing checkpoint — the Step 0a gate confirms the *distillation* is correct; Step 3's gate confirms the *scope statement built from the distillation* is correct before any tickets get created.
+   - **Revise** — the distilled scope needs changes. Iterate in prose with the user on what to change, then re-present the revised distillation via `AskUserQuestion`.
+   - **Cancel** — exit the skill cleanly without creating any tickets.
+
+On approve, carry the distilled body forward to Step 3 as the starting material for the scope statement (the eight section headings map cleanly onto Step 3's What / Why / Acceptance criteria / Out-of-scope shape, with the Decisions / Rejected alternatives / Constraints content carried alongside for downstream consumption by the writer skills in Step 4).
+
+#### 0b — Restart branch (heuristic does not fire)
+
+Cold solo invocation from a fresh session, or `/bees-plan <description>` with only a one-line description and no rich preceding discussion. Run Steps 1 and 2 below as written — same "Before I start researching" prompt, same numbered clarifying-questions list, same "do not proceed until you and the user agree on what the feature is" gate — then continue to Step 3.
+
+### 1. Gather Context from the User FIRST (restart branch only)
+
+This step runs only on the restart branch (Step 0b). The distill branch (Step 0a) skips directly to Step 3 with the approved distillation as the scope statement.
 
 **Before doing any research or asking pointed questions**, ask the user as plain prose (no tool call — this is an open-ended question, not a multi-choice one) if there's additional context you should know:
 
@@ -31,7 +81,9 @@ Wait for the user's reply in their next turn. They may point you to:
 
 Incorporate whatever they share into ALL subsequent research and questions.
 
-### 2. Explore and Understand
+### 2. Explore and Understand (restart branch only)
+
+This step runs only on the restart branch (Step 0b). The distill branch (Step 0a) skips directly to Step 3.
 
 Now research — informed by the user's context from step 1.
 
@@ -43,7 +95,7 @@ Now research — informed by the user's context from step 1.
 
 - "Does this project have a PRD or SDD (Software Design Document)? It's totally fine if not — I can plan the feature without them. The scope will live in the Plan Bee itself."
 
-If the user provides paths, read them. If they say no or the docs don't exist, skip all doc-related steps later (step 4) and note that the Plan Bee body is the authoritative scope document.
+If the user provides paths, read them so subsequent research and clarifying questions can reference the existing requirements. If they say no or the docs don't exist, no further branching is needed here — Step 4 always creates a Spec Bee with PRD and SDD `t1=Doc` children regardless of whether project-level PRD/SDD docs exist on disk, so there are no "doc-related steps later" to skip.
 
 Research (incorporating the user's context):
 - Read CLAUDE.md to understand the project structure and conventions
