@@ -164,13 +164,15 @@ Skill prose that says "single `bees update-ticket --body-file` invocation" is wr
 
 ## The Scoped-marker contract
 
-A Plan Bee authored via `/bees-plan-from-specs --feature "<title>"` carries a single line in its body of the form:
+The Scoped-marker is emitted exclusively by `/bees-plan-from-specs --feature "<title>"`. A Plan Bee authored that way carries a single line in its body of the form:
 
 ```
 Scoped to `### Feature: <title>` from <absolute prd path> and <absolute sdd path>.
 ```
 
-The marker is the durable signal that the Plan Bee covers a single `### Feature: <title>` subsection inside a cumulative PRD/SDD, even though the Bee's `reference_materials` still points at the full canonical doc paths (paths-stay-full is intentional — the docs themselves remain the source of truth). Downstream skills that read `reference_materials` must therefore also check the parent Bee body for this marker and, when present, scope the resolved doc content to the matching subsection before treating it as the spec.
+`/bees-plan` Plan Bees do NOT carry a Scoped-marker — they carry their spec context via `reference_materials` (with either the `file-path` or `bees` resolver) or, when `reference_materials` is null/empty, fall back to body-as-spec. The marker is a `/bees-plan-from-specs --feature`-only artifact, full stop.
+
+The marker is the durable signal that the Plan Bee covers a single `### Feature: <title>` subsection inside a cumulative PRD/SDD, even though the Bee's `reference_materials` still points at the full canonical doc paths (paths-stay-full is intentional — the docs themselves remain the source of truth). Downstream skills that read `reference_materials` must therefore also check the parent Bee body for this marker and, when present, scope the resolved doc content to the matching subsection before treating it as the spec. When the marker is absent (which is always the case for `/bees-plan`-authored Bees), consumers use the full-doc / body-as-spec fallback unchanged.
 
 **Marker grammar** (matched verbatim by the bundled parser):
 
@@ -255,7 +257,11 @@ Use these terms consistently. Mixing synonyms forces readers (and Claude) to men
 - **Skill** — one of the directories under `skills/<name>/`. Has a `SKILL.md` and optionally `scripts/`.
 - **Hive** — a bees collection. The workflow uses three: **Plans** (top-level, with t1/t2/t3 = Epic/Task/Subtask), **Issues** (no children), and **Specs** (top-level Spec Bees with `t1=Doc/Docs` children, colonized empty by `/bees-setup` for future use).
 - **Bee** — a ticket inside a hive. A "Plan Bee" is a top-level Bee in the Plans hive. An "Epic" is a t1 child of a Plan Bee. A "Spec Bee" is a top-level Bee in the Specs hive.
-- **Reference materials** — a Bee's `reference_materials` field, which points at one or more on-disk source documents (PRD, SDD, etc.). Each entry is resolved per-item by the bees CLI's built-in `file-path` resolver (the default). May be null/empty — when null on a Plan Bee, the **Plan Bee body itself becomes the authoritative spec**.
+- **Reference materials** — a Bee's `reference_materials` field, which points at one or more authoritative spec sources. Each entry is resolved per-item by one of two resolvers the bees CLI supports:
+    - **`file-path` resolver** (the default) — entries are paths to on-disk source documents (PRD, SDD, etc.). Use this for canonical on-disk specs (the `/bees-plan-from-specs` path).
+    - **`bees` resolver** — entries take the shape `[{"value":"<bee-id>","resolver":"bees"}]`; the `value` is a ticket ID, not a path. Use this for inter-Bee scope references where one Plan Bee anchors against a Spec Bee whose body and `t1=Doc` children (PRD + SDD, differentiated by exact title-match) hold the authoritative spec content (the `/bees-plan` redesign path).
+    - **Two-hop lookup pattern** for `bees`-resolver entries: hop 1 reads the entry's `value` from the parent Bee's `reference_materials`; hop 2 runs `bees show-ticket --ids <bee-id>` and treats the resolved Bee's body (or, for Spec Bees, its `t1=Doc` children enumerated by exact title-match) as the spec source. See `agents/pm.md` and `skills/bees-breakdown-epic/SKILL.md` for the canonical recipe.
+    - **Null/empty fallback** — `reference_materials` may be null/empty. When null on a Plan Bee, the **Plan Bee body itself becomes the authoritative spec**. The `bees` resolver does not displace this fallback; it is a third source mode (path on disk / referenced Bee + children / own Bee body), not a replacement for the body-as-spec case.
 - **Target repo** — the repo a user runs `/bees-*` commands against. Distinct from this repo (the skill set itself).
 
 ## When you're updating an existing skill
