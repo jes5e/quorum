@@ -2,10 +2,11 @@
 id: b.49g
 type: bee
 title: Wire /bees-spec-review into /bees-plan, /bees-write-prd, /bees-write-sdd as automatic quality gate
-status: open
-created_at: '2026-05-07T16:22:04.388017'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-07T16:22:04.388017'
+status: done
+schema_version: '0.1'
 guid: 49g6zadjoat78b5bnud21m7z7zehf1pi
 ---
 
@@ -204,4 +205,3 @@ None. `b.uxa` (the original `/bees-spec-review` skill) is `done`,
 and the wire-up is purely additive — it adds new Skill-tool calls
 inside the orchestrating skills without changing their existing
 behavior on the no-findings path.
-

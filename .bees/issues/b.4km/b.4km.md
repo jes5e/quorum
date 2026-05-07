@@ -2,12 +2,14 @@
 id: b.4km
 type: bee
 title: bees-fix-issue Section 7 fix-in-session branch missing TaskList close-out
-status: open
+parent: null
+reference_materials: null
 created_at: '2026-05-05T16:50:00.559645'
+status: done
 schema_version: '0.1'
 guid: 4kmr6ka5e17bembfdfu11zyapcxy3q4g
-reference_materials: null
 ---
+
 ## Description
 
 `skills/bees-fix-issue/SKILL.md` Section 7 step 6's **"Fix in this session"** branch lacks explicit TaskList lifecycle guidance for the follow-up Agents it dispatches. The orchestrator can dispatch a follow-up Agent, mark its TaskList task `in_progress`, and never flip it to `completed` after the Agent returns — leaving stale `in_progress` entries in the TaskList UI after the session ends.
@@ -53,4 +55,3 @@ Out of scope:
 - Section 6 step 3's per-issue close-out is fine as written — this fix is purely additive at Section 7 step 6.
 - No change to Section 3's naming convention itself; the fix at Section 7 step 6 *extends* the convention to post-completion scope without modifying the issue-scoped form used in Section 3.
 - No change to `bees-execute/SKILL.md` — Section 7 of `bees-fix-issue` has no parallel in `bees-execute` (which has a different post-completion review structure).
-

@@ -2,12 +2,14 @@
 id: b.x9w
 type: bee
 title: Re-probe SendMessage-without-Agent-Teams as warm-Agent token-cost optimization
-status: open
+parent: null
+reference_materials: null
 created_at: '2026-05-03T16:11:37.802648'
+status: open
 schema_version: '0.1'
 guid: x9wngmdh2gtry51hkmyy4fnmhuwrtky9
-reference_materials: null
 ---
+
 ## Description
 
 Track the open question of whether Claude Code's `SendMessage` tool will eventually become available without `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. If it does, the bees-execute / bees-fix-issue / bees-breakdown-epic skills should be enhanced to add warm-Agent dispatch as a token-cost optimization, restoring the original SDD intent that Epic 8s (b.5tm) had to diverge from.
@@ -51,4 +53,8 @@ A periodic empirical probe verifies whether the upstream constraint has changed.
 - Epic where the divergence is implemented: t1.5tm.8s (bees-execute rewrite).
 - Subtask where the in-skill divergence callout lives: t3.5tm.8s.mp.4k (Section 3 skeleton — "Per-Subtask cold dispatch (vs SDD's warm-Agent intent)" callout paragraph).
 - Epic F (t1.5tm.fy) carries an addendum on its body instructing it to add an SDD paragraph documenting this divergence with a reference to this Issue's ID.
+
+## Re-test log
+
+- 2026-05-07 on Claude Code v2.1.132 — still gated. Verified by re-fetching https://docs.claude.com/en/docs/claude-code/sub-agents (canonical: code.claude.com/docs/en/sub-agents): the "Resume subagents" subsection still carries the sentence "The `SendMessage` tool is only available when [agent teams] are enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`." A direct empirical probe (`Agent(name=...)` + `SendMessage(to=...)` with the env var unset) could NOT be performed in this session because `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` was already set in the orchestrator's environment; future re-probes should run from a session where that env var is unset to obtain a direct empirical signal. Issue left `open` per the periodic-re-test lifecycle.
 

@@ -2,10 +2,11 @@
 id: b.61t
 type: bee
 title: Orchestrator self-tracking TaskList tasks left in_progress when yielding to user
-status: open
-created_at: '2026-05-07T16:30:16.193880'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-07T16:30:16.193880'
+status: done
+schema_version: '0.1'
 guid: 61tqu98or3wgn3efrfi5y9wvpe87qd3r
 ---
 
@@ -58,4 +59,3 @@ Out of scope:
 
 - `b.4km`'s fix at `bees-fix-issue` Section 7 step 6 — that lives in its own ticket and covers a different surface (dispatched follow-up Agents, not orchestrator self-tracking). Whoever picks up either ticket should read the other's body to keep the two fixes coherent.
 - No change to the TaskCreate / TaskUpdate tools themselves; the bug is skill-prose discipline, not tool behavior.
-
