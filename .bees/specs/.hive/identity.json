@@ -1,0 +1,19 @@
+{
+  "normalized_name": "specs",
+  "display_name": "specs",
+  "created_at": "2026-05-07T00:37:01.145004",
+  "version": "0.1",
+  "child_tiers": {
+    "t1": [
+      "Doc",
+      "Docs"
+    ]
+  },
+  "allowed_resolvers": [
+    "bees"
+  ],
+  "status_values": [
+    "drafted",
+    "ready"
+  ]
+}
