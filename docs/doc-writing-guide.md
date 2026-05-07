@@ -204,7 +204,7 @@ When the marker is present, the consuming skill must operate on the per-doc scop
 
 ## Hard-fail preconditions
 
-Execution skills (`bees-execute`, `bees-fix-issue`) hard-fail with `Run /bees-setup first.` when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them. Preserve that precondition behavior in any edit to those skills.
+Execution skills (`bees-execute`, `bees-fix-issue`, `bees-breakdown-epic`) hard-fail with `Run /bees-setup first.` (with a trailing `— <reason>` clause naming the specific gap, e.g., `Run /bees-setup first. — Specs hive is not colonized for this repo.`) when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them, OR when any of the three required hives (Plans, Issues, Specs) is not colonized for the target repo. Preserve that precondition behavior in any edit to those skills.
 
 When you add a new required key to one of those sections, update bees-setup to write it *and* update every downstream skill's precondition check in the same change.
 

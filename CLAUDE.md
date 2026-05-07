@@ -109,14 +109,15 @@ These keys appear in the *target repo's* CLAUDE.md (not this one). `bees-setup` 
 
 **Bundled helper scripts are NOT contract keys.** Earlier revisions wrote a `## Skill Paths` section to CLAUDE.md containing absolute paths to bundled helper scripts. That section was removed (b.963) because committing per-machine paths to a tracked file broke multi-engineer collaboration. Each skill now resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header. See `## Querying tickets` and `## The lookup-key pattern` in `docs/doc-writing-guide.md` for the runtime-resolution conventions skills must follow.
 
-`bees-execute` and `bees-fix-issue` hard-fail with `Run /bees-setup first.` if either of the two contract sections (`Documentation Locations`, `Build Commands`), or any required key inside them, is missing from the target repo's CLAUDE.md. Preserve that precondition behavior in any edit to those skills.
+`bees-execute`, `bees-fix-issue`, and `bees-breakdown-epic` hard-fail with `Run /bees-setup first.` if either (i) one of the two contract sections (`Documentation Locations`, `Build Commands`), or any required key inside them, is missing from the target repo's CLAUDE.md, or (ii) any of the required hives (Plans, Issues, Specs) is missing from the target repo's bees workspace. Preserve that precondition behavior in any edit to these skills.
 
 ## Hives and status vocabulary
 
-The workflow uses two hives in the target repo:
+The workflow uses three hives in the target repo:
 
 - **Plans** (top-level — *not* nested in an Ideas hive). Tier ladder: t1 = Epic, t2 = Task, t3 = Subtask. Statuses: `drafted` → `ready` → `in_progress` → `done`.
 - **Issues**. No children. Statuses: `open` → `done`.
+- **Specs** (top-level). Tier: t1 = Doc/Docs (PRD and SDD as `t1=Doc` children differentiated by title). Statuses: `drafted` → `ready`. Allowed resolvers must include `bees` so a Plan Bee's `reference_materials` can carry `[{"value":"<spec-bee-id>","resolver":"bees"}]`.
 
 When a Plan Bee is authored via `/bees-plan` for a feature with no separate PRD/SDD, the Bee's `reference_materials` is null/empty and the **Plan Bee body itself becomes the authoritative spec**. Several skills (`bees-execute`'s PM role, `bees-breakdown-epic`) explicitly substitute "the Plan Bee body" for "the PRD/SDD" in that case — keep the substitution prose intact when editing those skills.
 

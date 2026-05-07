@@ -56,7 +56,7 @@ The target repo's CLAUDE.md carries two sections that act as a string contract b
 - `## Documentation Locations` — `Project requirements doc (PRD)`, `Internal architecture docs (SDD)`, `Customer-facing docs`, `Engineering best practices`, `Test writing guide`, `Test review guide`, `Doc writing guide`
 - `## Build Commands` — `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`
 
-`bees-execute` and `bees-fix-issue` hard-fail with `Run /bees-setup first.` if either section, or any required key inside them, is missing.
+`bees-execute`, `bees-fix-issue`, and `bees-breakdown-epic` hard-fail with `Run /bees-setup first.` (with a trailing `— <reason>` clause naming the specific gap, e.g., `Run /bees-setup first. — Specs hive is not colonized for this repo.`) if either of the two required CLAUDE.md sections, any required key inside them, or any of the three required hives (Plans, Issues, Specs) is missing.
 
 Bundled helper script paths (e.g., `scoped_marker_resolver.py`) are *not* part of the CLAUDE.md contract — each skill resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header. This keeps per-machine paths out of tracked files.
 
