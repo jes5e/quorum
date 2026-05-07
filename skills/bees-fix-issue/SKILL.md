@@ -237,7 +237,7 @@ The orchestrator dispatches the following four roles per Issue. The full role co
 
 - **Engineer** (`agents/engineer.md`) — implements source-code changes for the fix. Model: Opus (always). Does not write tests or docs.
 - **Test Writer** (`agents/test-writer.md`) — writes / updates / deletes tests to verify the fix and reviews the Engineer's diff for missing coverage. At minimum, ensures there is at least one test that fails before the Engineer's fix and passes after — this is the regression guard that prevents the same bug from recurring. Model: Opus (always).
-- **Doc Writer** (`agents/doc-writer.md`) — reviews the Engineer's diff for documentation gaps and updates customer-facing and internal docs as needed. Model: user's choice (Opus or Sonnet, selected at the start of the run).
+- **Doc Writer** (`agents/doc-writer.md`) — reviews the Engineer's diff for documentation gaps and updates customer-facing and internal docs as needed. When the Issue body contains a `## Doc divergence noted` section (authored by `/bees-file-issue` when the filer flagged that an existing doc is wrong about the buggy behavior), the Doc Writer treats that section as an explicit doc-correction directive: the named file/section is wrong about today's behavior, and the documented correction is applied as part of this fix's doc updates. Model: user's choice (Opus or Sonnet, selected at the start of the run).
 - **Product Manager** (`agents/pm.md`) — reviews the fix against the spec source (the Issue body, plus PRD/SDD-equivalent paths from CLAUDE.md `## Documentation Locations`, optionally Scoped-marker-narrowed via a Plan Bee in `up_dependencies`), flags scope creep or spec divergence. Dispatched **only for Complex fixes** (see "Per-issue PM dispatch" below). Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
 Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) are introduced in Section 4.
@@ -326,6 +326,8 @@ The work this section requires depends on whether the Issue was classified Simpl
 - **Simple fix** — no PM was dispatched (per Section 3's complexity gate). The orchestrator runs Section 5's spec-vs-code check directly — orchestrator-direct, no Agent. This path is **load-bearing** on simple fixes.
 
 The standalone spec-vs-code check (load-bearing on the simple-fix path; informational confirmation on the complex-fix path):
+
+If the Issue body carried a `## Doc divergence noted` section, the doc updates implied by that section have already been applied by the Section 3 Doc Writer pass — Section 5's job here is to **confirm** that consumption landed (the named file/section now matches today's behavior post-fix), not to re-discover the divergence from scratch.
 
 After the fix is implemented, review the changes against the project's spec docs — the path configured under `Internal architecture docs` in CLAUDE.md `## Documentation Locations` (the SDD-equivalent), and any project PRD-equivalent if present. If the fix diverges from what the docs describe, determine whether:
 
