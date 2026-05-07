@@ -116,6 +116,7 @@ If your repo was set up before the `Specs` hive existed, re-run `/bees-setup` �
 | `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. On a new machine in an already-set-up repo, `/bees-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through. |
 | `/bees-plan` | Interactive scope discovery for an idea, refactor, or feature without finalized specs. Also the right entry point when your cumulative PRD/SDD already describe one or more prior features — appends a new `### Feature:` subsection scoped to the new one. Produces a Plan Bee with Epics. |
 | `/bees-plan-from-specs` | Express path for when you already have a finalized PRD and SDD on disk. Default mode targets a **single-feature** PRD+SDD and hard-fails on PRDs **or SDDs** containing multiple `### Feature:` subsections. Pass `--feature "<title>"` to scope a single subsection inside a cumulative PRD+SDD — useful for re-planning one feature without going back through `/bees-plan`'s discovery loop. Produces a Plan Bee with Epics. |
+| `/bees-write-prd` | Author or revise a PRD as a `t1=Doc` child titled `PRD` under a Spec Bee in the Specs hive. Composable — runs solo for revisions (`/bees-write-prd <spec-bee-id>`), or inline from `/bees-plan` via the Skill tool when initial specs are being authored. |
 | `/bees-breakdown-epic` | Decompose a single Epic into Tasks and Subtasks with the mandatory description template applied. Commits the new ticket files at end-of-skill (when the Plans hive lives in-repo) and presents a next-steps menu with per-option rationale. |
 | `/bees-execute` | Execute a Plan Bee end-to-end — dispatch the ephemeral background subagents (Engineer, Test Writer, Doc Writer, PM, Code/Test/Doc Reviewer), walk every Epic in dependency order, commit per Task, review at Bee close. |
 | `/bees-file-issue` | File a new issue ticket in the issues hive. Issues cover bugs, follow-ups, small features, tech debt — anything ticket-worthy that isn't planned upfront. |
@@ -168,7 +169,7 @@ The directory is safe to delete anytime — skills recreate it on demand. Skills
 
 ## Coming soon: optional skills
 
-The current 11 skills are the portable core — they work on any project, any language, any platform with no extra tooling beyond the bees CLI and Claude Code. Optional skills are planned for users who want more — these will likely require additional tooling per skill, clearly labeled:
+The current 12 skills are the portable core — they work on any project, any language, any platform with no extra tooling beyond the bees CLI and Claude Code. Optional skills are planned for users who want more — these will likely require additional tooling per skill, clearly labeled:
 
 - **Async-worktree session management** — spawn an isolated git-worktree session for a Plan Bee, work on it in the background, merge cleanly when done.
 - **Multi-repo orchestration** — survey ready work across multiple repos and launch concurrent execution sessions.
