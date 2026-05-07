@@ -257,58 +257,44 @@ Step 5 (Plan Bee creation) consumes this directly: the Plan Bee's `reference_mat
 
 ### 5. Create Plan Bee with Epics
 
-Create the Plan Bee inline in this session — do **not** delegate to `/bees-plan-from-specs`. That skill assumes the PRD/SDD describe exactly one feature; this skill drives the cumulative-PRD pattern where each invocation appends a new `### Feature:` subsection, so delegating after Step 4 would re-plan every previously-planned feature in the cumulative docs. Inline creation here is the single supported path regardless of whether PRD/SDD exist — the only difference is whether the Plan Bee's `reference_materials` is populated (PRD/SDD exist) or omitted (no PRD/SDD).
+Create the Plan Bee inline in this session — do **not** delegate to `/bees-plan-from-specs`. That skill operates on PRD/SDD files on disk and serves the hand-authored cumulative-doc flow; this skill operates on the Spec Bee + `t1=Doc` children that Step 4 just created, and the Plan Bee's `reference_materials` points at the Spec Bee via the `bees` resolver. Inline creation here is the single supported path.
 
 #### 5a — Create the Plan Bee
 
-Author the scope statement to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
+Author the Plan Bee body to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 
-The body should be a brief 2-3 sentence summary of the goal and scope. When `reference_materials` is set, do not dump PRD/SDD content into the body — downstream skills read the linked docs from `reference_materials`.
+**Plan Bee body shape.** Keep the body short — a brief 2-3 sentence summary of the feature and its high-level scope, plus an `## Anticipated doc impact` section. Substantive PRD/SDD content lives in the Spec Bee's `t1=Doc` children (created in Step 4), not in the Plan Bee body — downstream skills (`/bees-breakdown-epic`, `/bees-execute`'s PM role) read those via the `bees`-resolver entry in `reference_materials`. The `## Anticipated doc impact` section is a starting checklist for Epic 6 (the post-implementation `doc-writer` pass): list which cumulative project docs the feature is expected to update once it lands. Reference the contract keys from the target repo's CLAUDE.md `## Documentation Locations` section (e.g., the `Project requirements doc (PRD)` entry, the `Internal architecture docs (SDD)` entry, the `Customer-facing docs` entry) rather than hardcoding paths like `docs/prd.md` — different projects route those keys to different files. The body shape mirrors the parent Bee `b.31f`'s own body (which was authored in this style as a self-bootstrap example); cross-reference it via `bees show-ticket --ids <bee-id>` if a concrete example helps.
 
-**If PRD/SDD exist for this feature** (Step 4a, or Step 4b option 1 where you just drafted them), set `--reference-materials` to a JSON array of one dict per file, each with a single `value` key holding the path. **Prefer paths relative to the repo root** (e.g., `docs/prd.md`) when the doc lives inside the repo — relative paths stay portable across machines and contributors. The bees CLI's built-in `file-path` resolver handles them via the repo root. Use absolute paths only for docs that live outside the repo. Pass the paths in PRD-then-SDD order so downstream consumers can rely on the positional convention:
+**Reference materials — single shape via the `bees` resolver.** Set `--reference-materials` to a single-element JSON array pointing at the Spec Bee created in Step 4 via the `bees` resolver. The `<spec-bee-id>` placeholder is the Spec Bee ID captured at the end of Step 4a (and confirmed `ready` after Step 4c):
 
 ```
-[{"value": "<path to PRD>"}, {"value": "<path to SDD>"}]
+[{"value":"<spec-bee-id>","resolver":"bees"}]
 ```
+
+Downstream skills do a two-hop lookup: they read the Plan Bee's `reference_materials`, follow the `bees` resolver to the Spec Bee, and walk the Spec Bee's children to find the PRD and SDD `t1=Doc` tickets. The PRD/SDD-file-paths shape (passing repo-relative or absolute paths via the implicit `file-path` resolver) is no longer used by `/bees-plan` — that shape moves to `/bees-plan-from-specs` exclusively, which already supports it for hand-authored cumulative-doc flows. The previous body-as-spec branch (omitting `--reference-materials` when no PRD/SDD existed) also no longer applies on this skill's path: `/bees-plan` always creates a Spec Bee in Step 4 and always sets `reference_materials` to point at it, so there is no longer a "no PRD/SDD for this feature" branch here. Users still mid-run on a pre-redesign flow should re-run `/bees-plan` from the start to pick up Step 4's Spec Bee creation.
+
+**Scoped-marker note.** `/bees-plan` does NOT emit a `Scoped to '### Feature: <title>' from <prd-path> and <sdd-path>.` marker line in the Plan Bee body. The Scoped-marker contract documented in `docs/doc-writing-guide.md` remains valid for `/bees-plan-from-specs --feature` only — that skill operates on cumulative project PRD/SDD docs where multiple `### Feature:` subsections coexist and downstream skills need a marker to identify the active subsection. `/bees-plan` no longer co-mingles per-feature content into shared cumulative docs (the Spec Bee + `reference_materials` redesign is precisely what removed that coupling), so the marker is unnecessary here.
 
 ```bash
-# POSIX (bash / zsh) — with PRD/SDD reference_materials:
+# POSIX (bash / zsh):
 bees create-ticket \
   --ticket-type bee \
   --hive plans \
   --status drafted \
   --title "<feature title>" \
   --body-file <path> \
-  --reference-materials '[{"value":"<prd path>"},{"value":"<sdd path>"}]'
+  --reference-materials '[{"value":"<spec-bee-id>","resolver":"bees"}]'
+```
 
-# Windows (PowerShell) — with PRD/SDD reference_materials:
+```powershell
+# Windows (PowerShell):
 bees create-ticket `
   --ticket-type bee `
   --hive plans `
   --status drafted `
   --title "<feature title>" `
   --body-file <path> `
-  --reference-materials '[{"value":"<prd path>"},{"value":"<sdd path>"}]'
-```
-
-**If no PRD/SDD exist for this feature** (Step 4b option 2 — body-as-spec), omit `--reference-materials` entirely. The Plan Bee body becomes the authoritative scope document, so make it detailed enough that the PM in `/bees-execute` can use it for drift detection.
-
-```bash
-# POSIX (bash / zsh) — no reference_materials:
-bees create-ticket \
-  --ticket-type bee \
-  --hive plans \
-  --status drafted \
-  --title "<feature title>" \
-  --body-file <path>
-
-# Windows (PowerShell) — no reference_materials:
-bees create-ticket `
-  --ticket-type bee `
-  --hive plans `
-  --status drafted `
-  --title "<feature title>" `
-  --body-file <path>
+  --reference-materials '[{"value":"<spec-bee-id>","resolver":"bees"}]'
 ```
 
 Mark the Plan Bee as `drafted` initially — its children (Epics) have not been written yet. Step 5d below promotes it to `ready` once Epics exist.
@@ -380,7 +366,7 @@ After all Epics exist, analyze blocking relationships and set `up_dependencies` 
 
 For each Epic, ask: "What must be completed before this Epic can be worked on?"
 
-Once dependencies are wired, promote the Plan Bee from `drafted` to `ready` (its children — Epics — are now written, even though the Epics' children — Tasks — are not).
+Once dependencies are wired, promote the Plan Bee from `drafted` to `ready` (its children — Epics — are now written, even though the Epics' children — Tasks — are not). The Plan Bee's `ready` transition is gated on the Spec Bee referenced in `reference_materials` already being `ready` — Step 4c (sibling sub-step) ensures that gate by promoting the Spec Bee to `ready` only after both its PRD and SDD `t1=Doc` children pass the writer-skill approval gates, so by the time control reaches this promotion call the gate is already satisfied.
 
 #### 5e — Report
 
@@ -401,20 +387,26 @@ Note above the options: each downstream skill re-reads the Plan Bee, Epics, and 
 
 ### 7. Commit
 
-Stage and commit all changes — doc updates and the Plans hive's ticket files. **Do not hardcode the `.bees/plans/` path.** `/bees-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked a sibling path.
+Stage and commit any in-repo changes from this run. **Do not hardcode the `.bees/plans/` path.** `/bees-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked a sibling path. Likewise, **do not hardcode `docs/`** into the `add` list as a default — under this skill's current design, the doc paths configured via CLAUDE.md `## Documentation Locations` (PRD / SDD / customer-facing docs) are not modified during planning at all (Step 4 routes PRD/SDD authoring through ticketed Spec Bee children, not direct file writes), so the no-docs-changes case is the dominant path on every `/bees-plan` run.
 
-Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only stage it if it does:
+**Note:** the docs-changes branch below effectively never fires for `/bees-plan` after Step 4's redesign — it remains as a defensive fallback for the rare case where a future skill change reintroduces planning-time doc edits, or where the user happened to manually edit a doc file in the same session before invoking `/bees-plan`. The `/bees-plan-from-specs` skill has its own commit logic and is out of scope here.
+
+#### Dominant path — no docs changes
+
+On a normal `/bees-plan` run, the only artifact touched in the working tree is the Plan Bee ticket file (and its Epic children) under the Plans hive — and only when that hive lives inside the repo. Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and stage **only** that path when it does. If the Plans hive lives outside the repo, the `add` list is empty — skip `git add` entirely and skip the commit, then report to the user:
+
+> Plan stored in bees; no in-repo changes to commit.
+
+The bees CLI has already persisted the Plan Bee and its Epics to its own storage (which lives under the hive path the user picked); no git-tracked artifacts changed in the current repo, so there is genuinely nothing to commit from this skill.
 
 ```bash
 # POSIX (bash / zsh):
 plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
 repo_root=$(git rev-parse --show-toplevel)
-git_add_args="docs/"
+git_add_args=""
 case "$plans_path" in
-  "$repo_root"|"$repo_root"/*) git_add_args="$git_add_args $plans_path" ;;
+  "$repo_root"|"$repo_root"/*) git_add_args="$plans_path" ;;
 esac
-git add $git_add_args
-git commit -m "Plan feature: <title>"
 ```
 
 ```powershell
@@ -425,20 +417,58 @@ $repoRoot = git rev-parse --show-toplevel
 # bees list-hives may return backslashes. Compare both sides on the same form.
 $plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
 $repoNorm = $repoRoot.Replace('\','/')
-$addArgs = @('docs/')
+$addArgs = @()
 if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
   $addArgs += $plansPath
 }
-git add @addArgs
-git commit -m "Plan feature: <title>"
 ```
 
-If the Plans hive lives outside the repo, commit the doc/ changes here and remind the user that the Plan Bee ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself). If `docs/` was not modified during this run, drop it from the `add` list as well.
+Then branch on the resulting `add` list:
+
+- **In-repo Plans hive** (`add` list non-empty) — stage that single path and commit:
+
+  ```bash
+  # POSIX (bash / zsh):
+  git add $git_add_args
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  git add @addArgs
+  ```
+
+  ```bash
+  # POSIX (bash / zsh):
+  git commit -m "Plan feature: <title>"
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  git commit -m "Plan feature: <title>"
+  ```
+
+- **Out-of-repo Plans hive** (`add` list empty) — **do not** invoke `git add` with no arguments. `git add` with no positional arguments is rejected outright in modern git versions, but on older configurations or if the empty-list expansion ever resolved to a wildcard, it could stage the entire working tree by accident. PowerShell's `git add @addArgs` splats an empty array into a no-arg invocation, which carries the same risk. Skip the `git add` call entirely, skip the `git commit`, and surface the user-facing message above. The Plan Bee ticket is already persisted by the bees CLI under the user's configured Plans hive path; nothing else needs git tracking.
+
+#### Defensive fallback — docs were modified this session
+
+If, contrary to the dominant flow, a doc path configured under CLAUDE.md `## Documentation Locations` was modified in this session (e.g., the user manually edited a doc file outside of `/bees-plan`'s control before invoking the skill, or a future skill change reintroduces planning-time doc edits), prepend `docs/` to the `add` list before staging. The `docs/` literal is the conventional location `bees-setup` writes paths under and is safe to use in the snippet itself, but the prose above keeps to the contract keys so this remains project-neutral.
+
+```bash
+# POSIX (bash / zsh):
+git_add_args="docs/ $git_add_args"
+```
+
+```powershell
+# Windows (PowerShell):
+$addArgs = @('docs/') + $addArgs
+```
+
+Then stage and commit using the same `git add` / `git commit` pair shown in the dominant-path branch above. If neither `docs/` was modified nor the Plans hive lives in the repo, fall back to the empty-`add`-list guard from the dominant path and skip both `git add` and `git commit`.
 
 ### Important Notes
 
 - This skill is **interactive** — it's a conversation, not a batch process
 - Do NOT skip the scope approval step — the user must confirm before creating tickets
-- If the feature is simple enough to be a single Epic with no doc changes, that's fine — don't over-engineer the plan
+- If the feature is simple enough to be a single Epic, that's fine — don't over-engineer the plan
 - If the feature is actually an issue (something that should work but doesn't), suggest `/bees-file-issue` instead
-- The Plan Bee body IS the spec for features that don't warrant PRD/SDD updates — make it detailed enough that the PM in /bees-execute can use it for drift detection
+- The Plan Bee body is intentionally brief — a 2-3 sentence summary plus an `## Anticipated doc impact` section. Substantive PRD/SDD content lives in the Spec Bee's `t1=Doc` children referenced via `reference_materials`.
