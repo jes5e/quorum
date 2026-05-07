@@ -117,7 +117,7 @@ The workflow uses three hives in the target repo:
 
 - **Plans** (top-level — *not* nested in an Ideas hive). Tier ladder: t1 = Epic, t2 = Task, t3 = Subtask. Statuses: `drafted` → `ready` → `in_progress` → `done`.
 - **Issues**. No children. Statuses: `open` → `done`.
-- **Specs** (top-level). Tier: t1 = Doc/Docs (PRD and SDD as `t1=Doc` children differentiated by title). Statuses: `drafted` → `ready`. Allowed resolvers must include `bees` so a Plan Bee's `reference_materials` can carry `[{"value":"<spec-bee-id>","resolver":"bees"}]`.
+- **Specs** (top-level). Tier: t1 = Doc/Docs (PRD and SDD as `t1=Doc` children differentiated by title). Statuses: `drafted` → `ready`.
 
 When a Plan Bee is authored via `/bees-plan` for a feature with no separate PRD/SDD, the Bee's `reference_materials` is null/empty and the **Plan Bee body itself becomes the authoritative spec**. Several skills (`bees-execute`'s PM role, `bees-breakdown-epic`) explicitly substitute "the Plan Bee body" for "the PRD/SDD" in that case — keep the substitution prose intact when editing those skills.
 

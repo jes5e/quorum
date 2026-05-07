@@ -76,14 +76,14 @@ Use `bees execute-freeform-query` with a `parent=<spec-bee-id>` + exact-title fi
 # POSIX (bash / zsh):
 bees execute-freeform-query --query-yaml 'stages:
   - [hive=specs, parent=<spec-bee-id>, title~^SDD$]
-report: [id, title, status]'
+report: [ticket_id, title, ticket_status]'
 ```
 
 ```powershell
 # Windows (PowerShell):
 bees execute-freeform-query --query-yaml 'stages:
   - [hive=specs, parent=<spec-bee-id>, title~^SDD$]
-report: [id, title, status]'
+report: [ticket_id, title, ticket_status]'
 ```
 
 Interpret the result:

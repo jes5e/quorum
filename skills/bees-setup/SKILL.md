@@ -47,8 +47,6 @@ Status values:
 - drafted — not fully documented, not ready to work
 - ready — fully documented, ready for use as a spec source
 
-The Specs hive's allowed-resolver list must include `bees`, so a Plan Bee's `reference_materials` can carry `[{"value":"<spec-bee-id>","resolver":"bees"}]`.
-
 The Specs hive is a **top-level** hive. It is not nested inside any other hive.
 
 ## Instructions
@@ -167,7 +165,7 @@ bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"
 bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
 
 # POSIX (bash / zsh) — for each specs hive:
-bees colonize-hive --name specs --path "<discovered-path>" --scope "<repo-root>/**" --allowed-resolvers '["bees"]'
+bees colonize-hive --name specs --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-types --scope hive --hive specs --child-tiers '{"t1":["Doc","Docs"]}'
 bees set-status-values --scope hive --hive specs --status-values '["drafted","ready"]'
 ```
@@ -183,7 +181,7 @@ bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"
 bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
 
 # Windows (PowerShell) — for each specs hive:
-bees colonize-hive --name specs --path "<discovered-path>" --scope "<repo-root>/**" --allowed-resolvers '["bees"]'
+bees colonize-hive --name specs --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-types --scope hive --hive specs --child-tiers '{"t1":["Doc","Docs"]}'
 bees set-status-values --scope hive --hive specs --status-values '["drafted","ready"]'
 ```
@@ -365,7 +363,7 @@ If any hives are missing:
   - **Sibling-to-repo** — `<project-parent>/<repo>-issues`, `<project-parent>/<repo>-plans`, and `<project-parent>/<repo>-specs`. Right when hives should be gitignored or stay per-machine.
 
   If multiple hives are missing, ask once and apply the chosen strategy to all of them. If only one is missing, scope the question to just that hive (e.g., on a re-run against a repo that already has Issues and Plans but no Specs, prompt only for the Specs hive).
-- Once the user chooses, create each missing hive using the bees CLI. The Issues and Plans hives use the generic shape:
+- Once the user chooses, create each missing hive using the bees CLI. All three hives (Issues, Plans, Specs) use the generic shape:
   ```bash
   # POSIX (bash / zsh):
   bees colonize-hive --name <name> --path <path> --scope "<scope>"
@@ -373,15 +371,6 @@ If any hives are missing:
   ```powershell
   # Windows (PowerShell):
   bees colonize-hive --name <name> --path <path> --scope "<scope>"
-  ```
-  The Specs hive additionally requires `--allowed-resolvers '["bees"]'` inline (there is no separate `set-allowed-resolvers` subcommand — it must be passed on `colonize-hive`):
-  ```bash
-  # POSIX (bash / zsh):
-  bees colonize-hive --name specs --path <path> --scope "<scope>" --allowed-resolvers '["bees"]'
-  ```
-  ```powershell
-  # Windows (PowerShell):
-  bees colonize-hive --name specs --path <path> --scope "<scope>" --allowed-resolvers '["bees"]'
   ```
 - After colonization, set child tiers and status values per hive. The exact JSON values for each hive come from the contracts in `## Valid configuration` above:
 
@@ -422,7 +411,6 @@ If any hives are missing:
 If a hive exists:
 - Validate its child tiers and status values against the contracts in `## Valid configuration` above.
 - If they differ, ask user if you may change them.
-- For an existing Specs hive specifically, also validate that `bees` is in its `allowed_resolvers` list. If not, report the gap to the user — the bees CLI has no in-place `allowed_resolvers` extension subcommand, so the only way to add `bees` to the list is to re-colonize the hive with the desired list (`bees colonize-hive --name specs --path <path> --scope <scope> --allowed-resolvers '["bees", ...any-others]'`). Confirm with the user before re-colonizing, since re-running `colonize-hive` against an existing hive's path may have implications they should weigh.
 
 **Important:** This workflow has no Ideas hive. If the target repo already has an Ideas hive from a prior setup, do not remove it — but note that bees-workflow skills will not use it.
 
