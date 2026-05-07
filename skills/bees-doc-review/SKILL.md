@@ -129,6 +129,8 @@ Or if no issues:
 No documentation issues found. README and architecture docs are up to date!
 ```
 
+**Orchestrator self-tracking close-out (mandatory before yielding, standalone invocation).** When this skill is invoked standalone (not from inside `/bees-execute` or `/bees-fix-issue`), the orchestrator may have created ad-hoc TaskList tasks to break the review into discrete steps (e.g., "Read change set", "Find doc gaps", "Synthesize findings"). Before yielding the turn back to the user — either at end-of-flow after presenting the work-item list, or at any question-the-user pause that may follow — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding, the TaskList must show no `in_progress` entries left over from these synthesis steps. (When this skill is invoked from `/bees-execute` or `/bees-fix-issue`, the orchestrating skill owns its own TaskList close-out discipline per its own Section prose; this paragraph applies only to the standalone path.)
+
 NOTE: It is OK to return "no issues found". Only return issues if they are very important.
 
 **When invoked from `/bees-execute` or `/bees-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you never return "no issues found", the workflow goes into an infinite loop. Be selective — return real gaps, not nice-to-haves.

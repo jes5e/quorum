@@ -221,6 +221,8 @@ Or if no issues:
 No spec issues found. PRD and SDD are clear, complete, and internally consistent.
 ```
 
+**Orchestrator self-tracking close-out (mandatory before yielding, standalone invocation).** When this skill is invoked standalone (not inline from `/bees-plan`, `/bees-write-prd`, or `/bees-write-sdd`), the orchestrator may have created ad-hoc TaskList tasks to break the review into discrete steps (e.g., "Resolve Doc children", "Fetch each Doc body", "Review per checklist", "Synthesize findings"). Before yielding the turn back to the user — either at end-of-flow after presenting the work-item list, or at any question-the-user pause that may follow — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding, the TaskList must show no `in_progress` entries left over from these synthesis steps. (When this skill is invoked inline from a parent skill, the parent skill owns its own TaskList close-out discipline per its own Section prose; this paragraph applies only to the standalone path.)
+
 ## Idempotency
 
 This skill reads tickets and writes findings to stdout — it does not mutate any ticket. Re-running `/bees-spec-review <same-spec-bee-id>` against the same spec content produces the same findings (subject to LLM determinism). If the user revises the PRD or SDD between runs, the findings update to reflect the revised content.

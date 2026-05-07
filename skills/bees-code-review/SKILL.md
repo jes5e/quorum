@@ -161,3 +161,5 @@ Output a simple numbered list directly in your response:
 4. Remove commented-out code in llm_categorizer.py:200-210
 ```
 
+**Orchestrator self-tracking close-out (mandatory before yielding, standalone invocation).** When this skill is invoked standalone (not from inside `/bees-execute` or `/bees-fix-issue`), the orchestrator may have created ad-hoc TaskList tasks to break the review into discrete steps (e.g., "Read diff", "Review by category", "Synthesize findings"). Before yielding the turn back to the user — either at end-of-flow after presenting the work-item list, or at any question-the-user pause that may follow — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding, the TaskList must show no `in_progress` entries left over from these synthesis steps. (When this skill is invoked from `/bees-execute` or `/bees-fix-issue`, the orchestrating skill owns its own TaskList close-out discipline per its own Section prose; this paragraph applies only to the standalone path.)
+
