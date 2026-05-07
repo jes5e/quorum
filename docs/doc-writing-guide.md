@@ -253,8 +253,8 @@ This rule does not apply to in-skill loops (e.g. `bees-execute` orchestrating it
 Use these terms consistently. Mixing synonyms forces readers (and Claude) to mentally re-map.
 
 - **Skill** — one of the directories under `skills/<name>/`. Has a `SKILL.md` and optionally `scripts/`.
-- **Hive** — a bees collection. The workflow uses two: **Plans** (top-level, with t1/t2/t3 = Epic/Task/Subtask) and **Issues** (no children).
-- **Bee** — a ticket inside a hive. A "Plan Bee" is a top-level Bee in the Plans hive. An "Epic" is a t1 child of a Plan Bee.
+- **Hive** — a bees collection. The workflow uses three: **Plans** (top-level, with t1/t2/t3 = Epic/Task/Subtask), **Issues** (no children), and **Specs** (top-level Spec Bees with `t1=Doc/Docs` children, colonized empty by `/bees-setup` for future use).
+- **Bee** — a ticket inside a hive. A "Plan Bee" is a top-level Bee in the Plans hive. An "Epic" is a t1 child of a Plan Bee. A "Spec Bee" is a top-level Bee in the Specs hive.
 - **Reference materials** — a Bee's `reference_materials` field, which points at one or more on-disk source documents (PRD, SDD, etc.). Each entry is resolved per-item by the bees CLI's built-in `file-path` resolver (the default). May be null/empty — when null on a Plan Bee, the **Plan Bee body itself becomes the authoritative spec**.
 - **Target repo** — the repo a user runs `/bees-*` commands against. Distinct from this repo (the skill set itself).
 

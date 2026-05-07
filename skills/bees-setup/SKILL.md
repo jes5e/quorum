@@ -39,6 +39,18 @@ Status values:
 
 The Plans hive is a **top-level** hive. It is not nested inside an Ideas hive.
 
+### Specs Hive
+Child tiers:
+- t1 — Doc / Docs
+
+Status values:
+- drafted — not fully documented, not ready to work
+- ready — fully documented, ready for use as a spec source
+
+The Specs hive's allowed-resolver list must include `bees`, so a Plan Bee's `reference_materials` can carry `[{"value":"<spec-bee-id>","resolver":"bees"}]`.
+
+The Specs hive is a **top-level** hive. It is not nested inside any other hive.
+
 ## Instructions
 
 ### Prerequisites
@@ -140,7 +152,7 @@ Print this paragraph to the user verbatim:
 
 For each entry in `on_disk_hives`, branch on the hive name:
 
-**Canonical hives (`issues` and `plans`)** — apply the canonical defaults verbatim. The scope glob is the repo root with a trailing `/**`.
+**Canonical hives (`issues`, `plans`, and `specs`)** — apply the canonical defaults verbatim. The scope glob is the repo root with a trailing `/**`.
 
 Run the per-hive registration:
 
@@ -153,6 +165,11 @@ bees set-status-values --scope hive --hive issues --status-values '["open","done
 bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
 bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
+
+# POSIX (bash / zsh) — for each specs hive:
+bees colonize-hive --name specs --path "<discovered-path>" --scope "<repo-root>/**" --allowed-resolvers '["bees"]'
+bees set-types --scope hive --hive specs --child-tiers '{"t1":["Doc","Docs"]}'
+bees set-status-values --scope hive --hive specs --status-values '["drafted","ready"]'
 ```
 
 ```powershell
@@ -164,9 +181,14 @@ bees set-status-values --scope hive --hive issues --status-values '["open","done
 bees colonize-hive --name plans --path "<discovered-path>" --scope "<repo-root>/**"
 bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
 bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
+
+# Windows (PowerShell) — for each specs hive:
+bees colonize-hive --name specs --path "<discovered-path>" --scope "<repo-root>/**" --allowed-resolvers '["bees"]'
+bees set-types --scope hive --hive specs --child-tiers '{"t1":["Doc","Docs"]}'
+bees set-status-values --scope hive --hive specs --status-values '["drafted","ready"]'
 ```
 
-**Unknown hive names** (anything other than `issues` or `plans`) — the canonical defaults do not apply. Do **not** silently re-register with assumed values. Walk the user through registration **inline** in the fast path (the slow path's *Hive Configuration* section is structured around colonizing *missing* hives — wrong shape here, since the on-disk path is already known and only the per-machine config bits are missing).
+**Unknown hive names** (anything other than `issues`, `plans`, or `specs`) — the canonical defaults do not apply. Do **not** silently re-register with assumed values. Walk the user through registration **inline** in the fast path (the slow path's *Hive Configuration* section is structured around colonizing *missing* hives — wrong shape here, since the on-disk path is already known and only the per-machine config bits are missing).
 
 For each unknown hive, do this inline:
 
@@ -333,15 +355,17 @@ Pick the narrowest scope glob that covers the entire project directory tree — 
 
 #### Create or validate
 
-Check for the existence of the above hives using `bees list-hives` and validate their configs with `bees get-types` and `bees get-status-values`.
+The canonical hive set for the bees-workflow is three top-level hives: **Issues hive**, **Plans hive**, and **Specs hive**. All three are required for the downstream skills (`/bees-plan`, `/bees-plan-from-specs`, `/bees-execute`, `/bees-fix-issue`, `/bees-file-issue`) to function — Specs is not an optional add-on.
+
+Check for the existence of all three hives using `bees list-hives` and validate their configs with `bees get-types` and `bees get-status-values`.
 
 If any hives are missing:
 - **Use `AskUserQuestion` to ask which location strategy to use** for the missing hive(s). This is a genuine multi-choice prompt — the user is picking a strategy, not typing a path; the actual paths are derived from the strategy. Offer two options (the auto-appended `Type something.` slot already covers users who want a fully custom path — do not add a redundant "Other" option):
-  - **In-repo** — `<repo>/.bees/issues` and `<repo>/.bees/plans`. Versions tickets alongside code; survives machine moves.
-  - **Sibling-to-repo** — `<project-parent>/<repo>-issues` and `<project-parent>/<repo>-plans`. Right when hives should be gitignored or stay per-machine.
+  - **In-repo** — `<repo>/.bees/issues`, `<repo>/.bees/plans`, and `<repo>/.bees/specs`. Versions tickets alongside code; survives machine moves.
+  - **Sibling-to-repo** — `<project-parent>/<repo>-issues`, `<project-parent>/<repo>-plans`, and `<project-parent>/<repo>-specs`. Right when hives should be gitignored or stay per-machine.
 
-  If both hives are missing, ask once and apply the chosen strategy to both. If only one is missing, scope the question to just that hive.
-- Once the user chooses, create the hive using the bees CLI:
+  If multiple hives are missing, ask once and apply the chosen strategy to all of them. If only one is missing, scope the question to just that hive (e.g., on a re-run against a repo that already has Issues and Plans but no Specs, prompt only for the Specs hive).
+- Once the user chooses, create each missing hive using the bees CLI. The Issues and Plans hives use the generic shape:
   ```bash
   # POSIX (bash / zsh):
   bees colonize-hive --name <name> --path <path> --scope "<scope>"
@@ -350,15 +374,55 @@ If any hives are missing:
   # Windows (PowerShell):
   bees colonize-hive --name <name> --path <path> --scope "<scope>"
   ```
-- After colonization, set child tiers and status values:
+  The Specs hive additionally requires `--allowed-resolvers '["bees"]'` inline (there is no separate `set-allowed-resolvers` subcommand — it must be passed on `colonize-hive`):
   ```bash
-  bees set-types --scope hive --hive <name> --child-tiers '<json>'
-  bees set-status-values --scope hive --hive <name> --status-values '<json>'
+  # POSIX (bash / zsh):
+  bees colonize-hive --name specs --path <path> --scope "<scope>" --allowed-resolvers '["bees"]'
+  ```
+  ```powershell
+  # Windows (PowerShell):
+  bees colonize-hive --name specs --path <path> --scope "<scope>" --allowed-resolvers '["bees"]'
+  ```
+- After colonization, set child tiers and status values per hive. The exact JSON values for each hive come from the contracts in `## Valid configuration` above:
+
+  Issues hive (no child tiers; `set-types` is not needed since Issues has none):
+  ```bash
+  # POSIX (bash / zsh):
+  bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
+  ```
+  ```powershell
+  # Windows (PowerShell):
+  bees set-status-values --scope hive --hive issues --status-values '["open","done"]'
+  ```
+
+  Plans hive:
+  ```bash
+  # POSIX (bash / zsh):
+  bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
+  bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
+  ```
+  ```powershell
+  # Windows (PowerShell):
+  bees set-types --scope hive --hive plans --child-tiers '{"t1":["Epic","Epics"],"t2":["Task","Tasks"],"t3":["Subtask","Subtasks"]}'
+  bees set-status-values --scope hive --hive plans --status-values '["drafted","ready","in_progress","done"]'
+  ```
+
+  Specs hive:
+  ```bash
+  # POSIX (bash / zsh):
+  bees set-types --scope hive --hive specs --child-tiers '{"t1":["Doc","Docs"]}'
+  bees set-status-values --scope hive --hive specs --status-values '["drafted","ready"]'
+  ```
+  ```powershell
+  # Windows (PowerShell):
+  bees set-types --scope hive --hive specs --child-tiers '{"t1":["Doc","Docs"]}'
+  bees set-status-values --scope hive --hive specs --status-values '["drafted","ready"]'
   ```
 
 If a hive exists:
-- Validate its child tiers and status values.
-- If they differ from above, ask user if you may change them.
+- Validate its child tiers and status values against the contracts in `## Valid configuration` above.
+- If they differ, ask user if you may change them.
+- For an existing Specs hive specifically, also validate that `bees` is in its `allowed_resolvers` list. If not, report the gap to the user — the bees CLI has no in-place `allowed_resolvers` extension subcommand, so the only way to add `bees` to the list is to re-colonize the hive with the desired list (`bees colonize-hive --name specs --path <path> --scope <scope> --allowed-resolvers '["bees", ...any-others]'`). Confirm with the user before re-colonizing, since re-running `colonize-hive` against an existing hive's path may have implications they should weigh.
 
 **Important:** This workflow has no Ideas hive. If the target repo already has an Ideas hive from a prior setup, do not remove it — but note that bees-workflow skills will not use it.
 
