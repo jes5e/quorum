@@ -90,7 +90,41 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
 - Parse Epic title, description, and requirements.
 - Read the parent Bee
 - Read the source material linked from the parent Bee's `reference_materials`. **If `reference_materials` is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Plan Bee body itself is the authoritative scope document — read it carefully in place of the `reference_materials` sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
-- **Check for the Scoped-marker on the parent Bee.** If the parent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before treating it as the spec. Run the bundled parser/scoper to do the detection and scoping in one step:
+
+  **Resolving `reference_materials` entries.** When `reference_materials` is non-empty, iterate the array and dispatch on each entry's `resolver` field. This mirrors the canonical lookup logic in `agents/pm.md` `### Resolving reference_materials entries` — divergence is a defect; if you find yourself improvising a different shape here, stop and re-read `agents/pm.md`.
+
+  - **`resolver` is `file-path` (or omitted — default).** Treat the entry's `value` as a path on disk and read the file. This is the existing behavior; nothing changes on this path. The Scoped-marker integration documented below applies on this path.
+  - **`resolver` is `bees`.** Treat the entry's `value` as a Spec Bee ID in the `specs` hive, and walk the two-hop path `Spec Bee → t1=Doc children → PRD / SDD content`:
+
+    1. Run `bees show-ticket --ids <spec-bee-id>` and read the response's `children` array — these are the Spec Bee's `t1=Doc` children.
+    2. For each child ID, run `bees show-ticket --ids <child-id>` and read the response's `title` and `body` fields.
+    3. Identify PRD vs SDD content by **exact-match (case-sensitive) on `title`**: a child whose `title` equals `PRD` carries the PRD content in its `body`; a child whose `title` equals `SDD` carries the SDD content. Use those bodies as the spec source in place of file content.
+
+    The `PRD` and `SDD` title strings are a cross-Epic contract; do not lower-case, normalize, or fuzzy-match. The freeform-query route (`bees execute-freeform-query --query-yaml '<yaml>'`) is also acceptable and is preferable when you want title-filtered enumeration up-front; see `docs/doc-writing-guide.md` `## Querying tickets` for the recipe vocabulary.
+
+    ```bash
+    # POSIX (bash / zsh):
+    bees show-ticket --ids <spec-bee-id>
+    ```
+
+    ```powershell
+    # Windows (PowerShell):
+    bees show-ticket --ids <spec-bee-id>
+    ```
+
+    ```bash
+    # POSIX (bash / zsh):
+    bees show-ticket --ids <child-id>
+    ```
+
+    ```powershell
+    # Windows (PowerShell):
+    bees show-ticket --ids <child-id>
+    ```
+
+- **Check for the Scoped-marker on the parent Bee.** **Skip-on-bees pre-branch.** If any `reference_materials` entry that supplied spec content for this Epic resolved via `resolver: bees` (the two-hop Spec Bee + `t1=Doc` children walk above), **skip Scoped-marker resolution entirely** for that content: do not write a temp file, do not invoke the helper, do not parse exit codes. Spec Bees are already feature-scoped (one Spec Bee per feature), so marker-based subsection narrowing is irrelevant on that path — the `body` of the `PRD`/`SDD` child tickets is already the authoritative scoped spec content. The remainder of this bullet (helper invocation, exit-code handling, hard-fail on malformed marker) applies **only** to the file-resolver path and the body-as-spec fallback path; nothing in those subsections is relaxed by this pre-branch.
+
+  On the file-resolver path (or the body-as-spec fallback), if the parent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before treating it as the spec. Run the bundled parser/scoper to do the detection and scoping in one step:
 
   Extract the `body` field from the `bees show-ticket --ids <bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent first:
 
@@ -284,7 +318,15 @@ Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-cod
 
 #### Per-Task PM dispatch
 
-When the implementer-research Agents (Engineer / Test Writer / Doc Writer, as applicable) have all returned for the current Task and the orchestrator has created the proposed Subtasks via `bees create-ticket`, dispatch a fresh PM research Agent. The dispatch prompt must include the Task ID, the list of proposed Subtask IDs the orchestrator just created, and the research-mode preamble — the PM, like the other roles, is read-only here. The PM's job is to review the proposed Subtask set against the Epic's spec source (the PRD/SDD linked from the Bee's `reference_materials`, or the Bee body itself when `reference_materials` is null/empty) and return JSON findings flagging gaps, over-reach, or duplicated scope; the orchestrator is what acts on those findings (creating, updating, or deleting Subtasks per the PM's verdict).
+When the implementer-research Agents (Engineer / Test Writer / Doc Writer, as applicable) have all returned for the current Task and the orchestrator has created the proposed Subtasks via `bees create-ticket`, dispatch a fresh PM research Agent. The dispatch prompt must include the Task ID, the list of proposed Subtask IDs the orchestrator just created, and the research-mode preamble — the PM, like the other roles, is read-only here. The PM's job is to review the proposed Subtask set against the Epic's spec source and return JSON findings flagging gaps, over-reach, or duplicated scope; the orchestrator is what acts on those findings (creating, updating, or deleting Subtasks per the PM's verdict).
+
+The Epic's spec source can take three shapes, depending on what the parent Plan Bee's `reference_materials` carries:
+
+- **`reference_materials` non-empty with `resolver: file-path` (or default)** — the spec source is the PRD/SDD file content read from disk (Scoped to the matching `### Feature: <title>` subsection when a Scoped-marker is present on the Bee body, per Section 2).
+- **`reference_materials` non-empty with `resolver: bees`** — the spec source is the `body` of the parent Spec Bee's `t1=Doc` children (the children whose `title` is exactly `PRD` or `SDD`). The Scoped-marker pre-branch in Section 2 skips marker resolution on this path, since Spec Bees are already feature-scoped.
+- **`reference_materials` null/empty** — the spec source is the Plan Bee body itself (existing fallback behavior).
+
+Defer to `agents/pm.md` `### Resolving reference_materials entries` as the **authoritative spec for the resolution logic** — the PM Agent's own contract handles the per-entry resolver dispatch (file-path read vs. two-hop Spec Bee + `t1=Doc` children walk vs. body-as-spec fallback). Do NOT duplicate the title-match recipe or the children-enumeration walk in the dispatch prompt; the PM Agent already carries that logic and re-deriving it here risks divergence between the dispatch prompt and the agent contract.
 
 #### Authoring Subtask bodies
 
@@ -390,24 +432,30 @@ Resolve the placeholder against **this skill's own base directory**: `<this skil
 The following prose is the PM's review contract. Embed it verbatim in the PM dispatch prompt; do not paraphrase.
 
 1. Re-read the Epic description, including its scope and acceptance criteria.
-2. Identify every specific requirement the Epic depends on. **Source depends on whether the parent Plan Bee has `reference_materials`:**
-   - **`reference_materials` present (PRD/SDD on disk)**: requirements come from those documents — cite section numbers from the PRD and SDD.
-   - **`reference_materials` null/empty (no PRD/SDD)**: requirements come from the Plan Bee body itself (and the Epic body) — cite the Bee's relevant scope/acceptance-criteria bullets.
+2. Identify every specific requirement the Epic depends on. **Source depends on the parent Plan Bee's `reference_materials` — branch on the entry's `resolver` field, mirroring the resolution logic in `agents/pm.md` `### Resolving reference_materials entries`:**
+   - **`reference_materials` non-empty with `resolver: file-path` (or default — PRD/SDD on disk)**: requirements come from the file content (Scoped to the matching `### Feature: <title>` subsection when a Scoped-marker is present, per Section 2). Cite section numbers from the docs — `PRD §X` and `SDD §Y`.
+   - **`reference_materials` non-empty with `resolver: bees` (Spec Bee in the `specs` hive)**: requirements come from the `body` of the parent Spec Bee's `t1=Doc` children — the child whose `title` equals `PRD` carries PRD content, the child whose `title` equals `SDD` carries SDD content. Cite the Spec Bee child ticket ID together with the section/bullet within that ticket — for example, `<prd-child-ticket-id> §<section>` for PRD content and `<sdd-child-ticket-id> §<section>` for SDD content. Substitute the actual child ticket IDs (e.g., `t1.xyz.ab`) and the actual section header text or bullet identifier in the table; the placeholder shape `<prd-child-ticket-id> §<section>` is documented here so the citation format is unambiguous across PM agents executing this review.
+   - **`reference_materials` null/empty (no PRD/SDD)**: requirements come from the Plan Bee body itself (and the Epic body) — cite the Bee's relevant scope/acceptance-criteria bullets, e.g., `Bee body` or `Bee body §<bullet-or-section>`.
 3. For each requirement, verify there is at least one subtask that explicitly covers it.
-4. Report the results as a traceability table. Use the column header that matches the source:
+4. Report the results as a traceability table. The `Source` column carries the citation in the shape that matches the resolver branch above. The example below illustrates all three citation forms — file-path (`PRD §X`, `SDD §Y`), bees-resolver (`<prd-child-ticket-id> §<section>`, `<sdd-child-ticket-id> §<section>`), and body-as-spec (`Bee body`):
 
 ```
-| Spec Requirement    | Source           | Covered By Subtask | Status |
-|---------------------|------------------|--------------------|--------|
-| <requirement>       | PRD §X / Bee body| t3.xxx             | OK     |
-| <requirement>       | SDD §Y           | MISSING            | GAP    |
+| Spec Requirement    | Source                          | Covered By Subtask | Status |
+|---------------------|---------------------------------|--------------------|--------|
+| <requirement>       | PRD §X                          | t3.xxx             | OK     |
+| <requirement>       | SDD §Y                          | MISSING            | GAP    |
+| <requirement>       | <prd-child-ticket-id> §<section>| t3.yyy             | OK     |
+| <requirement>       | <sdd-child-ticket-id> §<section>| MISSING            | GAP    |
+| <requirement>       | Bee body                        | t3.zzz             | OK     |
 ```
+
+Use only the rows whose source shape matches the actual resolver branch for this Epic — the table above is illustrative, showing all three forms together for format clarity.
 
 5. If any requirement is marked GAP, return the table flagging the GAP rows and a brief description of each missing requirement. Do not create tickets — research mode is read-only; the orchestrator handles ticket creation.
 
 6. Sign off only when every row's `Status` is `OK`.
 
-This review ensures nothing from the spec is lost during the Task/Subtask decomposition. The subtask descriptions are what the executing agents will follow — if a requirement is not in a subtask, it will not be implemented. The review applies whether the spec source is a PRD/SDD pair on disk or the Plan Bee body itself.
+This review ensures nothing from the spec is lost during the Task/Subtask decomposition. The subtask descriptions are what the executing agents will follow — if a requirement is not in a subtask, it will not be implemented. The review applies whether the spec source is a PRD/SDD pair on disk, a Spec Bee's `t1=Doc` children in the `specs` hive, or the Plan Bee body itself.
 
 ##### Step 4 — Gap-fill iteration loop
 
@@ -443,7 +491,7 @@ Show the Tasks you just created (Section 4's per-Task Subtasks plus any gap-fill
 - [ ] All descriptions follow the mandatory template (see `#### Mandatory Subtask Description Template` above)
 - [ ] NO git commit subtasks created (commits handled automatically by executors)
 - [ ] Testing subtasks support maximum parallelization on execution by making one subtask per test file to be modified
-- [ ] Spec Traceability Review completed (PM Agent dispatched, gap-fill loop converged, all rows at OK status, sources from PRD/SDD if `reference_materials` present, from the Plan Bee body otherwise) **before** the gap-fill `bees create-ticket` invocations and **before** the status transitions to `ready`
+- [ ] Spec Traceability Review completed (PM Agent dispatched, gap-fill loop converged, all rows at OK status, sources cited per the resolver branch — file-resolver `reference_materials` cite `PRD §X` / `SDD §Y`, bees-resolver `reference_materials` cite `<prd-child-ticket-id> §<section>` / `<sdd-child-ticket-id> §<section>`, null/empty `reference_materials` cite `Bee body`) **before** the gap-fill `bees create-ticket` invocations and **before** the status transitions to `ready`
 
 ### 6. Commit New Ticket Files
 
