@@ -195,7 +195,7 @@ Capture the Spec Bee ID returned by `bees create-ticket` (or the existing ID fro
 
 With the Spec Bee ID in hand from sub-step 4a, delegate the actual PRD and SDD authoring to `/bees-write-prd` and `/bees-write-sdd`. Invoke both skills inline through the Skill tool — `/bees-plan` does not author PRD/SDD content directly, and it does not call `bees create-ticket` or `bees update-ticket` for the `t1=Doc` PRD/SDD child tickets. The writer skills handle child-ticket creation, body assembly, the user-facing approval gates, and the `drafted → ready` transition on their own children. Step 4 here only owns the Spec Bee parent.
 
-**Args payload — identical for both writer skills.** The two writer skills publish a deliberately mirrored input contract (see `skills/bees-write-prd/SKILL.md` `## Inline invocation via the Skill tool` and the matching section in `skills/bees-write-sdd/SKILL.md`) so this sub-step can dispatch them with the same `args` string. Build the payload once and reuse it verbatim across both calls. **Divergence between the PRD and SDD `args` payloads is a defect** — keep them byte-identical; if the user clarifies scope between the two calls (e.g., during the PRD's approval gate), abort and re-author both rather than letting the SDD see a different payload than the PRD did.
+**Args payload — identical for both writer skills.** The two writer skills publish a deliberately mirrored input contract (see `skills/bees-write-prd/SKILL.md` `## Inline invocation via the Skill tool` and the matching section in `skills/bees-write-sdd/SKILL.md`) so this sub-step can dispatch them with the same `args` string. Build the payload once and reuse it verbatim across both calls. **Divergence between the PRD and SDD `args` payloads is a defect** — keep them byte-identical; if the user clarifies scope between the two calls (e.g., during the PRD's approval gate), abort and re-author both rather than letting the SDD see a different payload than the PRD did. The byte-identical invariant applies to the **initial** PRD+SDD pair authored in this sub-step (4b); on the spec-review revise loop in 4c below, asymmetric writer re-invocations are the *intended* behavior — when `/bees-spec-review` surfaces PRD-only or SDD-only findings, only the affected writer is re-invoked, with that writer's `args` payload extended with a `findings:` field carrying just its findings. See 4c's revise-loop step for the asymmetric-revise carve-out and the `findings:` payload shape.
 
 The `args` string is free-text, in the shape documented by both writer SKILL.md contract sections:
 
@@ -225,13 +225,43 @@ The `distilled-scope` block MUST cover, at minimum, the conversation-distilled s
 
 The captured `prd_ticket_id`, `prd_status`, `sdd_ticket_id`, and `sdd_status` values are consumed by the Spec Bee promotion sub-step (4c), which gates the Spec Bee's own `drafted → ready` transition on both child statuses being `ready`.
 
-#### 4c — Promote the Spec Bee from drafted to ready
+#### 4c — Run the spec-review gate, then promote the Spec Bee from drafted to ready
 
-With both writer skills returned successfully, transition the Spec Bee parent from `drafted` to `ready` so downstream consumers (the Plan Bee's `reference_materials` and any `bees`-resolver lookups) see a Spec Bee in `ready` state with `ready` PRD and SDD children underneath.
+With both writer skills returned successfully, run an automatic spec-review quality gate over the PRD and SDD children, then transition the Spec Bee parent from `drafted` to `ready` so downstream consumers (the Plan Bee's `reference_materials` and any `bees`-resolver lookups) see a Spec Bee in `ready` state with `ready` PRD and SDD children underneath.
 
-**Defensive status check.** Before issuing the promotion call, confirm that both `prd_status` and `sdd_status` captured in 4b are `ready`. The writer skills' inline-invocation contracts (their respective `## Inline invocation via the Skill tool` sections) guarantee `ready` on successful return — a non-`ready` value here indicates a writer-contract regression, not a normal user-cancel path (cancels are caught by 4b's error-handling clause and abort Step 4 before reaching this sub-step). If either captured status is not `ready`, surface the discrepancy as an error, name which child failed the check, and do **not** promote the Spec Bee. Do not paper over the mismatch by promoting anyway — the defensive check exists precisely so a regression in a writer-skill contract surfaces here rather than silently producing a `ready` Spec Bee with non-`ready` children.
+**Defensive status check.** Before doing anything else, confirm that both `prd_status` and `sdd_status` captured in 4b are `ready`. The writer skills' inline-invocation contracts (their respective `## Inline invocation via the Skill tool` sections) guarantee `ready` on successful return — a non-`ready` value here indicates a writer-contract regression, not a normal user-cancel path (cancels are caught by 4b's error-handling clause and abort Step 4 before reaching this sub-step). If either captured status is not `ready`, surface the discrepancy as an error, name which child failed the check, and do **not** run the spec-review gate or promote the Spec Bee. Do not paper over the mismatch by promoting anyway — the defensive check exists precisely so a regression in a writer-skill contract surfaces here rather than silently producing a `ready` Spec Bee with non-`ready` children.
 
-**Promote the Spec Bee.** When both child statuses pass the check, transition the Spec Bee:
+**Spec-review gate.** When the defensive status check passes, run `/bees-spec-review` as an automatic quality gate before promoting the Spec Bee. The writer skills' inline-invocation contracts explicitly skip their own per-writer spec-review steps (`/bees-write-prd`'s Step 6a and `/bees-write-sdd`'s Step 7a) when invoked inline — Site 1 here is the single end-to-end review pass for the PRD child, the SDD child, and cross-document consistency.
+
+1. Invoke `/bees-spec-review <spec-bee-id>` via the Skill tool, with **no `--doc` flag** so both children are reviewed plus the cross-document consistency pass runs. The `<spec-bee-id>` placeholder is the Spec Bee ID captured at the end of 4a (and confirmed `ready` after Step 4c's defensive status check just above — the writer skills already promoted the children to `ready`; this gate is the last quality check before the parent itself promotes).
+2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.
+3. On approve (no findings, or the user explicitly accepted the surfaced findings), proceed to "Promote the Spec Bee" below.
+4. On revise (the user asked to address findings), invoke the relevant writer skill(s) via the Skill tool with the findings included as the optional third `findings:` field in the `args` payload alongside the existing `spec-bee-id` and `distilled-scope` fields. Both writer skills' input-shape sections (`skills/bees-write-prd/SKILL.md` `## Inline invocation via the Skill tool` → `### Input shape` and the matching section in `skills/bees-write-sdd/SKILL.md`) document the `findings:` field as an optional third payload entry; pass through the relevant subset of `/bees-spec-review`'s numbered work-item list verbatim under that key. Asymmetric revises here are explicitly *carved out* of the byte-identical invariant declared in 4b — different findings legitimately go to different writers on the revise pass:
+   - PRD-only findings — re-invoke `/bees-write-prd` with `findings:` populated from the PRD-tagged items only (it will route through Step 5's create-or-update Branch B against the existing PRD child, since 4a's detection has already identified the PRD child). The SDD writer is NOT re-invoked.
+   - SDD-only findings — re-invoke `/bees-write-sdd` with `findings:` populated from the SDD-tagged items only (symmetric, against the existing SDD child). The PRD writer is NOT re-invoked.
+   - Cross-document findings, or findings that span both PRD and SDD — re-invoke both writer skills sequentially (PRD first, then SDD), each with its own `findings:` slice (PRD-tagged items + cross-document items go to the PRD writer; SDD-tagged items + cross-document items go to the SDD writer). The two `args` payloads are intentionally non-identical on this branch — the `findings:` slice differs by writer — and that asymmetry is the intended shape, not a defect.
+
+   After the writer(s) return successfully (re-confirming `prd_status`/`sdd_status` are `ready` per 4b's error-handling clause), re-invoke `/bees-spec-review <spec-bee-id>` for a re-check. Apply the time-budget short-circuit before looping indefinitely.
+
+##### Loop-back UX
+
+`/bees-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`). Handle the findings as follows:
+
+- **No findings** — proceed to "Promote the Spec Bee" immediately. No user prompt needed.
+- **Only `suggestion` and/or `nit` items, no `blocker`** — surface the full work-item list to the user via `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage` (it's multi-choice only). Finite choices:
+  - **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced findings; promote anyway. Record the acknowledged findings in Step 5e's end-of-skill report so the choice is visible.
+  - **Revise** — loop back to the writer-skill re-invocation path described in step 4 above, then re-invoke `/bees-spec-review <spec-bee-id>` for a re-check.
+- **One or more `blocker` items** — surface the full work-item list to the user via `AskUserQuestion` with finite choices:
+  - **Revise** (recommended) — loop back to the writer-skill re-invocation path, then re-invoke `/bees-spec-review <spec-bee-id>` for a re-check.
+  - **Proceed anyway (override blockers)** — the user takes explicit responsibility for promoting despite the blockers. Record the override (with the full list of overridden blocker findings) in the end-of-skill report so the choice is visible. The override path exists because spec quality is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., greenfield work where a "Generic existing-behavior" flag is genuinely the right shape).
+
+`blocker` severity is the primary gate — by default, blockers prevent the Spec Bee's `drafted → ready` transition until either addressed or explicitly overridden. `suggestion` and `nit` are informational — they surface but do not gate. The user can address them or proceed past them.
+
+##### Time-budget short-circuit
+
+Mirror the pattern in `agents/pm.md` for `/bees-code-review` and `/bees-doc-review`: if a single `/bees-spec-review` invocation returns more than ~10 items OR the review-fix-review loop runs more than ~3 turns, stop iterating. Triage the returned list down to `blocker`-severity items only, ask the relevant writer(s) to address those (via the writer-skill re-invocation path described above), then proceed to "Promote the Spec Bee" (with explicit user acknowledgement of the deferred `suggestion`/`nit` items in the end-of-skill report). These thresholds are guidance, not a hard contract — pick the firmer side when the loop is clearly thrashing on subjective prose-quality nits, the looser side when each finding is high-signal. The 3-turn bound (vs pm.md's 5-turn bound for code/doc review) is intentional: spec content has a much smaller surface area than a Task-sized code diff, so 3 turns of revision usually converges; thrashing past 3 turns almost always means subjective-prose churn rather than missing-content correctness.
+
+**Promote the Spec Bee.** When the spec-review gate returns control (either because no findings were surfaced, the user explicitly proceeded past surfaced findings, or the time-budget short-circuit was triggered), transition the Spec Bee:
 
 ```bash
 # POSIX (bash / zsh):
@@ -252,6 +282,12 @@ The `bees update-ticket` invocation is identical on both platforms here — ther
 - A Spec Bee in the Specs hive titled `<feature title>`, status `ready`.
 - A `t1=Doc` child of the Spec Bee titled `PRD`, status `ready`, with the PRD content the user approved during `/bees-write-prd`'s gate.
 - A `t1=Doc` child of the Spec Bee titled `SDD`, status `ready`, with the SDD content the user approved during `/bees-write-sdd`'s gate (and any `RESEARCH NEEDED:` tags surfaced for follow-up).
+- Any `/bees-spec-review` findings surfaced during the spec-review gate but not addressed before promotion — captured for inclusion in Step 5e's end-of-skill report. Specifically:
+  - **Acknowledged findings** — `suggestion`/`nit` items the user explicitly accepted via "Proceed (acknowledge findings)".
+  - **Overridden blockers** — `blocker` items the user explicitly overrode via "Proceed anyway (override blockers)".
+  - **Deferred by time-budget short-circuit** — `suggestion`/`nit` items deferred when the ~10-item / ~3-turn budget triggered.
+
+  If the spec-review gate ran with no findings, omit this bullet; the report stays clean.
 
 Step 5 (Plan Bee creation) consumes this directly: the Plan Bee's `reference_materials` will be set to a single-element list containing a `bees`-resolver entry that points at the Spec Bee ID just promoted, so downstream skills (`/bees-breakdown-epic`, `/bees-execute`'s PM role) can trace from the Plan Bee through the Spec Bee to the PRD and SDD `t1=Doc` children at execution time.
 
@@ -369,7 +405,13 @@ Once dependencies are wired, promote the Plan Bee from `drafted` to `ready` (its
 
 #### 5e — Report
 
-Output a markdown summary listing the Plan Bee, each Epic (ID, title, status, dependencies), and any dependency relationships created.
+Output a markdown summary listing the Plan Bee, each Epic (ID, title, status, dependencies), and any dependency relationships created. Also surface any spec-review findings that were captured at end-of-Step-4 but not addressed before the Spec Bee was promoted — split into the same three buckets named there:
+
+- **Acknowledged spec-review findings** — `suggestion`/`nit` items the user explicitly accepted via "Proceed (acknowledge findings)" during 4c's spec-review gate.
+- **Overridden spec-review blockers** — `blocker` items the user explicitly overrode via "Proceed anyway (override blockers)" during 4c's spec-review gate.
+- **Spec-review items deferred by the time-budget short-circuit** — `suggestion`/`nit` items that the ~10-item / ~3-turn budget set aside.
+
+If 4c's spec-review gate ran with no findings, omit these buckets entirely. The point of surfacing them here is to give the user a single end-of-skill view of what was *intentionally not addressed* in the spec content before the Spec Bee promoted, so they can decide whether to file follow-up Issues or revise the PRD/SDD before downstream skills consume them.
 
 ### 6. Offer Next Steps
 

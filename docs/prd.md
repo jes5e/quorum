@@ -132,3 +132,28 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 - Migrating existing in-conversation-filed Issues to external-reference mode.
 - Promoting an Issue to a Plan Bee — the manual workaround (close Issue, file Plan referencing it) remains for now.
 - An `--from-linear` / `--from-jira` / per-source CLI alias for every external bug tracker. The current set is `--reference` (generic) plus `--from-github` (alias). Any future per-source aliases fold into the same code path; the resolver-name selection in the URL-pattern heuristic is what differentiates them downstream.
+
+### Feature: Wire /bees-spec-review into /bees-plan, /bees-write-prd, /bees-write-sdd as automatic quality gate
+
+**What.** Wire the previously-standalone `/bees-spec-review` skill into the spec-authoring flow as an automatic quality gate at three sites: `/bees-plan` (post both writer-skill invocations, pre Spec Bee promotion), `/bees-write-prd` invoked solo (post the Step 6 user-approval gate, pre the PRD child's `drafted → ready` promotion), and `/bees-write-sdd` invoked solo (post the Step 7 user-approval gate, pre the SDD child's `drafted → ready` promotion). When a writer is invoked inline from `/bees-plan` it skips its own per-writer review — Site 1 covers both children plus the cross-document consistency pass end-to-end. The skill's frontmatter description and SKILL.md prose now name orchestrator-invoked use as the primary path; standalone use remains supported for ad-hoc spec audits.
+
+**Why.** The "Add /bees-spec-review skill" feature shipped the reviewer as standalone-only — its `## Out of scope` list explicitly deferred orchestrator integration to a separate change "when the integration shape is settled". In practice that meant the quality gate only fired when humans remembered to type `/bees-spec-review` after authoring or revising specs, which is half a feature: PRDs and SDDs were promoting `drafted → ready` (and being consumed by downstream `/bees-breakdown-epic`, `/bees-execute`, and `/bees-fix-issue`) without any fresh-eyes review pass. Auto-invocation closes that gap and brings the spec side into line with the code/doc/test side, where `/bees-execute` and `/bees-fix-issue` already auto-run their reviewers.
+
+**Acceptance criteria.**
+
+- `/bees-plan` invokes `/bees-spec-review <spec-bee-id>` (no `--doc` flag) after Step 4b's writer-skill invocations and before Step 4c's Spec Bee `drafted → ready` promotion. Both children plus the cross-document consistency pass run in this single end-to-end review.
+- `/bees-write-prd <spec-bee-id>` invoked solo runs `/bees-spec-review <spec-bee-id> --doc PRD` after Step 6's user approval and before the PRD child's `drafted → ready` promotion.
+- `/bees-write-sdd <spec-bee-id>` invoked solo runs `/bees-spec-review <spec-bee-id> --doc SDD` after Step 7's user approval and before the SDD child's `drafted → ready` promotion.
+- `/bees-write-prd` and `/bees-write-sdd` invoked inline from `/bees-plan` skip the per-writer review (Site 1 in `/bees-plan` covers it end-to-end) so a single planning run does not pay for two redundant reviews.
+- Findings are surfaced to the user via `AskUserQuestion` with severity-aware default options (Revise / Proceed (acknowledge findings) / Proceed anyway (override blockers)). The Recommended option flips with severity — `blocker`-only findings recommend Revise; `suggestion`/`nit`-only findings recommend Proceed.
+- Blockers gate `drafted → ready` by default; the override path is supported but recorded in the end-of-skill report so the user has a single view of what was intentionally not addressed before promotion.
+- The review-fix-review loop applies a time-budget short-circuit after roughly 10 surfaced items or 3 review turns, mirroring the bound the other three reviewers already enforce in `/bees-execute` / `/bees-fix-issue`.
+- `/bees-spec-review`'s frontmatter description and SKILL.md prose reflect that orchestrator-invoked use is now the primary path; standalone use is documented as the secondary path.
+- README.md skill-table row for `/bees-spec-review` and the surrounding "four reviewers" prose are updated to drop the "once those wire it in" qualifier and name the three orchestrators that auto-invoke the skill. The workflow diagram annotates the auto-gate inline in the `/bees-plan` branch.
+
+**Out of scope.**
+
+- Wiring `/bees-spec-review` into `/bees-plan-from-specs`. The express path consumes finalized PRD/SDD content from on-disk files, not a Spec Bee's `t1=Doc` children — there is no Spec Bee parent for `/bees-spec-review` to scope to. Spec quality on that path is the user's responsibility before invoking the skill.
+- Auto-revising PRD or SDD bodies in response to findings. The reviewer remains text-only; the writer-skill loop-back path is the mechanism for applying findings.
+- Persisting overridden-blocker decisions to the PRD or SDD bodies. The end-of-skill report captures them for the user; downstream skills do not read this metadata.
+- Changing the severity ladder, checklist contents, or output shape of `/bees-spec-review` itself. The skill's review logic is unchanged — only the invocation surface is.

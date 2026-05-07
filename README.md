@@ -15,6 +15,9 @@ Spec Bee  (Specs hive, top-level)                 │
   ├── PRD  (t1=Doc, via /bees-write-prd)          │
   └── SDD  (t1=Doc, via /bees-write-sdd)          │
        │                                          │
+       │ /bees-spec-review (auto quality gate)    │
+       │   gates Spec Bee drafted → ready         │
+       │                                          │
        │ reference_materials                      │ reference_materials
        │   → Spec Bee (resolver: bees)            │   → on-disk PRD/SDD
        │                                          │     (resolver: file-path)
@@ -138,9 +141,9 @@ If your repo was set up before the `Specs` hive existed, re-run `/bees-setup` �
 | `/bees-code-review` | Perform code review of a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items. |
 | `/bees-doc-review` | Review documentation completeness for a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc doc review of a diff, worktree, files, or bees ticket. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items. |
 | `/bees-test-review` | Review test files for quality, coverage, and correctness across a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc test review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items. |
-| `/bees-spec-review` | Fresh-eyes review of a Spec Bee's PRD and SDD `t1=Doc` children for clarity, completeness, and internal consistency. Primary use - invoked by spec-authoring or planning skills to gate a Spec Bee's `drafted → ready` transition. Standalone use - ad-hoc spec review of a Spec Bee, scoped optionally to one Doc child via `--doc PRD` or `--doc SDD`. Returns a simple list of improvement work items. |
+| `/bees-spec-review` | Fresh-eyes review of a Spec Bee's PRD and SDD `t1=Doc` children for clarity, completeness, and internal consistency. Primary use - invoked automatically by `/bees-plan` (after both writers complete, before Spec Bee promotion) and by `/bees-write-prd` / `/bees-write-sdd` (after the user-approval gate, before the PRD/SDD child's `drafted → ready` promotion) as a quality gate over the spec content. Standalone use - ad-hoc spec review of a Spec Bee, scoped optionally to one Doc child via `--doc PRD` or `--doc SDD`. Returns a simple list of improvement work items. |
 
-The four reviewers (`bees-code-review`, `bees-doc-review`, `bees-test-review`, `bees-spec-review`) are dual-mode — primarily invoked by orchestrating skills (`/bees-execute` and `/bees-fix-issue` for the first three; `/bees-write-prd`, `/bees-write-sdd`, or `/bees-plan` for `bees-spec-review` once those wire it in) during their review cycles, but they also support standalone invocation if you want an ad-hoc review without the bees workflow.
+The four reviewers (`bees-code-review`, `bees-doc-review`, `bees-test-review`, `bees-spec-review`) are dual-mode — primarily invoked by orchestrating skills (`/bees-execute` and `/bees-fix-issue` for the first three; `/bees-write-prd`, `/bees-write-sdd`, and `/bees-plan` for `bees-spec-review`) during their review cycles, but they also support standalone invocation if you want an ad-hoc review without the bees workflow.
 
 ## Status vocabulary
 

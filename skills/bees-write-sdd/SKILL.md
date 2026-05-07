@@ -255,15 +255,46 @@ Steps:
 
    `bees update-ticket --body-file` replaces the body in full (rewrite semantics). This is the default for body coherence — an SDD revision typically restructures sections rather than appends to them, so a clean rewrite is the right shape. The bees CLI also exposes `bees append-ticket-body --ticket-id <sdd-id> --chunk-file <path>` for explicit append-only revisions, but it is NOT the default for this skill — use it only when the user explicitly asks to append rather than rewrite.
 
-### 7. Confirm with the user, then promote to `ready`
+### 7. Confirm with the user, run the spec-review gate, then promote to `ready`
 
 After the create-or-update succeeds, present the resulting SDD ticket ID and a brief summary of what was authored to the user. Use `AskUserQuestion` with finite choices:
 
-- **Approve** — the draft is good as-is. Proceed to status promotion.
+- **Approve** — the draft is good as-is. Proceed to the spec-review gate below.
 - **Revise** — the user wants changes. Iterate in prose, re-author the body to the same scratch path (or a new one), and re-run Branch B's `bees update-ticket --body-file <path>` against the same `<sdd-id>`. Then re-present.
 - **Cancel** — leave the ticket at `status=drafted` and exit. The user can re-invoke the skill later to continue.
 
-On approval, transition the SDD ticket from `drafted` to `ready`:
+#### 7a — Spec-review gate (solo path only; skip on inline path)
+
+After the user approves the SDD body in 7's main `AskUserQuestion`, but **before** issuing the `drafted → ready` promotion, invoke `/bees-spec-review` as an automatic quality gate. This step fires only on the solo path (the user invoked `/bees-write-sdd <spec-bee-id>` directly from the prompt). On the inline-from-`/bees-plan` path, **skip Step 7a entirely** — the orchestrating `/bees-plan` skill runs its own end-to-end `/bees-spec-review` invocation in its Step 4c after both writers complete, and re-running per-writer review here would double-cost the budget for no added signal. Detection: the inline path passes substantive scope via the Skill-tool `args` payload per the contract section below; that's the same signal Step 0's mid-conversation heuristic already keys off. When you detect the inline path, jump straight from Step 7's main `Approve` answer to Step 7b's promotion call.
+
+On the solo path, run the gate:
+
+1. Invoke `/bees-spec-review <spec-bee-id> --doc SDD` via the Skill tool. The `--doc SDD` flag scopes the review to the SDD child only — the PRD child may be at any state at this point (still `drafted`, already `ready`, or absent), and a standalone SDD revision should not block on or surface PRD-side findings.
+2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.
+3. On approve (no findings, or the user explicitly accepted the surfaced findings), proceed to Step 7b's promotion call.
+4. On revise (the user asked to address findings), loop back to Step 5's body authoring with the findings supplied as additional context to the revision pass — including, where appropriate, re-dispatching Step 3's Explore-agent codebase research if a finding indicates the cited module names or fixture conventions need re-grounding — re-write the body to the scratch file, re-run Branch B's `bees update-ticket --body-file <path>`, and re-invoke `/bees-spec-review <spec-bee-id> --doc SDD` for a re-check. Apply the time-budget short-circuit before looping indefinitely.
+
+##### Loop-back UX
+
+`/bees-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`). Handle the findings as follows:
+
+- **No findings** — proceed to Step 7b's promotion immediately. No user prompt needed.
+- **Only `suggestion` and/or `nit` items, no `blocker`** — surface the full work-item list to the user via `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage` (it's multi-choice only). Finite choices:
+  - **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced findings; promote anyway. Record the acknowledged findings in the Step 9 end-of-skill report so the choice is visible.
+  - **Revise** — loop back to Step 5's body authoring with the findings included as revision context, then re-invoke `/bees-spec-review <spec-bee-id> --doc SDD` for a re-check.
+- **One or more `blocker` items** — surface the full work-item list to the user via `AskUserQuestion` with finite choices:
+  - **Revise** (recommended) — loop back to Step 5's body authoring with the findings, then re-invoke `/bees-spec-review <spec-bee-id> --doc SDD` for a re-check.
+  - **Proceed anyway (override blockers)** — the user takes explicit responsibility for promoting despite the blockers. Record the override (with the full list of overridden blocker findings) in the Step 9 end-of-skill report so the choice is visible. The override path exists because spec quality is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., greenfield work where a "Generic existing-behavior" flag is genuinely the right shape, or work that genuinely touches no contract-key surface despite a "Missing contract-key impact callouts" flag).
+
+`blocker` severity is the primary gate — by default, blockers prevent the SDD child's `drafted → ready` transition until either addressed or explicitly overridden. `suggestion` and `nit` are informational — they surface but do not gate. The user can address them or proceed past them.
+
+##### Time-budget short-circuit
+
+Mirror the pattern in `agents/pm.md` for `/bees-code-review` and `/bees-doc-review`: if a single `/bees-spec-review` invocation returns more than ~10 items OR the review-fix-review loop runs more than ~3 turns, stop iterating. Triage the returned list down to `blocker`-severity items only, ask the writer (i.e., this skill's Step 5 body re-authoring path) to address those, then proceed to Step 7b's promotion (with explicit user acknowledgement of the deferred `suggestion`/`nit` items in Step 9's end-of-skill report). These thresholds are guidance, not a hard contract — pick the firmer side when the loop is clearly thrashing on subjective prose-quality nits, the looser side when each finding is high-signal. The 3-turn bound (vs pm.md's 5-turn bound for code/doc review) is intentional: spec content has a much smaller surface area than a Task-sized code diff, so 3 turns of revision usually converges; thrashing past 3 turns almost always means subjective-prose churn rather than missing-content correctness.
+
+#### 7b — Promote the SDD child to `ready`
+
+When the spec-review gate returns control (either because no findings were surfaced, the user explicitly proceeded past surfaced findings, or the time-budget short-circuit was triggered), transition the SDD ticket from `drafted` to `ready`:
 
 ```bash
 # POSIX (bash / zsh):
@@ -293,6 +324,12 @@ Show the user:
 - The final status (`ready` on approve, `drafted` on cancel).
 - Whether this run created a new SDD or revised an existing one (so the user can confirm the idempotency behavior).
 - Whether any `RESEARCH NEEDED` tags were embedded in the body — if so, list them so the user knows which open questions still need a follow-up pass.
+- Any spec-review findings that were surfaced during Step 7a but not addressed before promotion — split into:
+  - **Acknowledged findings** — `suggestion`/`nit` items the user explicitly accepted via "Proceed (acknowledge findings)".
+  - **Overridden blockers** — `blocker` items the user explicitly overrode via "Proceed anyway (override blockers)".
+  - **Deferred by time-budget short-circuit** — `suggestion`/`nit` items that were deferred when the ~10-item / ~3-turn budget triggered.
+
+  If Step 7a was skipped (inline-from-`/bees-plan` path), state that explicitly so the report is unambiguous about whether the gate ran. If Step 7a ran with no findings, omit the section entirely.
 
 When invoked inline via the Skill tool, the report shape is structured per the contract section below — return the SDD ticket ID and final status as the load-bearing payload so the caller can wire its own follow-up state (e.g., a Plan Bee's `reference_materials`, or the caller's own Spec Bee `drafted → ready` gate).
 
@@ -310,6 +347,7 @@ The Skill-tool caller passes a single free-text `args` string that contains, in 
 
 1. **The Spec Bee ID.** The ticket ID (e.g., the value the caller obtained from its own `bees create-ticket --hive specs --ticket-type bee` call) the new SDD child will hang off of. This skill does NOT create the Spec Bee; the caller does.
 2. **The distilled scope payload.** A markdown-formatted block containing the conversation-distilled scope material the caller has gathered with the user. The block SHOULD cover, at minimum, the high-level architectural framing of the feature (which subsystems are touched, what new contracts are introduced), any existing-behavior constraints surfaced in the planning conversation, and any rationale or rejected alternatives that came up. The caller is encouraged to also supply requirement-shaped content (the substance behind the SR-style requirement groups in Step 5) when the planning conversation produced it. The caller is NOT expected to supply real module names, file paths, or test-fixture conventions — those are sourced by this skill's own Step 3 Explore-agent dispatch.
+3. **(Optional) Spec-review findings to address.** A `findings:` block carrying a numbered list of `/bees-spec-review` work items the caller wants this skill to address on the revise pass. Used canonically by `/bees-plan`'s Step 4c spec-review revise loop when `/bees-spec-review` surfaces SDD-tagged findings (or SDD-relevant cross-document findings); omitted on the initial SDD-authoring invocation. Each entry preserves the verbatim severity tag (`[blocker]`, `[suggestion]`, or `[nit]`) and one-line description from the spec-review output, e.g., `1. [blocker] SDD ## Codebase exploration findings — generic "the routing layer" reference; cite the actual module path so the Engineer has a starting point.`. When this field is present, the skill routes the findings into Step 5's body re-authoring path as additional revision context (the same way Step 7a's revise loop on the solo path consumes them) — the load-bearing effect is that Step 5's authoring pass treats the listed findings as required fixes against the existing SDD body, including (where appropriate) re-dispatching Step 3's Explore-agent codebase research if a finding indicates the cited module names or fixture conventions need re-grounding. The field is OPTIONAL; absent or empty `findings:` means no spec-review findings to address (the normal initial-authoring shape). The shape mirrors `/bees-write-prd`'s `findings:` field exactly so `/bees-plan` can build per-writer payloads with the same template.
 
 Recommended shape for the `args` string the caller passes (project-neutral; the angle-bracketed placeholders are filled by the caller at runtime):
 
@@ -318,9 +356,12 @@ spec-bee-id: <spec-bee-id>
 
 distilled-scope:
 <markdown block — multi-paragraph, headed sections welcome>
+
+findings:
+<numbered list of `/bees-spec-review` work items, each preserving its [severity] tag and one-line description; omit this field entirely on the initial authoring pass>
 ```
 
-The skill parses the `args` string, captures the Spec Bee ID and the distilled scope payload, and routes execution through Step 0 → Step 1 → Step 2 → Step 3 → Step 4a (distill branch always fires here) → Step 5 → Step 6 → Step 7 → Step 8 → Step 9 of the workflow. The user-facing approval gates in Step 4a (distilled-scope review) and Step 7 (final-body review) still fire on the inline path — the user owns the approval, not the caller.
+The skill parses the `args` string, captures the Spec Bee ID, the distilled scope payload, and (when present) the spec-review findings, and routes execution through Step 0 → Step 1 → Step 2 → Step 3 → Step 4a (distill branch always fires here) → Step 5 → Step 6 → Step 7 → Step 7b → Step 8 → Step 9 of the workflow (Step 7a is skipped on the inline path; see "Behavioral guarantees" below). The user-facing approval gates in Step 4a (distilled-scope review) and Step 7's main gate (final-body review) still fire on the inline path — the user owns the approval, not the caller.
 
 ### Output shape (this skill → caller)
 
@@ -335,7 +376,7 @@ The caller (e.g., `/bees-plan`) consumes `sdd_ticket_id` to wire the Plan Bee's 
 
 ### Behavioral guarantees
 
-The inline path is functionally identical to the solo path from the Spec Bee's perspective; only the Step 4 distill-vs-restart branch differs. Specifically:
+The inline path is functionally identical to the solo path from the Spec Bee's perspective; only the Step 4 distill-vs-restart branch differs and the Step 7a spec-review gate is skipped. Specifically:
 
 - **Idempotency.** Step 2's existing-SDD-child detection runs identically. Re-invoking via the Skill tool against the same Spec Bee updates the existing SDD ticket rather than creating a duplicate (Branch B in Step 6).
 - **Seven required sections.** Step 5's body assembly always produces all seven sections. `## Background and rationale` and `## Decisions and rejected alternatives` receive substantive content distilled from the caller's payload (the distill branch should rarely emit the explicit-`none` placeholders for these sections on the inline path, because the caller passing distilled scope is exactly the signal that there *is* rationale and decision content to capture).
@@ -344,6 +385,7 @@ The inline path is functionally identical to the solo path from the Spec Bee's p
 - **Lifecycle.** SDD ticket created at `drafted`, transitioned to `ready` on the user's `Approve` in Step 7. Identical to solo.
 - **Scratch-file convention.** `--body-file` payloads written under `<tempdir>/.bees-workflow/` with create-if-absent; never removed. Identical to solo.
 - **User approval gates.** Both gates (Step 4a's distilled-scope review and Step 7's final-body review) still fire on the inline path. The Skill-tool caller does NOT short-circuit either gate.
+- **Spec-review gate (Step 7a) skipped on the inline path.** The orchestrating `/bees-plan` skill runs its own end-to-end `/bees-spec-review` invocation in its Step 4c after both writers complete (covering the PRD and SDD children plus the cross-document consistency pass), so this skill MUST skip its own per-writer Step 7a review when invoked inline. Re-running per-writer review here would double-cost the budget without adding signal — the cross-document pass that `/bees-plan`'s Step 4c invocation runs is strictly more powerful than two single-doc invocations chained together. Detection: the inline path is the same path that Step 0's mid-conversation heuristic already keys off (substantive distilled scope arrived via the Skill-tool `args` payload). Solo invocations always run Step 7a; inline invocations always skip it.
 
 ### Cross-reference
 
