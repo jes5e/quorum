@@ -28,7 +28,46 @@ This subagent ships with `model: opus` as the default, but the runtime model is 
 - Read the Grandparent Bee.
 - Read the source material linked from the Grandparent Bee's `reference_materials`. **If the Grandparent Bee's `reference_materials` is null/empty** (Plan Bees authored via `/bees-plan` for features without a separate PRD/SDD), the Bee body itself is the authoritative spec source — read it carefully in place of the `reference_materials` sources, and substitute "the Plan Bee body" wherever subsequent prose references "the PRD" or "the SDD".
 
+### Resolving `reference_materials` entries
+
+When the Grandparent Bee's `reference_materials` is non-empty, iterate the array and dispatch on each entry's `resolver` field:
+
+- **`resolver` is `file-path` (or omitted — default).** Treat the entry's `value` as a path on disk and read the file. This is the existing behavior; nothing changes on this path. The Scoped-marker integration documented below applies on this path.
+- **`resolver` is `bees`.** Treat the entry's `value` as a Spec Bee ID in the `specs` hive, and walk the two-hop path `Spec Bee → t1=Doc children → PRD / SDD content`:
+
+  1. Run `bees show-ticket --ids <spec-bee-id>` and read the response's `children` array — these are the Spec Bee's `t1=Doc` children.
+  2. For each child ID, run `bees show-ticket --ids <child-id>` and read the response's `title` and `body` fields.
+  3. Identify PRD vs SDD content by **exact-match (case-sensitive) on `title`**: a child whose `title` equals `PRD` carries the PRD content in its `body`; a child whose `title` equals `SDD` carries the SDD content. Use those bodies as the spec source in place of file content.
+
+  The `PRD` and `SDD` title strings are a cross-Epic contract established by sibling Epics covering the PRD title and SDD title; do not lower-case, normalize, or fuzzy-match.
+
+  Use the `bees show-ticket` recipe above (one call for the parent, one per child) — `show-ticket` returns `children` directly, so this is the simpler walk. The freeform-query route (`bees execute-freeform-query --query-yaml '<yaml>'`) is also acceptable and is preferable when you want title-filtered enumeration up-front; see `docs/doc-writing-guide.md` `## Querying tickets` for the recipe vocabulary.
+
+  ```bash
+  # POSIX (bash / zsh):
+  bees show-ticket --ids <spec-bee-id>
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  bees show-ticket --ids <spec-bee-id>
+  ```
+
+  ```bash
+  # POSIX (bash / zsh):
+  bees show-ticket --ids <child-id>
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  bees show-ticket --ids <child-id>
+  ```
+
+- **`reference_materials` is null/empty.** Body-as-spec fallback (existing behavior, unchanged) — the Grandparent Bee body itself is the authoritative spec source, per the bullet above.
+
 ## Spec-source scoping (Scoped-marker integration)
+
+**Skip-on-bees pre-branch.** If the spec source for this Task came from a `reference_materials` entry whose `resolver` was `bees` (the two-hop Spec Bee + `t1=Doc` children walk documented above), **skip Scoped-marker resolution entirely**: do not write a temp file, do not invoke the helper, do not parse exit codes. Spec Bees are already feature-scoped (one Spec Bee per feature), so marker-based subsection narrowing is irrelevant on that path — the `body` of the `PRD`/`SDD` child tickets is already the authoritative scoped spec content. The rest of this section (Path A, Path B, asymmetric error-handling, helper-resolution-path strategy) applies **only** to the file-resolver path and the body-as-spec fallback path; nothing in those subsections is relaxed, harmonized, or otherwise modified by this pre-branch.
 
 A spec source can be **scoped** to one feature inside a cumulative PRD/SDD via a Scoped-marker line in a Plan Bee body (emitted by `/bees-plan-from-specs --feature "<title>"` and friends). When a marker is present, the resolved doc content for spec-compare logic must be restricted to the matching `### Feature: <title>` subsection in each named doc; otherwise the full doc applies. Marker grammar (prefix tolerance, backtick wrapping, single space after `### Feature:`, terminal period, subsection extraction rule, hard-fail rules) is documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract` — that doc is the source of truth; do not re-derive the parsing rules here.
 
