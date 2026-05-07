@@ -499,7 +499,7 @@ Before rendering the next-steps menu, stage and commit the ticket files this ski
 
 **Do not hardcode the Plans-hive path.** `/bees-setup` lets users place hives in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked an out-of-repo location.
 
-Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only `git add` if so. Mirrors `bees-file-issue` Step 5's pattern.
+Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only `git add` if so. Mirrors the "Commit the ticket" step's pattern in `bees-file-issue`.
 
 ```bash
 # POSIX (bash / zsh):
