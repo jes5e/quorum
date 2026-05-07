@@ -60,17 +60,9 @@ If the named Spec Bee has neither a PRD nor an SDD child (or only the one exclud
 
 Locate the PRD and/or SDD children of the named Spec Bee using a freeform query. The query is regex-based on title; pin both ends so the match is exact and case-sensitive.
 
-If the user did not pass `--doc`, query for both children:
+If the user did not pass `--doc`, query for both children. The single-quoted YAML literal works identically in POSIX bash/zsh and Windows PowerShell — one block covers both shells:
 
-```bash
-# POSIX (bash / zsh):
-bees execute-freeform-query --query-yaml 'stages:
-  - [hive=specs, parent=<spec-bee-id>, title~^(PRD|SDD)$]
-report: [ticket_id, title, ticket_status]'
 ```
-
-```powershell
-# Windows (PowerShell):
 bees execute-freeform-query --query-yaml 'stages:
   - [hive=specs, parent=<spec-bee-id>, title~^(PRD|SDD)$]
 report: [ticket_id, title, ticket_status]'
@@ -82,15 +74,9 @@ Capture the ticket IDs returned. If zero matches were returned for the requested
 
 ### Step 1: Fetch each Doc body
 
-For each resolved Doc child, fetch the body via `bees show-ticket --ids <doc-ticket-id>`. Read the body as the source-of-truth content for the review — do not read any on-disk file as a substitute. The Doc body in bees is what downstream skills (`/bees-breakdown-epic`, `/bees-execute`'s Engineer / PM, `/bees-fix-issue`) consume; if there is a mismatch between the bees ticket body and any on-disk artifact, the bees body wins for review purposes.
+For each resolved Doc child, fetch the body via `bees show-ticket --ids <doc-ticket-id>`. Read the body as the source-of-truth content for the review — do not read any on-disk file as a substitute. The Doc body in bees is what downstream skills (`/bees-breakdown-epic`, `/bees-execute`'s Engineer / PM, `/bees-fix-issue`) consume; if there is a mismatch between the bees ticket body and any on-disk artifact, the bees body wins for review purposes. The invocation has no shell-variable interpolation, so one block covers both POSIX bash/zsh and Windows PowerShell:
 
-```bash
-# POSIX (bash / zsh):
-bees show-ticket --ids <doc-ticket-id>
 ```
-
-```powershell
-# Windows (PowerShell):
 bees show-ticket --ids <doc-ticket-id>
 ```
 

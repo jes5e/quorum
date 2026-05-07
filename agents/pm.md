@@ -30,7 +30,7 @@ This subagent ships with `model: opus` as the default, but the runtime model is 
 
 ### Resolving `reference_materials` entries
 
-The "spec-source ticket" in this section is the Grandparent Bee in execute mode and the Issue itself in fix mode — the `reference_materials`-bearing ticket the orchestrating execution skill named in the dispatch prompt. When the spec-source ticket's `reference_materials` is non-empty, iterate the array and dispatch on each entry's `resolver` field:
+The "spec-source ticket" in this section is the Grandparent Bee in execute mode and the Issue itself in fix mode — the `reference_materials`-bearing ticket the orchestrating execution skill named in the dispatch prompt. There are **three resolver-driven paths** (`file-path`, `bees`, and the external-URL resolvers grouped together — `github-issue` / `linear-issue` / `url` / etc.) plus the **body-as-spec fallback** when `reference_materials` is null/empty; the four bullets below break those out individually. When the spec-source ticket's `reference_materials` is non-empty, iterate the array and dispatch on each entry's `resolver` field:
 
 - **`resolver` is `file-path` (or omitted — default).** Treat the entry's `value` as a path on disk and read the file. This is the existing behavior; nothing changes on this path. The Scoped-marker integration documented below applies on this path.
 - **`resolver` is `bees`.** Treat the entry's `value` as a Spec Bee ID in the `specs` hive, and walk the two-hop path `Spec Bee → t1=Doc children → PRD / SDD content`:
