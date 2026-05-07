@@ -78,7 +78,7 @@ The customer-facing README documents the per-OS location and tells users it is s
 
 ## Review criteria for skill changes
 
-When `bees-code-review`, `bees-test-review`, or `bees-doc-review` runs against changes in *this* repo, the three design rules above plus the scratch-file convention are mandatory review criteria layered on top of each skill's standard checks. Flag any skill-prose or helper-script change that:
+When `bees-code-review`, `bees-test-review`, or `bees-doc-review` runs against changes in *this* repo, the three design rules above plus the scratch-file convention are mandatory review criteria layered on top of each skill's standard checks. Note: `bees-spec-review` is intentionally excluded from this section because it reviews PRD/SDD bee ticket bodies, not source files in this repo, so the rules below (which target skill-prose and helper-script diffs) do not apply to it. Flag any skill-prose or helper-script change that:
 
 - Hardcodes a language-specific command, file extension, or manifest filename (rule 1).
 - Introduces a shell snippet without paired POSIX bash + Windows PowerShell variants, or relies on a bash-only fallback (rule 2).
@@ -155,7 +155,7 @@ Don't change these assignments without a concrete reason — they're load-bearin
 
 - The README's skill table is the single source of truth for the user-visible skill catalog. If you add, remove, or rename a skill, update README.md to match.
 - The `description` field in a skill's frontmatter is what Claude Code uses to decide whether to invoke the skill. Keep it precise — vague descriptions cause mis-invocation.
-- Don't introduce a tmux dependency in any of the 13 portable-core skills. Tmux-dependent skills (`bees-fleet`, `bees-worktree-add`, `bees-worktree-rm`) are explicitly out-of-scope for the cross-platform core and are mentioned only as optional later-installs.
+- Don't introduce a tmux dependency in any of the 14 portable-core skills. Tmux-dependent skills (`bees-fleet`, `bees-worktree-add`, `bees-worktree-rm`) are explicitly out-of-scope for the cross-platform core and are mentioned only as optional later-installs.
 - Avoid adding stack-specific helpers (changelog tooling, license attribution, etc.) to the core — the README declares those out of scope and routes users to companion repos.
 
 ## AskUserQuestion usage
