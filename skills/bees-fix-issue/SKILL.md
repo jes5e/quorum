@@ -346,11 +346,33 @@ Report what was found:
 
 Once the issue is fixed:
 
-1. Mark the issue's bees ticket `status=done` before committing, so any out-of-band ticket-state propagation is consistent. **Re-read the Issue's current status first** (`bees show-ticket --ids <issue-id>`) and skip the `bees update-ticket --status done` call if the status is already `done` — workers occasionally overstep their role contract and flip the status themselves, so the orchestrator's close-out flip should be idempotent against that case rather than failing or double-flipping. The status flip itself is a metadata change handled by the bees CLI; it does not produce a working-tree change that needs staging (see no-`.bees/`-staging note in step 2.3 below).
+1. Mark the issue's bees ticket `status=done` before committing, so any out-of-band ticket-state propagation is consistent. **Re-read the Issue's current status first** (`bees show-ticket --ids <issue-id>`) and skip the `bees update-ticket --status done` call if the status is already `done` — workers occasionally overstep their role contract and flip the status themselves, so the orchestrator's close-out flip should be idempotent against that case rather than failing or double-flipping. The bees CLI writes the new status to the issue's on-disk record (under the resolved Issues hive path) — when that path is inside this repo, the resulting working-tree change is staged as part of the per-issue commit at step 2.3 below alongside the fix's code/test/doc changes, so the ticket's git state stays in sync with its bees state.
 2. Create one git commit for the Issue (including any doc updates). **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report).
    2. Run `git status` to see the full set of modified and untracked files.
-   3. Stage files related to this issue's actual code, test, and doc changes — agent-reported files plus formatting changes to files that were touched by this issue's agents. **Note (intentional divergence from `bees-execute`):** unlike `bees-execute` (which DOES stage `.bees/` because Tasks/Subtasks accumulate status changes that must land in the per-Task commit), `bees-fix-issue` does **NOT** stage `.bees/`; Issues live in the `issues` hive and have no in-commit ticket-status accumulation, so the issue's status flip from `open` → `done` is captured by the bees CLI metadata transition and does not need a working-tree commit. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue.
+   3. Stage files related to this issue's actual code, test, and doc changes — agent-reported files plus formatting changes to files that were touched by this issue's agents — plus (only if the Issues hive lives inside this repo) the per-issue directory under the resolved Issues hive path, so the issue's `open → done` status flip and any body updates the orchestrator made via `bees update-ticket` land in the same per-issue commit as the fix itself. The Issues-hive scoping mirrors `bees-execute`'s Plans-hive scoping (see `bees-execute` Section 6 step 2.3); use the same hive-path resolution as `/bees-plan` and `/bees-file-issue`:
+
+      ```bash
+      # POSIX (bash / zsh):
+      issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
+      repo_root=$(git rev-parse --show-toplevel)
+      case "$issues_path" in
+        "$repo_root"|"$repo_root"/*) git add "$issues_path/<issue-id>" ;;
+      esac
+      ```
+
+      ```powershell
+      # Windows (PowerShell):
+      $issuesPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
+      $repoRoot = git rev-parse --show-toplevel
+      $issuesNorm = if ($issuesPath) { $issuesPath.Replace('\','/') } else { '' }
+      $repoNorm = $repoRoot.Replace('\','/')
+      if ($issuesNorm -and ($issuesNorm -eq $repoNorm -or $issuesNorm.StartsWith("$repoNorm/"))) {
+        git add "$issuesPath/<issue-id>"
+      }
+      ```
+
+      **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue. The per-issue scoping `<issue-id>` on the `git add` path also keeps drift in *other* issues' on-disk records out of this commit; if other issues have stale working-tree state, that gets caught by the next `/bees-fix-issue` run on those issues, not swept in here.
    4. Commit with a descriptive message per system/project git guidance.
 3. Mark the per-issue TaskList tasks (named per Section 3's issue-scoped naming convention — `engineer-<issue-id>`, `test-writer-<issue-id>`, `doc-writer-<issue-id>`, `pm-<issue-id>` if dispatched, plus the reviewer tasks from Section 4: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`) as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns.
 4. Output the summary:
