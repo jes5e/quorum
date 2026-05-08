@@ -1,6 +1,6 @@
 # <img src="assets/header.png" alt="" width="48" valign="middle"> quorum
 
-A portable [Claude Code](https://claude.com/claude-code) skill set for running an end-to-end SDLC on top of [bees](https://github.com/gabemahoney/bees) tickets — plan, break down, execute, review, fix, repeat. Works on any project, any language, any POSIX or Windows shell.
+A portable [Claude Code](https://claude.com/claude-code) skill set for running an end-to-end SDLC on top of structured ticket systems — plan, break down, execute, review, fix, repeat. [bees](https://github.com/gabemahoney/bees) is the supported backend today; [beads](https://github.com/gastownhall/beads) is planned future support. Works on any project, any language, any POSIX or Windows shell.
 
 ```
 /quo-setup                  ← one-time per repo (safe to re-run)
@@ -40,7 +40,7 @@ The skills orchestrate work via Claude Code's ephemeral background subagents —
 
 ## Why this exists
 
-[Apiary](https://github.com/gabemahoney/apiary), built by the bees creator, is the original bees skill set and remains a great fit for many projects. **quorum is an alternative**, shaped by these priorities:
+quorum is shaped by these priorities:
 
 - **Cumulative project-level docs.** Project-level PRD and SDD (paths configured under CLAUDE.md `## Documentation Locations`) accumulate `### Feature:` subsections as features ship, and become the source of truth that agents (`quo-execute`, `quo-fix-issue`) read for spec-drift detection. The `quo-setup` skill can bootstrap baseline docs from an existing codebase via guided Q&A. Per-feature specs are authored as Spec Bee children at plan time and folded back into the cumulative project docs after implementation lands, by the post-implementation `doc-writer` agent dispatched by `/quo-execute` and `/quo-fix-issue`.
 - **Language-agnostic.** Works on Rust, Node, Python, Go, Java, polyglot, or unknown stacks. Stack-specific commands (compile, format, lint, narrow test, full test) are detected at setup and stored in CLAUDE.md, then read by skills at runtime — no skill-editing needed when you switch projects.
@@ -48,8 +48,6 @@ The skills orchestrate work via Claude Code's ephemeral background subagents —
 - **Plain-English statuses.** Plan-hive bees use `drafted` / `ready` / `in_progress` / `done`; issue-hive bees use `open` / `done`. No translation layer, no insect-metaphor jargon to remember.
 - **PRD/SDD-first or scope-first, your choice.** `/quo-plan` is the interactive entry point for an idea you haven't speced out — it authors per-feature PRD and SDD as `t1=Doc` children of a new Spec Bee in the Specs hive and links the Spec Bee from the resulting Plan Bee's `reference_materials` (no project-doc mutation at plan time). `/quo-plan-from-specs` is the express path when you already have a finalized **single-feature** PRD and SDD on disk; experienced users with finalized cumulative specs can also reach for `/quo-plan-from-specs --feature "<title>"` to scope one `### Feature:` subsection of the cumulative docs without going back through `/quo-plan`'s discovery loop. The single-feature scope follows the Plan Bee end-to-end — `/quo-breakdown-epic`, `/quo-execute`, and `/quo-fix-issue` all detect the scoping marker on the Plan Bee body and restrict spec-compare logic to the matching feature. Both entry points produce the same Plan Bee shape and feed the same downstream chain. Cumulative project-level PRD/SDD are updated after implementation by the `doc-writer` agent, not at plan time.
 - **Idempotent.** Every skill that mutates project state (`quo-setup` especially) detects existing configuration and only prompts where something is missing or you ask to change it. Re-runs are safe.
-
-If you want the lightweight, ephemeral-spec, async-team-spawning experience of Apiary, use Apiary. If you want persistent docs that grow with your project across many features and contributors, quorum is built for that.
 
 ## Requirements
 
@@ -189,8 +187,6 @@ The current 14 skills are the portable core — they work on any project, any la
 - **Async-worktree session management** — spawn an isolated git-worktree session for a Plan Bee, work on it in the background, merge cleanly when done.
 - **Multi-repo orchestration** — survey ready work across multiple repos and launch concurrent execution sessions.
 
-If you need these capabilities today, the [Apiary](https://github.com/gabemahoney/apiary) project includes them and is fully compatible with the same `bees` CLI underneath.
-
 Stack-specific helpers (changelog management, license attribution generation, etc.) and infrastructure-specific helpers (pastebins, cloud storage) are out of scope for the cross-language core but can live in companion repos.
 
 ## Contributing
@@ -206,4 +202,4 @@ MIT. See [LICENSE](LICENSE).
 
 ## Credits
 
-Built on top of the [bees](https://github.com/gabemahoney/bees) ticket management system by Gabe Mahoney. The original [Apiary](https://github.com/gabemahoney/apiary) skill set inspired this one and remains a great alternative — quorum exists alongside it, not as a replacement.
+Built on top of the [bees](https://github.com/gabemahoney/bees) ticket management system by Gabe Mahoney.
