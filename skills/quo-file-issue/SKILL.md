@@ -342,3 +342,48 @@ Show the user:
 - A one-line summary of what was filed
 - Whether the issue captured a doc-divergence observation (the `## Doc divergence noted` section in the body) so the user knows `/quo-fix-issue`'s doc-sync pass will consume it.
 - If the issue was filed in external-reference mode (bare URL, `--reference`, or `--from-github`): the referenced URL and the resolver name written into `reference_materials` (see sub-step B for how the resolver name is selected from the URL pattern), so the user knows `/quo-fix-issue` will fetch upstream content rather than treat the body as the spec.
+
+When invoked inline via the Skill tool, the report shape is structured per the contract section below — return the new (or matched-existing) Issue's ticket ID and final status as the load-bearing payload so the caller can wire its own follow-up state (e.g., kicking off a fix run against the freshly-filed Issue without prompting the user for the ticket ID).
+
+## Inline invocation via the Skill tool
+
+This section is the stable contract for callers that invoke `/quo-file-issue` through the Skill tool rather than as a user-typed slash command. The canonical caller is `/quo-fix-issue`, which dispatches `/quo-file-issue` when it encounters a URL form requiring a freshly-filed Issue (the user pointed `/quo-fix-issue` at a URL rather than a known Issue ticket ID, and the workflow needs to mint — or reuse — an Issue ticket before the fix path can run). Other future callers MAY also invoke this skill via the Skill tool; whatever they pass and consume must match the shape documented here.
+
+### Input shape (caller → this skill)
+
+The Skill-tool caller passes a single free-text `args` string carrying the URL as a positional `url:` field. Recommended shape (project-neutral; the angle-bracketed placeholder is filled by the caller at runtime):
+
+```
+url: <url>
+
+summary:
+<OPTIONAL — pre-distilled 2-3 sentence summary of the upstream source. When present, the External-reference branch's sub-step A.2 `WebFetch` step is skipped and the supplied summary is used directly as the thin body's summary content.>
+```
+
+Any additional context fields the caller may supply — e.g., the OPTIONAL `summary:` block above, or a future caller-supplied title hint — are OPTIONAL. The skill parses the `args` string, captures the URL, and routes execution through the Mode fork's External-reference branch (an inline-invocation `url:` payload is treated as equivalent to `/quo-file-issue --reference <url>`). The resolver-name selection in sub-step B still runs unconditionally on this path; the caller does not pass the resolver name.
+
+### Output shape (this skill → caller)
+
+When the workflow completes, the skill returns to the caller a structured final assistant message naming at least:
+
+- **`issue_ticket_id`** — the Issue ticket ID. On the freshly-filed path this is the ID returned by `bees create-ticket`. On the dedupe-reuse path (when the dedupe disambiguation gate's `Use existing` branch is taken), this is the matched existing ticket ID rather than a freshly-minted one.
+- **`issue_status`** — `open` on success. The Issues hive only supports `open` and `done`, so this field is always `open` when the skill returns successfully. The close-out flip to `done` is owned by `/quo-fix-issue` (per its Section 6 close-out), not by this skill.
+- **`action`** — exactly one of two values: `created` for a freshly-filed Issue, `reused-existing` when the dedupe path returned an existing ticket. The vocabulary is exactly `created` and `reused-existing` (lowercase, hyphenated). This vocabulary is published here and consumed by the dedupe path; the two MUST agree on the exact spelling.
+
+The caller (e.g., `/quo-fix-issue`) consumes `issue_ticket_id` to dispatch the fix run against the right ticket without prompting the user for the ID, and reads `action` to tell whether a duplicate was deduped (so it can surface "reusing existing Issue <id>" rather than "filed new Issue <id>" to the user).
+
+### Behavioral guarantees
+
+The inline path is functionally identical to the user-typed slash-command path from the Issues hive's perspective; the only difference is how the URL arrives (`args` payload vs `--reference <url>` / bare-URL positional). Specifically:
+
+- **User-facing AskUserQuestion gates still fire on the inline path.** The Skill-tool caller does NOT short-circuit any user-facing approval. The user owns the approval, not the caller. The gates that still fire are, at minimum:
+  - The in-conversation capture path's distilled-draft `Approve` / `Revise` / `Cancel` gate (Step 1a of the "Gather issue information" step). Note: although a Skill-tool `url:` payload routes through the External-reference branch (which does not reach Step 1a in normal operation), the gate is named here for completeness — if a future inline path drops the URL flag and lands on the in-conversation capture flow, the distill gate is still expected to fire.
+  - The External-reference branch's body-confirmation step (sub-step A.3) — the path where the user is asked in prose for a one- or two-sentence summary when neither prior conversation nor `WebFetch` produces a useful summary. When the caller supplies the OPTIONAL `summary:` block in the `args` payload, sub-step A.2's `WebFetch` is skipped and the supplied summary is used directly, which routinely satisfies sub-step A's summary need without reaching the prose ask in A.3 — but the branching logic itself is not bypassed by the inline path.
+  - The dedupe disambiguation gate. When the Step 2 / pre-create dedupe lookup matches an existing open Issue with the same URL or near-duplicate scope, the user is asked via `AskUserQuestion` whether to use the existing ticket, file anyway, or cancel. The inline path does not bypass this gate; the caller waits for the user's choice and then receives the appropriate `action` value (`reused-existing` on `Use existing`, `created` on `File anyway`) in the output payload.
+- **Idempotency.** Re-running the skill against the same URL produces an idempotent result — a duplicate file does NOT create a duplicate ticket. The dedupe path returns the existing ticket ID with `action=reused-existing`. This is the observable behavior callers and reviewers can verify by invoking the skill twice in a row against the same URL.
+- **Lifecycle.** The Issue ticket is created at `status=open` (the only status the Issues hive supports for new tickets). The inline path does NOT flip the Issue to `done` — the close-out flip is owned by `/quo-fix-issue` per its Section 6 close-out, not by this skill or its callers. `issue_status` in the output payload is therefore always `open` on a successful return.
+- **Scratch-file convention.** When the External-reference branch falls back to the `--body-file` path (sub-step C's safety valve for thin bodies that contain `#` or shell-special characters), the scratch file is written under `<tempdir>/.quorum/` with create-if-absent, and is never removed. Identical to the user-typed path.
+
+### Cross-reference
+
+The gate set named under "User-facing AskUserQuestion gates still fire on the inline path" is keyed off the gates that fire in the existing skill flow — Step 1a's distill gate, sub-step A.3's prose confirmation, and the dedupe disambiguation gate. If a future Task adds, removes, or renames a user-facing gate in this skill, this contract section MUST be revised in lockstep so callers' expectations match the skill's actual behavior. Likewise, the `action` vocabulary (`created` / `reused-existing`) is a published string contract — changing the spelling on either side without updating the other will silently break dedupe-aware callers.
