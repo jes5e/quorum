@@ -81,7 +81,7 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 
 **Out of scope.**
 
-- A `/bees-spec-review` quality-review pass over PRD/SDD ticket bodies, parallel to `/bees-code-review`, `/bees-test-review`, `/bees-doc-review`. Useful eventually, but separable from the bug fix this feature delivers — deferred to a follow-up Issue.
+- A `/bees-spec-review` quality-review pass over PRD/SDD ticket bodies, parallel to `/bees-engineer-review`, `/bees-test-writer-review`, `/bees-doc-writer-review`. Useful eventually, but separable from the bug fix this feature delivers — deferred to a follow-up Issue.
 - A `/bees-file-issue --from-github <url>` (or generic `--reference <url>`) external-reference mode symmetric with `/bees-plan-from-specs`. Real gap, but separable from this feature — deferred to a follow-up Issue.
 - Migrating the existing Plan Bees `b.5tm`, `b.9xr`, `b.gar`, `b.kw3` to the new Spec Bee structure. They remain on the old shape; the new flow applies forward.
 - Building a GitHub-issue resolver or any other new resolver. The design accommodates them via the existing `reference_materials` abstraction; concrete resolvers are separate work.
@@ -89,9 +89,9 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 
 ### Feature: Add /bees-spec-review skill (apiary /req-review analog)
 
-**What.** Add a `/bees-spec-review` skill that performs a fresh-eyes review pass over the PRD and SDD ticket bodies authored by `/bees-write-prd` and `/bees-write-sdd` under a Spec Bee. Mirrors the shape of the existing `/bees-code-review`, `/bees-doc-review`, and `/bees-test-review` skills (severity-tagged work-item list, dual-mode standalone vs orchestrator-invoked). Apiary's `/req-review` is the conceptual analog. Default scope reviews both the PRD `t1=Doc` child and the SDD `t1=Doc` child; `--doc PRD` or `--doc SDD` narrows to one child. The skill does not mutate any ticket — it returns a list of improvement work items for the caller (human or orchestrator) to act on.
+**What.** Add a `/bees-spec-review` skill that performs a fresh-eyes review pass over the PRD and SDD ticket bodies authored by `/bees-write-prd` and `/bees-write-sdd` under a Spec Bee. Mirrors the shape of the existing `/bees-engineer-review`, `/bees-doc-writer-review`, and `/bees-test-writer-review` skills (severity-tagged work-item list shape; the existing three are now orchestrator-only while `/bees-spec-review` remains dual-mode). Apiary's `/req-review` is the conceptual analog. Default scope reviews both the PRD `t1=Doc` child and the SDD `t1=Doc` child; `--doc PRD` or `--doc SDD` narrows to one child. The skill does not mutate any ticket — it returns a list of improvement work items for the caller (human or orchestrator) to act on.
 
-**Why.** The "Side-effect-free /bees-plan and /bees-file-issue with preserved context" feature (`b.31f`) deferred this work to observe real failure modes from `/bees-write-prd` and `/bees-write-sdd` output before building the reviewer. With those skills now in steady use, this skill closes the four-reviewer parallel (`/bees-code-review`, `/bees-doc-review`, `/bees-test-review`, `/bees-spec-review`) and provides a quality gate for Spec Bee `drafted → ready` transitions when spec-authoring or planning skills wire it in as a post-write hook. Standalone use also serves ad-hoc spec-review needs after revisions.
+**Why.** The "Side-effect-free /bees-plan and /bees-file-issue with preserved context" feature (`b.31f`) deferred this work to observe real failure modes from `/bees-write-prd` and `/bees-write-sdd` output before building the reviewer. With those skills now in steady use, this skill closes the four-reviewer parallel (`/bees-engineer-review`, `/bees-doc-writer-review`, `/bees-test-writer-review`, `/bees-spec-review`) and provides a quality gate for Spec Bee `drafted → ready` transitions when spec-authoring or planning skills wire it in as a post-write hook. Standalone use also serves ad-hoc spec-review needs after revisions.
 
 **Acceptance criteria.**
 
@@ -108,7 +108,7 @@ bees-workflow exists as an alternative to [Apiary](https://github.com/gabemahone
 - Wiring `/bees-spec-review` into `/bees-write-prd`, `/bees-write-sdd`, or `/bees-plan` as a post-write gate. The skill is invokable standalone today; orchestrator integration is a separate change those skills can adopt when the integration shape is settled.
 - A `## Spec review guide` doc under CLAUDE.md `## Documentation Locations` (parallel to the Test review guide and Doc writing guide entries). The skill's checklists live inline in its `SKILL.md` for now; if a separate guide is warranted later, that's a follow-up.
 - Auto-fix or auto-revise behavior — the skill returns findings only, never edits PRD or SDD bodies. The caller decides whether and how to address each finding.
-- Spec review of the cumulative project-level PRD/SDD on disk — `/bees-doc-review`'s territory. This skill scopes strictly to Spec Bee `t1=Doc` children.
+- Spec review of the cumulative project-level PRD/SDD on disk — `/bees-doc-writer-review`'s territory. This skill scopes strictly to Spec Bee `t1=Doc` children.
 
 ### Feature: /bees-file-issue: add --reference URL mode for external sources (GitHub, Linear, etc.)
 

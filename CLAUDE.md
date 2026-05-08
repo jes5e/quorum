@@ -78,7 +78,7 @@ The customer-facing README documents the per-OS location and tells users it is s
 
 ## Review criteria for skill changes
 
-When `bees-code-review`, `bees-test-review`, or `bees-doc-review` runs against changes in *this* repo, the three design rules above plus the scratch-file convention are mandatory review criteria layered on top of each skill's standard checks. Note: `bees-spec-review` is intentionally excluded from this section because it reviews PRD/SDD bee ticket bodies, not source files in this repo, so the rules below (which target skill-prose and helper-script diffs) do not apply to it. Flag any skill-prose or helper-script change that:
+When `bees-engineer-review`, `bees-test-writer-review`, or `bees-doc-writer-review` runs against changes in *this* repo, the three design rules above plus the scratch-file convention are mandatory review criteria layered on top of each skill's standard checks. Note: `bees-spec-review` is intentionally excluded from this section because it reviews PRD/SDD bee ticket bodies, not source files in this repo, so the rules below (which target skill-prose and helper-script diffs) do not apply to it. Flag any skill-prose or helper-script change that:
 
 - Hardcodes a language-specific command, file extension, or manifest filename (rule 1).
 - Introduces a shell snippet without paired POSIX bash + Windows PowerShell variants, or relies on a bash-only fallback (rule 2).

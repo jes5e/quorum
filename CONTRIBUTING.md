@@ -10,16 +10,16 @@ If you have a clone at `~/code/bees-workflow/` and want live editing, symlink yo
 
 ```bash
 # POSIX (bash / zsh):
-for s in bees-breakdown-epic bees-code-review bees-doc-review bees-execute \
-         bees-file-issue bees-fix-issue bees-plan bees-plan-from-specs \
-         bees-setup bees-status bees-test-review; do
+for s in bees-breakdown-epic bees-doc-writer-review bees-engineer-review \
+         bees-execute bees-file-issue bees-fix-issue bees-plan \
+         bees-plan-from-specs bees-setup bees-status bees-test-writer-review; do
   ln -sfn "$HOME/code/bees-workflow/skills/$s" "$HOME/.claude/skills/$s"
 done
 
 # Windows (PowerShell, run as Administrator for symlinks):
-$skills = 'bees-breakdown-epic','bees-code-review','bees-doc-review','bees-execute',
-          'bees-file-issue','bees-fix-issue','bees-plan','bees-plan-from-specs',
-          'bees-setup','bees-status','bees-test-review'
+$skills = 'bees-breakdown-epic','bees-doc-writer-review','bees-engineer-review',
+          'bees-execute','bees-file-issue','bees-fix-issue','bees-plan',
+          'bees-plan-from-specs','bees-setup','bees-status','bees-test-writer-review'
 foreach ($s in $skills) {
   New-Item -ItemType SymbolicLink -Force -Path "$HOME\.claude\skills\$s" `
     -Target "$HOME\code\bees-workflow\skills\$s"
@@ -76,7 +76,7 @@ This applies at all stages: when authoring a spec (PRD/SDD), when breaking down 
 Specific past suggestions that were evaluated and deliberately not adopted. Writing them down prevents future reviewers from re-flagging the same patterns and going through the same pushback cycle. Scan this list before flagging "this skill should do X" — X may already have been weighed and rejected.
 
 - **Dedicated bundled helper script for JSON edits to `~/.bees/config.json` and Claude Code `settings.json`** — rejected: skill prose specifying a Python one-liner (`python -c 'import json,sys; ...'`) gives the same atomicity without adding a maintained file.
-- **Unconditional "read ALL test files" in bees-test-review** — rejected as written: blows context budget on large suites. Replaced with conditional "read the index plus contents of files that overlap with the changed code." Preserves duplication-detection without context bloat.
+- **Unconditional "read ALL test files" in bees-test-writer-review** — rejected as written: blows context budget on large suites. Replaced with conditional "read the index plus contents of files that overlap with the changed code." Preserves duplication-detection without context bloat.
 - **Adding `triggers:` and `disable-model-invocation:` frontmatter to skills** — rejected: Claude Code silently ignores any frontmatter beyond `name` and `description`. The keys don't actually wire up trigger phrases or anything else.
 - **Centralizing skills into a global "shared" directory rather than skill-bundled `scripts/`** — rejected: each skill owns its helpers. Makes the bundle self-contained and avoids cross-skill coupling.
 
@@ -89,7 +89,7 @@ These renames happened in this order with specific reasons. A future "simplifica
 - **Hive name `bugs` → `issues`.** "Bugs" is a subset of what gets filed. "Issues" covers bugs, wishlist items, doc fixes, and meta-tasks. The skill prose was updated; some legacy projects still have a `bugs` hive — those should be `bees colonize-hive` migrated.
 - **Status names `larva` / `pupa` / `worker` / `finished` → `drafted` / `ready` / `in_progress` / `done`.** The bee-themed names obscured what state a ticket was in. The current names line up with how every other ticket system describes status, which makes the workflow accessible to people new to bees.
 - **Skill prefix: `bees-*`.** All workflow skills are prefixed `bees-` so a project with multiple skill providers can tell at a glance what comes from this repo.
-- **Skill renames `code-review` / `doc-review` / `test-review` → `bees-code-review` / `bees-doc-review` / `bees-test-review`.** Originally rejected on the premise the three were "general-purpose review skills useful standalone." The SKILL.md files invalidate that — each is dual-mode by design, with bees-coupled loop-bounding prose for the `/bees-execute` and `/bees-fix-issue` review cycle interleaved with the generic review guidance. The `bees-` prefix conveys package origin; standalone invocation remains supported via the existing dual-mode prose.
+- **Skill renames `bees-code-review` / `bees-doc-review` / `bees-test-review` → `bees-engineer-review` / `bees-doc-writer-review` / `bees-test-writer-review`.** The earlier `bees-` prefix rename did not eliminate the misinvocation problem: Claude Code's skill matcher hits on `/<x>-review` substrings, so `/code-review`, `/doc-review`, and `/test-review` continued firing the wrong skills against unrelated user requests even after the prefix landed. The previous entry's precedent — that standalone invocation was worth optimizing the skill name for — did not hold up in practice; the dominant invocation path is the orchestrated review cycle inside `/bees-execute` and `/bees-fix-issue`, and standalone use exists but is not load-bearing on the naming choice. The new role-based names mirror `agents/<role>.md` (`engineer.md`, `doc-writer.md`, `test-writer.md`), making the orchestration-side mental model consistent across the skill catalog and the dispatched-subagent contracts.
 
 ## Where things live
 
