@@ -10,7 +10,7 @@ reference_materials:
 - value: b.q83
   resolver: bees
 created_at: '2026-05-08T16:15:03.980616'
-status: ready
+status: in_progress
 schema_version: '0.1'
 guid: ahrtq3uqyrvwkkb9yckfixrj75iwmriu
 ---

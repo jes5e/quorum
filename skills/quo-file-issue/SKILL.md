@@ -1,7 +1,7 @@
 ---
 name: quo-file-issue
 description: File a new issue ticket in the issues hive
-argument-hint: "[<description> | --reference <url> | --from-github <url>]"
+argument-hint: "[<description> | <url> | --reference <url> | --from-github <url>]"
 ---
 
 ## Overview
@@ -28,6 +28,7 @@ The user can call this skill in several ways:
 
 - `/quo-file-issue` — interactive: ask the user to describe the issue
 - `/quo-file-issue Some description of the problem` — create directly from the description
+- `/quo-file-issue <url>` — bare-URL shorthand for external-reference mode: routes to the same External-reference branch as `--reference <url>`. A positional token starting with `http://` or `https://` is auto-detected; URLs inside a quoted description string are not. Example: `/quo-file-issue https://github.com/owner/repo/issues/123`.
 - `/quo-file-issue --reference <url>` — external-reference mode: file a thin Issue whose `reference_materials` points at an external resource (GitHub Issue, Linear ticket, internal bug tracker URL, Slack archive link, etc.) instead of capturing the spec content in the body. Symmetric with `/quo-plan-from-specs` on the planning side.
 - `/quo-file-issue --from-github <url>` — friendlier alias for the GitHub Issues case (selects the same external-reference path as `--reference`).
 
@@ -51,14 +52,17 @@ If the precondition is missing, stop with `Run /quo-setup first.` and direct the
 
 ### Mode fork — in-conversation capture vs external-reference
 
-Before any other step, parse the argument string for an external-reference flag and route accordingly:
+Before any other step, parse the argument string for an external-reference signal and route accordingly. Three input shapes route to the External-reference branch:
 
 - `--reference <url>` — generic external-reference mode.
 - `--from-github <url>` — friendlier alias for the GitHub Issues case; same code path as `--reference`. Any future per-source aliases (`--from-linear`, `--from-jira`, etc.) are folded into this same branch — the resolver-name selection in the External-reference branch (below) is what differentiates them downstream. The alias does **not** pin the resolver name to `github-issue`: sub-step B's URL-pattern heuristic still runs unconditionally, so a non-GitHub URL passed via `--from-github` (e.g., a Linear or generic URL) will pick up `linear-issue` or `url` per the pattern table, not `github-issue`. The alias controls argument parsing, not resolver selection.
+- **Bare-URL positional** — a positional argument token that begins with `http://` or `https://` after argument tokenization is treated as the URL value and routed to the External-reference branch, identical in effect to `--reference <url>`. Detection is anchored at the start of the token (`^https?://`); only standalone tokens are URL-shaped. The flag forms above remain accepted as silent no-op aliases — they are not deprecated, do not warn, and are still useful for discoverability — but on the bare-URL path no flag is required.
 
-If any external-reference flag is present, capture the URL value and route to the **External-reference branch** at the end of this Steps section; skip Step 0's discrete-step gate and Step 1's distill-vs-restart fork — though Step 0's err-toward-distilling principle still informs sub-step A.1's body authoring (see the External-reference branch below). The external-reference path has its own thin-body authoring and its own `bees create-ticket` invocation — Steps 1, 2, 3a, 3b, 3c, and the inner sub-steps of Step 3 are not reached on this path. Steps 4 (commit) and 5 (report back) are shared with the in-conversation capture flow.
+**Tokenization happens before URL detection.** A URL embedded inside a quoted free-text token (e.g., `/quo-file-issue "Fix the bug at https://example.com/foo"`) is **not** auto-detected — the entire quoted string is a single description token, and the `^https?://` test is applied to the start of the token, which begins with `Fix`, not `http`. Such invocations continue to route to the in-conversation capture flow with the URL preserved verbatim inside the description. Only standalone positional tokens that themselves begin with `http://` or `https://` are URL-shaped positionals.
 
-If no external-reference flag is present, proceed to Step 0 below and the standard in-conversation capture flow (Steps 0 → 1 → 2 → 3 → 4 → 5).
+If any external-reference flag is present, OR the positional argument is a URL-shaped token (begins with `http://` or `https://`), capture the URL value and route to the **External-reference branch** at the end of this Steps section; skip Step 0's discrete-step gate and Step 1's distill-vs-restart fork — though Step 0's err-toward-distilling principle still informs sub-step A.1's body authoring (see the External-reference branch below). The external-reference path has its own thin-body authoring and its own `bees create-ticket` invocation — Steps 1, 2, 3a, 3b, 3c, and the inner sub-steps of Step 3 are not reached on this path. Steps 4 (commit) and 5 (report back) are shared with the in-conversation capture flow.
+
+If no external-reference flag is present and the positional argument is not URL-shaped, proceed to Step 0 below and the standard in-conversation capture flow (Steps 0 → 1 → 2 → 3 → 4 → 5).
 
 ### 0. Detect mid-conversation context
 
@@ -216,7 +220,7 @@ When the distill branch (1a) of the "Gather issue information" step has already 
 
    The scratch file is **not** removed after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
 
-### External-reference branch (reached only when `--reference` / `--from-github` is set)
+### External-reference branch (reached when `--reference` / `--from-github` is set, or when the positional argument is a URL)
 
 This branch handles the external-reference invocation modes parsed by the "Mode fork" step above. When this branch runs, Steps 1, 2, 3a, 3b, and 3c are **not** reached — this branch produces the Issue body and runs `bees create-ticket` itself. Flow rejoins the standard path at Step 4 (commit) and Step 5 (report back).
 
@@ -337,4 +341,4 @@ Show the user:
 - The title
 - A one-line summary of what was filed
 - Whether the issue captured a doc-divergence observation (the `## Doc divergence noted` section in the body) so the user knows `/quo-fix-issue`'s doc-sync pass will consume it.
-- If the issue was filed in external-reference mode (`--reference` / `--from-github`): the referenced URL and the resolver name written into `reference_materials` (see sub-step B for how the resolver name is selected from the URL pattern), so the user knows `/quo-fix-issue` will fetch upstream content rather than treat the body as the spec.
+- If the issue was filed in external-reference mode (bare URL, `--reference`, or `--from-github`): the referenced URL and the resolver name written into `reference_materials` (see sub-step B for how the resolver name is selected from the URL pattern), so the user knows `/quo-fix-issue` will fetch upstream content rather than treat the body as the spec.
