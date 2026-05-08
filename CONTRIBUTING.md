@@ -1,4 +1,4 @@
-# Contributing to bees-workflow
+# Contributing to quorum
 
 This file captures workflow design rationale, intentional asymmetries, and anti-patterns. External reviewers and future agents working on these skills don't have access to the conversation history, commit messages, or ticket bodies that informed many non-obvious choices. This is the durable record so design decisions don't have to be re-litigated each time someone touches a skill.
 
@@ -6,14 +6,14 @@ This file captures workflow design rationale, intentional asymmetries, and anti-
 
 All skill edits happen in this repository. Per-project copies (e.g., `~/.claude/skills/<skill>/` or `<repo>/.claude/skills/<skill>/`) are install artifacts. Editing them directly creates drift; future re-installs will overwrite the edits.
 
-If you have a clone at `~/code/bees-workflow/` and want live editing, symlink your global install at it:
+If you have a clone at `~/code/quorum/` and want live editing, symlink your global install at it:
 
 ```bash
 # POSIX (bash / zsh):
 for s in bees-breakdown-epic bees-doc-writer-review bees-engineer-review \
          bees-execute bees-file-issue bees-fix-issue bees-plan \
          bees-plan-from-specs bees-setup bees-status bees-test-writer-review; do
-  ln -sfn "$HOME/code/bees-workflow/skills/$s" "$HOME/.claude/skills/$s"
+  ln -sfn "$HOME/code/quorum/skills/$s" "$HOME/.claude/skills/$s"
 done
 
 # Windows (PowerShell, run as Administrator for symlinks):
@@ -22,11 +22,11 @@ $skills = 'bees-breakdown-epic','bees-doc-writer-review','bees-engineer-review',
           'bees-plan-from-specs','bees-setup','bees-status','bees-test-writer-review'
 foreach ($s in $skills) {
   New-Item -ItemType SymbolicLink -Force -Path "$HOME\.claude\skills\$s" `
-    -Target "$HOME\code\bees-workflow\skills\$s"
+    -Target "$HOME\code\quorum\skills\$s"
 }
 ```
 
-After this, edits in `~/code/bees-workflow/skills/<skill>/SKILL.md` are immediately picked up by Claude Code without re-installing.
+After this, edits in `~/code/quorum/skills/<skill>/SKILL.md` are immediately picked up by Claude Code without re-installing.
 
 ## Workflow principles
 
@@ -60,7 +60,7 @@ These look like inconsistencies if you compare two skills side-by-side without c
 - **Don't add frontmatter keys Claude Code ignores.** Keeps the skill source honest about what's actually consumed.
 - **Don't hardcode hive paths or doc paths.** `/bees-setup` lets the user pick where each hive lives (in-repo, sibling-to-repo, or anywhere). Skills must resolve paths at runtime via `bees list-hives` or CLAUDE.md `## Documentation Locations`.
 - **Don't replace concrete shell snippets with vague prose** ("run the appropriate test command"). Concrete commands per OS keep agent reliability up — vague prose forces the agent to guess and often guesses wrong.
-- **Don't categorize-and-split issue tickets.** Default to bundling related issues into a single ticket with sub-task labels. The bees workflow optimizes for agent work efficiency (per-ticket overhead is the cost), not human triage. See `/bees-file-issue`'s "House style" section for the rule.
+- **Don't categorize-and-split issue tickets.** Default to bundling related issues into a single ticket with sub-task labels. Quorum optimizes for agent work efficiency (per-ticket overhead is the cost), not human triage. See `/bees-file-issue`'s "House style" section for the rule.
 - **Don't skip verification before recommending paths or flags.** When prose says `bees set-types --child-tiers ...`, that flag must exist. Verify with `--help` before writing it. CLI-flag drift is a recurring source of P0 bugs (see *Where things live* below for where past findings are tracked).
 
 ## Verifying external-system contracts
@@ -94,7 +94,7 @@ These renames happened in this order with specific reasons. A future "simplifica
 ## Where things live
 
 - **Issues / bugs in this repo** — file in the issues hive of whichever project surfaced them, then reference them in PRs/commits here. The issues hive in `live_edit` was the first home for the validation reports that drove this workflow's design (b.622 and the b.sjz / b.dp2 / b.nyv / b.4xw / b.qw2 / b.ewe / b.bp5 / b.obn set that followed).
-- **Discussion** — GitHub issues on this repo are fine for "what should the skill do?" questions. Use issue tickets in your bees workflow for "fix X in skill Y" findings — those become the agent-fixable input set.
+- **Discussion** — GitHub issues on this repo are fine for "what should the skill do?" questions. Use issue tickets in quorum for "fix X in skill Y" findings — those become the agent-fixable input set.
 
 ## Reviewing changes
 

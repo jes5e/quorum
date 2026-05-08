@@ -3,13 +3,13 @@ name: bees-status
 description: Show the bees-driven SDLC workflow stages and current progress across all hives in this repo
 ---
 
-# Bees Workflow Status
+# Quorum Status
 
 Show the user where they are in the bees-driven SDLC workflow and what to do next.
 
 ## Workflow Stages
 
-The bees SDLC has these stages, in order:
+The quorum SDLC has these stages, in order:
 
 | # | Stage | Skill | Input | Output |
 |---|-------|-------|-------|--------|
@@ -69,7 +69,7 @@ Use these status meanings:
 ### 4. Output Format
 
 ```markdown
-## Bees Workflow Status
+## Quorum Status
 
 ### Hives: [OK | Not configured]
 ### Specs: [Found at path | Not found]

@@ -1,15 +1,15 @@
 ---
 name: bees-setup
-description: Configure hives for the bees workflow
+description: Configure hives for quorum
 ---
 
 ## Overview
 
-Configure a repo for the bees workflow. Sets up hives, writes a `## Documentation Locations` section and a `## Build Commands` section in CLAUDE.md, and (optionally) bootstraps baseline PRD/SDD docs by exploring the existing codebase.
+Configure a repo for quorum. Sets up hives, writes a `## Documentation Locations` section and a `## Build Commands` section in CLAUDE.md, and (optionally) bootstraps baseline PRD/SDD docs by exploring the existing codebase.
 
 **This skill is safe to re-run.** Each section detects existing configuration and only prompts where something is missing, stale, or you ask to change it. If you skipped doc bootstrap on the first run and want to add docs later, re-running setup re-offers the bootstrap option.
 
-The bees workflow has two entry points for new work, both supported by this setup:
+Quorum has two entry points for new work, both supported by this setup:
 - **`/bees-plan`** — interactive scope discovery for an idea, refactor, or feature without finalized specs
 - **`/bees-plan-from-specs`** — express path when you already have a finalized PRD and SDD on disk
 
@@ -353,7 +353,7 @@ Pick the narrowest scope glob that covers the entire project directory tree — 
 
 #### Create or validate
 
-The canonical hive set for the bees-workflow is three top-level hives: **Issues hive**, **Plans hive**, and **Specs hive**. All three are required for the downstream skills (`/bees-plan`, `/bees-plan-from-specs`, `/bees-execute`, `/bees-fix-issue`, `/bees-file-issue`) to function — Specs is not an optional add-on.
+The canonical hive set for quorum is three top-level hives: **Issues hive**, **Plans hive**, and **Specs hive**. All three are required for the downstream skills (`/bees-plan`, `/bees-plan-from-specs`, `/bees-execute`, `/bees-fix-issue`, `/bees-file-issue`) to function — Specs is not an optional add-on.
 
 Check for the existence of all three hives using `bees list-hives` and validate their configs with `bees get-types` and `bees get-status-values`.
 
@@ -412,7 +412,7 @@ If a hive exists:
 - Validate its child tiers and status values against the contracts in `## Valid configuration` above.
 - If they differ, ask user if you may change them.
 
-**Important:** This workflow has no Ideas hive. If the target repo already has an Ideas hive from a prior setup, do not remove it — but note that bees-workflow skills will not use it.
+**Important:** This workflow has no Ideas hive. If the target repo already has an Ideas hive from a prior setup, do not remove it — but note that quorum skills will not use it.
 
 ### Documentation Locations
 
@@ -420,7 +420,7 @@ After hives are configured, set up the `## Documentation Locations` section in C
 
 **First, detect existing configuration.** Read the project's CLAUDE.md (create it if it doesn't exist). If a `## Documentation Locations` section already exists, parse the current values for each of the six doc types below. For each row that's already set, **show the current value to the user and ask whether to keep or change it** — do not blindly re-prompt for paths that are already configured. Only prompt fully for rows that are missing or that the user opts to change.
 
-If the section doesn't exist at all, ask whether to configure it now: "Would you like to configure documentation locations in CLAUDE.md now? The bees workflow uses these docs as the **machine-readable source of truth** that downstream agents (`bees-execute`, `bees-fix-issue`) read during work to detect spec drift and align with project standards. For each doc type, you can point to an existing file or have one generated for you. You may also skip this step entirely."
+If the section doesn't exist at all, ask whether to configure it now: "Would you like to configure documentation locations in CLAUDE.md now? Quorum uses these docs as the **machine-readable source of truth** that downstream agents (`bees-execute`, `bees-fix-issue`) read during work to detect spec drift and align with project standards. For each doc type, you can point to an existing file or have one generated for you. You may also skip this step entirely."
 - Options: "Yes" / "Skip for now"
 
 If yes (or for any individual rows the user opted to change), walk through each of the six doc types below **one at a time**. For each, use `AskUserQuestion` to ask the high-level decision (provide existing path / generate / skip / etc.) — these are genuine multi-choice prompts. **Do not** include `___`-suffixed labels or any "type your own answer" options — `AskUserQuestion` auto-appends a free-text slot, so a redundant fake option just confuses the UI. Then, **only if the user picks the "provide existing path" option, prompt for the actual path in prose** in the next turn (e.g., "Got it — what's the path to your PRD?") and let the user reply normally.
@@ -488,7 +488,7 @@ This subsection runs **only if** the PRD or SDD (or both) were skipped during th
 
 **Why this matters.** Use the following framing when posing the question to the user — verbatim or close to it. The natural inclination of an engineer is to think "I don't care about reading PRD/SDD documents, I'll skip this." Reframe it:
 
-> Your project doesn't have a PRD or SDD configured. Note: these docs aren't primarily for you to read. They're the **machine-readable source of truth that bees-workflow agents (`bees-execute`, `bees-fix-issue`) read during work** to detect spec drift, verify the Engineer hasn't built something different from what was planned, and keep multi-feature projects coherent over time. Without them, each agent has less context to anchor against and may make inconsistent assumptions across features.
+> Your project doesn't have a PRD or SDD configured. Note: these docs aren't primarily for you to read. They're the **machine-readable source of truth that quorum agents (`bees-execute`, `bees-fix-issue`) read during work** to detect spec drift, verify the Engineer hasn't built something different from what was planned, and keep multi-feature projects coherent over time. Without them, each agent has less context to anchor against and may make inconsistent assumptions across features.
 
 Then offer three options via AskUserQuestion:
 
@@ -643,7 +643,7 @@ Don't bootstrap. Continue to Build Commands. Same CLAUDE.md state as Defer.
 
 ### Build Commands
 
-After Documentation Locations is set, walk the user through the project's build/test/format/lint commands. The bees workflow's downstream skills (`bees-execute`, `bees-fix-issue`) read these commands from CLAUDE.md instead of hardcoding language-specific tooling, so the workflow works on Rust, Node, Python, Go, and other stacks without per-skill editing.
+After Documentation Locations is set, walk the user through the project's build/test/format/lint commands. Quorum's downstream skills (`bees-execute`, `bees-fix-issue`) read these commands from CLAUDE.md instead of hardcoding language-specific tooling, so the workflow works on Rust, Node, Python, Go, and other stacks without per-skill editing.
 
 **First, detect existing configuration.** Read CLAUDE.md. If a `## Build Commands` section already exists with all five required keys (Compile/type-check, Format, Lint, Narrow test, Full test) populated, show the user the current values and ask whether to keep or change each one. **Do not blindly re-prompt the user for commands that are already set** — only prompt for slots that are missing or that the user explicitly wants to change. If every slot is already set and the user wants to keep all of them, this section is a no-op on this run.
 
@@ -707,7 +707,7 @@ The bullet keys (`Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full te
 
 ### Next Steps
 
-After setup is complete, tell the user that the bees workflow is ready to use. CLAUDE.md now contains both a `## Documentation Locations` section (consumed by Doc Writer / Engineer / Test Writer agents during execution) and a `## Build Commands` section (consumed by Engineer agents in `bees-execute` and `bees-fix-issue` for compile/format/lint/test invocations). Both are precondition checks for the downstream workflow skills — running `/bees-execute`, `/bees-fix-issue`, `/bees-plan-from-specs`, or `/bees-file-issue` against a repo missing either section will hard-fail with `Run /bees-setup first.`
+After setup is complete, tell the user that quorum is ready to use. CLAUDE.md now contains both a `## Documentation Locations` section (consumed by Doc Writer / Engineer / Test Writer agents during execution) and a `## Build Commands` section (consumed by Engineer agents in `bees-execute` and `bees-fix-issue` for compile/format/lint/test invocations). Both are precondition checks for the downstream workflow skills — running `/bees-execute`, `/bees-fix-issue`, `/bees-plan-from-specs`, or `/bees-file-issue` against a repo missing either section will hard-fail with `Run /bees-setup first.`
 
 The next-step recommendation depends on whether the user already has spec docs (a PRD and SDD, or equivalent) on disk. Use `AskUserQuestion` to find out, then surface the matching path:
 

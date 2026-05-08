@@ -11,7 +11,7 @@ reference_materials: null
 ---
 ## Description
 
-The README's `## Where docs live` section explains where PRD/SDD live in the target repo, but does not mention where the bees-workflow skills' bundled helper scripts (e.g., `file_list_resolver.py`, `force_clean_team.py`, `check_agent_teams.py`, `scoped_marker_resolver.py`, `detect_fast_path.py`) live. A user who hits a runtime error mentioning one of those scripts has no anchor in the README to find them.
+The README's `## Where docs live` section explains where PRD/SDD live in the target repo, but does not mention where the quorum skills' bundled helper scripts (e.g., `file_list_resolver.py`, `force_clean_team.py`, `check_agent_teams.py`, `scoped_marker_resolver.py`, `detect_fast_path.py`) live. A user who hits a runtime error mentioning one of those scripts has no anchor in the README to find them.
 
 ## Current behavior
 

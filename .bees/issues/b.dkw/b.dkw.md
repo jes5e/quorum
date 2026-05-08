@@ -1,7 +1,7 @@
 ---
 id: b.dkw
 type: bee
-title: Standardize transient scratch files under <tempdir>/.bees-workflow/, never
+title: Standardize transient scratch files under <tempdir>/.quorum/, never
   delete
 parent: null
 created_at: '2026-05-03T14:27:18.837295'
@@ -25,11 +25,11 @@ Skills currently write `--body-file` scratch (and other transient files) into th
 
 A single shared rule that all skills follow:
 
-1. **Always write transient `--body-file` (and similar) scratch under `<tempdir>/.bees-workflow/`**, where `<tempdir>` is `/tmp` on POSIX and `%TEMP%` on Windows. Resolve via Python's `tempfile.gettempdir()` when a helper is involved, or paired POSIX-bash + PowerShell snippets when inline. Create the `.bees-workflow` subdir if it doesn't exist.
-2. **Never delete on any OS.** The footprint is small (KBs per run, low-MB after heavy use). Linux/macOS clean `/tmp` on a days-to-reboot cadence; Windows users can clean `%TEMP%\.bees-workflow` manually whenever they want. Eliminating mid-run cleanup avoids permission-prompt churn and leaves artifacts around for debugging when a run crashes.
+1. **Always write transient `--body-file` (and similar) scratch under `<tempdir>/.quorum/`**, where `<tempdir>` is `/tmp` on POSIX and `%TEMP%` on Windows. Resolve via Python's `tempfile.gettempdir()` when a helper is involved, or paired POSIX-bash + PowerShell snippets when inline. Create the `.quorum` subdir if it doesn't exist.
+2. **Never delete on any OS.** The footprint is small (KBs per run, low-MB after heavy use). Linux/macOS clean `/tmp` on a days-to-reboot cadence; Windows users can clean `%TEMP%\.quorum` manually whenever they want. Eliminating mid-run cleanup avoids permission-prompt churn and leaves artifacts around for debugging when a run crashes.
 3. **Document the location in the README** so users know where to look and that the dir is safe to delete anytime.
 
-This approach was chosen over a per-skill cleanup-with-allowlist design because Claude Code permission patterns are prefix-matched on the literal command string, so an allowlist entry like `Bash(rm /tmp/.bees-workflow/**)` would also match `rm /tmp/.bees-workflow/../../etc/something` — a path-traversal-shaped failure under prompt injection. Skipping cleanup entirely sidesteps the security question.
+This approach was chosen over a per-skill cleanup-with-allowlist design because Claude Code permission patterns are prefix-matched on the literal command string, so an allowlist entry like `Bash(rm /tmp/.quorum/**)` would also match `rm /tmp/.quorum/../../etc/something` — a path-traversal-shaped failure under prompt injection. Skipping cleanup entirely sidesteps the security question.
 
 ## Impact
 
@@ -41,11 +41,11 @@ This approach was chosen over a per-skill cleanup-with-allowlist design because 
 
 ## Suggested fix
 
-1. Add a new section to `CLAUDE.md` (this repo's, not the target repo's) — likely under "Bash etiquette" or a new "Scratch-file convention" heading — stating the `<tempdir>/.bees-workflow/` rule and the no-delete policy. Make it a review criterion alongside the three design rules.
-2. Audit every skill that writes a `--body-file` or similar scratch path and update the prose to use `<tempdir>/.bees-workflow/<name>`. Known sites at minimum:
+1. Add a new section to `CLAUDE.md` (this repo's, not the target repo's) — likely under "Bash etiquette" or a new "Scratch-file convention" heading — stating the `<tempdir>/.quorum/` rule and the no-delete policy. Make it a review criterion alongside the three design rules.
+2. Audit every skill that writes a `--body-file` or similar scratch path and update the prose to use `<tempdir>/.quorum/<name>`. Known sites at minimum:
    - `skills/bees-file-issue/SKILL.md` (step 3 — currently writes to `/tmp/bees-body-<suffix>.md` and removes after; both lines need to change).
    - Any other skill that authors body files (sweep with a grep for `body-file`, `tempfile`, `/tmp/`, `$env:TEMP`).
-3. Update paired POSIX-bash + Windows-PowerShell snippets accordingly. Where Python helpers do the writing, route through `tempfile.gettempdir()` + `.bees-workflow` subdir.
+3. Update paired POSIX-bash + Windows-PowerShell snippets accordingly. Where Python helpers do the writing, route through `tempfile.gettempdir()` + `.quorum` subdir.
 4. Add a short "Scratch files" note to `README.md` telling users where the dir lives per-OS and that it's safe to delete.
 5. Remove any "remove the temp file after the bees command exits" instructions from skill prose.
 

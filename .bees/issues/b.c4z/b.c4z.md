@@ -67,7 +67,7 @@ Short single-line bodies / chunks (titles only, single-line summaries, status-on
 
 - `--egg-file` for `--egg JSON` — JSON args aren't affected by the validator heuristic in the same way; upstream issue #2 explicitly deferred this.
 - Curl-style `--body @PATH` spelling — the flag uses a separate name (`--body-file`).
-- Bumping a minimum-bees-version pin in CLAUDE.md or README — bees-workflow has no version manifest today; track separately.
+- Bumping a minimum-bees-version pin in CLAUDE.md or README — quorum has no version manifest today; track separately.
 - Binary file support — the new helper enforces UTF-8.
 
 ## Impact

@@ -14,7 +14,7 @@ The user can call this skill in four ways:
 
 ## Preconditions
 
-Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
+Before doing anything else, verify the host repo is configured for quorum. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
 - The seven required custom subagent types are registered in the running Claude Code session: `engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`. Custom subagents are loaded at Claude Code session start, so a fresh install requires a Claude Code restart (or `/agents` to hot-reload) before the skill can dispatch them. If any of the seven is missing at run-time, the orchestrator STOPS at the precondition gate and emits the hard-fail message — there is no fallback to `general-purpose`, no skipping the dispatch, and no improvising substitute roles. The hard-fail message must direct the user to (a) verify the install per `README.md` `## Install` AND (b) restart Claude Code or run `/agents` to hot-reload, e.g.: `Run /bees-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.`
 - The Issues hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `issues`).
@@ -402,7 +402,7 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. The agent will not see anything else from this session, so the prompt must be self-contained. Starting skeleton (substitute `<pre-session-sha>` and the issue ID list before sending):
 
    ```
-   You are an independent reviewer for a bees-workflow fix that was just shipped.
+   You are an independent reviewer for a quorum fix that was just shipped.
 
    Scope: review the diff `git diff <pre-session-sha>..HEAD` (compute it
    yourself via git) against the issue body, or bodies in batch mode — read

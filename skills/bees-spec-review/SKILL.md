@@ -6,7 +6,7 @@ argument-hint: "<spec-bee-id> [--doc PRD|SDD]"
 
 ## Overview
 
-This skill performs a fresh-eyes review of the spec content authored under a Spec Bee in the Specs hive — the PRD and SDD `t1=Doc` children produced by `/bees-write-prd` and `/bees-write-sdd`. It returns a list of improvement work items for the caller to act on. The conceptual analog is upstream apiary's `/req-review`; the bees-workflow analogs in shape are `/bees-engineer-review`, `/bees-test-writer-review`, and `/bees-doc-writer-review`.
+This skill performs a fresh-eyes review of the spec content authored under a Spec Bee in the Specs hive — the PRD and SDD `t1=Doc` children produced by `/bees-write-prd` and `/bees-write-sdd`. It returns a list of improvement work items for the caller to act on. The quorum analogs in shape are `/bees-engineer-review`, `/bees-test-writer-review`, and `/bees-doc-writer-review`.
 
 By default the skill reviews **both** the PRD child and the SDD child of the named Spec Bee, applying a checklist tailored to each document type plus a cross-document consistency pass. Pass `--doc PRD` or `--doc SDD` to scope the review to a single child (useful when only one of the two has been revised, or when an orchestrating writer skill has only authored / revised one of the two children — `/bees-write-prd` invokes this skill with `--doc PRD`, `/bees-write-sdd` with `--doc SDD`).
 
@@ -18,7 +18,7 @@ This skill **returns work items** — it does not edit the PRD or SDD itself. Th
 
 ## Preconditions
 
-Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if the Specs hive is not colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `specs`).
+Before doing anything else, verify the host repo is configured for quorum. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if the Specs hive is not colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `specs`).
 
 This skill does not require CLAUDE.md `## Build Commands` — spec review reads ticket bodies via the bees CLI and produces findings as text; no build/test/lint command runs.
 

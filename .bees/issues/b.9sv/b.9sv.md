@@ -12,13 +12,13 @@ reference_materials: null
 ---
 ## Description
 
-Two related findings about the bees-workflow's relationship with Claude Code's experimental Agent Teams feature, both surfaced while debugging a `/bees-fix-issue all` run that stalled on the macOS + iTerm2 Split Pane Setup prompt:
+Two related findings about quorum's relationship with Claude Code's experimental Agent Teams feature, both surfaced while debugging a `/bees-fix-issue all` run that stalled on the macOS + iTerm2 Split Pane Setup prompt:
 
 1. **Agent Teams is effectively required** for `/bees-execute` and `/bees-fix-issue`, despite docs claiming a single-agent fallback exists. Reading the SKILL.md prose for both skills shows no fallback path is implemented — every step assumes a team can be spawned, `TeamCreate` / `TeamDelete` are called unconditionally, "stay in `delegate` mode" presupposes a team. The "fall back to single-agent execution" claim appears in four documented locations and is aspirational text with no corresponding skill prose.
 
 2. **The default `teammateMode: "auto"` setting traps iTerm2 users.** On macOS + iTerm2 with default settings, the first team spawn triggers an "iTerm2 Split Pane Setup" prompt. Picking Cancel aborts the entire team spawn (returning `Teammate spawn cancelled - iTerm2 setup required`) — *not* declining a visual upgrade. The calling skill stalls with no recovery. A documented [Claude Code verification bug](https://github.com/anthropics/claude-code/issues/27413) compounds the problem: the prompt may re-appear even after `it2` is installed.
 
-These compose into one workflow failure mode: a new bees-workflow user on macOS + iTerm2 follows the README, picks "Skip for now" in `bees-setup`'s Agent Teams prompt thinking it's optional (per the doc claim), then hits a team-required skill, gets the iTerm2 prompt, picks Cancel because the docs implied teams were optional anyway, and ends up with a stalled run and no clear path forward.
+These compose into one workflow failure mode: a new quorum user on macOS + iTerm2 follows the README, picks "Skip for now" in `bees-setup`'s Agent Teams prompt thinking it's optional (per the doc claim), then hits a team-required skill, gets the iTerm2 prompt, picks Cancel because the docs implied teams were optional anyway, and ends up with a stalled run and no clear path forward.
 
 Bundled as one ticket because the fixes share files (`bees-execute/SKILL.md`, `bees-fix-issue/SKILL.md`, `bees-setup/SKILL.md`, `README.md`, `CLAUDE.md`) and the same mental model: "Agent Teams is required; `bees-setup` must configure both the env var AND the display backend; downstream skills must hard-fail without the prerequisite."
 
@@ -59,7 +59,7 @@ Bundled as one ticket because the fixes share files (`bees-execute/SKILL.md`, `b
 
 **iTerm2-specific dead end.** Even users who *did* enable Agent Teams hit the iTerm2 Split Pane Setup prompt mid-run on first team spawn. Picking Cancel aborts the run; picking Install or Use tmux disrupts flow with a setup task they didn't expect. Pre-configuring `teammateMode: "in-process"` during setup avoids the prompt entirely.
 
-**Cross-platform claim integrity.** The CLAUDE.md / CONTRIBUTING.md "tmux not required for the portable core" claim is currently *technically* true at the bees-workflow layer but practically misleading because Claude Code's team-display layer has its own multiplexer behavior. Recommending `"in-process"` as the bees-workflow default makes the portability claim genuinely true everywhere.
+**Cross-platform claim integrity.** The CLAUDE.md / CONTRIBUTING.md "tmux not required for the portable core" claim is currently *technically* true at the quorum layer but practically misleading because Claude Code's team-display layer has its own multiplexer behavior. Recommending `"in-process"` as the quorum default makes the portability claim genuinely true everywhere.
 
 **Doc honesty.** The "fall back to single-agent execution" claim is wrong. Users and contributors alike read it and reason from it. Fixing it removes a load-bearing falsehood from the project's docs.
 
@@ -89,7 +89,7 @@ Verification approach: agent reads `~/.claude/settings.json` and checks the valu
 
 Apply chosen value to `~/.claude/settings.json` using the structured-edit pattern in `CONTRIBUTING.md` `## Skill conventions` (Python one-liner with `json.load` / `json.dump` and atomic write — do not text-edit). Merge without disturbing other settings, same as the existing `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` set.
 
-**Phase 4 — README gains a `## Display backend` section.** Document the three valid `teammateMode` values, what each does, and that bees-workflow recommends `\"in-process\"` for smooth onboarding. Quote the docs' enumeration. Note the macOS + iTerm2 + `\"auto\"` failure mode.
+**Phase 4 — README gains a `## Display backend` section.** Document the three valid `teammateMode` values, what each does, and that quorum recommends `\"in-process\"` for smooth onboarding. Quote the docs' enumeration. Note the macOS + iTerm2 + `\"auto\"` failure mode.
 
 ## Files to modify
 

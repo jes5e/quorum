@@ -56,7 +56,7 @@ The implementing agent will be tempted to "be helpful" and reuse /bees-code-revi
 Concrete prompt skeleton the new step should produce when spawning the fresh reviewer:
 
 ```
-You are an independent reviewer for a bees-workflow fix that was just shipped.
+You are an independent reviewer for a quorum fix that was just shipped.
 
 Scope: review the diff for HEAD~N..HEAD (compute via git) against the issue/Bee body
 (read via `bees show-ticket --ids <id>`). The orchestrating team-lead has finished

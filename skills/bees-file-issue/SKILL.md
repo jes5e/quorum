@@ -10,7 +10,7 @@ Create a new issue ticket in the issues hive. The user describes the issue and t
 
 ## House style: bundle related issues
 
-When filing issues, **default to bundling related items into fewer tickets** rather than splitting them along human-triage lines. The bees workflow is optimized for agent work efficiency: per-ticket overhead — read scope, load context, write tests, commit — is the cost to minimize, not human-triage legibility.
+When filing issues, **default to bundling related items into fewer tickets** rather than splitting them along human-triage lines. Quorum is optimized for agent work efficiency: per-ticket overhead — read scope, load context, write tests, commit — is the cost to minimize, not human-triage legibility.
 
 Split into separate tickets only when:
 
@@ -38,7 +38,7 @@ The two paths produce different Issue shapes:
 
 ## Preconditions
 
-Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
+Before doing anything else, verify the host repo is configured for quorum. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
 - The Issues hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `issues`).
 - CLAUDE.md contains a `## Documentation Locations` section. The "Create the ticket" step's body authoring reads architecture/customer-doc paths from this section by exact key so the optional `## Doc divergence noted` capture can point at the right file when the issue surfaces a doc claim that's wrong (or a doc gap).
@@ -182,16 +182,16 @@ When the distill branch (1a) of the "Gather issue information" step has already 
 
 #### 3c. Write the body to a temp file and run `bees create-ticket`
 
-1. Pick a temp path under the namespaced workflow scratch dir: `/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows. Create the `.bees-workflow` subdir if it does not yet exist:
+1. Pick a temp path under the namespaced workflow scratch dir: `/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows. Create the `.quorum` subdir if it does not yet exist:
 
    ```bash
    # POSIX (bash / zsh):
-   mkdir -p /tmp/.bees-workflow
+   mkdir -p /tmp/.quorum
    ```
 
    ```powershell
    # Windows (PowerShell):
-   New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+   New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
    ```
 2. Use the `Write` tool to write the structured body — including any `## Doc divergence noted` section determined in 3b — to that path.
 3. Run the bees command (the file-flag carries no shell-quoting surface — only the line-continuation character differs between OSes):
@@ -214,7 +214,7 @@ When the distill branch (1a) of the "Gather issue information" step has already 
      --body-file <path>
    ```
 
-   The scratch file is **not** removed after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
+   The scratch file is **not** removed after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
 
 ### External-reference branch (reached only when `--reference` / `--from-github` is set)
 
@@ -226,7 +226,7 @@ The Issue body in external-reference mode is a thin summary, **not** the full bo
 
 1. **Mid-conversation context.** If the surrounding conversation already explains what's at the URL — the user has been discussing the bug, has linked the URL inline, or has asked the assistant to read the URL — distill 2-3 sentences from that context. Mid-conversation awareness still applies on this path; the err-toward-distilling principle from Step 0 carries over.
 2. **Fetch the URL via `WebFetch`.** If the conversation does not explain what's at the URL but the URL is fetchable (public web page, reachable from the current network), use `WebFetch` to read it and distill 2-3 sentences from the upstream content. This is optional — the authoritative spec content stays at the URL and `/bees-fix-issue` fetches it again at fix time; the body summary is for human readers of the Issue, not for downstream agents.
-3. **Ask the user.** If neither prior context nor `WebFetch` produces a useful summary (e.g., the URL is auth-gated or otherwise unreadable), ask in prose for a one- or two-sentence summary of what the bees workflow needs to know about the referenced source. Use prose rather than `AskUserQuestion` — per CLAUDE.md `## AskUserQuestion usage`, that tool is multi-choice only and is wrong for free-text answers.
+3. **Ask the user.** If neither prior context nor `WebFetch` produces a useful summary (e.g., the URL is auth-gated or otherwise unreadable), ask in prose for a one- or two-sentence summary of what quorum needs to know about the referenced source. Use prose rather than `AskUserQuestion` — per CLAUDE.md `## AskUserQuestion usage`, that tool is multi-choice only and is wrong for free-text answers.
 
 The body shape is intentionally **flat** — no `## Description` / `## Current behavior` / `## Expected behavior` / `## Impact` / `## Suggested fix` headings. Those sections exist to extract structure from in-conversation capture; on this path the structure lives at the URL, and forcing the headings into a thin body would either duplicate URL content or render mostly-empty stubs. The OPTIONAL `## Doc divergence noted` section from Step 3a may still be appended on this path **only when** the user (or the surrounding conversation) explicitly flags a doc-divergence observation that the external source does not already capture; in routine external-reference filings the section is omitted. Step 3b's automatic doc-divergence review does **not** run on this path — consistent with the Mode fork's "Steps 1, 2, 3a, 3b, 3c, and the inner sub-steps of Step 3 are not reached on this path" — so the section is appended only when the user or the surrounding conversation initiates it, never as the result of an automatic review pass.
 
@@ -262,7 +262,7 @@ The URL host and path determine the resolver name — match on host first, then 
 
 Unlike the in-conversation capture path, the external-reference branch passes the body inline (it is short, one-line-ish) and the URL as a `--reference-materials` JSON argument. No temp body file is written on this path.
 
-The exception: if the thin body authored in (A) contains anything that would trip Claude Code's command-injection guard — a newline followed by a `#` heading, backticks, or shell-special characters — fall back to the temp-file convention from Step 3c (write the body under `<tempdir>/.bees-workflow/bees-body-<short-suffix>.md` after creating the namespaced subdir, then pass `--body-file <path>`). Most thin bodies will fit on `--body` cleanly; the temp-file fallback is the safety valve.
+The exception: if the thin body authored in (A) contains anything that would trip Claude Code's command-injection guard — a newline followed by a `#` heading, backticks, or shell-special characters — fall back to the temp-file convention from Step 3c (write the body under `<tempdir>/.quorum/bees-body-<short-suffix>.md` after creating the namespaced subdir, then pass `--body-file <path>`). Most thin bodies will fit on `--body` cleanly; the temp-file fallback is the safety valve.
 
 ```bash
 # POSIX (bash / zsh) — inline-body path:

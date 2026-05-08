@@ -11,7 +11,7 @@ reference_materials: null
 ---
 ## Description
 
-Several skill boundaries in the bees-workflow chain recommend (or auto-trigger) running the next skill in the **same** Claude Code session. Each downstream skill re-reads its state from the bees CLI and from disk (Plan Bee body, Epics, ticket schemas, CLAUDE.md), so nothing in the conversation context is load-bearing across the boundary. Carrying the prior skill's conversation forward just consumes context budget that the next (heavier) skill needs.
+Several skill boundaries in the quorum chain recommend (or auto-trigger) running the next skill in the **same** Claude Code session. Each downstream skill re-reads its state from the bees CLI and from disk (Plan Bee body, Epics, ticket schemas, CLAUDE.md), so nothing in the conversation context is load-bearing across the boundary. Carrying the prior skill's conversation forward just consumes context budget that the next (heavier) skill needs.
 
 This shows up most painfully on big features: by the time a user has run `/bees-plan` (deep codebase exploration + scope iteration) and `/bees-breakdown-epic` (PRD/SDD/Plan-Bee parsing + per-Task body authoring), there is little context left for `/bees-execute` (which spawns Engineer / Test Writer / Doc Writer / PM agents per Task and runs review cycles).
 

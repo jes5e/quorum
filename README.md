@@ -1,4 +1,4 @@
-# <img src="assets/header.png" alt="" width="48" valign="middle"> bees-workflow
+# <img src="assets/header.png" alt="" width="48" valign="middle"> quorum
 
 A portable [Claude Code](https://claude.com/claude-code) skill set for running an end-to-end SDLC on top of [bees](https://github.com/gabemahoney/bees) tickets — plan, break down, execute, review, fix, repeat. Works on any project, any language, any POSIX or Windows shell.
 
@@ -40,7 +40,7 @@ The skills orchestrate work via Claude Code's ephemeral background subagents —
 
 ## Why this exists
 
-[Apiary](https://github.com/gabemahoney/apiary), built by the bees creator, is the original bees skill set and remains a great fit for many projects. **bees-workflow is an alternative**, shaped by these priorities:
+[Apiary](https://github.com/gabemahoney/apiary), built by the bees creator, is the original bees skill set and remains a great fit for many projects. **quorum is an alternative**, shaped by these priorities:
 
 - **Cumulative project-level docs.** Project-level PRD and SDD (paths configured under CLAUDE.md `## Documentation Locations`) accumulate `### Feature:` subsections as features ship, and become the source of truth that agents (`bees-execute`, `bees-fix-issue`) read for spec-drift detection. The `bees-setup` skill can bootstrap baseline docs from an existing codebase via guided Q&A. Per-feature specs are authored as Spec Bee children at plan time and folded back into the cumulative project docs after implementation lands, by the post-implementation `doc-writer` agent dispatched by `/bees-execute` and `/bees-fix-issue`.
 - **Language-agnostic.** Works on Rust, Node, Python, Go, Java, polyglot, or unknown stacks. Stack-specific commands (compile, format, lint, narrow test, full test) are detected at setup and stored in CLAUDE.md, then read by skills at runtime — no skill-editing needed when you switch projects.
@@ -49,7 +49,7 @@ The skills orchestrate work via Claude Code's ephemeral background subagents —
 - **PRD/SDD-first or scope-first, your choice.** `/bees-plan` is the interactive entry point for an idea you haven't speced out — it authors per-feature PRD and SDD as `t1=Doc` children of a new Spec Bee in the Specs hive and links the Spec Bee from the resulting Plan Bee's `reference_materials` (no project-doc mutation at plan time). `/bees-plan-from-specs` is the express path when you already have a finalized **single-feature** PRD and SDD on disk; experienced users with finalized cumulative specs can also reach for `/bees-plan-from-specs --feature "<title>"` to scope one `### Feature:` subsection of the cumulative docs without going back through `/bees-plan`'s discovery loop. The single-feature scope follows the Plan Bee end-to-end — `/bees-breakdown-epic`, `/bees-execute`, and `/bees-fix-issue` all detect the scoping marker on the Plan Bee body and restrict spec-compare logic to the matching feature. Both entry points produce the same Plan Bee shape and feed the same downstream chain. Cumulative project-level PRD/SDD are updated after implementation by the `doc-writer` agent, not at plan time.
 - **Idempotent.** Every skill that mutates project state (`bees-setup` especially) detects existing configuration and only prompts where something is missing or you ask to change it. Re-runs are safe.
 
-If you want the lightweight, ephemeral-spec, async-team-spawning experience of Apiary, use Apiary. If you want persistent docs that grow with your project across many features and contributors, bees-workflow is built for that.
+If you want the lightweight, ephemeral-spec, async-team-spawning experience of Apiary, use Apiary. If you want persistent docs that grow with your project across many features and contributors, quorum is built for that.
 
 ## Requirements
 
@@ -65,32 +65,32 @@ Copy the skills and subagent definitions into your user-level Claude Code direct
 
 ```bash
 # POSIX (bash / zsh):
-git clone https://github.com/jes5e/bees-workflow ~/projects/bees-workflow
-cp -r ~/projects/bees-workflow/skills/* ~/.claude/skills/
+git clone https://github.com/jes5e/quorum ~/projects/quorum
+cp -r ~/projects/quorum/skills/* ~/.claude/skills/
 mkdir -p ~/.claude/agents
-cp -r ~/projects/bees-workflow/agents/* ~/.claude/agents/
+cp -r ~/projects/quorum/agents/* ~/.claude/agents/
 
 # Windows (PowerShell):
-git clone https://github.com/jes5e/bees-workflow $HOME\projects\bees-workflow
-Copy-Item -Recurse $HOME\projects\bees-workflow\skills\* $HOME\.claude\skills\
+git clone https://github.com/jes5e/quorum $HOME\projects\quorum
+Copy-Item -Recurse $HOME\projects\quorum\skills\* $HOME\.claude\skills\
 New-Item -ItemType Directory -Force -Path "$HOME\.claude\agents" | Out-Null
-Copy-Item -Recurse $HOME\projects\bees-workflow\agents\* $HOME\.claude\agents\
+Copy-Item -Recurse $HOME\projects\quorum\agents\* $HOME\.claude\agents\
 ```
 
 ### Option B — per-project install
 
-If you want to try bees-workflow on one repo without affecting others, copy the skills and subagent definitions into that repo's `.claude/skills/` and `.claude/agents/`:
+If you want to try quorum on one repo without affecting others, copy the skills and subagent definitions into that repo's `.claude/skills/` and `.claude/agents/`:
 
 ```bash
 # POSIX:
-cp -r ~/projects/bees-workflow/skills/* /path/to/your/repo/.claude/skills/
+cp -r ~/projects/quorum/skills/* /path/to/your/repo/.claude/skills/
 mkdir -p /path/to/your/repo/.claude/agents
-cp -r ~/projects/bees-workflow/agents/* /path/to/your/repo/.claude/agents/
+cp -r ~/projects/quorum/agents/* /path/to/your/repo/.claude/agents/
 
 # Windows (PowerShell):
-Copy-Item -Recurse $HOME\projects\bees-workflow\skills\* C:\path\to\your\repo\.claude\skills\
+Copy-Item -Recurse $HOME\projects\quorum\skills\* C:\path\to\your\repo\.claude\skills\
 New-Item -ItemType Directory -Force -Path "C:\path\to\your\repo\.claude\agents" | Out-Null
-Copy-Item -Recurse $HOME\projects\bees-workflow\agents\* C:\path\to\your\repo\.claude\agents\
+Copy-Item -Recurse $HOME\projects\quorum\agents\* C:\path\to\your\repo\.claude\agents\
 ```
 
 ### After install
@@ -110,9 +110,9 @@ In any repo where you want to use the workflow, run:
 
 It will colonize hives (Plans + Issues + Specs), write a `## Documentation Locations` and `## Build Commands` section to CLAUDE.md, and offer to bootstrap baseline PRD/SDD docs from your existing codebase. Safe to re-run if you skip a step and want to come back to it later.
 
-### Upgrading from older bees-workflow versions
+### Upgrading from older quorum versions
 
-Earlier revisions of bees-workflow registered a custom egg resolver (`file_list_resolver.py`) and stored spec-doc pointers in a per-ticket `egg` field. The bees CLI has since replaced both with a built-in `file-path` resolver and a per-ticket `reference_materials` field; the workflow now uses those exclusively, and the custom resolver has been removed.
+Earlier revisions of quorum registered a custom egg resolver (`file_list_resolver.py`) and stored spec-doc pointers in a per-ticket `egg` field. The bees CLI has since replaced both with a built-in `file-path` resolver and a per-ticket `reference_materials` field; the workflow now uses those exclusively, and the custom resolver has been removed.
 
 If you have existing tickets created under the old schema, run `bees update-config` once before using the upgraded skills:
 
@@ -171,16 +171,16 @@ The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you 
 
 ### Where bundled helper scripts live
 
-A few skills ship Python helpers (e.g., `detect_fast_path.py`, `scoped_marker_resolver.py`) under `skills/<skill-name>/scripts/` inside the bees-workflow install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your bees-workflow checkout.
+A few skills ship Python helpers (e.g., `detect_fast_path.py`, `scoped_marker_resolver.py`) under `skills/<skill-name>/scripts/` inside the quorum install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your quorum checkout.
 
 ### Scratch files
 
 Skills write transient scratch files (e.g., body files passed to `bees create-ticket --body-file` or `bees update-ticket --body-file`) under a single well-known directory:
 
-- POSIX (macOS, Linux, WSL): `/tmp/.bees-workflow/`
-- Windows: `%TEMP%\.bees-workflow\`
+- POSIX (macOS, Linux, WSL): `/tmp/.quorum/`
+- Windows: `%TEMP%\.quorum\`
 
-The directory is safe to delete anytime — skills recreate it on demand. Skills do not clean up after themselves, by design: the footprint is small (KBs per run, low-MB after heavy use), and leaving artifacts in place gives you something to inspect when a run crashes. POSIX systems clean `/tmp` on a days-to-reboot cadence anyway; Windows users can clear `%TEMP%\.bees-workflow\` whenever they want.
+The directory is safe to delete anytime — skills recreate it on demand. Skills do not clean up after themselves, by design: the footprint is small (KBs per run, low-MB after heavy use), and leaving artifacts in place gives you something to inspect when a run crashes. POSIX systems clean `/tmp` on a days-to-reboot cadence anyway; Windows users can clear `%TEMP%\.quorum\` whenever they want.
 
 ## Coming soon: optional skills
 
@@ -206,4 +206,4 @@ MIT. See [LICENSE](LICENSE).
 
 ## Credits
 
-Built on top of the [bees](https://github.com/gabemahoney/bees) ticket management system by Gabe Mahoney. The original [Apiary](https://github.com/gabemahoney/apiary) skill set inspired this one and remains a great alternative — bees-workflow exists alongside it, not as a replacement.
+Built on top of the [bees](https://github.com/gabemahoney/bees) ticket management system by Gabe Mahoney. The original [Apiary](https://github.com/gabemahoney/apiary) skill set inspired this one and remains a great alternative — quorum exists alongside it, not as a replacement.

@@ -58,7 +58,7 @@ Once `b.31f` lands (or in parallel — this Issue does not depend on it):
    argument-hint and arg-parsing.
 2. When the flag is present, skip the body-template authoring step and
    instead create the Issue with:
-   - A short body summarizing what the bees workflow needs to know
+   - A short body summarizing what quorum needs to know
      (2-3 sentences distilled from the URL or accompanying user
      description).
    - `--reference-materials '[{"value":"<url>","resolver":"<name>"}]'`
@@ -75,7 +75,7 @@ Once `b.31f` lands (or in parallel — this Issue does not depend on it):
 
 - Building specific external resolvers (GitHub Issues, Linear, etc.) —
   those are separate Issues filed against `bees` itself or
-  `bees-workflow` as their owners materialize.
+  `quorum` as their owners materialize.
 - Migrating existing in-conversation-filed Issues to external mode.
 - Promoting an Issue to a Plan Bee (the manual workaround — close
   Issue, file Plan referencing it — remains for now).

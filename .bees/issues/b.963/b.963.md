@@ -53,7 +53,7 @@ The fix has multiple plausible shapes; pick one that preserves the design intent
 
 1. **Runtime probe in each consumer.** Lift the `~/.claude/skills/` vs `<repo>/.claude/skills/` probe code currently in `bees-setup/SKILL.md` (lines around 138–146 in the current revision) into a small preamble that `/bees-execute` and `/bees-fix-issue` run at invocation time, and remove the `## Skill Paths` section from CLAUDE.md entirely. Pros: zero committed per-machine state, single canonical resolver, matches the fact that the path is machine-derived anyway. Cons: every consumer skill duplicates the probe (Python helper script could centralize it).
 
-2. **Per-user override file.** Write Skill Paths to `~/.claude/bees-workflow/skill-paths.json` instead of CLAUDE.md. Pros: per-user by construction. Cons: third state file to reason about; out-of-band from CLAUDE.md contract.
+2. **Per-user override file.** Write Skill Paths to `~/.claude/quorum/skill-paths.json` instead of CLAUDE.md. Pros: per-user by construction. Cons: third state file to reason about; out-of-band from CLAUDE.md contract.
 
 3. **Gitignored side file inside the repo.** Write to `.bees/skill-paths.local` or `.claude/skill-paths.local` and add the file to `.gitignore`. Each contributor runs `/bees-setup` once on clone. Pros: keeps state near the project. Cons: requires modifying `.gitignore` (which `bees-setup` doesn't do today) and risks a contributor accidentally committing the file.
 

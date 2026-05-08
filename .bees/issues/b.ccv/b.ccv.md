@@ -11,7 +11,7 @@ reference_materials: null
 ---
 ## Description
 
-The three review skills `code-review`, `doc-review`, `test-review` ship as part of the bees-workflow package but are not prefixed with `bees-`. The original rationale in `CONTRIBUTING.md` `## Considered and rejected` claims they were left unprefixed because they are *"general-purpose review skills useful standalone."* Reading the actual SKILL.md files invalidates that claim:
+The three review skills `code-review`, `doc-review`, `test-review` ship as part of the quorum package but are not prefixed with `bees-`. The original rationale in `CONTRIBUTING.md` `## Considered and rejected` claims they were left unprefixed because they are *"general-purpose review skills useful standalone."* Reading the actual SKILL.md files invalidates that claim:
 
 - Each skill is **dual-mode by design**, with explicit prose branches for standalone vs bees-coupled invocation (`code-review/SKILL.md:12-14`, `:111`; `doc-review/SKILL.md:13-15`, `:111`; `test-review/SKILL.md:13-15`, `:120`).
 - ~85% of each SKILL.md is generic review guidance (look for bugs, security issues, dead code, test coverage gaps, doc completeness, etc.).
@@ -25,7 +25,7 @@ The "general-purpose" framing in CONTRIBUTING.md and README.md misrepresents wha
 - Skill directories: `skills/code-review/`, `skills/doc-review/`, `skills/test-review/`.
 - Frontmatter `name:` fields in each `SKILL.md`: `code-review`, `doc-review`, `test-review`.
 - `bees-execute/SKILL.md` and `bees-fix-issue/SKILL.md` reference the unprefixed names when telling the team-lead to invoke `/code-review`, `/test-review`, `/doc-review`.
-- `README.md` skill table lists the unprefixed names and includes the (overstated) sentence: *"The three reviewers (`code-review`, `doc-review`, `test-review`) are general-purpose and don't depend on the bees workflow — useful standalone too."*
+- `README.md` skill table lists the unprefixed names and includes the (overstated) sentence: *"The three reviewers (`code-review`, `doc-review`, `test-review`) are general-purpose and don't depend on quorum — useful standalone too."*
 - `CONTRIBUTING.md` `## Considered and rejected` documents the prefix decision as deliberate based on the now-invalid premise.
 - `docs/sdd.md` `## Key components` lists the three skills under their unprefixed names.
 
@@ -37,18 +37,18 @@ The "general-purpose" framing in CONTRIBUTING.md and README.md misrepresents wha
 - Consumer skills (`bees-execute`, `bees-fix-issue`) invoke the new names.
 - README's skill table reflects the rename.
 - CONTRIBUTING.md's `## Considered and rejected` entry is reversed to a `## Status / type renames history` entry (the existing section already documents past renames like `bugs`→`issues` and the larva/pupa/worker/finished status renames; this is the same pattern).
-- README sentence about standalone use updated to acknowledge that the prefix is package-origin signal, not coupling-strength signal: e.g., *"The three reviewers (`bees-code-review`, `bees-doc-review`, `bees-test-review`) are dual-mode — primarily invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles, but they also support standalone invocation if you want an ad-hoc review without the bees workflow."*
+- README sentence about standalone use updated to acknowledge that the prefix is package-origin signal, not coupling-strength signal: e.g., *"The three reviewers (`bees-code-review`, `bees-doc-review`, `bees-test-review`) are dual-mode — primarily invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles, but they also support standalone invocation if you want an ad-hoc review without quorum."*
 - `docs/sdd.md` updated similarly.
 
 ## Impact
 
-**Discoverability and disambiguation.** Generic names (`code-review`, etc.) are likely to collide with other skill packages a user installs. Prefixing eliminates the namespace collision and makes "this came from bees-workflow" obvious at the skill-list level.
+**Discoverability and disambiguation.** Generic names (`code-review`, etc.) are likely to collide with other skill packages a user installs. Prefixing eliminates the namespace collision and makes "this came from quorum" obvious at the skill-list level.
 
 **Documentation honesty.** The current "general-purpose" framing is misleading and CONTRIBUTING.md explicitly reasoned from a false premise. The rename + doc updates put the documented rationale in agreement with the actual skill content.
 
-**Removability.** A user uninstalling bees-workflow can grep for `bees-` to identify which skills came from this package. With unprefixed names, this is harder.
+**Removability.** A user uninstalling quorum can grep for `bees-` to identify which skills came from this package. With unprefixed names, this is harder.
 
-**Standalone-use friction (small, accepted).** A user browsing their skill list for "give me a code review" might skip past `/bees-code-review` thinking it requires the bees workflow. Mitigated by:
+**Standalone-use friction (small, accepted).** A user browsing their skill list for "give me a code review" might skip past `/bees-code-review` thinking it requires quorum. Mitigated by:
 
 1. The README sentence about dual-mode use (gets updated as part of the fix).
 2. The skill `description` field, which Claude Code shows to the user — if updated to mention dual-mode use, the standalone affordance stays discoverable.
@@ -106,4 +106,4 @@ The skill prose (Sections 1 and 2 of the dual-mode branches I described — top-
 ## Adjacent findings (note, do not bundle)
 
 - The skill `description` field is what Claude Code surfaces to the user when picking which skill to invoke. Currently the descriptions are short and don't mention dual-mode use. As part of this rename, consider lengthening each description to make the standalone affordance discoverable from the description alone, not just the README. Mentioned under Phase 1 step 3 above as optional; can also be a follow-up.
-- After the rename, the README and CONTRIBUTING.md will note that bees-workflow ships eight `bees-*` skills (was: five `bees-*` skills + three unprefixed). The CLAUDE.md count and language about "11 portable-core skills" should be re-checked for any places where the count or split is referenced numerically.
+- After the rename, the README and CONTRIBUTING.md will note that quorum ships eight `bees-*` skills (was: five `bees-*` skills + three unprefixed). The CLAUDE.md count and language about "11 portable-core skills" should be re-checked for any places where the count or split is referenced numerically.

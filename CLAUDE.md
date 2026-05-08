@@ -54,22 +54,22 @@ If you find yourself wanting a compound shell shape, the Python-helper-file path
 
 When a skill (or a dispatched subagent) needs to author a transient file — `--body-file` payloads for `bees create-ticket` / `bees update-ticket`, ticket-body extracts staged for the Scoped-marker helper, anything else that lives only across the next bees / helper invocation — it MUST follow this convention. This is a **fourth design rule** alongside the three above and is enforceable as a review criterion.
 
-1. **Always write under `<tempdir>/.bees-workflow/`**, where `<tempdir>` is `/tmp` on POSIX and `%TEMP%` on Windows. Resolve via Python's `tempfile.gettempdir()` when a helper is involved, or paired POSIX-bash + PowerShell snippets when inline. **Create the `.bees-workflow` subdirectory if it does not exist** (`mkdir -p` on POSIX, `New-Item -ItemType Directory -Force` on Windows). Picking a literal namespaced subdir (rather than `tempfile.NamedTemporaryFile` with random suffixes inside `<tempdir>` directly) is load-bearing — it lets users find every artifact a workflow created in one well-known place, and it lets reviewers spot stray writes outside the namespace at audit time.
-2. **Never delete on any OS.** Skill prose MUST NOT instruct callers to `rm` / `Remove-Item` the scratch file after the bees / helper command exits. The footprint is small (KBs per run, low-MB after heavy use); Linux/macOS clean `/tmp` on a days-to-reboot cadence; Windows users can clean `%TEMP%\.bees-workflow` manually whenever they want. Eliminating mid-run cleanup avoids permission-prompt churn and leaves artifacts around for debugging when a run crashes.
-3. **No `rm`-with-allowlist patterns.** Claude Code permission patterns are prefix-matched against the literal command string, so an allowlist entry like `Bash(rm /tmp/.bees-workflow/**)` would also match `rm /tmp/.bees-workflow/../../etc/something` — a path-traversal-shaped failure surface under prompt injection. Skipping cleanup entirely sidesteps the security question; do not reintroduce a cleanup-with-allowlist design.
+1. **Always write under `<tempdir>/.quorum/`**, where `<tempdir>` is `/tmp` on POSIX and `%TEMP%` on Windows. Resolve via Python's `tempfile.gettempdir()` when a helper is involved, or paired POSIX-bash + PowerShell snippets when inline. **Create the `.quorum` subdirectory if it does not exist** (`mkdir -p` on POSIX, `New-Item -ItemType Directory -Force` on Windows). Picking a literal namespaced subdir (rather than `tempfile.NamedTemporaryFile` with random suffixes inside `<tempdir>` directly) is load-bearing — it lets users find every artifact a workflow created in one well-known place, and it lets reviewers spot stray writes outside the namespace at audit time.
+2. **Never delete on any OS.** Skill prose MUST NOT instruct callers to `rm` / `Remove-Item` the scratch file after the bees / helper command exits. The footprint is small (KBs per run, low-MB after heavy use); Linux/macOS clean `/tmp` on a days-to-reboot cadence; Windows users can clean `%TEMP%\.quorum` manually whenever they want. Eliminating mid-run cleanup avoids permission-prompt churn and leaves artifacts around for debugging when a run crashes.
+3. **No `rm`-with-allowlist patterns.** Claude Code permission patterns are prefix-matched against the literal command string, so an allowlist entry like `Bash(rm /tmp/.quorum/**)` would also match `rm /tmp/.quorum/../../etc/something` — a path-traversal-shaped failure surface under prompt injection. Skipping cleanup entirely sidesteps the security question; do not reintroduce a cleanup-with-allowlist design.
 
 Snippet shapes to use verbatim in skill prose (paired POSIX + PowerShell, per design rule 2):
 
 ```bash
 # POSIX (bash / zsh):
-mkdir -p /tmp/.bees-workflow
-# then write to /tmp/.bees-workflow/<name>.md (or similar)
+mkdir -p /tmp/.quorum
+# then write to /tmp/.quorum/<name>.md (or similar)
 ```
 
 ```powershell
 # Windows (PowerShell):
-New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
-# then write to $env:TEMP\.bees-workflow\<name>.md (or similar)
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+# then write to $env:TEMP\.quorum\<name>.md (or similar)
 ```
 
 Filenames inside the namespace should still be collision-resistant when concurrency is possible (e.g., the existing `bees-body-<short-suffix>.md` and `bees-bee-body-<short-suffix>.md` patterns are fine — just under the new prefix).
@@ -83,7 +83,7 @@ When `bees-engineer-review`, `bees-test-writer-review`, or `bees-doc-writer-revi
 - Hardcodes a language-specific command, file extension, or manifest filename (rule 1).
 - Introduces a shell snippet without paired POSIX bash + Windows PowerShell variants, or relies on a bash-only fallback (rule 2).
 - References this repo's specific paths, ticket IDs, or internal workflow specifics in a way that would not make sense when the skill is installed in a different project or on a different machine (rule 3).
-- Writes a transient `--body-file` (or similar) scratch file outside `<tempdir>/.bees-workflow/`, omits the `mkdir -p` / `New-Item -ItemType Directory -Force` create-if-absent step, or instructs the caller to `rm` / `Remove-Item` the scratch file after the bees / helper command exits (scratch-file convention).
+- Writes a transient `--body-file` (or similar) scratch file outside `<tempdir>/.quorum/`, omits the `mkdir -p` / `New-Item -ItemType Directory -Force` create-if-absent step, or instructs the caller to `rm` / `Remove-Item` the scratch file after the bees / helper command exits (scratch-file convention).
 
 These criteria are additive — they do not replace, relax, or exempt any of the standard checks each review skill performs by default. They apply *only* to changes inside this repo; when the same review skills run against work in a downstream project, this section does not travel with them.
 

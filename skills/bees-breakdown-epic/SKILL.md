@@ -10,7 +10,7 @@ Your job is to break down an Epic ticket into Tasks and Subtasks.
 
 ## Preconditions
 
-Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
+Before doing anything else, verify the host repo is configured for quorum. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
 - The seven required custom subagent types are registered in the running Claude Code session: `engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`. Custom subagents are loaded at Claude Code session start (from `~/.claude/agents/` for global installs and `<repo>/.claude/agents/` for per-project installs), so a fresh install requires a Claude Code restart (or `/agents` to hot-reload) before the skill can dispatch them. Although this skill only dispatches a subset of these roles in research mode, the precondition is uniform across the three execution skills (`/bees-execute`, `/bees-fix-issue`, `/bees-breakdown-epic`) so a "user forgot to restart Claude Code" misconfiguration is caught identically regardless of entry point. If any of the seven is missing at run-time, the orchestrator STOPS at the precondition gate and emits the hard-fail message — there is no fallback to `general-purpose`, no skipping the dispatch, and no improvising substitute roles. The hard-fail message must direct the user to (a) verify the install per `README.md` `## Install` AND (b) restart Claude Code or run `/agents` to hot-reload, e.g.: `Run /bees-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.`
 - The Plans hive is colonized for this repo. Check via `bees list-hives` — the output must include a hive whose `normalized_name` is `plans`.
@@ -126,33 +126,33 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
 
   On the file-resolver path (or the body-as-spec fallback), if the parent Bee's body contains a line of the form `` Scoped to `### Feature: <title>` from <prd-path> and <sdd-path>. `` (emitted by `/bees-plan-from-specs --feature "<title>"`), the resolved doc content must be restricted to the matching `### Feature: <title>` subsection in each named doc before treating it as the spec. Run the bundled parser/scoper to do the detection and scoping in one step:
 
-  Extract the `body` field from the `bees show-ticket --ids <bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent first:
+  Extract the `body` field from the `bees show-ticket --ids <bee-id>` JSON output (the envelope's `tickets[0].body` markdown string), then write that body to a temp file via the `Write` tool under the namespaced workflow scratch dir (`/tmp/.quorum/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-bee-body-<short-suffix>.md` on Windows). Create the `.quorum` subdir if absent first:
 
   ```bash
   # POSIX (bash / zsh):
-  mkdir -p /tmp/.bees-workflow
+  mkdir -p /tmp/.quorum
   ```
 
   ```powershell
   # Windows (PowerShell):
-  New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+  New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
   ```
 
   Do NOT dump the whole JSON envelope to the temp file — the marker line lives inside the body's markdown text, and JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Then invoke the helper. Resolve the helper at `<this skill's base directory>/scripts/scoped_marker_resolver.py` — the base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../bees-breakdown-epic`).
 
   ```bash
   # POSIX (bash / zsh):
-  python3 "<this skill's base directory>/scripts/scoped_marker_resolver.py" "/tmp/.bees-workflow/bees-bee-body-<short-suffix>.md"
+  python3 "<this skill's base directory>/scripts/scoped_marker_resolver.py" "/tmp/.quorum/bees-bee-body-<short-suffix>.md"
   ```
 
   ```powershell
   # Windows (PowerShell):
-  python "<this skill's base directory>\scripts\scoped_marker_resolver.py" "$env:TEMP\.bees-workflow\bees-bee-body-<short-suffix>.md"
+  python "<this skill's base directory>\scripts\scoped_marker_resolver.py" "$env:TEMP\.quorum\bees-bee-body-<short-suffix>.md"
   ```
 
   The helper exits 0 with a JSON object on stdout. When `"scoped": false`, no marker was present — proceed with the full resolved doc content as today. When `"scoped": true`, the JSON's `docs` array carries the scoped subsection content per doc path; use that scoped content for all subsequent Task decomposition, sibling-overlap checks, and the Spec Traceability Review (cite `### Feature: <title>` subsection coordinates rather than the full PRD/SDD when the marker is present). The helper exits 2 with a clear error on stderr if the marker is present but malformed, names a doc that is missing on disk, or names a heading that does not exist in the doc — surface that error to the user and stop; do not silent-fallback to the full doc. The Scoped-marker grammar and the helper contract are documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract`.
 
-  Do **not** remove the temp file after the helper exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
+  Do **not** remove the temp file after the helper exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 - **Check external-system contracts against authoritative docs.** When the Epic body references a third-party platform feature (a tool API, a CLI flag set, a harness behavior, an environment-variable contract), search the system's authoritative docs before authoring Tasks — `WebSearch` and `WebFetch` are available. Look for: canonical install paths, file shapes / frontmatter formats, lifecycle requirements (e.g., does a session restart load new files, or does a hot-reload command exist?), error-message vocabulary the rewrite needs to match. Two outcomes:
   - The docs answer the contract definitively → fold the answer into the spec; skip any "probe whether it works" Tasks the breakdown might otherwise create.
   - The docs leave specific behavior unspecified → keep the probe Task, but use what the docs *did* say to design tight assertions (`does the harness register this exact frontmatter shape at this exact path with this exact session-lifecycle behavior?`) rather than broad discovery probes (`does anything happen when I dispatch this?`). Tight probes distinguish failure causes; broad probes force a guess-and-check loop.
@@ -330,19 +330,19 @@ Defer to `agents/pm.md` `### Resolving reference_materials entries` as the **aut
 
 #### Authoring Subtask bodies
 
-Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows), creating the `.bees-workflow` subdir if absent:
+Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the namespaced workflow scratch dir (`/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows), creating the `.quorum` subdir if absent:
 
 ```bash
 # POSIX (bash / zsh):
-mkdir -p /tmp/.bees-workflow
+mkdir -p /tmp/.quorum
 ```
 
 ```powershell
 # Windows (PowerShell):
-New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
 ```
 
-Do **not** remove the file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
+Do **not** remove the file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place. Status-only updates and genuinely single-line bodies can stay on inline `--body`.
 
 #### TaskList as progress UI
 
@@ -475,7 +475,7 @@ The loop terminates when the PM returns a traceability table with every row at `
 
 Only after PM sign-off (all rows `OK`):
 
-1. For each gap-fill Subtask body the research Agents authored during Step 4, run `bees create-ticket --body-file <path>` against the appropriate parent Task — author bodies to temp files under `<tempdir>/.bees-workflow/` per Section 4's `#### Authoring Subtask bodies` convention. Wire each new Subtask's `parent` to the owning Task ID, and add `up_dependencies` where another Subtask must complete first.
+1. For each gap-fill Subtask body the research Agents authored during Step 4, run `bees create-ticket --body-file <path>` against the appropriate parent Task — author bodies to temp files under `<tempdir>/.quorum/` per Section 4's `#### Authoring Subtask bodies` convention. Wire each new Subtask's `parent` to the owning Task ID, and add `up_dependencies` where another Subtask must complete first.
 2. Set the Epic to `ready` (it is now written and its children — the Tasks — are written).
 3. Set each Task to `ready` (it is written and its children — the Subtasks — are written).
 4. Set each Subtask to `ready` (it is written and has no children).

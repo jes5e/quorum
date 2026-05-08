@@ -17,7 +17,7 @@ Both paths share the same underlying flow: detect prior context, gather or disti
 
 ## Preconditions
 
-Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
+Before doing anything else, verify the host repo is configured for quorum. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
 - The Specs hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `specs`).
 - CLAUDE.md contains a `## Documentation Locations` section. Step 1 below reads architecture-doc paths from this section as supporting context when the PRD touches existing system behavior.
@@ -96,7 +96,7 @@ Two branches based on Step 0's heuristic. Use the distill branch when the heuris
 
 #### 3a — Distill branch (heuristic fires)
 
-Skip the apiary-style discovery questions entirely — the prior conversation (or the distilled scope passed by the Skill-tool caller per the contract section below) already contains the substance. Instead:
+Skip the discovery questions entirely — the prior conversation (or the distilled scope passed by the Skill-tool caller per the contract section below) already contains the substance. Instead:
 
 1. Read the prior context (the in-session conversation, any `Description` / scope content passed as a skill argument, and — on inline invocation — the distilled scope payload supplied by the caller). Cross-reference the Spec Bee body fetched in Step 1 to make sure the distilled draft is consistent with what the Spec Bee already says about the feature.
 
@@ -114,7 +114,7 @@ On approve, carry the distilled body forward as the starting material for Step 4
 
 #### 3b — Restart branch (heuristic does not fire)
 
-Cold solo invocation against a Spec Bee with no substantive prior conversation context requires discovery — the skill must gather enough material to populate every required section in Step 4 without hallucinating. Apiary's PRD-discovery flow is the spirit to mirror: ask focused, finite-choice questions where possible, and ask prose questions for free-text answers.
+Cold solo invocation against a Spec Bee with no substantive prior conversation context requires discovery — the skill must gather enough material to populate every required section in Step 4 without hallucinating. Ask focused, finite-choice questions where possible, and ask prose questions for free-text answers.
 
 Discovery question shape (the exact list is the skill author's call at runtime; below is the reference set):
 
@@ -156,7 +156,7 @@ The twelve required sections, in order:
 
 #### Quality bar
 
-Apply these quality checks while authoring (adapt the spirit of apiary's PRD quality bar):
+Apply these quality checks while authoring:
 
 - **Reject implementation details.** PRDs describe *what* and *why*, not *how*. Architecture choices, library selections, data structures, and code-shape decisions belong to the SDD (`/bees-write-sdd`), not the PRD. If you find yourself writing about classes, modules, or specific API call sequences, move that content out.
 - **Reject vague language.** "Should be fast", "good user experience", "scales well" are not requirements — they are aspirations. Replace with measurable thresholds (latency targets, error budgets, supported throughput) or explicitly mark them `## Open Questions` if no measurable target is yet known.
@@ -175,19 +175,19 @@ Author the body to a scratch file under the namespaced workflow scratch dir, the
 
 Steps:
 
-1. Create the `.bees-workflow` subdir if it does not yet exist:
+1. Create the `.quorum` subdir if it does not yet exist:
 
    ```bash
    # POSIX (bash / zsh):
-   mkdir -p /tmp/.bees-workflow
+   mkdir -p /tmp/.quorum
    ```
 
    ```powershell
    # Windows (PowerShell):
-   New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+   New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
    ```
 
-2. Use the `Write` tool to write the PRD body to a path under that namespaced scratch dir. Use a collision-resistant filename like `bees-body-<short-suffix>.md` (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows). Do **not** remove the scratch file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
+2. Use the `Write` tool to write the PRD body to a path under that namespaced scratch dir. Use a collision-resistant filename like `bees-body-<short-suffix>.md` (`/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows). Do **not** remove the scratch file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
 
 3. Branch on Step 2's detection result (the file-flag carries no shell-quoting surface — only the line-continuation character differs between OSes):
 
@@ -357,7 +357,7 @@ The inline path is functionally identical to the solo path from the Spec Bee's p
 - **Idempotency.** Step 2's existing-PRD-child detection runs identically. Re-invoking via the Skill tool against the same Spec Bee updates the existing PRD ticket rather than creating a duplicate (Branch B in Step 5).
 - **Twelve required sections.** Step 4's body assembly always produces all twelve sections. Sections 11 and 12 receive substantive content distilled from the caller's payload (the distill branch should rarely emit the explicit-`none` placeholders for these sections on the inline path, because the caller passing distilled scope is exactly the signal that there *is* rationale and decision content to capture).
 - **Lifecycle.** PRD ticket created at `drafted`, transitioned to `ready` on the user's `Approve` in Step 6. Identical to solo.
-- **Scratch-file convention.** `--body-file` payloads written under `<tempdir>/.bees-workflow/` with create-if-absent; never removed. Identical to solo.
+- **Scratch-file convention.** `--body-file` payloads written under `<tempdir>/.quorum/` with create-if-absent; never removed. Identical to solo.
 - **User approval gates.** Both gates (Step 3a's distilled-scope review and Step 6's final-body review) still fire on the inline path. The Skill-tool caller does NOT short-circuit either gate.
 - **Spec-review gate (Step 6a) skipped on the inline path.** The orchestrating `/bees-plan` skill runs its own end-to-end `/bees-spec-review` invocation in its Step 4c after both writers complete (covering the PRD and SDD children plus the cross-document consistency pass), so this skill MUST skip its own per-writer Step 6a review when invoked inline. Re-running per-writer review here would double-cost the budget without adding signal — the cross-document pass that `/bees-plan`'s Step 4c invocation runs is strictly more powerful than two single-doc invocations chained together. Detection: the inline path is identified by the presence of an `args` payload conforming to this section's input shape (a parsed `spec-bee-id:` + `distilled-scope:` block from the Skill-tool caller), NOT by Step 0's mid-conversation heuristic — Step 0's heuristic also fires on solo invocations with rich prior conversation context (the err-toward-distilling principle), so using it as the inline-path signal would silently skip the gate on solo runs that legitimately need it. Solo invocations always run Step 6a; inline invocations (recognised by the contract-shaped `args` payload) always skip it.
 

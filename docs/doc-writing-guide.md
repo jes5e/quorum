@@ -1,6 +1,6 @@
 # Doc Writing Guide
 
-Conventions for authoring and editing documentation in the bees-workflow repo. The artifacts here are skill markdown files (`skills/<name>/SKILL.md`), the README, CONTRIBUTING.md, CLAUDE.md, and these guides. There is no inline source-code documentation to maintain — skill prose *is* the documentation.
+Conventions for authoring and editing documentation in the quorum repo. The artifacts here are skill markdown files (`skills/<name>/SKILL.md`), the README, CONTRIBUTING.md, CLAUDE.md, and these guides. There is no inline source-code documentation to maintain — skill prose *is* the documentation.
 
 This guide is opinionated. When the rules here conflict with a "standard" markdown style guide, follow this guide. When they conflict with [CONTRIBUTING.md](../CONTRIBUTING.md)'s two non-negotiable design rules, follow CONTRIBUTING.md.
 
@@ -25,7 +25,7 @@ description: One-line description used by Claude Code to decide whether to invok
 ```
 
 - The `name` field appears in `/<name>` invocations and in the README skill table. Hyphens, not underscores.
-- The `description` field is what Claude Code shows the user *and* uses to decide invocation eligibility. Vague descriptions cause mis-invocation. Lead with the verb: "Configure a repo for the bees workflow" not "This skill configures…". State scope precisely — what the skill *does* and what it does *not* do.
+- The `description` field is what Claude Code shows the user *and* uses to decide invocation eligibility. Vague descriptions cause mis-invocation. Lead with the verb: "Configure a repo for quorum" not "This skill configures…". State scope precisely — what the skill *does* and what it does *not* do.
 - If a skill has triggering vs. skipping conditions worth being explicit about (e.g., "TRIGGER when X; SKIP when Y"), put them in the description. Several skills in this repo do.
 
 When you add, remove, or rename a skill, the README's skill table is the single source of truth — update it in the same change.

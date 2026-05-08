@@ -13,11 +13,11 @@ reference_materials: null
 ---
 ## Description
 
-When a user pulls a bees-workflow repo onto a new machine (or another engineer pulls it for the first time), the on-disk `.bees/<hive>/` directories are present and the hive markers (`.bees/<hive>/.hive/identity.json`) exist, but the per-machine `~/.bees/config.json` has no scope entry for this repo. Result: every bees command silently behaves as if no tickets exist (`bees list-hives` returns `{"hives": [], "message": "No hives configured"}`), and downstream skills (`/bees-execute`, `/bees-fix-issue`, `/bees-file-issue`, `/bees-breakdown-epic`) hard-fail with `Run /bees-setup first.`
+When a user pulls a quorum repo onto a new machine (or another engineer pulls it for the first time), the on-disk `.bees/<hive>/` directories are present and the hive markers (`.bees/<hive>/.hive/identity.json`) exist, but the per-machine `~/.bees/config.json` has no scope entry for this repo. Result: every bees command silently behaves as if no tickets exist (`bees list-hives` returns `{"hives": [], "message": "No hives configured"}`), and downstream skills (`/bees-execute`, `/bees-fix-issue`, `/bees-file-issue`, `/bees-breakdown-epic`) hard-fail with `Run /bees-setup first.`
 
 The user's only recovery path today is to re-run `/bees-setup` from scratch, which walks through Agent Teams confirmation, teammateMode confirmation, doc-locations table, build-commands prompts, and bootstrap-doc generation — all of which are already correct in the repo's committed CLAUDE.md. The walk-through is heavy, error-prone (a wrong answer can overwrite committed CLAUDE.md sections), and unnecessary: the only thing actually missing is the per-machine config registration.
 
-This is the multi-machine and multi-engineer use case for bees-workflow. With `.bees/` committed to git, the workflow assumes shared tickets travel with the repo — but bees itself has no built-in path to bootstrap registration from on-disk markers (verified against `gabemahoney/bees` source: the identity marker deliberately doesn't carry per-hive config like `child_tiers`, `status_values`, `egg_resolver` — those live only in `~/.bees/config.json` per `docs/architecture/storage.md:72`). So the fix has to happen in our `/bees-setup` skill, which already knows the canonical defaults.
+This is the multi-machine and multi-engineer use case for quorum. With `.bees/` committed to git, the workflow assumes shared tickets travel with the repo — but bees itself has no built-in path to bootstrap registration from on-disk markers (verified against `gabemahoney/bees` source: the identity marker deliberately doesn't carry per-hive config like `child_tiers`, `status_values`, `egg_resolver` — those live only in `~/.bees/config.json` per `docs/architecture/storage.md:72`). So the fix has to happen in our `/bees-setup` skill, which already knows the canonical defaults.
 
 A separate upstream issue should be filed on `gabemahoney/bees` proposing a first-class `bees adopt-hive --from-marker` command, but the skills fix is independent of and unblocks the workflow today.
 
@@ -67,7 +67,7 @@ If all three are true → fast path. If any are false → existing full flow.
 
 - **UX**: a new-machine user (or a second engineer pulling the repo for the first time) goes from a ~10-prompt walk-through to a 1- or 2-prompt confirm. The skill stops feeling like initial setup and starts feeling like re-attaching to an existing setup, which is what's actually happening.
 - **Workflow correctness**: today's full-walk path can corrupt repo state if the user picks a wrong answer to a doc-location or build-command prompt — the skill rewrites those CLAUDE.md sections. The fast path eliminates the chance of that on the new-machine case.
-- **Multi-engineer adoption**: bees-workflow doesn't have a documented onboarding-second-engineer story today. A teammate who clones the repo runs into the silent 'no hives configured' failure mode and has to be hand-walked through the recovery. The fast path makes the second-engineer case a one-prompt operation and is the natural place to put any onboarding documentation we eventually write.
+- **Multi-engineer adoption**: quorum doesn't have a documented onboarding-second-engineer story today. A teammate who clones the repo runs into the silent 'no hives configured' failure mode and has to be hand-walked through the recovery. The fast path makes the second-engineer case a one-prompt operation and is the natural place to put any onboarding documentation we eventually write.
 
 ## Suggested fix
 

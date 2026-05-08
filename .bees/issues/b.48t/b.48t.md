@@ -61,7 +61,7 @@ The status vocabulary for the Plans hive is documented in this repo's `CLAUDE.md
 
 - **Correctness (high).** Defect B is destructive: it flips drafted Epics — which represent planned but un-executed work — to `done`. Once marked done, downstream queries (`status=ready` Epic lookups, Bee-level "is this finished?" checks) treat that scope as shipped. The user has to manually audit and revert, or worse, the planned work is never recovered.
 - **UX (medium).** Defect A makes `/bees-execute` actively misleading at the close-out step. The user expects the skill to know whether their plan is done and instead gets a "ready to close?" prompt as if it were.
-- **Workflow integrity.** The bees workflow's value is that ticket state is a reliable source of truth; both defects undermine that.
+- **Workflow integrity.** Quorum's value is that ticket state is a reliable source of truth; both defects undermine that.
 
 ## Suggested fix
 

@@ -62,7 +62,7 @@ primary problem the user surfaced, and it has three downstream symptoms:
 
 ### Problem 2: Information loss across the planning boundary
 
-The bees workflow is built on a "every session is cold" principle —
+Quorum is built on a "every session is cold" principle —
 `/bees-plan`, `/bees-breakdown-epic`, `/bees-execute`, the dispatched
 subagents, all read from tickets + disk and nothing else. This is good and
 intentional; it lets work happen in parallel sessions and across machines.
@@ -124,7 +124,7 @@ and break parity with apiary. Body-as-spec remains valid as a *fallback*
 (Plan Bee body when no Spec Bee exists — e.g., this Plan Bee itself in
 its bootstrap-mode authoring), but should not be the default.
 
-### Rejected: File-based per-plan spec (`.bees-workflow/plans/<bee-id>/spec.md`)
+### Rejected: File-based per-plan spec (`.quorum/plans/<bee-id>/spec.md`)
 
 Considered as a middle ground between docs-mutation and Spec-Bee-children.
 Rejected because the apiary-faithful pattern is simpler conceptually,
@@ -256,7 +256,7 @@ follow-up Issue.
 ## Anticipated doc impact (post-implementation)
 
 When this Bee executes, the `doc-writer` agent (per the new responsibility
-in Epic 6) will need to update bees-workflow's own cumulative docs to
+in Epic 6) will need to update quorum's own cumulative docs to
 reflect what was built:
 
 - `docs/prd.md` — add a new `### Feature:` subsection describing the

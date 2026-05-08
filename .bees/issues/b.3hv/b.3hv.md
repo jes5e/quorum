@@ -11,7 +11,7 @@ reference_materials: null
 ---
 ## Description
 
-Several lines in `README.md` and `CONTRIBUTING.md` still refer to the workflow's "team", "team members", "team-lead", and "implementation team" — vocabulary inherited from when bees-workflow used Claude Code's experimental Agent Teams feature. The repo has since switched to ephemeral background subagents (custom subagents under `agents/<role>.md`, dispatched via the Agent tool), and these doc lines are now stale.
+Several lines in `README.md` and `CONTRIBUTING.md` still refer to the workflow's "team", "team members", "team-lead", and "implementation team" — vocabulary inherited from when quorum used Claude Code's experimental Agent Teams feature. The repo has since switched to ephemeral background subagents (custom subagents under `agents/<role>.md`, dispatched via the Agent tool), and these doc lines are now stale.
 
 The README sections that describe the new orchestration model (the workflow paragraph at line 24, the Install section at lines 49–88, and the "After install" subagent-registration note at lines 83–88) are already correct. Only a few specific lines still carry the Teams-era vocabulary.
 

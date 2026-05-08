@@ -171,19 +171,19 @@ Match the feature title against the returned `title` field. Exact-equal-after-no
 - `Create a new Spec Bee anyway` — fall through to the create branch below. Use this when the user really does want a fresh ticket (e.g., the prior Spec Bee was for a superseded scope and they want to start clean).
 - `Cancel` — abort the run. The user can resume later by re-invoking `/bees-plan`.
 
-**No match — create.** Author the Spec Bee body to a temp file under `<tempdir>/.bees-workflow/` per the scratch-file convention (do not delete after; the OS reclaims `<tempdir>` on its own cadence), then call `bees create-ticket`. The body should be a brief 2-3 sentence summary of the feature scope, paraphrased from the Step 3 scope statement — substantive PRD/SDD content lands in the `t1=Doc` children, **not** the Spec Bee body itself. Do NOT dump full PRD or SDD content into the Spec Bee body.
+**No match — create.** Author the Spec Bee body to a temp file under `<tempdir>/.quorum/` per the scratch-file convention (do not delete after; the OS reclaims `<tempdir>` on its own cadence), then call `bees create-ticket`. The body should be a brief 2-3 sentence summary of the feature scope, paraphrased from the Step 3 scope statement — substantive PRD/SDD content lands in the `t1=Doc` children, **not** the Spec Bee body itself. Do NOT dump full PRD or SDD content into the Spec Bee body.
 
 ```bash
 # POSIX (bash / zsh):
-mkdir -p /tmp/.bees-workflow
-# then write the body to /tmp/.bees-workflow/bees-spec-body-<short-suffix>.md via the Write tool
+mkdir -p /tmp/.quorum
+# then write the body to /tmp/.quorum/bees-spec-body-<short-suffix>.md via the Write tool
 bees create-ticket --ticket-type bee --hive specs --status drafted --title "<feature title>" --body-file <path>
 ```
 
 ```powershell
 # Windows (PowerShell):
-New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
-# then write the body to $env:TEMP\.bees-workflow\bees-spec-body-<short-suffix>.md via the Write tool
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+# then write the body to $env:TEMP\.quorum\bees-spec-body-<short-suffix>.md via the Write tool
 bees create-ticket --ticket-type bee --hive specs --status drafted --title "<feature title>" --body-file <path>
 ```
 
@@ -297,7 +297,7 @@ Create the Plan Bee inline in this session — do **not** delegate to `/bees-pla
 
 #### 5a — Create the Plan Bee
 
-Author the Plan Bee body to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows). Create the `.bees-workflow` subdir if absent (`mkdir -p /tmp/.bees-workflow` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
+Author the Plan Bee body to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows). Create the `.quorum` subdir if absent (`mkdir -p /tmp/.quorum` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 
 **Plan Bee body shape.** Keep the body short — a brief 2-3 sentence summary of the feature and its high-level scope, plus an `## Anticipated doc impact` section. Substantive PRD/SDD content lives in the Spec Bee's `t1=Doc` children (created in Step 4), not in the Plan Bee body — downstream skills (`/bees-breakdown-epic`, `/bees-execute`'s PM role) read those via the `bees`-resolver entry in `reference_materials`. The `## Anticipated doc impact` section is a starting checklist for the post-implementation `doc-writer` pass, which appends/updates `### Feature:` subsections in the cumulative project PRD/SDD per the responsibility documented in `agents/doc-writer.md`: list which cumulative project docs the feature is expected to update once it lands. Reference the contract keys from the target repo's CLAUDE.md `## Documentation Locations` section (e.g., the `Project requirements doc (PRD)` entry, the `Internal architecture docs (SDD)` entry, the `Customer-facing docs` entry) rather than hardcoding paths like `docs/prd.md` — different projects route those keys to different files.
 **Reference materials — single shape via the `bees` resolver.** Set `--reference-materials` to a single-element JSON array pointing at the Spec Bee created in Step 4 via the `bees` resolver. The `<spec-bee-id>` placeholder is the Spec Bee ID captured at the end of Step 4a (and confirmed `ready` after Step 4c):
@@ -370,7 +370,7 @@ Wait for approval. If the user picks "Modify the Epics", iterate in prose until 
 
 #### 5d — Create Epic tickets and wire dependencies
 
-Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body to `<tempdir>/.bees-workflow/`, pass path; do not delete after). **Do not pass `--reference-materials` on Epics** — the bees CLI accepts `--reference-materials` only on top-level Bees (`bees create-ticket --help`: "Only supported on bee (top-level) tickets") and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's `reference_materials`, not the Epic's.
+Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body to `<tempdir>/.quorum/`, pass path; do not delete after). **Do not pass `--reference-materials` on Epics** — the bees CLI accepts `--reference-materials` only on top-level Bees (`bees create-ticket --help`: "Only supported on bee (top-level) tickets") and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's `reference_materials`, not the Epic's.
 
 ```bash
 # POSIX (bash / zsh):

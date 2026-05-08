@@ -8,7 +8,7 @@ argument-hint: "<spec-bee-id>"
 
 This skill authors or revises an SDD (Software Design Document) as a child ticket under an existing Spec Bee in the Specs hive. The SDD ticket is a `t1=Doc` child with title exactly `SDD` (case-sensitive — downstream skills key off this exact title to differentiate the SDD from the PRD child of the same Spec Bee). The SDD body always contains the same seven sections in the same order; downstream cold-session agents rely on that fixed shape.
 
-> **Naming note (SRD → SDD).** The structural skeleton of this skill is adapted from the upstream `/write-srd` skill (which calls the document an "SRD" — Software Requirements Document). In the bees workflow we call it an **SDD** (Software Design Document) instead, because the document captures architectural design and existing-behavior contracts as much as requirement statements. The rename is consistent throughout: this skill is `bees-write-sdd`, the child ticket title is exactly `SDD`, and section names use SDD-flavored language. Future readers cross-referencing the upstream `/write-srd` skill should treat the two as the same document type under different names.
+We call it an SDD (Software Design Document) rather than SRD because the document captures architectural design and existing-behavior contracts as much as requirement statements.
 
 The skill has two invocation paths:
 
@@ -19,7 +19,7 @@ Both paths share the same underlying flow: detect prior context, read the Spec B
 
 ## Preconditions
 
-Before doing anything else, verify the host repo is configured for the bees workflow. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
+Before doing anything else, verify the host repo is configured for quorum. **Hard-fail** with the message `Run /bees-setup first.` (plus a one-line note about what is missing) if any of the following are absent:
 
 - The Specs hive is colonized for this repo (`bees list-hives` must include a hive whose `normalized_name` is `specs`).
 - CLAUDE.md contains a `## Documentation Locations` section. The codebase-exploration step below reads architecture-doc paths from this section as supporting context for the Explore agent's research, and the `## Documentation` section of the SDD body lists the docs the doc-writer agent will need to update post-implementation.
@@ -115,7 +115,7 @@ Provide the agent with the architecture-doc paths from CLAUDE.md `## Documentati
 RESEARCH NEEDED: <one-line question describing what still needs to be investigated>
 ```
 
-This convention is carried over from upstream conventions for SDD-style docs — it lets downstream readers (the Engineer dispatched by `/bees-execute`, the doc-writer agent) see at a glance which spots are confidently grounded versus which need a follow-up pass. Never silently smooth over an ambiguity by writing a confident-sounding sentence; always tag it with `RESEARCH NEEDED`.
+This convention lets downstream readers (the Engineer dispatched by `/bees-execute`, the doc-writer agent) see at a glance which spots are confidently grounded versus which need a follow-up pass. Never silently smooth over an ambiguity by writing a confident-sounding sentence; always tag it with `RESEARCH NEEDED`.
 
 ### 4. Gather requirement / fixture / behavior detail (distill or restart)
 
@@ -123,7 +123,7 @@ Two branches based on Step 0's heuristic. Use the distill branch when the heuris
 
 #### 4a — Distill branch (heuristic fires)
 
-Skip the apiary-style discovery questions entirely — the prior conversation (or the distilled scope passed by the Skill-tool caller per the contract section below) already contains the substance for the user-interview half of the SDD. Instead:
+Skip the discovery questions entirely — the prior conversation (or the distilled scope passed by the Skill-tool caller per the contract section below) already contains the substance for the user-interview half of the SDD. Instead:
 
 1. Read the prior context (the in-session conversation, any `Description` / scope content passed as a skill argument, and — on inline invocation — the distilled scope payload supplied by the caller). Cross-reference the Spec Bee body fetched in Step 1 and the Explore agent's findings from Step 3 to make sure the distilled draft is consistent with what the Spec Bee already says about the feature and with the real codebase context the agent surfaced.
 
@@ -195,19 +195,19 @@ Author the body to a scratch file under the namespaced workflow scratch dir, the
 
 Steps:
 
-1. Create the `.bees-workflow` subdir if it does not yet exist:
+1. Create the `.quorum` subdir if it does not yet exist:
 
    ```bash
    # POSIX (bash / zsh):
-   mkdir -p /tmp/.bees-workflow
+   mkdir -p /tmp/.quorum
    ```
 
    ```powershell
    # Windows (PowerShell):
-   New-Item -ItemType Directory -Force -Path "$env:TEMP\.bees-workflow" | Out-Null
+   New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
    ```
 
-2. Use the `Write` tool to write the SDD body to a path under that namespaced scratch dir. Use a collision-resistant filename like `bees-body-<short-suffix>.md` (`/tmp/.bees-workflow/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.bees-workflow\bees-body-<short-suffix>.md` on Windows). Do **not** remove the scratch file after the bees command exits — files under `<tempdir>/.bees-workflow/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
+2. Use the `Write` tool to write the SDD body to a path under that namespaced scratch dir. Use a collision-resistant filename like `bees-body-<short-suffix>.md` (`/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows). Do **not** remove the scratch file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. The OS / the user reclaims them on their own cadence.
 
 3. Branch on Step 2's detection result (the file-flag carries no shell-quoting surface — only the line-continuation character differs between OSes):
 
@@ -383,7 +383,7 @@ The inline path is functionally identical to the solo path from the Spec Bee's p
 - **Codebase research.** Step 3's Explore-agent dispatch runs on every invocation, inline or solo. The planning conversation does not substitute for codebase research — it supplements it.
 - **`RESEARCH NEEDED` flag pattern.** The flag pattern from Step 3 / Step 5 still applies on the inline path. If the Explore agent surfaces ambiguity that needs follow-up, the corresponding spot in the SDD body is tagged `RESEARCH NEEDED: <question>`, and the caller is informed via the `research_needed` output field.
 - **Lifecycle.** SDD ticket created at `drafted`, transitioned to `ready` on the user's `Approve` in Step 7. Identical to solo.
-- **Scratch-file convention.** `--body-file` payloads written under `<tempdir>/.bees-workflow/` with create-if-absent; never removed. Identical to solo.
+- **Scratch-file convention.** `--body-file` payloads written under `<tempdir>/.quorum/` with create-if-absent; never removed. Identical to solo.
 - **User approval gates.** Both gates (Step 4a's distilled-scope review and Step 7's final-body review) still fire on the inline path. The Skill-tool caller does NOT short-circuit either gate.
 - **Spec-review gate (Step 7a) skipped on the inline path.** The orchestrating `/bees-plan` skill runs its own end-to-end `/bees-spec-review` invocation in its Step 4c after both writers complete (covering the PRD and SDD children plus the cross-document consistency pass), so this skill MUST skip its own per-writer Step 7a review when invoked inline. Re-running per-writer review here would double-cost the budget without adding signal — the cross-document pass that `/bees-plan`'s Step 4c invocation runs is strictly more powerful than two single-doc invocations chained together. Detection: the inline path is identified by the presence of an `args` payload conforming to this section's input shape (a parsed `spec-bee-id:` + `distilled-scope:` block from the Skill-tool caller), NOT by Step 0's mid-conversation heuristic — Step 0's heuristic also fires on solo invocations with rich prior conversation context (the err-toward-distilling principle), so using it as the inline-path signal would silently skip the gate on solo runs that legitimately need it. Solo invocations always run Step 7a; inline invocations (recognised by the contract-shaped `args` payload) always skip it.
 

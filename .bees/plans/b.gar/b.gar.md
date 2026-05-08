@@ -16,11 +16,11 @@ schema_version: '0.1'
 guid: gar4i66e8qut657irna2i8ate97b4hjq
 ---
 
-The Ephemeral-Agent Orchestration rewrite (parent Bee `b.5tm`) has shipped on `main`. The bees-workflow repo is now a bees-only project running on top of Claude Code's stable `Agent` tool; the abandoned beads-backend feature (Plan Bee `b.9xr`) remains paused, and the dispatcher seam (`ticket_backend.py`) it would have introduced does not exist on `main`. This body re-scopes `b.gar` for that bees-only world.
+The Ephemeral-Agent Orchestration rewrite (parent Bee `b.5tm`) has shipped on `main`. The quorum repo is now a bees-only project running on top of Claude Code's stable `Agent` tool; the abandoned beads-backend feature (Plan Bee `b.9xr`) remains paused, and the dispatcher seam (`ticket_backend.py`) it would have introduced does not exist on `main`. This body re-scopes `b.gar` for that bees-only world.
 
 ## Goal
 
-Add a layered automated-testing approach for the bees-workflow repo itself, replacing the current single-check `python -m pyflakes` floor. The goal preserved from the original framing: catch the failure modes that actually bite (helper bugs, design-rule drift in skill prose) cheaply, without trying to fully test prose-driven LLM workflows.
+Add a layered automated-testing approach for the quorum repo itself, replacing the current single-check `python -m pyflakes` floor. The goal preserved from the original framing: catch the failure modes that actually bite (helper bugs, design-rule drift in skill prose) cheaply, without trying to fully test prose-driven LLM workflows.
 
 ## Layered approach (bees-only re-statement)
 
@@ -36,7 +36,7 @@ Tests use pytest's `tmp_path` for filesystem isolation and `monkeypatch` for env
 - Rule 1 (language-agnostic): no hardcoded language-specific commands, file extensions, or manifest filenames in skill prose.
 - Rule 2 (POSIX + Windows PowerShell): every fenced code block tagged `bash` (or labeled "POSIX") has a sibling block tagged `powershell` (or labeled "Windows") in the same section, and vice versa. No bash-only fallbacks.
 - Rule 3 (project-neutral): no path starting with `/Users/`, `/home/`, or `C:\Users\`; no references to this repo's specific ticket IDs or internal workflow specifics.
-- Scratch-file convention: any `--body-file` (or similar) scratch path lives under `<tempdir>/.bees-workflow/`, includes the create-if-absent step (`mkdir -p` / `New-Item -ItemType Directory -Force`), and does not instruct callers to delete the file afterward.
+- Scratch-file convention: any `--body-file` (or similar) scratch path lives under `<tempdir>/.quorum/`, includes the create-if-absent step (`mkdir -p` / `New-Item -ItemType Directory -Force`), and does not instruct callers to delete the file afterward.
 - Bundled-script references resolve from each skill's own base directory at runtime (no committed absolute paths).
 
 Output is human-readable: `<file>:<line>: <rule>: <message>`. Exits non-zero on any rule violation. Entrypoint: `python tools/lint_skills.py`.
