@@ -243,7 +243,7 @@ The orchestrator dispatches the following four roles during a Task. The full rol
 - **Engineer** (`agents/engineer.md`) — implements source-code Subtasks. Model: Opus (always). Does not write tests or docs.
 - **Test Writer** (`agents/test-writer.md`) — implements test Subtasks and reviews the Engineer's diff for missing test coverage. Model: Opus (always).
 - **Doc Writer** (`agents/doc-writer.md`) — implements documentation Subtasks, reviews the Engineer's diff for documentation gaps, and after the Engineer's diff has landed appends or updates a `### Feature: <title>` subsection in the project's cumulative PRD and SDD per the categorization heuristic (pure-refactor / architecture-only / deployment-CI / user-facing) defined in `agents/doc-writer.md` `## Cumulative project doc updates`. The `<title>` is the verbatim title of the Plan Bee at the top of the Subtask → Task → Epic → Plan Bee chain; the orchestrator surfaces it to the subagent in the dispatch context. See `agents/doc-writer.md` for the authoritative spec — including the categorization table, the `<title>` resolution rule, the idempotency rule, and the CLAUDE.md `## Documentation Locations` lookup-key recipe used to resolve the PRD and SDD paths. Model: user's choice (Opus or Sonnet, selected at the start of the run).
-- **Product Manager** (`agents/pm.md`) — reviews the Task's work against the spec source resolved from the Bee's `reference_materials` (PRD/SDD files on disk via the `file-path` resolver, or the PRD/SDD `t1=Doc` children of a Spec Bee via the `bees` resolver), or the Bee body itself when `reference_materials` is null/empty; drives `bees-code-review` and `bees-doc-review` per Task; and produces the per-Task summary report. See `agents/pm.md` `### Resolving reference_materials entries` for the authoritative resolver-branching logic — this dispatch prompt does not duplicate it. Model: user's choice (Opus or Sonnet, selected at the start of the run).
+- **Product Manager** (`agents/pm.md`) — reviews the Task's work against the spec source resolved from the Bee's `reference_materials` (PRD/SDD files on disk via the `file-path` resolver, or the PRD/SDD `t1=Doc` children of a Spec Bee via the `bees` resolver), or the Bee body itself when `reference_materials` is null/empty; drives `bees-engineer-review` and `bees-doc-writer-review` per Task; and produces the per-Task summary report. See `agents/pm.md` `### Resolving reference_materials entries` for the authoritative resolver-branching logic — this dispatch prompt does not duplicate it. Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
 Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) are introduced in Section 5 (final Bee-level reviews).
 
@@ -354,7 +354,7 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 **Task ID**: <task-id>
 **Files Changed**: [count] files ([list key filenames if < 5, otherwise just count])
 **Reviews**: [Code review: X issues found/None needed | Docs review: Y issues found/None needed]
-**Ignored Review Feedback**: [list items that were flagged by bees-code-review or bees-doc-review but Director chose not to address, or "None"]
+**Ignored Review Feedback**: [list items that were flagged by bees-engineer-review or bees-doc-writer-review but Director chose not to address, or "None"]
 **Follow-up Tasks Created**: [count, if any] [list task-ids if created]
 One of:
 - Proceeding to next Task <task-id>
@@ -430,7 +430,7 @@ Reviewer role contracts (responsibilities, model assignment, gating, instruction
 
 After the review loop in step 5 is done and all fixable issues have been addressed by the team, run one final fresh-context generalist sweep across all changes made by this Bee. This is an independent quality gate — separate from the per-Task and per-Epic review cycles above.
 
-**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` is scoped to source code, `/bees-doc-review` to user-facing docs, `/bees-test-review` to test files — none of them runs the cross-lane sweep this step needs). Spawn a fresh general-purpose agent with a self-contained prompt instead.
+**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-engineer-review`, `/bees-doc-writer-review`, or `/bees-test-writer-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-engineer-review` is scoped to source code, `/bees-doc-writer-review` to user-facing docs, `/bees-test-writer-review` to test files — none of them runs the cross-lane sweep this step needs). Spawn a fresh general-purpose agent with a self-contained prompt instead.
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, PM verdict, and per-Task reviewer verdicts from the whole Bee run; that context biases it toward "did the phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the Bee body and nothing else — that's the point.
 
@@ -464,7 +464,7 @@ After the review loop in step 5 is done and all fixable issues have been address
 
    Do NOT do a general repo audit. Stay focused on the diff.
 
-   Do NOT invoke /bees-code-review, /bees-doc-review, or /bees-test-review at
+   Do NOT invoke /bees-engineer-review, /bees-doc-writer-review, or /bees-test-writer-review at
    this stage. Those skills are designed as parallel lanes of an in-flight
    review; they each have lane-specific scope rules that make them wrong for a
    final generalist sweep.

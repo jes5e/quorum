@@ -1,7 +1,6 @@
 ---
-name: bees-doc-review
-description: Review documentation completeness for a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc doc review of a diff, worktree, files, or bees ticket. Checks README and architecture docs are updated with new functionality. Returns structured list of documentation work items.
-argument-hint: "[<ticket-id> | <git-ref> | <files>]"
+name: bees-doc-writer-review
+description: Review the Doc Writer's documentation during a /bees-execute or /bees-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. Checks README and architecture docs are updated with new functionality.
 ---
 
 ## Overview
@@ -10,8 +9,6 @@ Review documentation completeness for a change set — files changed during a Ta
 Concise is better than verbose. Value brevity.
 The README is for human users that want to use the program.
 Architecture docs should contain the high-level architecture and core technology.
-
-**When invoked standalone** (e.g. `/bees-doc-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
 
 **When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance below.
 
@@ -25,7 +22,7 @@ Analyze what changed, compare against current docs, return list of specific docu
 
 This review covers user-facing natural-language documentation: `README.md`, architecture docs (e.g. `docs/sdd.md`), and any other docs the project's `CLAUDE.md` lists under `## Documentation Locations` for end-user / contributor reading.
 
-**Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/bees-code-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
+**Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/bees-engineer-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
 
 ### Readme
 Readme is for human users to understand how to install and run the project
@@ -128,8 +125,6 @@ Or if no issues:
 
 No documentation issues found. README and architecture docs are up to date!
 ```
-
-**Orchestrator self-tracking close-out (mandatory before yielding, standalone invocation).** When this skill is invoked standalone (not from inside `/bees-execute` or `/bees-fix-issue`), the orchestrator may have created ad-hoc TaskList tasks to break the review into discrete steps (e.g., "Read change set", "Find doc gaps", "Synthesize findings"). Before yielding the turn back to the user — either at end-of-flow after presenting the work-item list, or at any question-the-user pause that may follow — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding, the TaskList must show no `in_progress` entries left over from these synthesis steps. (When this skill is invoked from `/bees-execute` or `/bees-fix-issue`, the orchestrating skill owns its own TaskList close-out discipline per its own Section prose; this paragraph applies only to the standalone path.)
 
 NOTE: It is OK to return "no issues found". Only return issues if they are very important.
 

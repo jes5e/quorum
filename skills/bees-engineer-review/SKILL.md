@@ -1,7 +1,6 @@
 ---
-name: bees-code-review
-description: Perform code review of a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items.
-argument-hint: "[<ticket-id> | <git-ref> | <files>]"
+name: bees-engineer-review
+description: Review the Engineer's diff during a /bees-execute or /bees-fix-issue review cycle. Returns a list of improvement work items for the orchestrator.
 ---
 
 ## Overview
@@ -9,8 +8,6 @@ argument-hint: "[<ticket-id> | <git-ref> | <files>]"
 This skill performs code review on a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket.
 It returns a list of improvement work items for the caller to review.
 Be thorough but not pedantic — focus on substance over style.
-
-**When invoked standalone** (e.g. `/bees-code-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
 
 **When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance under Step 3.
 
@@ -35,9 +32,9 @@ Source code is anything the system *executes* or *follows as program text*. This
 
 For markdown skill / subagent program source (`SKILL.md`, `agents/<name>.md`), apply the check categories below selectively. **Apply** these categories: #2 Architecture & Design (cross-section consistency, contract drift), #4 Code Quality (DRY / duplication / ambiguous prose only — long-function and magic-number sub-checks don't apply to prose), #7 Cross-File / Cross-Call-Site Interactions (especially reverse-dependency checks on contract-key renames and cross-skill cross-references), plus prose unambiguity and any project-specific design rules surfaced by `CLAUDE.md` (project-neutrality, OS-pairing, language-agnosticism, etc.). **Skip** categories that are language-specific by construction: #1 Dead/Obsolete Code, #3 Security & Correctness, #5 Error Handling, #6 Performance — they don't apply to natural-language prose.
 
-Out of scope for `/bees-code-review`:
-- **Unit test code** — covered by `/bees-test-review`.
-- **User-facing natural-language documentation** like `README.md` and architecture docs — covered by `/bees-doc-review`.
+Out of scope for `/bees-engineer-review`:
+- **Unit test code** — covered by `/bees-test-writer-review`.
+- **User-facing natural-language documentation** like `README.md` and architecture docs — covered by `/bees-doc-writer-review`.
 
 If the change set has no reviewable files after applying the broadened scope above (no source code, no helper scripts, no skill / subagent program source, no behavior-affecting config), output "No code files to review" and exit. Do **not** exit early just because the diff is markdown — markdown skill / subagent program source is in scope.
 
@@ -160,6 +157,4 @@ Output a simple numbered list directly in your response:
 3. Refactor process_transactions() in llm_categorizer.py:120 - function is 60 lines, extract helper functions
 4. Remove commented-out code in llm_categorizer.py:200-210
 ```
-
-**Orchestrator self-tracking close-out (mandatory before yielding, standalone invocation).** When this skill is invoked standalone (not from inside `/bees-execute` or `/bees-fix-issue`), the orchestrator may have created ad-hoc TaskList tasks to break the review into discrete steps (e.g., "Read diff", "Review by category", "Synthesize findings"). Before yielding the turn back to the user — either at end-of-flow after presenting the work-item list, or at any question-the-user pause that may follow — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding, the TaskList must show no `in_progress` entries left over from these synthesis steps. (When this skill is invoked from `/bees-execute` or `/bees-fix-issue`, the orchestrating skill owns its own TaskList close-out discipline per its own Section prose; this paragraph applies only to the standalone path.)
 

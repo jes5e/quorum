@@ -12,7 +12,7 @@ reference_materials:
 - value: b.mam
   resolver: bees
 created_at: '2026-05-07T15:55:55.685316'
-status: ready
+status: in_progress
 schema_version: '0.1'
 guid: makws6n46k6383scek8zbn92mq6ydunn
 ---

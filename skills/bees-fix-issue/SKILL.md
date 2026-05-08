@@ -393,7 +393,7 @@ Once the issue is fixed:
 
 After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final fresh-context generalist sweep across all changes made during this bees-fix-issue session.
 
-**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-code-review`, `/bees-doc-review`, or `/bees-test-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-code-review` is scoped to source code, `/bees-doc-review` to user-facing docs, `/bees-test-review` to test files — none of them runs the cross-lane sweep this step needs). Spawn a fresh general-purpose agent with a self-contained prompt instead.
+**Anti-pattern callout — read before acting.** Do NOT invoke `/bees-engineer-review`, `/bees-doc-writer-review`, or `/bees-test-writer-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/bees-engineer-review` is scoped to source code, `/bees-doc-writer-review` to user-facing docs, `/bees-test-writer-review` to test files — none of them runs the cross-lane sweep this step needs). Spawn a fresh general-purpose agent with a self-contained prompt instead.
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, and reviewer verdicts from the whole run; that context biases it toward "did the four phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the issue body and nothing else — that's the point.
 
@@ -426,7 +426,7 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 
    Do NOT do a general repo audit. Stay focused on the diff.
 
-   Do NOT invoke /bees-code-review, /bees-doc-review, or /bees-test-review at
+   Do NOT invoke /bees-engineer-review, /bees-doc-writer-review, or /bees-test-writer-review at
    this stage. Those skills are designed as parallel lanes of an in-flight
    review; they each have lane-specific scope rules that make them wrong for a
    final generalist sweep.

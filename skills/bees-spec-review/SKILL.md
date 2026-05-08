@@ -6,7 +6,7 @@ argument-hint: "<spec-bee-id> [--doc PRD|SDD]"
 
 ## Overview
 
-This skill performs a fresh-eyes review of the spec content authored under a Spec Bee in the Specs hive — the PRD and SDD `t1=Doc` children produced by `/bees-write-prd` and `/bees-write-sdd`. It returns a list of improvement work items for the caller to act on. The conceptual analog is upstream apiary's `/req-review`; the bees-workflow analogs in shape are `/bees-code-review`, `/bees-test-review`, and `/bees-doc-review`.
+This skill performs a fresh-eyes review of the spec content authored under a Spec Bee in the Specs hive — the PRD and SDD `t1=Doc` children produced by `/bees-write-prd` and `/bees-write-sdd`. It returns a list of improvement work items for the caller to act on. The conceptual analog is upstream apiary's `/req-review`; the bees-workflow analogs in shape are `/bees-engineer-review`, `/bees-test-writer-review`, and `/bees-doc-writer-review`.
 
 By default the skill reviews **both** the PRD child and the SDD child of the named Spec Bee, applying a checklist tailored to each document type plus a cross-document consistency pass. Pass `--doc PRD` or `--doc SDD` to scope the review to a single child (useful when only one of the two has been revised, or when an orchestrating writer skill has only authored / revised one of the two children — `/bees-write-prd` invokes this skill with `--doc PRD`, `/bees-write-sdd` with `--doc SDD`).
 
@@ -47,9 +47,9 @@ In scope:
 
 Out of scope:
 
-- Source code under `skills/`, `agents/`, or any other repo path — `/bees-code-review`'s territory.
-- Test files — `/bees-test-review`'s territory.
-- User-facing project docs (`README.md`, the cumulative project PRD/SDD on disk) — `/bees-doc-review`'s territory.
+- Source code under `skills/`, `agents/`, or any other repo path — `/bees-engineer-review`'s territory.
+- Test files — `/bees-test-writer-review`'s territory.
+- User-facing project docs (`README.md`, the cumulative project PRD/SDD on disk) — `/bees-doc-writer-review`'s territory.
 - The Spec Bee body itself (the parent ticket). Spec Bee bodies are typically short scope notes; the spec content under review lives in the Doc children, not the Bee body.
 
 If the named Spec Bee has neither a PRD nor an SDD child (or only the one excluded by `--doc`), output `No spec content to review` and exit.
@@ -197,7 +197,7 @@ NOTE: It is expected that many times you will return no important issues. This i
 
 **When invoked from an orchestrating skill** specifically: keep in mind that the orchestrator will loop back with revisions and re-invoke this skill. If you keep reporting trivial-but-not-important items each pass, you create an infinite loop. Be selective. If you have nothing important, say so.
 
-**Time-budget short-circuit (caller side).** The orchestrating skills (`/bees-plan` Step 4c, `/bees-write-prd` Step 6a, `/bees-write-sdd` Step 7a) bound the review-fix-review loop with a budget mirroring the pattern in `agents/pm.md` for `/bees-code-review` and `/bees-doc-review`: if a single `/bees-spec-review` invocation returns more than ~10 work items, OR the review-fix-review loop runs more than ~3 turns of back-and-forth, the orchestrator stops iterating, triages the returned list down to `blocker`-severity items only, asks the writer to address those, and defers `suggestion`/`nit` items to the end-of-skill report. These thresholds are guidance, not a hard contract — pick the firmer side when the review is clearly thrashing on subjective prose-quality nits, the looser side when each item is high-signal. The 3-turn bound (vs pm.md's 5-turn bound for code/doc review) is intentional: spec content has a much smaller surface area than a Task-sized code diff, so 3 turns of revision is usually enough to converge on the substantive fixes; thrashing past 3 turns almost always means subjective-prose churn rather than missing-content correctness. This skill itself does not enforce the budget — it just emits findings — but is aware of it so the per-pass output stays selective.
+**Time-budget short-circuit (caller side).** The orchestrating skills (`/bees-plan` Step 4c, `/bees-write-prd` Step 6a, `/bees-write-sdd` Step 7a) bound the review-fix-review loop with a budget mirroring the pattern in `agents/pm.md` for `/bees-engineer-review` and `/bees-doc-writer-review`: if a single `/bees-spec-review` invocation returns more than ~10 work items, OR the review-fix-review loop runs more than ~3 turns of back-and-forth, the orchestrator stops iterating, triages the returned list down to `blocker`-severity items only, asks the writer to address those, and defers `suggestion`/`nit` items to the end-of-skill report. These thresholds are guidance, not a hard contract — pick the firmer side when the review is clearly thrashing on subjective prose-quality nits, the looser side when each item is high-signal. The 3-turn bound (vs pm.md's 5-turn bound for code/doc review) is intentional: spec content has a much smaller surface area than a Task-sized code diff, so 3 turns of revision is usually enough to converge on the substantive fixes; thrashing past 3 turns almost always means subjective-prose churn rather than missing-content correctness. This skill itself does not enforce the budget — it just emits findings — but is aware of it so the per-pass output stays selective.
 
 ### Step 4: Generate Work Item List
 

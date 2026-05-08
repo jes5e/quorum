@@ -1,7 +1,6 @@
 ---
-name: bees-test-review
-description: Review test files for quality, coverage, and correctness across a change set. Primary use - invoked by `/bees-execute` and `/bees-fix-issue` during their review cycles. Standalone use - ad-hoc test review of a diff, worktree, files, or bees ticket. Returns a simple list of improvement work items.
-argument-hint: "[<ticket-id> | <git-ref> | <files>]"
+name: bees-test-writer-review
+description: Review the Test Writer's test code during a /bees-execute or /bees-fix-issue review cycle. Returns a list of improvement work items for the orchestrator.
 ---
 
 ## Overview
@@ -9,8 +8,6 @@ argument-hint: "[<ticket-id> | <git-ref> | <files>]"
 This skill reviews test files in a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket.
 It returns a list of improvement work items for the caller to review.
 Be thorough but not pedantic — focus on substance over style.
-
-**When invoked standalone** (e.g. `/bees-test-review` from the prompt with no orchestrating skill above), the caller is a human or another standalone tool. Output the work-item list and stop. Skip the "infinite loop" concern below — that only applies inside `/bees-execute`'s review-fix-review cycle.
 
 **When invoked by `/bees-execute` or `/bees-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance under Step 3.
 
@@ -29,9 +26,9 @@ Review all commits and changed test files.
 Test files are files that exercise other code via assertions — `test_*.py`, `*.test.ts`, `*_test.go`, files under `tests/` directories, etc. Always in scope.
 
 **Out of scope:**
-- Source code files (`/bees-code-review`'s territory).
-- User-facing natural-language documentation (`/bees-doc-review`'s territory).
-- `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source*, which `/bees-code-review` reviews. They are not test files even when they document expected behavior.
+- Source code files (`/bees-engineer-review`'s territory).
+- User-facing natural-language documentation (`/bees-doc-writer-review`'s territory).
+- `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source*, which `/bees-engineer-review` reviews. They are not test files even when they document expected behavior.
 
 If the change set has no reviewable test files after applying this scope, output "No test files to review" and exit.
 
@@ -163,7 +160,5 @@ Output a simple numbered list directly in your response:
 4. Remove test_legacy_flow() in test_api.py:200 - tests deleted endpoint, always passes vacuously
 5. Mock external HTTP call in test_fetcher.py:55 - test makes real network request, causes flakiness
 ```
-
-**Orchestrator self-tracking close-out (mandatory before yielding, standalone invocation).** When this skill is invoked standalone (not from inside `/bees-execute` or `/bees-fix-issue`), the orchestrator may have created ad-hoc TaskList tasks to break the review into discrete steps (e.g., "Load test suite index", "Review by category", "Synthesize findings"). Before yielding the turn back to the user — either at end-of-flow after presenting the work-item list, or at any question-the-user pause that may follow — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding, the TaskList must show no `in_progress` entries left over from these synthesis steps. (When this skill is invoked from `/bees-execute` or `/bees-fix-issue`, the orchestrating skill owns its own TaskList close-out discipline per its own Section prose; this paragraph applies only to the standalone path.)
 
 
