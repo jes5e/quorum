@@ -1,15 +1,17 @@
 ---
 name: quo-fix-issue
 description: Fix an issue described in a Bee ticket. Use '/quo-fix-issue all' to fix all open issues sequentially, or '/quo-fix-issue <id1> <id2> ...' (space- and/or comma-delimited) to fix an explicit subset.
-argument-hint: "[<issue-id> | <id1> <id2> ... | all]"
+argument-hint: "[<issue-id> | <url> | <id-or-url> ... | all]"
 ---
 
 ## Overview
 
-The user can call this skill in four ways:
+The user can call this skill in six ways:
 - `/quo-fix-issue` — list all open issues, ask user which one to fix
 - `/quo-fix-issue <issue-id>` — fix a specific issue
 - `/quo-fix-issue <id1> <id2> <id3>` — fix an explicit list of issues, sequentially, in the order given. IDs may be separated by spaces, commas, or any mix (e.g. `b.cnb,b.sgq b.xet` is valid)
+- `/quo-fix-issue <url>` — file the URL as an Issue first via `/quo-file-issue`, then fix the resulting Issue (e.g. `/quo-fix-issue https://github.com/example/repo/issues/123`)
+- `/quo-fix-issue <id-or-url> ...` — mixed list of ticket IDs and URLs interleaved, processed in the order given; each URL is filed as an Issue first and substituted in place (e.g. `/quo-fix-issue b.cnb https://github.com/example/repo/issues/123 b.xet`)
 - `/quo-fix-issue all` — fix ALL open issues sequentially without user intervention
 
 ## Preconditions
@@ -47,16 +49,17 @@ After running the command, scan its output for the seven required names; hard-fa
 
 ### 1. Determine which issues to fix
 
-Parse the argument string. Split on any run of commas and/or whitespace; discard empty tokens. The resulting tokens determine the mode:
+Parse the argument string. Split on any run of commas and/or whitespace; discard empty tokens. Each token is then classified by shape: a token starting with `http://` or `https://` is a **URL token**, anything else is treated as a **ticket-ID token** (validated downstream). URL tokens space-and-comma-delimit identically to ticket-ID tokens — the tokenization itself is unchanged. The resulting tokens determine the mode:
 
 - **Zero tokens** (no arguments): Query all open issues, present them, ask user to pick one. Fix that one issue and exit.
 - **Exactly one token equal to `all`**: `all` mode — query all open issues, sort by ticket_id, then execute the fix loop (step 2-7) for each sequentially.
 - **Exactly one token that is an issue ID**: single-issue mode — fix that one issue and exit.
-- **Two or more tokens** (list mode): treat as an explicit, user-provided list of issue IDs. Execute the fix loop (step 2-7) for each issue **in the order given** (do NOT sort — the user's order is intentional; earlier issues may be prerequisites for later ones). Do not query or fix issues outside the list. No user confirmation between issues.
+- **Exactly one token that is a URL** (matches `^https?://`): URL mode — file the URL as an Issue first via the URL-resolution sub-step below, then fix the resulting Issue. Example: `/quo-fix-issue https://github.com/example/repo/issues/123`.
+- **Two or more tokens** (list mode): treat as an explicit, user-provided list of tokens, each of which is either an issue ID or a URL (mixed lists are allowed — for example, `/quo-fix-issue b.cnb https://github.com/example/repo/issues/123 b.xet`). Execute the fix loop (step 2-7) for each issue **in the order given** (do NOT sort — the user's order is intentional; earlier issues may be prerequisites for later ones). Any URL tokens in the list are resolved by the URL-resolution sub-step below and substituted *in place* with the resulting Issue ticket ID before the fix loop runs. Do not query or fix issues outside the list. No user confirmation between issues.
 
 Notes for list mode:
 - `/quo-fix-issue b.cnb b.sgq b.xet`, `/quo-fix-issue b.cnb,b.sgq,b.xet`, and `/quo-fix-issue b.cnb, b.sgq  b.xet` all parse to the same three-ID list.
-- Up-front validation: before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). If *no* IDs are valid, exit with an error.
+- Up-front validation: after URL resolution (per the URL-resolution sub-step below) but before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full post-resolution list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). The failure check is cumulative across both gates — URL-resolution failures (per the URL-resolution sub-step's soft-fail handling) AND `bees show-ticket` validation failures both contribute to the dropped-token count. If *no* tokens remain valid after both gates, exit with an error.
 - Between issues, no inter-issue cleanup ceremony is needed — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns, and Section 6 closes out the per-issue TaskList tasks at issue close-out.
 
 To query open issues (used only in no-args and `all` modes — list mode uses the user's explicit list instead):
@@ -100,6 +103,45 @@ In the question, always state:
 - The current branch name
 - That option 1 creates a local branch only (no remote push)
 - The number of issues queued (so the user understands the commit volume implication)
+
+#### Resolve URL tokens to Issue tickets via /quo-file-issue
+
+If the working list contains any URL tokens (tokens matching `^https?://`, classified by shape per the bullet list at the top of Section 1), resolve each one to an Issue ticket ID before the upfront `bees show-ticket --ids` validation pass runs. The model-preference and isolation-strategy choices made in the two preceding sub-steps apply to the entire run — including the file-then-fix transition this sub-step initiates — so isolating before resolution lets the user opt into a fresh branch that scopes the file-from-URL commits.
+
+**File-then-fix transition announcement.** Before the per-URL Skill-tool dispatch loop runs, announce the file-then-fix transition to the user with a short informational line — recommended string: `Filing URL(s) as Issue(s) first, then fixing.` This is informational console output, NOT an `AskUserQuestion` gate; it does not block the run and the user is not asked to confirm. The announcement fires only when at least one URL token is present in the post-tokenization working list — on the all-IDs path (no URL tokens), suppress the announcement entirely so the trace stays uncluttered for users who never invoked URL handling.
+
+For each URL token in the working list (iterating in input order — see in-place semantics below), dispatch `/quo-file-issue` inline through the Skill tool. This consumes the published `## Inline invocation via the Skill tool` contract section in `skills/quo-file-issue/SKILL.md`; the dispatch shape mirrors `skills/quo-plan/SKILL.md`'s sub-step 4b, which dispatches `/quo-write-prd` and `/quo-write-sdd` via the Skill tool with a free-text `args` payload and captures structured return fields. Pass `args` as a free-text payload of the shape:
+
+```
+url: <url>
+```
+
+Capture three fields from `/quo-file-issue`'s structured return message (per the consumed contract's `### Output shape (this skill → caller)` block):
+
+- **`issue_ticket_id`** — the Issue ticket ID to substitute into the working list.
+- **`issue_status`** — always `open` on a successful return; the close-out flip to `done` is owned by Section 6 of this skill, not by `/quo-file-issue`.
+- **`action`** — exactly `created` for a freshly-filed Issue or `reused-existing` for a dedupe match. The value is informational on this sub-step (it is consumed by the post-resolution display surface) and is NOT load-bearing for the substitution itself; both values produce a valid `issue_ticket_id` to substitute.
+
+**In-place substitution semantics.** A URL token at position N in the user-supplied input becomes the resolved `issue_ticket_id` at position N in the post-resolution working list. The substitution is in place — NEVER append the resolved ID at the tail of the list, NEVER reorder the surrounding tokens, NEVER deduplicate within the list. This preserves the "do NOT sort — the user's order is intentional; earlier issues may be prerequisites for later ones" invariant declared in the bullet list at the top of Section 1: an earlier URL that resolves to an issue which is a prerequisite of a later token must remain in its earlier position so the fix loop processes it first.
+
+**Soft-fail on dispatch failure.** Treat any of the following as a dispatch failure for a single URL token, and apply the soft-fail handling per the existing list-mode "Up-front validation" pattern in the "Notes for list mode" block above (drop the failed token, report the failure to the user, continue with the remaining tokens):
+
+- The Skill tool itself raises an error.
+- The user cancels at one of `/quo-file-issue`'s user-facing `AskUserQuestion` gates (per the consumed contract's behavioral-guarantees block, the gates that fire on the inline path are: the in-conversation distill `Approve` / `Revise` / `Cancel` gate, the External-reference body-confirmation step, and the dedupe disambiguation gate's `Cancel` choice).
+- `/quo-file-issue` returns a non-success structured return.
+
+The cumulative failure check across this sub-step's URL-resolution failures AND the subsequent `bees show-ticket --ids` validation failures (per the "Notes for list mode" block above) is what determines whether the run errors out: only when no valid tokens remain after both gates does the run exit with an error. A single dropped URL never aborts the whole run when other tokens remain. On the **single-URL-token path** (URL mode, per the bullet list at the top of Section 1), a soft-fail on the only URL leaves the working list empty after this sub-step — the cumulative-failure rule is what fires here, and the run exits with an error per the same rule that applies in list mode.
+
+**Post-resolution working-list display.** After every URL token in the working list has either been resolved (with `issue_ticket_id` and `action` captured per the structured return above) or soft-failed (and dropped per the soft-fail handling above), and BEFORE the upfront `bees show-ticket --ids` validation pass at the top of step 2, display the post-resolution working list to the user as informational markdown output. Each input position is labeled with the resolved ticket ID; URL positions are called out as filed-from-URL with the captured `action` value (`created` for a freshly-filed Issue, `reused-existing` for a dedupe match) so the user can see at a glance when dedupe matched an already-filed Issue. Recommended display shape:
+
+```
+Post-resolution working list:
+1. b.cnb (input: b.cnb)
+2. b.<new-id> (input: https://github.com/example/repo/issues/123, action: created)
+3. b.xet (input: b.xet)
+```
+
+The display is informational ONLY — NO `AskUserQuestion`, NO ability to re-order. Its purpose is to let the user confirm prerequisite ordering survived the in-place substitution; if the user is unhappy with the result they can `Ctrl-C` and re-run with corrected positional order. The display fires only when at least one URL token was present in the user-supplied input — on the all-IDs path (no URL tokens), suppress the display entirely (the working list at that point is identical to the user's input and adds no signal).
 
 ### 2. Validate Issue
 
@@ -264,11 +306,12 @@ Use `metadata.activity` on the TaskList task to surface finer-grained progress w
 
 The naming convention is the **canonical cross-reference** for downstream Sections of this SKILL.md (Section 4's reviewer dispatches and Section 6's TaskList completion at issue close-out consume these names). It is deterministic so two concurrent invocations cannot collide and unambiguous so any reader can map a TaskList entry back to its Issue.
 
-Naming is **issue-scoped** for every role — there is no Subtask breakdown under an Issue, so the parent ticket id used as the scope suffix is always the Issue id:
+Naming is **issue-scoped** for every per-issue role — there is no Subtask breakdown under an Issue, so the parent ticket id used as the scope suffix is always the Issue id. The URL-resolution Skill-tool dispatches in Section 1's URL-resolution sub-step run *before* per-issue dispatch begins (the URL has not yet been resolved to an Issue ID at that point), so they use a positional-index discriminator instead:
 
 - **Implementer Agents** (Engineer, Test Writer, Doc Writer) — Name: `<role>-<issue-id>` (e.g., `engineer-veq`, `test-writer-veq`, `doc-writer-veq` for Issue `b.veq`).
 - **PM Agents** (when dispatched for Complex fixes) — Name: `pm-<issue-id>` (e.g., `pm-veq`).
 - **Reviewer Agents** (Code Reviewer, Test Reviewer, Doc Reviewer — see Section 4) — Name: `<reviewer>-<issue-id>` (e.g., `code-reviewer-veq`, `test-reviewer-veq`, `doc-reviewer-veq`).
+- **URL-resolution Skill-tool dispatches** (per Section 1's URL-resolution sub-step) — Name: `file-from-url-<n>`, where `<n>` is the 1-based index of the URL token in the user-supplied positional-argument list (e.g., `file-from-url-1`, `file-from-url-2` for two URL tokens). The 1-based positional index is what makes the entry deterministic and unambiguous — not the URL itself, which may be long, may repeat after dedupe, or may contain reserved characters that would collide with the naming convention. Each entry is created `pending` when the orchestrator decides to dispatch `/quo-file-issue` for the corresponding URL token, set `in_progress` the moment the Skill-tool dispatch lands, and set `completed` when the resolved `issue_ticket_id` is captured from the structured return (whether the underlying `action` is `created` for a freshly-filed Issue or `reused-existing` on the dedupe `Use existing` path). The URL-resolution sub-step's soft-fail / user-cancel path also closes out the entry — mark the failed entry `completed` (with the failure reason recorded via `metadata.activity` per the per-Agent activity convention above if useful) and clear it from the active set so the cumulative failure check at the upfront `bees show-ticket --ids` validation pass operates on a clean active set.
 
 #### Scoped-marker PM dispatch wiring
 
