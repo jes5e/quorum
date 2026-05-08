@@ -1,7 +1,7 @@
 ---
 id: b.ehy
 type: bee
-title: 'bees-breakdown-epic end-of-skill: per-option rationale, foundation-Epic detection,
+title: 'quo-breakdown-epic end-of-skill: per-option rationale, foundation-Epic detection,
   and missing commit step'
 parent: null
 created_at: '2026-05-03T13:17:08.032566'
@@ -12,11 +12,11 @@ reference_materials: null
 ---
 ## Description
 
-Two related gaps in `bees-breakdown-epic`'s end-of-skill behavior:
+Two related gaps in `quo-breakdown-epic`'s end-of-skill behavior:
 
 **(A) Step 6 next-steps menu lacks per-option rationale and uses the wrong heuristic for the Recommended badge.** The menu describes *what* each option does but not *when to pick which*. The "Recommended" badge is unconditionally pinned to "execute the whole Bee", even when remaining drafted Epics consume contracts that the just-broken-down Epic's implementation will lock in (foundation-then-rewrites pattern), and breaking those siblings down now risks rework if the contract shifts during execution.
 
-**(B) The skill ends without committing the new ticket files it just created.** When breakdown completes, `.bees/<plans-hive>/` carries new Task and Subtask files, plus the parent Epic's status update. The skill jumps straight to Step 6's next-steps menu without staging or committing them. If the user ends the session at that point — which is the explicitly-recommended fresh-session path for `/bees-execute` — they're left with a pile of uncommitted ticket files that the next session has to discover and reason about.
+**(B) The skill ends without committing the new ticket files it just created.** When breakdown completes, `.bees/<plans-hive>/` carries new Task and Subtask files, plus the parent Epic's status update. The skill jumps straight to Step 6's next-steps menu without staging or committing them. If the user ends the session at that point — which is the explicitly-recommended fresh-session path for `/quo-execute` — they're left with a pile of uncommitted ticket files that the next session has to discover and reason about.
 
 Both gaps live at the end of the same skill file (`SKILL.md` Steps 5–6) and the fix is one cohesive pass.
 
@@ -34,7 +34,7 @@ Both gaps live at the end of the same skill file (`SKILL.md` Steps 5–6) and th
 - **Surface a defer-downstream-breakdown choice only when there's a real trade-off.** Trigger: after Step 5 finishes, the team-lead reads the bodies of any drafted siblings whose `up_dependencies` includes the just-broken-down Epic, and judges whether the upstream Epic's implementation will materially reshape the contract those siblings consume (e.g., upstream defines new infrastructure / API / schema / framework that the siblings explicitly rewrite-to-consume). When that judgment lands "yes, contract is in flux", surface a Recommended option of "execute this Epic first; defer downstream breakdown" with a one-line reason naming the dependent siblings and the contract-reshape concern.
 - **Per-option rationale.** Each option in the menu should carry a one-line "best when …" clause in addition to the action description, so the user can compare trade-offs without external context.
 
-**(B)** Before rendering Step 6, the skill should stage and commit the new ticket files it created (Tasks, Subtasks, and the Epic's status-update). Use the same hive-resolution pattern bees-file-issue uses (`bees list-hives` → check whether the Plans hive lives inside the repo → only `git add` if so). Commit message naming the Epic that was broken down. If the Plans hive lives outside the repo, skip the commit and remind the user where the tickets are stored. After the commit, then render Step 6's next-steps menu.
+**(B)** Before rendering Step 6, the skill should stage and commit the new ticket files it created (Tasks, Subtasks, and the Epic's status-update). Use the same hive-resolution pattern quo-file-issue uses (`bees list-hives` → check whether the Plans hive lives inside the repo → only `git add` if so). Commit message naming the Epic that was broken down. If the Plans hive lives outside the repo, skip the commit and remind the user where the tickets are stored. After the commit, then render Step 6's next-steps menu.
 
 ## Impact
 
@@ -44,7 +44,7 @@ Both gaps live at the end of the same skill file (`SKILL.md` Steps 5–6) and th
 
 ## Suggested fix
 
-Edit `skills/bees-breakdown-epic/SKILL.md`:
+Edit `skills/quo-breakdown-epic/SKILL.md`:
 
 **For (A) — Step 6 logic**:
 1. Before composing the menu, query the just-broken-down Epic's drafted siblings: `bees execute-freeform-query --query-yaml 'stages: [parent=<bee-id>, type=t1, status=drafted]
@@ -59,14 +59,14 @@ report: [title, up_dependencies, body]'` (or fetch bodies via `bees show-ticket`
 
 **For (B) — pre-Step-6 commit**:
 1. Add a new step between Step 5 ("Review Epic") and Step 6 ("Offer Next Steps") that stages and commits the new ticket files.
-2. Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only `git add` if so. Mirror the pattern in `bees-file-issue` Step 5 (POSIX bash + Windows PowerShell variants). Don't hardcode `.bees/plans/` — `/bees-setup` lets users put hives outside the repo.
+2. Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only `git add` if so. Mirror the pattern in `quo-file-issue` Step 5 (POSIX bash + Windows PowerShell variants). Don't hardcode `.bees/plans/` — `/quo-setup` lets users put hives outside the repo.
 3. Commit message: `Break down <epic-id>: <epic-title>` (or similar). Single literal command, no compound chains, per repo Bash etiquette.
 4. If the Plans hive lives outside the repo, skip the commit and surface a one-line note in the next-steps menu so the user knows the tickets are persisted by the bees CLI but not git-tracked.
 5. After the commit, then render Step 6's menu.
 
 Key files:
 
-- `skills/bees-breakdown-epic/SKILL.md` (Step 5 / new pre-Step-6 commit step / Step 6 prose)
+- `skills/quo-breakdown-epic/SKILL.md` (Step 5 / new pre-Step-6 commit step / Step 6 prose)
 
 Acceptance criteria:
 

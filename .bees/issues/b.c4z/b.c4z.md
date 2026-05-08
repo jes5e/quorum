@@ -48,10 +48,10 @@ Because the helper handles the file read internally, the POSIX/PowerShell shell 
 
 Anchored on section names so this list survives line-number drift:
 
-- **skills/bees-file-issue/SKILL.md** — Step 3 ("Create the ticket"). Has explicit POSIX + PowerShell snippets with `--body "<structured body>"` placeholders; rewrite both to use `--body-file`.
-- **skills/bees-plan/SKILL.md** — Step 5 Path B. Two snippet pairs: the Plan Bee creation (`--ticket-type bee`) and the per-Epic creation (`--ticket-type t1`). Migrate both to `--body-file`.
-- **skills/bees-plan-from-specs/SKILL.md** — Step 4 ("Create Shell Epics"). No shell snippet exists; the skill controls Epic creation through prose. Add a sentence telling the agent to author each Epic body via the temp-file + `--body-file` pattern.
-- **skills/bees-breakdown-epic/SKILL.md** — Section 4/5 where the team-lead creates Tasks and Subtasks. Same prose-only situation as bees-plan-from-specs; add the `--body-file` directive next to the existing "Only YOU (the team lead) run `bees create-ticket`" prose. Task/Subtask bodies are the most heading-dense markdown in the workflow (Context / What Needs to Change / Key Files / Acceptance Criteria), so this is the highest-frequency offender.
+- **skills/quo-file-issue/SKILL.md** — Step 3 ("Create the ticket"). Has explicit POSIX + PowerShell snippets with `--body "<structured body>"` placeholders; rewrite both to use `--body-file`.
+- **skills/quo-plan/SKILL.md** — Step 5 Path B. Two snippet pairs: the Plan Bee creation (`--ticket-type bee`) and the per-Epic creation (`--ticket-type t1`). Migrate both to `--body-file`.
+- **skills/quo-plan-from-specs/SKILL.md** — Step 4 ("Create Shell Epics"). No shell snippet exists; the skill controls Epic creation through prose. Add a sentence telling the agent to author each Epic body via the temp-file + `--body-file` pattern.
+- **skills/quo-breakdown-epic/SKILL.md** — Section 4/5 where the team-lead creates Tasks and Subtasks. Same prose-only situation as quo-plan-from-specs; add the `--body-file` directive next to the existing "Only YOU (the team lead) run `bees create-ticket`" prose. Task/Subtask bodies are the most heading-dense markdown in the workflow (Context / What Needs to Change / Key Files / Acceptance Criteria), so this is the highest-frequency offender.
 - **Any skill that uses `bees update-ticket --body "<structured body>"`** for multi-paragraph body rewrites — migrate to `--body-file`. (Audit during the migration; many skills only `update-ticket --status …` and don't trigger this.)
 - **Any skill that uses `bees append-ticket-body --chunk "<paragraph>"`** for multi-paragraph chunks — migrate to `--chunk-file`.
 

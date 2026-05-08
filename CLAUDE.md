@@ -11,10 +11,10 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 ## Repo layout (only what isn't obvious)
 
 - `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user; the body is the instructions Claude follows when the skill is invoked.
-- `skills/<name>/scripts/` — optional cross-platform Python helpers. Two exist today: `bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection) and `bees-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `bees-execute` and `bees-fix-issue`).
-- `agents/<role>.md` — Claude Code custom-subagents directory. Seven role contracts (`engineer.md`, `test-writer.md`, `doc-writer.md`, `pm.md`, `code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md`) dispatched as ephemeral background Agents by `bees-execute`, `bees-fix-issue`, and `bees-breakdown-epic`. Each file carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus the role's Instructions block.
+- `skills/<name>/scripts/` — optional cross-platform Python helpers. Two exist today: `quo-setup/scripts/detect_fast_path.py` (new-machine fast-path detection) and `quo-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `quo-execute` and `quo-fix-issue`).
+- `agents/<role>.md` — Claude Code custom-subagents directory. Seven role contracts (`engineer.md`, `test-writer.md`, `doc-writer.md`, `pm.md`, `code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md`) dispatched as ephemeral background Agents by `quo-execute`, `quo-fix-issue`, and `quo-breakdown-epic`. Each file carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus the role's Instructions block.
 
-The full workflow chain — `bees-setup` → (`bees-plan` | `bees-plan-from-specs`) → `bees-breakdown-epic` → `bees-execute` → `bees-file-issue` / `bees-fix-issue` — is documented in the README; don't re-derive it from the skill files.
+The full workflow chain — `quo-setup` → (`quo-plan` | `quo-plan-from-specs`) → `quo-breakdown-epic` → `quo-execute` → `quo-file-issue` / `quo-fix-issue` — is documented in the README; don't re-derive it from the skill files.
 
 ## The three non-negotiable design rules
 
@@ -78,7 +78,7 @@ The customer-facing README documents the per-OS location and tells users it is s
 
 ## Review criteria for skill changes
 
-When `bees-engineer-review`, `bees-test-writer-review`, or `bees-doc-writer-review` runs against changes in *this* repo, the three design rules above plus the scratch-file convention are mandatory review criteria layered on top of each skill's standard checks. Note: `bees-spec-review` is intentionally excluded from this section because it reviews PRD/SDD bee ticket bodies, not source files in this repo, so the rules below (which target skill-prose and helper-script diffs) do not apply to it. Flag any skill-prose or helper-script change that:
+When `quo-engineer-review`, `quo-test-writer-review`, or `quo-doc-writer-review` runs against changes in *this* repo, the three design rules above plus the scratch-file convention are mandatory review criteria layered on top of each skill's standard checks. Note: `quo-spec-review` is intentionally excluded from this section because it reviews PRD/SDD bee ticket bodies, not source files in this repo, so the rules below (which target skill-prose and helper-script diffs) do not apply to it. Flag any skill-prose or helper-script change that:
 
 - Hardcodes a language-specific command, file extension, or manifest filename (rule 1).
 - Introduces a shell snippet without paired POSIX bash + Windows PowerShell variants, or relies on a bash-only fallback (rule 2).
@@ -89,7 +89,7 @@ These criteria are additive — they do not replace, relax, or exempt any of the
 
 ## Contract keys that downstream skills depend on
 
-These keys appear in the *target repo's* CLAUDE.md (not this one). `bees-setup` writes them; every other skill reads them. **Do not rename them in any skill** — they are a string contract.
+These keys appear in the *target repo's* CLAUDE.md (not this one). `quo-setup` writes them; every other skill reads them. **Do not rename them in any skill** — they are a string contract.
 
 `## Documentation Locations` bullet keys:
 - `Project requirements doc (PRD)`
@@ -109,7 +109,7 @@ These keys appear in the *target repo's* CLAUDE.md (not this one). `bees-setup` 
 
 **Bundled helper scripts are NOT contract keys.** Earlier revisions wrote a `## Skill Paths` section to CLAUDE.md containing absolute paths to bundled helper scripts. That section was removed (b.963) because committing per-machine paths to a tracked file broke multi-engineer collaboration. Each skill now resolves its own bundled scripts at runtime from its own base directory, which Claude Code provides in the skill invocation header. See `## Querying tickets` and `## The lookup-key pattern` in `docs/doc-writing-guide.md` for the runtime-resolution conventions skills must follow.
 
-`bees-execute`, `bees-fix-issue`, and `bees-breakdown-epic` hard-fail with `Run /bees-setup first.` if either (i) one of the two contract sections (`Documentation Locations`, `Build Commands`), or any required key inside them, is missing from the target repo's CLAUDE.md, or (ii) any of the required hives (Plans, Issues, Specs) is missing from the target repo's bees workspace. Preserve that precondition behavior in any edit to these skills.
+`quo-execute`, `quo-fix-issue`, and `quo-breakdown-epic` hard-fail with `Run /quo-setup first.` if either (i) one of the two contract sections (`Documentation Locations`, `Build Commands`), or any required key inside them, is missing from the target repo's CLAUDE.md, or (ii) any of the required hives (Plans, Issues, Specs) is missing from the target repo's bees workspace. Preserve that precondition behavior in any edit to these skills.
 
 ## Hives and status vocabulary
 
@@ -119,7 +119,7 @@ The workflow uses three hives in the target repo:
 - **Issues**. No children. Statuses: `open` → `done`.
 - **Specs** (top-level). Tier: t1 = Doc/Docs (PRD and SDD as `t1=Doc` children differentiated by title). Statuses: `drafted` → `ready`.
 
-When a Plan Bee is authored via `/bees-plan` for a feature with no separate PRD/SDD, the Bee's `reference_materials` is null/empty and the **Plan Bee body itself becomes the authoritative spec**. Several skills (`bees-execute`'s PM role, `bees-breakdown-epic`) explicitly substitute "the Plan Bee body" for "the PRD/SDD" in that case — keep the substitution prose intact when editing those skills.
+When a Plan Bee is authored via `/quo-plan` for a feature with no separate PRD/SDD, the Bee's `reference_materials` is null/empty and the **Plan Bee body itself becomes the authoritative spec**. Several skills (`quo-execute`'s PM role, `quo-breakdown-epic`) explicitly substitute "the Plan Bee body" for "the PRD/SDD" in that case — keep the substitution prose intact when editing those skills.
 
 ## Querying tickets
 
@@ -127,7 +127,7 @@ The bees CLI has no `ls`, `search`, `list-tickets`, or hive-scoped enumeration c
 
 ## Model assignment in execution skills
 
-Hardcoded in `bees-execute` and `bees-fix-issue`:
+Hardcoded in `quo-execute` and `quo-fix-issue`:
 - **Engineer, Test Writer, Code Reviewer, Test Reviewer**: always Opus. Not user-configurable.
 - **Doc Writer, Product Manager, Doc Reviewer**: user picks Opus or Sonnet at the start of the run.
 

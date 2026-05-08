@@ -1,7 +1,7 @@
 ---
 id: b.kpt
 type: bee
-title: /bees-setup should detect new-machine case and offer fast-path re-registration
+title: /quo-setup should detect new-machine case and offer fast-path re-registration
 down_dependencies:
 - b.6e6
 parent: null
@@ -13,22 +13,22 @@ reference_materials: null
 ---
 ## Description
 
-When a user pulls a quorum repo onto a new machine (or another engineer pulls it for the first time), the on-disk `.bees/<hive>/` directories are present and the hive markers (`.bees/<hive>/.hive/identity.json`) exist, but the per-machine `~/.bees/config.json` has no scope entry for this repo. Result: every bees command silently behaves as if no tickets exist (`bees list-hives` returns `{"hives": [], "message": "No hives configured"}`), and downstream skills (`/bees-execute`, `/bees-fix-issue`, `/bees-file-issue`, `/bees-breakdown-epic`) hard-fail with `Run /bees-setup first.`
+When a user pulls a quorum repo onto a new machine (or another engineer pulls it for the first time), the on-disk `.bees/<hive>/` directories are present and the hive markers (`.bees/<hive>/.hive/identity.json`) exist, but the per-machine `~/.bees/config.json` has no scope entry for this repo. Result: every bees command silently behaves as if no tickets exist (`bees list-hives` returns `{"hives": [], "message": "No hives configured"}`), and downstream skills (`/quo-execute`, `/quo-fix-issue`, `/quo-file-issue`, `/quo-breakdown-epic`) hard-fail with `Run /quo-setup first.`
 
-The user's only recovery path today is to re-run `/bees-setup` from scratch, which walks through Agent Teams confirmation, teammateMode confirmation, doc-locations table, build-commands prompts, and bootstrap-doc generation — all of which are already correct in the repo's committed CLAUDE.md. The walk-through is heavy, error-prone (a wrong answer can overwrite committed CLAUDE.md sections), and unnecessary: the only thing actually missing is the per-machine config registration.
+The user's only recovery path today is to re-run `/quo-setup` from scratch, which walks through Agent Teams confirmation, teammateMode confirmation, doc-locations table, build-commands prompts, and bootstrap-doc generation — all of which are already correct in the repo's committed CLAUDE.md. The walk-through is heavy, error-prone (a wrong answer can overwrite committed CLAUDE.md sections), and unnecessary: the only thing actually missing is the per-machine config registration.
 
-This is the multi-machine and multi-engineer use case for quorum. With `.bees/` committed to git, the workflow assumes shared tickets travel with the repo — but bees itself has no built-in path to bootstrap registration from on-disk markers (verified against `gabemahoney/bees` source: the identity marker deliberately doesn't carry per-hive config like `child_tiers`, `status_values`, `egg_resolver` — those live only in `~/.bees/config.json` per `docs/architecture/storage.md:72`). So the fix has to happen in our `/bees-setup` skill, which already knows the canonical defaults.
+This is the multi-machine and multi-engineer use case for quorum. With `.bees/` committed to git, the workflow assumes shared tickets travel with the repo — but bees itself has no built-in path to bootstrap registration from on-disk markers (verified against `gabemahoney/bees` source: the identity marker deliberately doesn't carry per-hive config like `child_tiers`, `status_values`, `egg_resolver` — those live only in `~/.bees/config.json` per `docs/architecture/storage.md:72`). So the fix has to happen in our `/quo-setup` skill, which already knows the canonical defaults.
 
 A separate upstream issue should be filed on `gabemahoney/bees` proposing a first-class `bees adopt-hive --from-marker` command, but the skills fix is independent of and unblocks the workflow today.
 
 ## Current behavior
 
-User runs `/bees-setup` on a new machine in an already-set-up repo. The skill walks the full setup flow:
+User runs `/quo-setup` on a new machine in an already-set-up repo. The skill walks the full setup flow:
 
 1. Agent Teams env-var check (the env var is per-machine — fine to keep).
 2. teammateMode prompt (per-machine — fine to keep).
 3. Hive setup: asks where each missing hive should live, even though the on-disk hive directories already exist. The user has to manually point the skill at the existing `.bees/issues` and `.bees/plans` paths.
-4. Documentation Locations: re-prompts for every doc type, even though CLAUDE.md already has them populated. The skill does have a 'detect existing values' check at `skills/bees-setup/SKILL.md:480`, but it still walks the user through confirming each row.
+4. Documentation Locations: re-prompts for every doc type, even though CLAUDE.md already has them populated. The skill does have a 'detect existing values' check at `skills/quo-setup/SKILL.md:480`, but it still walks the user through confirming each row.
 5. Build Commands: same — re-prompts for every slot.
 6. Bootstrap PRD/SDD offer: triggered if the existing CLAUDE.md doesn't list both, which can mis-fire if the original author skipped the bootstrap.
 
@@ -36,7 +36,7 @@ For a user who just wants their machine's bees config restored to match the repo
 
 ## Expected behavior
 
-`/bees-setup` should detect the **new-machine, repo-already-set-up** case early and offer a fast path.
+`/quo-setup` should detect the **new-machine, repo-already-set-up** case early and offer a fast path.
 
 **Detection rule** (all three must be true):
 
@@ -71,17 +71,17 @@ If all three are true → fast path. If any are false → existing full flow.
 
 ## Suggested fix
 
-1. Add a 'Fast-path detection' section to `skills/bees-setup/SKILL.md` near the top of the steps, after the precondition check and before the Agent Teams subsection. Spell out the three-part detection rule and the four fast-path actions exactly as in 'Expected behavior' above. Make the OS-conditional bash/PowerShell snippets explicit — a Python helper for walking the on-disk markers may be cleaner than inlining shell, since the same script can produce a list of `(name, path)` pairs cross-platform.
+1. Add a 'Fast-path detection' section to `skills/quo-setup/SKILL.md` near the top of the steps, after the precondition check and before the Agent Teams subsection. Spell out the three-part detection rule and the four fast-path actions exactly as in 'Expected behavior' above. Make the OS-conditional bash/PowerShell snippets explicit — a Python helper for walking the on-disk markers may be cleaner than inlining shell, since the same script can produce a list of `(name, path)` pairs cross-platform.
 2. The unknown-hive-name branch (any hive directory whose name isn't 'issues' or 'plans') should fall through to the existing full-flow per-hive prompts. The fast path is only for the canonical two; treat anything else as 'I don't know the defaults for this; ask the user.'
 3. The Agent Teams + teammateMode check should be lifted from the existing slow path and made callable from both paths — same check, different surrounding prose. Don't duplicate the JSON-mutation logic in two places.
-4. Update the README's `/bees-setup` description to mention the fast path: 'On a new machine in an already-set-up repo, `/bees-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through.' One sentence in the existing skill table is enough.
+4. Update the README's `/quo-setup` description to mention the fast path: 'On a new machine in an already-set-up repo, `/quo-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through.' One sentence in the existing skill table is enough.
 5. File a separate upstream issue on `gabemahoney/bees` proposing `bees adopt-hive --from-marker <path>` (or `colonize-hive --from-marker`) so future bees-on-multiple-machines users don't all have to reinvent this fix in their own skill sets. Reference `docs/architecture/storage.md:72`'s deliberate decision that the marker doesn't carry config — any upstream fix needs to either widen the marker schema or accept a `--defaults-from <other-hive-or-scope>` template argument.
 
 ## Acceptance criteria
 
-- On a fresh machine in an already-set-up repo (CLAUDE.md present and populated, `.bees/<hive>/.hive/identity.json` present, `~/.bees/config.json` missing the scope), `/bees-setup` enters the fast path and completes in at most two prompts (the 'Exit / Continue' question, plus optionally one quick confirm if Agent Teams or teammateMode is missing).
-- On a fresh machine in a fresh repo (no `.bees/`, no CLAUDE.md or empty CLAUDE.md), `/bees-setup` enters the existing slow path with no behavior change.
-- On the same machine that ran the original setup (everything already configured), `/bees-setup` is a no-op for the hive-registration step (it sees the hives are already registered) and the existing 'detect existing CLAUDE.md values' branch handles the rest. Confirm no regression here.
+- On a fresh machine in an already-set-up repo (CLAUDE.md present and populated, `.bees/<hive>/.hive/identity.json` present, `~/.bees/config.json` missing the scope), `/quo-setup` enters the fast path and completes in at most two prompts (the 'Exit / Continue' question, plus optionally one quick confirm if Agent Teams or teammateMode is missing).
+- On a fresh machine in a fresh repo (no `.bees/`, no CLAUDE.md or empty CLAUDE.md), `/quo-setup` enters the existing slow path with no behavior change.
+- On the same machine that ran the original setup (everything already configured), `/quo-setup` is a no-op for the hive-registration step (it sees the hives are already registered) and the existing 'detect existing CLAUDE.md values' branch handles the rest. Confirm no regression here.
 - The fast path does not write to or modify `CLAUDE.md` under any circumstances.
 - Unknown hive names (anything other than 'issues' or 'plans') trigger a prompt asking the user for child tiers and status values; they don't silently get canonical defaults.
 

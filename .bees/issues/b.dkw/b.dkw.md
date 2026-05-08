@@ -17,7 +17,7 @@ Skills currently write `--body-file` scratch (and other transient files) into th
 ## Current behavior
 
 - Each skill picks its own scratch path under the OS temp dir. The naming convention is loose and per-skill.
-- `bees-file-issue` instructs the caller to remove the temp file after the bees command exits — i.e., mid-workflow cleanup. Other skills may or may not do the same.
+- `quo-file-issue` instructs the caller to remove the temp file after the bees command exits — i.e., mid-workflow cleanup. Other skills may or may not do the same.
 - There is no convention that lets a user (or a later skill run) identify "files this workflow created" vs. unrelated temp-dir contents.
 - If a workflow crashes, the artifacts may or may not survive depending on which skill was running, leaving inconsistent debugging surface.
 
@@ -43,10 +43,10 @@ This approach was chosen over a per-skill cleanup-with-allowlist design because 
 
 1. Add a new section to `CLAUDE.md` (this repo's, not the target repo's) — likely under "Bash etiquette" or a new "Scratch-file convention" heading — stating the `<tempdir>/.quorum/` rule and the no-delete policy. Make it a review criterion alongside the three design rules.
 2. Audit every skill that writes a `--body-file` or similar scratch path and update the prose to use `<tempdir>/.quorum/<name>`. Known sites at minimum:
-   - `skills/bees-file-issue/SKILL.md` (step 3 — currently writes to `/tmp/bees-body-<suffix>.md` and removes after; both lines need to change).
+   - `skills/quo-file-issue/SKILL.md` (step 3 — currently writes to `/tmp/bees-body-<suffix>.md` and removes after; both lines need to change).
    - Any other skill that authors body files (sweep with a grep for `body-file`, `tempfile`, `/tmp/`, `$env:TEMP`).
 3. Update paired POSIX-bash + Windows-PowerShell snippets accordingly. Where Python helpers do the writing, route through `tempfile.gettempdir()` + `.quorum` subdir.
 4. Add a short "Scratch files" note to `README.md` telling users where the dir lives per-OS and that it's safe to delete.
 5. Remove any "remove the temp file after the bees command exits" instructions from skill prose.
 
-Key files: this repo's `CLAUDE.md`, `README.md`, `skills/bees-file-issue/SKILL.md`, plus whatever the audit in step 2 surfaces.
+Key files: this repo's `CLAUDE.md`, `README.md`, `skills/quo-file-issue/SKILL.md`, plus whatever the audit in step 2 surfaces.

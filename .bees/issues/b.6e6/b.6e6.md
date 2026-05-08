@@ -1,7 +1,7 @@
 ---
 id: b.6e6
 type: bee
-title: Polish nits in /bees-setup fast-path prose and detect_fast_path.py
+title: Polish nits in /quo-setup fast-path prose and detect_fast_path.py
 up_dependencies:
 - b.kpt
 parent: null
@@ -17,19 +17,19 @@ Three polish-level findings from the post-completion review of `b.kpt` (commits 
 
 ## Findings
 
-### 1. `skills/bees-setup/SKILL.md:121` — slow-path entry-point prose imprecise
+### 1. `skills/quo-setup/SKILL.md:121` — slow-path entry-point prose imprecise
 
 The fast-path-ineligible fall-through says "fall through to the existing slow path starting at *Per-machine Claude Code settings* below." That's correct, but the wording implies a single entry point — in practice the slow path's next stop after settings is *Resolve bundled helper script paths* (around line 410), and on the same-machine no-regression case from acceptance criterion 3 the user just confirms settings and continues. Not strictly wrong, just slightly awkward and depends on the agent reading the next section linearly.
 
 **Suggested fix:** sharpen the prose to name both the entry section and what comes after — e.g. "…starting at *Per-machine Claude Code settings*; if those are already configured, the slow path continues to *Resolve bundled helper script paths*."
 
-### 2. `skills/bees-setup/SKILL.md:198` — flow-control "return here" instruction lacks anchor
+### 2. `skills/quo-setup/SKILL.md:198` — flow-control "return here" instruction lacks anchor
 
 Option 2 of the condensed-prompt branch tells the agent to "fall through to the slow path's *Per-machine Claude Code settings* section for the per-setting walk-through, then return here for *Confirm and exit*." "Return here" is a flow-control instruction with no explicit anchor — Claude has to maintain the return-pointer mentally. The matching Confirm-and-Exit option-2 (line 212-ish, post-fix) cleanly says "skip ahead to the next slow-path section" with explicit naming.
 
 **Suggested fix:** rewrite to "after completing the slow path's *Per-machine Claude Code settings* section, jump back up to *Confirm and exit* in the fast-path branch." Or restructure so the fast-path branch's exit doesn't depend on a remote return.
 
-### 3. `skills/bees-setup/scripts/detect_fast_path.py:194` — `_BULLET_RE` could use a docstring noting expected bullet shape
+### 3. `skills/quo-setup/scripts/detect_fast_path.py:194` — `_BULLET_RE` could use a docstring noting expected bullet shape
 
 The regex `^\s*-\s+\*\*(?P<key>[^*]+?)\*\*\s*:\s*(?P<value>.*?)\s*$` requires the bullet text be wrapped in `**bold**`. The contract emitter elsewhere in SKILL.md always emits this form, so it's fine in practice — but if a user hand-edits CLAUDE.md to drop the bold (or uses a different emphasis style), the detector silently reports the section as not-set-up and re-prompts the slow path. That's acceptable defensive behavior.
 

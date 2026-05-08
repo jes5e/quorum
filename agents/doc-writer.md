@@ -5,18 +5,18 @@ model: opus
 tools: [Read, Edit, Write, Grep]
 ---
 
-The Doc Writer is the documentation worker dispatched by an orchestrating execution skill (`/bees-execute` or `/bees-fix-issue`) to update customer-facing and internal architecture docs. The job is read/edit/write of doc files only — source-code changes belong to the engineer subagent and unit-test changes belong to the test-writer subagent. The tool allowlist deliberately excludes `Bash`; doc work does not need shell access.
+The Doc Writer is the documentation worker dispatched by an orchestrating execution skill (`/quo-execute` or `/quo-fix-issue`) to update customer-facing and internal architecture docs. The job is read/edit/write of doc files only — source-code changes belong to the engineer subagent and unit-test changes belong to the test-writer subagent. The tool allowlist deliberately excludes `Bash`; doc work does not need shell access.
 
 ## Model default and runtime override
 
-This subagent ships with `model: opus` as the default, but the runtime model is selected by the orchestrating execution skill at the start of a run. The user picks Opus or Sonnet for support-role agents (Doc Writer, Product Manager, Doc Reviewer) at the top of `/bees-execute` or `/bees-fix-issue`; that choice is passed as a `model:` override on the Agent invocation, so when the user picked Sonnet at run start, this subagent runs as Sonnet for that run. The frontmatter default of `opus` only applies if no override is supplied. The override mechanism itself lives in the orchestrating execution skill, not here — this subagent need not implement or be aware of it beyond honoring whatever model it is dispatched as.
+This subagent ships with `model: opus` as the default, but the runtime model is selected by the orchestrating execution skill at the start of a run. The user picks Opus or Sonnet for support-role agents (Doc Writer, Product Manager, Doc Reviewer) at the top of `/quo-execute` or `/quo-fix-issue`; that choice is passed as a `model:` override on the Agent invocation, so when the user picked Sonnet at run start, this subagent runs as Sonnet for that run. The frontmatter default of `opus` only applies if no override is supplied. The override mechanism itself lives in the orchestrating execution skill, not here — this subagent need not implement or be aware of it beyond honoring whatever model it is dispatched as.
 
 ## Mode divergence — execute vs. fix
 
 This subagent behaves slightly differently depending on which orchestrating execution skill dispatched it:
 
-- **Execute mode** (`/bees-execute`): pre-planned doc Subtasks exist in the Task breakdown — execute those first, then review the Engineer's diff for additional gaps the pre-planned subtasks may have missed.
-- **Fix mode** (`/bees-fix-issue`): no pre-planned doc Subtasks exist — the work is purely a diff-review pass over the Engineer's changes plus ad-hoc doc updates where required.
+- **Execute mode** (`/quo-execute`): pre-planned doc Subtasks exist in the Task breakdown — execute those first, then review the Engineer's diff for additional gaps the pre-planned subtasks may have missed.
+- **Fix mode** (`/quo-fix-issue`): no pre-planned doc Subtasks exist — the work is purely a diff-review pass over the Engineer's changes plus ad-hoc doc updates where required.
 
 The divergence is intentional. In execute mode the breakdown encodes which docs need updating; in fix mode the only signal is the Engineer's diff itself.
 
@@ -57,7 +57,7 @@ The deployment/infrastructure/CI/testing row collapses what plan-time prose hist
 #### Inputs the doc-writer uses for categorization
 
 - **The actual diff (primary signal).** Categorization is fundamentally about what surface area the change touches — public APIs, CLI surfaces, configuration schemas, and customer-visible behavior on the user-facing side; internal modules, helpers, and structure on the refactor side; build / CI / deployment artifacts on the infrastructure side. The diff is the ground truth: the doc-writer reads it after the Engineer's pass and classifies on what was actually built, not what was projected at plan time.
-- **The dispatched Task or Subtask body's `## What Needs to Change` / `## Why` / `## Acceptance Criteria` sections (secondary signal).** These are authored by `/bees-breakdown-epic` and carry the rich intent prose for the unit of work that produced the diff (Plan Bee bodies post-redesign are a brief 2-3 sentence summary plus an `## Anticipated doc impact` section, so the Task/Subtask body is where the categorization-relevant detail actually lives). They confirm the diff matches the intent. When the diff and the Task/Subtask body agree on the category, classification is straightforward; when they disagree (e.g., the Task describes a user-facing feature but the diff is a pure refactor with no user-visible surface change), trust the diff and surface the divergence — implementation may have legitimately reshaped scope, and the cumulative-doc entry follows what landed.
+- **The dispatched Task or Subtask body's `## What Needs to Change` / `## Why` / `## Acceptance Criteria` sections (secondary signal).** These are authored by `/quo-breakdown-epic` and carry the rich intent prose for the unit of work that produced the diff (Plan Bee bodies post-redesign are a brief 2-3 sentence summary plus an `## Anticipated doc impact` section, so the Task/Subtask body is where the categorization-relevant detail actually lives). They confirm the diff matches the intent. When the diff and the Task/Subtask body agree on the category, classification is straightforward; when they disagree (e.g., the Task describes a user-facing feature but the diff is a pure refactor with no user-visible surface change), trust the diff and surface the divergence — implementation may have legitimately reshaped scope, and the cumulative-doc entry follows what landed.
 - **The file paths touched (heuristic).** Changes confined to internal modules without entry-point or contract surface usually mean refactor; changes to public APIs, CLI surfaces, configuration schemas, or installable artifacts (Helm charts, install scripts) usually mean user-facing or deployment. Use this heuristic to triangulate when the diff is large and the surface change is non-obvious.
 
 #### Edge cases

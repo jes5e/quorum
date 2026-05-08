@@ -16,7 +16,7 @@ guid: 2w1mqgdy8vqph8fkjefko4crqtxp321q
 
 Backfill cumulative `### Feature: <title>` subsections in the project's
 PRD and SDD (`docs/prd.md`, `docs/sdd.md`) covering the work done in
-Plan Bee `b.31f` ("Side-effect-free /bees-plan and /bees-file-issue
+Plan Bee `b.31f` ("Side-effect-free /quo-plan and /quo-file-issue
 with preserved context"). The cumulative customer-facing docs
 (`README.md`, `docs/doc-writing-guide.md`) likely also need a final
 review pass after the Bee is done.
@@ -39,7 +39,7 @@ cumulative PRD/SDD. Epic 6 itself, when it executes, is *editing* the
 doc-writer's prose — it's not *exercising* the new behavior. So none
 of `b.31f`'s 8 Epics benefit from the auto-append; the cumulative
 PRD and SDD will lack a coherent `### Feature: Side-effect-free
-/bees-plan and /bees-file-issue with preserved context` entry covering
+/quo-plan and /quo-file-issue with preserved context` entry covering
 the whole feature.
 
 This is a known consequence of bootstrapping a workflow change inside
@@ -56,7 +56,7 @@ Once `b.31f` is fully `done` and committed:
    code/prose changes that landed for the whole feature.
 2. Dispatch the (now-new) doc-writer agent — or do this manually —
    to author:
-   - A `### Feature: Side-effect-free /bees-plan and /bees-file-issue
+   - A `### Feature: Side-effect-free /quo-plan and /quo-file-issue
      with preserved context` subsection under
      `## Per-feature scope` in `docs/prd.md`. Content drawn from
      the Plan Bee body's `## What` and `## Acceptance criteria`

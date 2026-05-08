@@ -1,7 +1,7 @@
 ---
 id: b.hf8
 type: bee
-title: 'bees-execute team-lead/dispatcher: state-aware dispatch, verbatim ticket-body
+title: 'quo-execute team-lead/dispatcher: state-aware dispatch, verbatim ticket-body
   quoting, blocked_on signal'
 parent: null
 created_at: '2026-05-02T13:36:22.499525'
@@ -12,7 +12,7 @@ reference_materials: null
 ---
 ## Description
 
-A user running `bees-execute` on another project reported three related defects in the team-lead / dispatcher loop. All three share a root cause: the dispatcher does not consult current ticket state at dispatch time, so it sends `task_assignment` messages based on stale or fabricated information.
+A user running `quo-execute` on another project reported three related defects in the team-lead / dispatcher loop. All three share a root cause: the dispatcher does not consult current ticket state at dispatch time, so it sends `task_assignment` messages based on stale or fabricated information.
 
 ## Sub-findings
 
@@ -48,13 +48,13 @@ When the engineer is blocked on test-writer + team-lead, there is no protocol to
 
 ## Suggested fix
 
-Edit `skills/bees-execute/SKILL.md` (team-lead role and dispatcher prose):
+Edit `skills/quo-execute/SKILL.md` (team-lead role and dispatcher prose):
 
 1. Add a pre-dispatch status check using `bees execute-freeform-query` — skip if `status=done` or `assignee` already matches the recipient.
 2. Change assignment-body authoring to quote the ticket body verbatim instead of summarising. Cheapest shape: read the ticket via bees and embed the body block.
 3. Define a `blocked_on` field convention on `TaskUpdate` (or a sibling message type) and add a team-lead step that reads it each tick and either dispatches the unblocker or surfaces the block to the human.
 
-`skills/bees-fix-issue/SKILL.md` likely shares the same dispatcher prose and would need a parallel edit.
+`skills/quo-fix-issue/SKILL.md` likely shares the same dispatcher prose and would need a parallel edit.
 
 ## Severity
 

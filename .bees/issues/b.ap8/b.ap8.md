@@ -1,7 +1,7 @@
 ---
 id: b.ap8
 type: bee
-title: 'bees-setup post-b.963: $RESOLVER lost across shell calls; ## Skill Paths deletion
+title: 'quo-setup post-b.963: $RESOLVER lost across shell calls; ## Skill Paths deletion
   has no concrete procedure'
 parent: null
 created_at: '2026-04-30T21:56:50.855421'
@@ -12,7 +12,7 @@ reference_materials: null
 ---
 ## Description
 
-Two follow-up findings on the b.963 fix (commit f2cbba7) in `skills/bees-setup/SKILL.md`. Both surfaced during code review of f2cbba7. Bundled per the workflow's house style (same file, same commit, same migration-from-`## Skill Paths` theme).
+Two follow-up findings on the b.963 fix (commit f2cbba7) in `skills/quo-setup/SKILL.md`. Both surfaced during code review of f2cbba7. Bundled per the workflow's house style (same file, same commit, same migration-from-`## Skill Paths` theme).
 
 ---
 
@@ -20,7 +20,7 @@ Two follow-up findings on the b.963 fix (commit f2cbba7) in `skills/bees-setup/S
 
 ### Current behavior
 
-`skills/bees-setup/SKILL.md` `### Egg Resolver` (line 152, plus a sibling PowerShell block ~160) sets `$RESOLVER` to the egg-resolver script path:
+`skills/quo-setup/SKILL.md` `### Egg Resolver` (line 152, plus a sibling PowerShell block ~160) sets `$RESOLVER` to the egg-resolver script path:
 
 ```bash
 RESOLVER=\"<bees-setup-base-dir>/scripts/file_list_resolver.py\"
@@ -45,7 +45,7 @@ Each Bash tool call in Claude Code is a fresh shell — environment variables do
 
 ### Impact
 
-**Silent regression.** `bees colonize-hive ... --egg-resolver \"\"` runs successfully and registers the hive with `egg_resolver = \"\"`. The break only manifests later when `/bees-execute` or `/bees-breakdown-epic` tries to resolve a Plan Bee's `egg` field — at which point eggs return nothing and downstream skills silently miss their PRD/SDD inputs. Symptoms appear far from the cause.
+**Silent regression.** `bees colonize-hive ... --egg-resolver \"\"` runs successfully and registers the hive with `egg_resolver = \"\"`. The break only manifests later when `/quo-execute` or `/quo-breakdown-epic` tries to resolve a Plan Bee's `egg` field — at which point eggs return nothing and downstream skills silently miss their PRD/SDD inputs. Symptoms appear far from the cause.
 
 Pre-b.963, the egg-resolver path was hardcoded into the colonize-hive snippet via CLAUDE.md lookup — load-bearing. The b.963 fix removed the lookup but didn't substitute anything that survives shell-call boundaries.
 
@@ -53,7 +53,7 @@ Pre-b.963, the egg-resolver path was hardcoded into the colonize-hive snippet vi
 
 Pick one (implementer's call):
 
-1. **Inline the literal path.** Substitute `<bees-setup-base-dir>/scripts/file_list_resolver.py` directly into the colonize-hive snippet — matches how `bees-execute` and `bees-fix-issue` reference `force_clean_team.py` (literal `<base>/scripts/...` path the agent fills in from the skill invocation header). No shell variable.
+1. **Inline the literal path.** Substitute `<bees-setup-base-dir>/scripts/file_list_resolver.py` directly into the colonize-hive snippet — matches how `quo-execute` and `quo-fix-issue` reference `force_clean_team.py` (literal `<base>/scripts/...` path the agent fills in from the skill invocation header). No shell variable.
 2. **Set RESOLVER inline.** Add `RESOLVER=\"<bees-setup-base-dir>/scripts/file_list_resolver.py\"` immediately above each colonize-hive call, in the same code fence.
 3. **Combine the call.** Restructure so the colonize-hive call and the `$RESOLVER` set share one fenced block (single Bash tool invocation).
 
@@ -61,8 +61,8 @@ Approach #1 is most consistent with the pattern that b.963 introduced everywhere
 
 ### Files to modify
 
-- `skills/bees-setup/SKILL.md:215` (prose mentioning `--egg-resolver \"\$RESOLVER\"`)
-- `skills/bees-setup/SKILL.md:217` (the colonize-hive bash snippet)
+- `skills/quo-setup/SKILL.md:215` (prose mentioning `--egg-resolver \"\$RESOLVER\"`)
+- `skills/quo-setup/SKILL.md:217` (the colonize-hive bash snippet)
 
 **Cross-platform.** The colonize-hive snippet is currently bash-only — no PowerShell variant. Single-line `bees ...` commands are technically allowed to omit the PowerShell variant per CONTRIBUTING.md (\"if and only if the syntax is identical\"), but the new `\"\$RESOLVER\"` coupling makes the syntax PowerShell-incompatible across shell-call boundaries the same way. Add a PowerShell variant as part of the same fix.
 
@@ -72,7 +72,7 @@ Approach #1 is most consistent with the pattern that b.963 introduced everywhere
 
 ### Current behavior
 
-`skills/bees-setup/SKILL.md:137`:
+`skills/quo-setup/SKILL.md:137`:
 
 > If the target repo's CLAUDE.md still has a `## Skill Paths` section from an earlier setup run, delete it as part of this run — the section is no longer used by any skill, and leaving it behind keeps the broken paths in git history. After deletion, mention to the user: \"Removed obsolete `## Skill Paths` section from CLAUDE.md — paths are now resolved at runtime per-machine. Consider squashing this change with other in-flight work; don't push the delete on its own if the section was already pushed earlier.\"
 
@@ -112,12 +112,12 @@ Matches the JSON-edit pattern already used elsewhere in the same skill and codif
 
 ### Files to modify
 
-- `skills/bees-setup/SKILL.md:137` (replace the one-line \"delete it\" prose with a labeled OS-conditional snippet pair).
+- `skills/quo-setup/SKILL.md:137` (replace the one-line \"delete it\" prose with a labeled OS-conditional snippet pair).
 
 ---
 
 ## Common context
 
-Both findings landed in the same b.963 fix (commit f2cbba7) and live in `skills/bees-setup/SKILL.md`. Both are about the migration logic that replaced the pre-b.963 `## Skill Paths` mechanism. A single agent fixing them shares the same context (CONTRIBUTING.md anti-patterns, the b.963 issue body, the Python-one-liner JSON-edit pattern), so bundling avoids the per-ticket re-load cost.
+Both findings landed in the same b.963 fix (commit f2cbba7) and live in `skills/quo-setup/SKILL.md`. Both are about the migration logic that replaced the pre-b.963 `## Skill Paths` mechanism. A single agent fixing them shares the same context (CONTRIBUTING.md anti-patterns, the b.963 issue body, the Python-one-liner JSON-edit pattern), so bundling avoids the per-ticket re-load cost.
 
-Out of scope (do not bundle): any of the prose touching `bees-execute` / `bees-fix-issue` `force_clean_team.py` resolution. Those sites also use `<base>/...` literal paths and don't suffer the variable-scoping bug — verified during the same review.
+Out of scope (do not bundle): any of the prose touching `quo-execute` / `quo-fix-issue` `force_clean_team.py` resolution. Those sites also use `<base>/...` literal paths and don't suffer the variable-scoping bug — verified during the same review.

@@ -25,8 +25,8 @@ came from a subsequent fresh-eyes code review against the merged work.
 ### 1. `docs/sdd.md:12` — stale skill count
 
 The architecture overview still says "The repo ships eleven portable-core
-skills under `skills/<name>/`". Two new skills (`/bees-write-prd` and
-`/bees-write-sdd`) landed under Bee `b.31f` (Epics `t1.31f.by` and
+skills under `skills/<name>/`". Two new skills (`/quo-write-prd` and
+`/quo-write-sdd`) landed under Bee `b.31f` (Epics `t1.31f.by` and
 `t1.31f.5u`), bringing the count to 13. README.md:173 was updated to "13
 skills"; SDD was missed.
 
@@ -40,17 +40,17 @@ source documents (PRD, SDD, etc.) in their `reference_materials` field,
 resolved per-item by the bees CLI's built-in `file-path` resolver."
 
 The new `bees`-resolver path (Plan Bee → Spec Bee → `t1=Doc` children)
-is documented in `agents/pm.md`, `skills/bees-breakdown-epic/SKILL.md`,
+is documented in `agents/pm.md`, `skills/quo-breakdown-epic/SKILL.md`,
 and `docs/doc-writing-guide.md`, but not surfaced in this overview
 paragraph. Update to describe both resolver shapes.
 
-### 3. `skills/bees-plan/SKILL.md:146, 192, 226` — "(sibling Subtask)" labels
+### 3. `skills/quo-plan/SKILL.md:146, 192, 226` — "(sibling Subtask)" labels
 
 Three inline parenthetical "(sibling Subtask)" notes on Step 4's sub-steps
 4a / 4b / 4c are leftovers from the per-Subtask authoring framing in
 Bee `b.31f`'s decomposition. They speak to the implementer rather than
 the runtime reader. Skill prose should be project-neutral and read
-naturally for a downstream user invoking `/bees-plan` — the appropriate
+naturally for a downstream user invoking `/quo-plan` — the appropriate
 phrasing is "sub-step" rather than "sibling Subtask". Functional impact
 is zero (runtime Claude resolves the label correctly), but the prose is
 worth tightening on the next sweep.
@@ -58,25 +58,25 @@ worth tightening on the next sweep.
 PM review of Task `t2.31f.y2.9q` (the parent of these sub-steps)
 explicitly flagged this nit and deferred it.
 
-### 4. `skills/bees-setup/SKILL.md:732` — stale `/bees-plan` prose in Next Steps
+### 4. `skills/quo-setup/SKILL.md:732` — stale `/quo-plan` prose in Next Steps
 
-The "Next Steps" section's `/bees-plan` recommendation describes
+The "Next Steps" section's `/quo-plan` recommendation describes
 pre-redesign behavior on three counts:
 
 - *"optionally drafts PRD/SDD updates if the project has those docs"* —
-  Step 4 doc-mutation was stripped under Epic `t1.31f.y2`; `/bees-plan`
+  Step 4 doc-mutation was stripped under Epic `t1.31f.y2`; `/quo-plan`
   no longer drafts doc updates at plan time.
 - *"The Plan Bee body itself becomes the authoritative scope document
   when no PRD/SDD exist (the Bee's `reference_materials` stays empty)"* —
-  `/bees-plan` always creates a Spec Bee now (per its own SKILL.md
+  `/quo-plan` always creates a Spec Bee now (per its own SKILL.md
   Step 4 + Step 5a clauses) and always sets `reference_materials` to
   point at it. The body-as-spec branch was explicitly removed from
-  `/bees-plan` itself; it survives only as a downstream-consumer
+  `/quo-plan` itself; it survives only as a downstream-consumer
   fallback for legacy Bees with empty `reference_materials`.
-- *"downstream skills (`/bees-breakdown-epic`, `/bees-execute`) will use
+- *"downstream skills (`/quo-breakdown-epic`, `/quo-execute`) will use
   the Bee body as the spec source"* — only true for legacy/bootstrap
   Plan Bees with empty `reference_materials`, not for new
-  `/bees-plan`-authored ones.
+  `/quo-plan`-authored ones.
 
 The whole bullet should be rewritten to describe the new flow (creates
 Spec Bee + PRD/SDD `t1=Doc` children + Plan Bee with `bees`-resolver
@@ -119,12 +119,12 @@ One small commit / Issue-fix run that:
    both `file-path` and `bees` resolvers, mirroring the contract documented
    in `docs/doc-writing-guide.md` `## Project terminology`.
 3. Renames the three "(sibling Subtask)" parentheticals in
-   `skills/bees-plan/SKILL.md` Step 4 to "(sub-step)" or drops them
+   `skills/quo-plan/SKILL.md` Step 4 to "(sub-step)" or drops them
    entirely if the surrounding prose still parses.
-4. Rewrites `skills/bees-setup/SKILL.md`'s `/bees-plan` Next Steps bullet
+4. Rewrites `skills/quo-setup/SKILL.md`'s `/quo-plan` Next Steps bullet
    (line ~732) to describe the post-redesign flow: creates a Spec Bee in
    the Specs hive with PRD and SDD as `t1=Doc` children (via inline
-   delegation to `/bees-write-prd` and `/bees-write-sdd`), then a Plan
+   delegation to `/quo-write-prd` and `/quo-write-sdd`), then a Plan
    Bee whose `reference_materials` points at the Spec Bee via the `bees`
    resolver. No mention of "drafts PRD/SDD updates" or
    "`reference_materials` stays empty" — both are pre-redesign behavior.

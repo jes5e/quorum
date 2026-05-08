@@ -1,7 +1,7 @@
 ---
 id: b.yy9
 type: bee
-title: bees-breakdown-epic Step 7 recommends execute when it should recommend break-down-next;
+title: quo-breakdown-epic Step 7 recommends execute when it should recommend break-down-next;
   rationale truncates in header
 parent: null
 created_at: '2026-05-05T16:16:29.414353'
@@ -12,13 +12,13 @@ reference_materials: null
 ---
 ## Description
 
-`bees-breakdown-epic` Step 7's `Pick the Recommended option` block uses 2-way branching (reshape-risk vs. no-reshape-risk), with the "Recommended" badge landing on an execute option in **both** branches. When drafted sibling Epics remain and their dependencies are pure ordering (no contract-reshape risk), the user's intent is to default to **continuing breakdown** of the next Epic — not to start execution. Today the skill recommends bulk-execute in that case, which is the wrong default.
+`quo-breakdown-epic` Step 7's `Pick the Recommended option` block uses 2-way branching (reshape-risk vs. no-reshape-risk), with the "Recommended" badge landing on an execute option in **both** branches. When drafted sibling Epics remain and their dependencies are pure ordering (no contract-reshape risk), the user's intent is to default to **continuing breakdown** of the next Epic — not to start execution. Today the skill recommends bulk-execute in that case, which is the wrong default.
 
 A secondary problem: the rationale ("why this is the recommended pick") is rendered as a free-floating paragraph above the `AskUserQuestion` menu. Observed in a recent run, the paragraph truncated mid-sentence in the Claude Code UI, leaving the user unable to read the reasoning. The Recommended option's `Best when …` subtitle is a more reliable surface.
 
 ## Current behavior
 
-`skills/bees-breakdown-epic/SKILL.md` `### 7. Offer Next Steps` → `#### Pick the Recommended option` (lines 498–521 at the time of filing) branches as follows:
+`skills/quo-breakdown-epic/SKILL.md` `### 7. Offer Next Steps` → `#### Pick the Recommended option` (lines 498–521 at the time of filing) branches as follows:
 
 - **Reshape-risk case** (any dependent sibling judged to consume an in-flux contract) → Recommended = "In a fresh session, execute this Epic first; defer downstream breakdown".
 - **No-reshape-risk case** (default — no dependent siblings, or dependencies are pure ordering) → Recommended = "In a fresh session, execute the whole Bee" (line 521: *"Recommended badge stays on the bulk-execute option as today"*; line 529: *"Recommended in the no-reshape-risk case"* on the bulk-execute menu entry).
@@ -27,8 +27,8 @@ Neither branch ever recommends `In a fresh session, break down the next Epic` (l
 
 Observed in two recent runs against `b.5tm`:
 
-1. First run — `t1.5tm.o1` just broken down; drafted siblings `t1.5tm.kn` and `t1.5tm.fy` remained with pure-ordering dependencies. Skill correctly diagnosed no reshape risk → recommended `/bees-execute b.5tm` (bulk execute). Header rationale paragraph truncated in the UI.
-2. Second run (after `t1.5tm.kn` was broken down; only `t1.5tm.fy` remained drafted, pure ordering on `kn`) — orchestrator's prose explicitly stated *"This is pure ordering coupling, not contract-reshape risk — t1.5tm.fy could be broken down now and still produce valid Tasks"*, then issued *"Recommendation: open a fresh session and run /bees-execute b.5tm"*. Faithful to the skill's prose; wrong direction by intent.
+1. First run — `t1.5tm.o1` just broken down; drafted siblings `t1.5tm.kn` and `t1.5tm.fy` remained with pure-ordering dependencies. Skill correctly diagnosed no reshape risk → recommended `/quo-execute b.5tm` (bulk execute). Header rationale paragraph truncated in the UI.
+2. Second run (after `t1.5tm.kn` was broken down; only `t1.5tm.fy` remained drafted, pure ordering on `kn`) — orchestrator's prose explicitly stated *"This is pure ordering coupling, not contract-reshape risk — t1.5tm.fy could be broken down now and still produce valid Tasks"*, then issued *"Recommendation: open a fresh session and run /quo-execute b.5tm"*. Faithful to the skill's prose; wrong direction by intent.
 
 ## Expected behavior
 
@@ -51,11 +51,11 @@ The menu options at lines 527–540 should retain their `Best when …` subtitle
 
 ## Impact
 
-User confusion at the end of every `bees-breakdown-epic` run that has remaining drafted Epics with pure-ordering dependencies — i.e., the common case for cleanup-style or sequential-rollout Bees. Users who follow the Recommended badge end up executing partially-planned Bees instead of finishing the plan first, which contradicts the documented "finish planning before any execution starts" intent for the no-reshape-risk path. The truncated rationale paragraph compounds the confusion: the user cannot see *why* the skill chose the recommendation it did.
+User confusion at the end of every `quo-breakdown-epic` run that has remaining drafted Epics with pure-ordering dependencies — i.e., the common case for cleanup-style or sequential-rollout Bees. Users who follow the Recommended badge end up executing partially-planned Bees instead of finishing the plan first, which contradicts the documented "finish planning before any execution starts" intent for the no-reshape-risk path. The truncated rationale paragraph compounds the confusion: the user cannot see *why* the skill chose the recommendation it did.
 
 ## Suggested fix
 
-Edit `skills/bees-breakdown-epic/SKILL.md` Step 7:
+Edit `skills/quo-breakdown-epic/SKILL.md` Step 7:
 
 - **`#### Pick the Recommended option`** (lines 498–521): replace the 2-way branching with the 3-way mapping described in *Expected behavior*. Keep the existing query (step 1) and reshape-risk judgment criteria (step 3 + lines 512–517) unchanged. Update step 4's branch list to the three cases. Move rationale guidance from "include a one-line rationale ... in the prose" to "set the Recommended option's `Best when …` subtitle to the one-line rationale".
 - **`#### Menu options`** (lines 523–540): update the `*Recommended in the …*` annotations on the three Recommended-eligible options:

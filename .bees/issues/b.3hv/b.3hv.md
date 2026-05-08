@@ -19,12 +19,12 @@ The README sections that describe the new orchestration model (the workflow para
 
 `README.md`:
 
-- Line 106 — `/bees-execute` table row: *"Execute a Plan Bee end-to-end — spawn the implementation team, walk every Epic in dependency order, commit per Task, review at Bee close."*
-- Line 108 — `/bees-fix-issue` table row: *"Fix one or more issue tickets. Single, list, or `all` modes. Spawns the same kind of team as `bees-execute` but at issue scope."*
+- Line 106 — `/quo-execute` table row: *"Execute a Plan Bee end-to-end — spawn the implementation team, walk every Epic in dependency order, commit per Task, review at Bee close."*
+- Line 108 — `/quo-fix-issue` table row: *"Fix one or more issue tickets. Single, list, or `all` modes. Spawns the same kind of team as `quo-execute` but at issue scope."*
 
 `CONTRIBUTING.md`:
 
-- Line 55 (under `## Intentional asymmetries`) — single bullet with three stale references: *"`/bees-breakdown-epic` is the only skill where team members run in `mode: \"plan\"`. Subagents during breakdown are read-only researchers; only the team-lead runs ticket-mutating commands. Other execution skills (`/bees-execute`, `/bees-fix-issue`) let team members create commits, not tickets — different scope of authority."*
+- Line 55 (under `## Intentional asymmetries`) — single bullet with three stale references: *"`/quo-breakdown-epic` is the only skill where team members run in `mode: \"plan\"`. Subagents during breakdown are read-only researchers; only the team-lead runs ticket-mutating commands. Other execution skills (`/quo-execute`, `/quo-fix-issue`) let team members create commits, not tickets — different scope of authority."*
 
 ## Expected behavior
 
@@ -40,7 +40,7 @@ Specifically:
 
 `CONTRIBUTING.md`:
 
-- Line 55 — reword the bullet in subagent vocabulary while preserving the intentional-asymmetry point: in `/bees-breakdown-epic`, dispatched subagents run in `mode: "plan"` as read-only researchers and only the orchestrating skill mutates tickets; in `/bees-execute` and `/bees-fix-issue`, subagents are allowed to commit but still don't create tickets.
+- Line 55 — reword the bullet in subagent vocabulary while preserving the intentional-asymmetry point: in `/quo-breakdown-epic`, dispatched subagents run in `mode: "plan"` as read-only researchers and only the orchestrating skill mutates tickets; in `/quo-execute` and `/quo-fix-issue`, subagents are allowed to commit but still don't create tickets.
 
 ## Impact
 
@@ -50,8 +50,8 @@ Documentation correctness only. No runtime impact — the skills themselves no l
 
 Doc-only edits to `README.md` and `CONTRIBUTING.md`:
 
-- `README.md:106` — rewrite the `/bees-execute` table cell to describe spawning subagents instead of "the implementation team".
-- `README.md:108` — rewrite the `/bees-fix-issue` table cell to describe spawning subagents instead of "the same kind of team".
+- `README.md:106` — rewrite the `/quo-execute` table cell to describe spawning subagents instead of "the implementation team".
+- `README.md:108` — rewrite the `/quo-fix-issue` table cell to describe spawning subagents instead of "the same kind of team".
 - `CONTRIBUTING.md:55` — rewrite the bullet to use subagent vocabulary throughout while preserving the intentional-asymmetry framing (read-only `mode: "plan"` for breakdown vs. commit-allowed for execute / fix-issue).
 
 No skill prose, helper scripts, or agent definitions need to change. No update to `docs/prd.md` or `docs/sdd.md` is implied — this is pure doc-vocabulary cleanup, not a behavior or architecture change.

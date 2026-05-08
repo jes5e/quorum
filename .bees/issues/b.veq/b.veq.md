@@ -12,7 +12,7 @@ reference_materials: null
 ---
 ## Description
 
-A user running `bees-execute` on another project reported that the PM / reviewer agent (`pm-hn`) reviewed an intermediate state of the change instead of the final committed / staged state. Specifically, the review fired against a post-Black-strip pre-restructure snapshot, so feedback was about code the engineer had already moved past.
+A user running `quo-execute` on another project reported that the PM / reviewer agent (`pm-hn`) reviewed an intermediate state of the change instead of the final committed / staged state. Specifically, the review fired against a post-Black-strip pre-restructure snapshot, so feedback was about code the engineer had already moved past.
 
 A related landmine to bake into the same review skills: Black 25's known paren-stripping behaviour on `except (A, B):` lines (the user's project hit this on commit `2ddf934`). After a lint / format pass the paren-stripped form looks like a malformed except clause; review skills should flag it as suspect.
 

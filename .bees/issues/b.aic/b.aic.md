@@ -12,12 +12,12 @@ reference_materials: null
 ---
 ## Description
 
-b.6k2 added a *Shell-command etiquette* bullet to all eight runtime worker roles in `skills/bees-execute/SKILL.md` and `skills/bees-fix-issue/SKILL.md` (Engineer, Test Writer, Doc Writer, Product Manager — four sites per skill). The bullet steers workers away from shell **shapes** (`$VAR`, `$(...)`, `$?`, compound `&&`/`||`, embedded newlines, diagnostic tails). It does not steer workers away from **reaching for shell at all when a first-class Claude Code tool would do the job**.
+b.6k2 added a *Shell-command etiquette* bullet to all eight runtime worker roles in `skills/quo-execute/SKILL.md` and `skills/quo-fix-issue/SKILL.md` (Engineer, Test Writer, Doc Writer, Product Manager — four sites per skill). The bullet steers workers away from shell **shapes** (`$VAR`, `$(...)`, `$?`, compound `&&`/`||`, embedded newlines, diagnostic tails). It does not steer workers away from **reaching for shell at all when a first-class Claude Code tool would do the job**.
 
-Observed symptom that motivated this ticket: a `pm-11f` agent (PM role inside a `bees-fix-issue` team working ticket b.11f) emitted a shell polling loop to watch for engineer file edits:
+Observed symptom that motivated this ticket: a `pm-11f` agent (PM role inside a `quo-fix-issue` team working ticket b.11f) emitted a shell polling loop to watch for engineer file edits:
 
 ```
-while true; do changed=$(git diff --name-only -- skills/bees-execute/SKILL.md skills/bees-fix-issue/SKILL.md 2>/dev/null); if [ -n \"\$changed\" ]; then echo \"engineer-edits-detected: \$changed\"; break; fi; sleep 15; done
+while true; do changed=$(git diff --name-only -- skills/quo-execute/SKILL.md skills/quo-fix-issue/SKILL.md 2>/dev/null); if [ -n \"\$changed\" ]; then echo \"engineer-edits-detected: \$changed\"; break; fi; sleep 15; done
 ```
 
 This violates every clause of the existing b.6k2 bullet (`cd && while`, `\$(...)`, `\$VAR`, multi-step polling), and Claude Code blocked it with the matcher reason \"Unhandled node type: string\" — a parser-classification failure distinct from the allow-rule-defeating shapes b.6k2 named. But the deeper miss is that the PM had a `Monitor` tool available and chose to write a shell `while true; sleep` polling loop instead.
@@ -42,7 +42,7 @@ The bullet must remain a single appended sentence-or-two per role (no structural
 - Closes the gap between b.6k2's intent (\"don't emit shell shapes that defeat allow rules\") and its actual reach (\"how to format a shell command you've already decided to write\").
 - Reduces parser-classification failures like \"Unhandled node type: string\" that b.6k2 didn't address.
 - Reduces user permission prompts mid-run, because tool calls (Monitor/Read/etc.) are first-class operations the user has already approved by approving the skill set, whereas novel shell shapes hit the Bash matcher fresh every time.
-- Complementary to b.11f (PM agents idle mid-Task; bees-execute lacks team-lead orchestration) — b.11f gives the PM proper orchestration primitives so it stops needing to improvise; this ticket nudges *all* worker roles, not just PM, toward tool-first composition.
+- Complementary to b.11f (PM agents idle mid-Task; quo-execute lacks team-lead orchestration) — b.11f gives the PM proper orchestration primitives so it stops needing to improvise; this ticket nudges *all* worker roles, not just PM, toward tool-first composition.
 
 ## Portability across the three axes
 
@@ -56,7 +56,7 @@ This change is portable across all three of CLAUDE.md's design rules — flaggin
 
 ## Suggested fix
 
-1. In `skills/bees-execute/SKILL.md` and `skills/bees-fix-issue/SKILL.md`, locate each of the four runtime-worker *Shell-command etiquette* bullets (8 sites total — `bees-execute/SKILL.md:288, 304, 319, 360` and `bees-fix-issue/SKILL.md:216, 228, 240, 256` at the time of filing).
+1. In `skills/quo-execute/SKILL.md` and `skills/quo-fix-issue/SKILL.md`, locate each of the four runtime-worker *Shell-command etiquette* bullets (8 sites total — `quo-execute/SKILL.md:288, 304, 319, 360` and `quo-fix-issue/SKILL.md:216, 228, 240, 256` at the time of filing).
 2. Append a tool-first sentence to each bullet, byte-identical across all eight sites. Draft wording (refine in implementation):
 
    > Before writing any shell command, check whether a first-class tool fits — `Monitor` for watching state to change, `Read` for inspecting a file, separate `Bash` calls for multi-step logic — and prefer that over shell control flow (`while`, `if`, chained `&&`/`||`, polling loops, command substitution). Reach for shell only when no tool fits.

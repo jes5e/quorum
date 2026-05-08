@@ -1,7 +1,7 @@
 ---
 id: b.qs8
 type: bee
-title: '/bees-file-issue: add --reference URL mode for external sources (GitHub, Linear, etc.)'
+title: '/quo-file-issue: add --reference URL mode for external sources (GitHub, Linear, etc.)'
 parent: null
 reference_materials: null
 created_at: '2026-05-06T17:38:05.970102'
@@ -13,15 +13,15 @@ guid: qs82oryj5iioydxupfqqivh8zv776dvu
 ## Description
 
 Add a `--reference <url>` (or `--from-github <url>`) flag to
-`/bees-file-issue` that creates a thin Issue ticket whose
+`/quo-file-issue` that creates a thin Issue ticket whose
 `reference_materials` points at an external resource (GitHub Issue,
 Linear ticket, internal bug tracker URL, etc.) instead of the body
-carrying all the spec content. Symmetric with `/bees-plan-from-specs`
+carrying all the spec content. Symmetric with `/quo-plan-from-specs`
 on the planning side.
 
 ## Background and rationale
 
-Today's `/bees-file-issue` only supports the in-conversation capture
+Today's `/quo-file-issue` only supports the in-conversation capture
 path: the user describes a bug interactively (or passes a free-text
 description), the skill creates an Issue with body-as-spec content.
 This is right for in-conversation discoveries, but it's a gap when
@@ -30,11 +30,11 @@ a Slack thread, an internal bug tracker — and just wants the bees
 workflow to point at it.
 
 This came up during the planning of `b.31f` ("Side-effect-free
-/bees-plan and /bees-file-issue with preserved context"). The
+/quo-plan and /quo-file-issue with preserved context"). The
 discussion noted that `reference_materials` is a polymorphic
 abstraction that already supports external pointers (the bees CLI
 accepts arbitrary resolvers). Adding the external-reference mode
-on the issue side would parallel `/bees-plan-from-specs` on the
+on the issue side would parallel `/quo-plan-from-specs` on the
 plan side: same skill, two invocation modes, depending on whether
 the spec content lives in-conversation (body-as-spec) or externally
 (`reference_materials`).
@@ -54,7 +54,7 @@ Deferred from `b.31f` because:
 Once `b.31f` lands (or in parallel — this Issue does not depend on it):
 
 1. Add `--reference <url>` (and aliases like `--from-github <url>`,
-   `--from-linear <id>` etc. as appropriate) to `/bees-file-issue`'s
+   `--from-linear <id>` etc. as appropriate) to `/quo-file-issue`'s
    argument-hint and arg-parsing.
 2. When the flag is present, skip the body-template authoring step and
    instead create the Issue with:
@@ -65,7 +65,7 @@ Once `b.31f` lands (or in parallel — this Issue does not depend on it):
      where `<name>` is determined by the URL shape (e.g., a
      `github-issue` resolver if the URL matches a GitHub Issue
      pattern; fall back to a generic `url` resolver otherwise).
-3. Verify `/bees-fix-issue`'s PM and engineer dispatch correctly
+3. Verify `/quo-fix-issue`'s PM and engineer dispatch correctly
    reads `reference_materials` to fetch the external content (this
    may require adding the resolver-specific fetch logic if it
    doesn't already exist).

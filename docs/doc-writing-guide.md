@@ -46,7 +46,7 @@ Rules:
 
 - Always label the OS in a comment line above the snippet, even if the command happens to work in both shells. Future readers shouldn't have to guess intent.
 - Quote variable expansion correctly per shell. PowerShell's `$env:USERPROFILE` is not the same as bash's `$HOME`.
-- When a snippet embeds Python or another scripting language, use a single-quoted PowerShell here-string (`@'…'@`) so PowerShell doesn't pre-expand `$variables` in the script body before invoking the interpreter. The bees-setup skill has the canonical example.
+- When a snippet embeds Python or another scripting language, use a single-quoted PowerShell here-string (`@'…'@`) so PowerShell doesn't pre-expand `$variables` in the script body before invoking the interpreter. The quo-setup skill has the canonical example.
 - Don't carry shell variables across snippet boundaries. Each Bash tool invocation in Claude Code is a fresh shell, so a `VAR=...` set in one fenced block is empty when referenced from a later one. If a value is needed in multiple snippets (a path, a hive ID, etc.), inline the literal at every site or pass it as a positional argument to the snippet's invocation. The bug surfaces silently when the receiving command accepts an empty argument as valid input — the real failure manifests far from the cause.
 - Helper logic that doesn't fit naturally as a shell one-liner belongs in a Python script under `skills/<name>/scripts/`, not as a wall of OS-paired shell.
 
@@ -54,7 +54,7 @@ Rules:
 
 Skills run on Rust, Node, Python, Go, Java, and unknown stacks. Never hardcode `cargo test`, `npm run lint`, or any other language-specific command in skill prose.
 
-Instead, refer to the contract keys that `bees-setup` writes to the *target repo's* CLAUDE.md:
+Instead, refer to the contract keys that `quo-setup` writes to the *target repo's* CLAUDE.md:
 
 - `## Build Commands` keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`
 - `## Documentation Locations` keys: `Project requirements doc (PRD)`, `Internal architecture docs (SDD)`, `Customer-facing docs`, `Engineering best practices`, `Test writing guide`, `Test review guide`, `Doc writing guide`
@@ -112,22 +112,22 @@ report: [<fields>]   # optional: add named fields to each returned ticket
 **Worked examples.**
 
 ```bash
-# All open issues — used by /bees-file-issue (duplicate check) and /bees-fix-issue (no-args / all modes):
+# All open issues — used by /quo-file-issue (duplicate check) and /quo-fix-issue (no-args / all modes):
 bees execute-freeform-query --query-yaml 'stages:
   - [type=bee, hive=issues, status=open]
 report: [title]'
 
-# Ready Plan Bees — used by /bees-breakdown-epic and /bees-execute when called without args:
+# Ready Plan Bees — used by /quo-breakdown-epic and /quo-execute when called without args:
 bees execute-freeform-query --query-yaml 'stages:
   - [type=bee, hive=plans, status=ready]
 report: [title]'
 
-# Drafted Epic children of a specific Plan Bee — used by /bees-breakdown-epic when caller supplies a Bee ID:
+# Drafted Epic children of a specific Plan Bee — used by /quo-breakdown-epic when caller supplies a Bee ID:
 bees execute-freeform-query --query-yaml 'stages:
   - [parent=<bee-id>, type=t1, status=drafted]
 report: [title, up_dependencies]'
 
-# Trace from an Epic up to its parent Bee — used by /bees-execute when caller supplies an Epic ID:
+# Trace from an Epic up to its parent Bee — used by /quo-execute when caller supplies an Epic ID:
 bees execute-freeform-query --query-yaml 'stages:
   - [id=<epic-id>]
   - [parent]
@@ -164,15 +164,15 @@ Skill prose that says "single `bees update-ticket --body-file` invocation" is wr
 
 ## The Scoped-marker contract
 
-The Scoped-marker is emitted exclusively by `/bees-plan-from-specs --feature "<title>"`. A Plan Bee authored that way carries a single line in its body of the form:
+The Scoped-marker is emitted exclusively by `/quo-plan-from-specs --feature "<title>"`. A Plan Bee authored that way carries a single line in its body of the form:
 
 ```
 Scoped to `### Feature: <title>` from <absolute prd path> and <absolute sdd path>.
 ```
 
-`/bees-plan` Plan Bees do NOT carry a Scoped-marker — they carry their spec context via `reference_materials` (with either the `file-path` or `bees` resolver) or, when `reference_materials` is null/empty, fall back to body-as-spec. The marker is a `/bees-plan-from-specs --feature`-only artifact, full stop.
+`/quo-plan` Plan Bees do NOT carry a Scoped-marker — they carry their spec context via `reference_materials` (with either the `file-path` or `bees` resolver) or, when `reference_materials` is null/empty, fall back to body-as-spec. The marker is a `/quo-plan-from-specs --feature`-only artifact, full stop.
 
-The marker is the durable signal that the Plan Bee covers a single `### Feature: <title>` subsection inside a cumulative PRD/SDD, even though the Bee's `reference_materials` still points at the full canonical doc paths (paths-stay-full is intentional — the docs themselves remain the source of truth). Downstream skills that read `reference_materials` must therefore also check the parent Bee body for this marker and, when present, scope the resolved doc content to the matching subsection before treating it as the spec. When the marker is absent (which is always the case for `/bees-plan`-authored Bees), consumers use the full-doc / body-as-spec fallback unchanged.
+The marker is the durable signal that the Plan Bee covers a single `### Feature: <title>` subsection inside a cumulative PRD/SDD, even though the Bee's `reference_materials` still points at the full canonical doc paths (paths-stay-full is intentional — the docs themselves remain the source of truth). Downstream skills that read `reference_materials` must therefore also check the parent Bee body for this marker and, when present, scope the resolved doc content to the matching subsection before treating it as the spec. When the marker is absent (which is always the case for `/quo-plan`-authored Bees), consumers use the full-doc / body-as-spec fallback unchanged.
 
 **Marker grammar** (matched verbatim by the bundled parser):
 
@@ -186,7 +186,7 @@ The marker is the durable signal that the Plan Bee covers a single `### Feature:
 
 **Path resolution.** The parser accepts a `--repo-root <path>` argument that anchors relative paths in the marker. When omitted, the parser auto-detects the repo root via `git rev-parse --show-toplevel` from CWD; on any git failure (not a git repo, git not installed) it falls back to CWD. Result: skill invocations from anywhere inside a git repo (root or sub-directory) work without `--repo-root`; non-git target repos work as long as the parser's CWD is the repo root. Pass `--repo-root` explicitly to override the auto-detection. Absolute paths in the marker work regardless of `--repo-root`.
 
-**Subsection extraction rule** (mirrors `/bees-plan-from-specs` Step 1b):
+**Subsection extraction rule** (mirrors `/quo-plan-from-specs` Step 1b):
 
 - The matched `### Feature: <title>` heading line itself is excluded.
 - The body runs until the next line starting with `### Feature: ` (with trailing space; also excluded), or end-of-file, whichever comes first.
@@ -198,48 +198,48 @@ The marker is the durable signal that the Plan Bee covers a single `### Feature:
 - If either named doc path does not exist on disk, fail.
 - If either named doc exists but does not contain a `### Feature: <title>` heading matching the marker's title, fail with a clear message naming the missing heading, the doc paths checked, and a hint that the docs may have been edited after the Plan Bee was created.
 
-**Bundled parser.** The shared parser/scoper for downstream skills is `skills/bees-breakdown-epic/scripts/scoped_marker_resolver.py`. It takes a positional argument (path to a file containing the parent Bee body) plus an optional `--repo-root <path>` flag for resolving relative marker paths (defaults to the parser's current working directory when omitted). It prints `{"scoped": false}` to stdout when no marker is present, prints `{"scoped": true, "title": "...", "docs": [{"path": "<absolute path>", "content": "..."}, ...]}` when the marker is present and all hard-fail conditions are clear (the `path` field is always the resolved absolute path regardless of input form), and exits 2 with a single human-readable line on stderr otherwise. `bees-breakdown-epic` resolves the script as `<base>/scripts/scoped_marker_resolver.py`. `bees-execute` and `bees-fix-issue` resolve it via the sibling pattern as `<base>/../bees-breakdown-epic/scripts/scoped_marker_resolver.py`.
+**Bundled parser.** The shared parser/scoper for downstream skills is `skills/quo-breakdown-epic/scripts/scoped_marker_resolver.py`. It takes a positional argument (path to a file containing the parent Bee body) plus an optional `--repo-root <path>` flag for resolving relative marker paths (defaults to the parser's current working directory when omitted). It prints `{"scoped": false}` to stdout when no marker is present, prints `{"scoped": true, "title": "...", "docs": [{"path": "<absolute path>", "content": "..."}, ...]}` when the marker is present and all hard-fail conditions are clear (the `path` field is always the resolved absolute path regardless of input form), and exits 2 with a single human-readable line on stderr otherwise. `quo-breakdown-epic` resolves the script as `<base>/scripts/scoped_marker_resolver.py`. `quo-execute` and `quo-fix-issue` resolve it via the sibling pattern as `<base>/../quo-breakdown-epic/scripts/scoped_marker_resolver.py`.
 
 When the marker is present, the consuming skill must operate on the per-doc scoped content for all PM / spec-compare / Epic-decomposition logic, not on the full doc. When the marker is absent, behavior is unchanged — full doc content is the spec.
 
-**`bees-fix-issue` consumer note.** Issues live in the `issues` hive and have no canonical parent-Plan-Bee field in the bees ticket schema. The `bees-fix-issue` PM discovers a scope-context Plan Bee opportunistically by iterating the Issue's `up_dependencies` array — a deliberate dual-use of that field (blocker AND optional scope-context source). For each `up_dependencies` entry that resolves to a Bee in the `plans` hive, the PM extracts the body, runs it through the bundled parser, and applies the resulting scoped per-doc content if a well-formed marker is found. Discovery is best-effort: a missing marker, a non-`plans`-hive `up_dependencies` entry, or a parser hard-fail (exit 2) is not fatal — the PM surfaces the helper's stderr (on hard-fail) and falls back to full-doc spec content. If multiple `up_dependencies` Plan Bees carry markers, the PM uses the FIRST one in `up_dependencies` iteration order. A Plan Bee in `up_dependencies` carrying a Scoped-marker means the Issue is being fixed in the scope of one feature within a cumulative spec, not the whole spec.
+**`quo-fix-issue` consumer note.** Issues live in the `issues` hive and have no canonical parent-Plan-Bee field in the bees ticket schema. The `quo-fix-issue` PM discovers a scope-context Plan Bee opportunistically by iterating the Issue's `up_dependencies` array — a deliberate dual-use of that field (blocker AND optional scope-context source). For each `up_dependencies` entry that resolves to a Bee in the `plans` hive, the PM extracts the body, runs it through the bundled parser, and applies the resulting scoped per-doc content if a well-formed marker is found. Discovery is best-effort: a missing marker, a non-`plans`-hive `up_dependencies` entry, or a parser hard-fail (exit 2) is not fatal — the PM surfaces the helper's stderr (on hard-fail) and falls back to full-doc spec content. If multiple `up_dependencies` Plan Bees carry markers, the PM uses the FIRST one in `up_dependencies` iteration order. A Plan Bee in `up_dependencies` carrying a Scoped-marker means the Issue is being fixed in the scope of one feature within a cumulative spec, not the whole spec.
 
 ## Hard-fail preconditions
 
-Execution skills (`bees-execute`, `bees-fix-issue`, `bees-breakdown-epic`) hard-fail with `Run /bees-setup first.` (with a trailing `— <reason>` clause naming the specific gap, e.g., `Run /bees-setup first. — Specs hive is not colonized for this repo.`) when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them, OR when any of the three required hives (Plans, Issues, Specs) is not colonized for the target repo. Preserve that precondition behavior in any edit to those skills.
+Execution skills (`quo-execute`, `quo-fix-issue`, `quo-breakdown-epic`) hard-fail with `Run /quo-setup first.` (with a trailing `— <reason>` clause naming the specific gap, e.g., `Run /quo-setup first. — Specs hive is not colonized for this repo.`) when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them, OR when any of the three required hives (Plans, Issues, Specs) is not colonized for the target repo. Preserve that precondition behavior in any edit to those skills.
 
-When you add a new required key to one of those sections, update bees-setup to write it *and* update every downstream skill's precondition check in the same change.
+When you add a new required key to one of those sections, update quo-setup to write it *and* update every downstream skill's precondition check in the same change.
 
 ## AskUserQuestion patterns
 
 Skills use `AskUserQuestion` for decisions the user should drive. Patterns we follow:
 
 - **Multi-choice only — never for free-text answers.** `AskUserQuestion` is for picking from a small finite set of meaningful choices. The runtime auto-appends `Type something.` and `Chat about this`, so questions whose real answer is free-text (a path, a name, a description, an open-ended explanation) belong in plain prose — let the user reply normally in their next turn. Don't author fake "Use my own answer" / "Pick Other" options that point at the auto-appended slot; that's a UI smell. See CLAUDE.md `## AskUserQuestion usage`.
-- **Detect first, prompt second.** If a piece of configuration already exists, show the user the current value and ask whether to keep or change it — don't blindly re-prompt. Re-runs of `/bees-setup` should be near-no-ops when nothing has changed.
+- **Detect first, prompt second.** If a piece of configuration already exists, show the user the current value and ask whether to keep or change it — don't blindly re-prompt. Re-runs of `/quo-setup` should be near-no-ops when nothing has changed.
 - **Recommended option first.** When you have a sensible default, make it the first option and append "(Recommended)" to the label. Users should be able to skim and accept.
 - **Batch related questions.** AskUserQuestion supports up to 4 questions per call. Group related decisions (e.g., the seven Documentation Locations slots) so the user makes them in one mental context, not seven.
 - **No fake free-text option in your options list.** The runtime adds `Type something.` automatically — duplicating it (with an "Other", "Use my own answer", or `___`-suffixed label) confuses the UI.
-- **Reframe when needed.** When a default-skip looks tempting but is actually wrong, lead with *why* the user should care. The Bootstrap PRD/SDD section in `bees-setup` is the canonical example: it explicitly reframes "I don't read PRDs" as "PRDs are read by *agents*, not by you".
+- **Reframe when needed.** When a default-skip looks tempting but is actually wrong, lead with *why* the user should care. The Bootstrap PRD/SDD section in `quo-setup` is the canonical example: it explicitly reframes "I don't read PRDs" as "PRDs are read by *agents*, not by you".
 
 ## Heavy → heavy skill boundaries default to fresh-session
 
-When a skill's "Offer Next Steps" block points at another skill that does its own deep state read — e.g. `/bees-plan` → `/bees-breakdown-epic` → `/bees-execute`, or `/bees-setup` → `/bees-plan-from-specs` — the recommended default should be running the next skill in a **fresh Claude Code session**. Each downstream skill re-reads the Plan Bee, Epics, ticket schemas, and CLAUDE.md from the bees CLI and disk, so prior conversation context is not load-bearing across the boundary. Carrying the prior skill's transcript forward just consumes context budget that the next (heavier) skill needs for its own work — per-Task body authoring, agent-team spawning, review cycles, the team-lead's running judgment.
+When a skill's "Offer Next Steps" block points at another skill that does its own deep state read — e.g. `/quo-plan` → `/quo-breakdown-epic` → `/quo-execute`, or `/quo-setup` → `/quo-plan-from-specs` — the recommended default should be running the next skill in a **fresh Claude Code session**. Each downstream skill re-reads the Plan Bee, Epics, ticket schemas, and CLAUDE.md from the bees CLI and disk, so prior conversation context is not load-bearing across the boundary. Carrying the prior skill's transcript forward just consumes context budget that the next (heavier) skill needs for its own work — per-Task body authoring, agent-team spawning, review cycles, the team-lead's running judgment.
 
 Practical rules when authoring an "Offer Next Steps" block:
 
 - **Lead each cross-skill option with "In a fresh session, run `/<next-skill> <args>`."** Make the fresh-session phrasing part of the option label, not a footnote.
 - **Add a one-line justification** above the options explaining why fresh-session is the default — readers should not have to guess whether the recommendation is load-bearing.
-- **Same-session continuation is an explicit opt-in, never the default.** Acceptable only when the next invocation is small (a single Epic, a lightweight skill like `/bees-file-issue`) or when the same skill is repeating with similar context growth per iteration. Keep it as a labeled alternative, not the first option.
+- **Same-session continuation is an explicit opt-in, never the default.** Acceptable only when the next invocation is small (a single Epic, a lightweight skill like `/quo-file-issue`) or when the same skill is repeating with similar context growth per iteration. Keep it as a labeled alternative, not the first option.
 - **Never auto-chain into another heavy skill without asking.** A skill that loads the next skill automatically with no opt-out forces the anti-pattern. If the boundary is heavy → heavy, surface the choice.
 
-This rule does not apply to in-skill loops (e.g. `bees-execute` orchestrating its own review cycles) or to lightweight follow-ups (e.g. `bees-execute` invoking `/bees-file-issue` per finding) — same-session is correct there because the orchestrator's in-context judgment is load-bearing or the follow-up skill is light.
+This rule does not apply to in-skill loops (e.g. `quo-execute` orchestrating its own review cycles) or to lightweight follow-ups (e.g. `quo-execute` invoking `/quo-file-issue` per finding) — same-session is correct there because the orchestrator's in-context judgment is load-bearing or the follow-up skill is light.
 
 ## Inline style
 
 - **No emojis** unless the user explicitly requests them. This applies to skill prose, generated docs, commit messages, and PR bodies.
 - **Sentence case for headings**, not Title Case. "Build commands", not "Build Commands". (Exception: contract-key headings like `## Build Commands` are matched exactly by other skills, so those stay as-is.)
 - **Backtick code, file paths, command names, contract keys, and CLI flags.** `bees colonize-hive`, not "bees colonize-hive". `~/.bees/config.json`, not ~/.bees/config.json.
-- **Reference files with `path:line` when pointing at a specific location.** This lets readers navigate directly. `skills/bees-setup/SKILL.md:42` beats "around line 42 of the bees-setup skill".
+- **Reference files with `path:line` when pointing at a specific location.** This lets readers navigate directly. `skills/quo-setup/SKILL.md:42` beats "around line 42 of the quo-setup skill".
 - **Lists are for enumerable items**, not for narrative steps that should be paragraphs. Five bullets that each say "the system also …" is a paragraph in disguise — collapse it.
 - **Tables are for grids of attributes.** A two-column table with one row is a sentence. Don't make a table out of two facts.
 
@@ -255,13 +255,13 @@ This rule does not apply to in-skill loops (e.g. `bees-execute` orchestrating it
 Use these terms consistently. Mixing synonyms forces readers (and Claude) to mentally re-map.
 
 - **Skill** — one of the directories under `skills/<name>/`. Has a `SKILL.md` and optionally `scripts/`.
-- **Hive** — a bees collection. The workflow uses three: **Plans** (top-level, with t1/t2/t3 = Epic/Task/Subtask), **Issues** (no children), and **Specs** (top-level Spec Bees with `t1=Doc/Docs` children, colonized empty by `/bees-setup` for future use).
+- **Hive** — a bees collection. The workflow uses three: **Plans** (top-level, with t1/t2/t3 = Epic/Task/Subtask), **Issues** (no children), and **Specs** (top-level Spec Bees with `t1=Doc/Docs` children, colonized empty by `/quo-setup` for future use).
 - **Bee** — a ticket inside a hive. A "Plan Bee" is a top-level Bee in the Plans hive. An "Epic" is a t1 child of a Plan Bee. A "Spec Bee" is a top-level Bee in the Specs hive.
 - **Reference materials** — a Bee's `reference_materials` field, which points at one or more authoritative spec sources. Each entry is resolved per-item by one of several resolvers the bees CLI supports:
-    - **`file-path` resolver** (the default) — entries are paths to on-disk source documents (PRD, SDD, etc.). Use this for canonical on-disk specs (the `/bees-plan-from-specs` path).
-    - **`bees` resolver** — entries take the shape `[{"value":"<bee-id>","resolver":"bees"}]`; the `value` is a ticket ID, not a path. Use this for inter-Bee scope references where one Plan Bee anchors against a Spec Bee whose body and `t1=Doc` children (PRD + SDD, differentiated by exact title-match) hold the authoritative spec content (the `/bees-plan` redesign path).
-    - **External-URL resolvers** (`github-issue`, `linear-issue`, `url`, etc.) — entries take the shape `[{"value":"<url>","resolver":"<name>"}]`; the `value` is the canonical URL of an external bug report (GitHub Issue, Linear ticket, internal bug tracker page, Slack archive link, etc.) and `<name>` is selected by URL pattern (`github-issue` for GitHub Issue URLs, `linear-issue` for Linear ticket URLs, `url` otherwise). Used by `/bees-file-issue --reference <url>` (and its `--from-github <url>` alias) on Issues. The bees CLI does not yet ship concrete resolver implementations for these names — `/bees-fix-issue`'s Engineer and PM fall back to fetching the upstream content via `WebFetch` until a real resolver lands. The canonical resolver name is written regardless, so existing tickets do not need migration when concrete resolvers ship.
-    - **Two-hop lookup pattern** for `bees`-resolver entries: hop 1 reads the entry's `value` from the parent Bee's `reference_materials`; hop 2 runs `bees show-ticket --ids <bee-id>` and treats the resolved Bee's body (or, for Spec Bees, its `t1=Doc` children enumerated by exact title-match) as the spec source. See `agents/pm.md` and `skills/bees-breakdown-epic/SKILL.md` for the canonical recipe.
+    - **`file-path` resolver** (the default) — entries are paths to on-disk source documents (PRD, SDD, etc.). Use this for canonical on-disk specs (the `/quo-plan-from-specs` path).
+    - **`bees` resolver** — entries take the shape `[{"value":"<bee-id>","resolver":"bees"}]`; the `value` is a ticket ID, not a path. Use this for inter-Bee scope references where one Plan Bee anchors against a Spec Bee whose body and `t1=Doc` children (PRD + SDD, differentiated by exact title-match) hold the authoritative spec content (the `/quo-plan` redesign path).
+    - **External-URL resolvers** (`github-issue`, `linear-issue`, `url`, etc.) — entries take the shape `[{"value":"<url>","resolver":"<name>"}]`; the `value` is the canonical URL of an external bug report (GitHub Issue, Linear ticket, internal bug tracker page, Slack archive link, etc.) and `<name>` is selected by URL pattern (`github-issue` for GitHub Issue URLs, `linear-issue` for Linear ticket URLs, `url` otherwise). Used by `/quo-file-issue --reference <url>` (and its `--from-github <url>` alias) on Issues. The bees CLI does not yet ship concrete resolver implementations for these names — `/quo-fix-issue`'s Engineer and PM fall back to fetching the upstream content via `WebFetch` until a real resolver lands. The canonical resolver name is written regardless, so existing tickets do not need migration when concrete resolvers ship.
+    - **Two-hop lookup pattern** for `bees`-resolver entries: hop 1 reads the entry's `value` from the parent Bee's `reference_materials`; hop 2 runs `bees show-ticket --ids <bee-id>` and treats the resolved Bee's body (or, for Spec Bees, its `t1=Doc` children enumerated by exact title-match) as the spec source. See `agents/pm.md` and `skills/quo-breakdown-epic/SKILL.md` for the canonical recipe.
     - **Null/empty fallback** — `reference_materials` may be null/empty. When null on a Plan Bee or Issue, the **ticket body itself becomes the authoritative spec**. Neither the `bees` resolver nor the external-URL resolvers displace this fallback; they are additional source modes (path on disk / referenced Bee + children / external URL / own ticket body), not replacements for the body-as-spec case.
 - **Target repo** — the repo a user runs `/bees-*` commands against. Distinct from this repo (the skill set itself).
 
@@ -270,7 +270,7 @@ Use these terms consistently. Mixing synonyms forces readers (and Claude) to men
 1. **Read the README's skill table first.** If your edit changes user-visible behavior (name, description, what the skill does), the table is part of the change.
 2. **Read CLAUDE.md.** It captures project-internal guidance that applies to every skill edit (cross-platform rules, contract keys, model assignments, etc.).
 3. **Substrate is required, not optional** for the execution skills. Each skill has a single precondition gate that hard-fails when its substrate is unavailable; skill prose downstream of the gate must not branch on substrate availability.
-   - **`bees-fix-issue`**: per-Subtask ephemeral Agent dispatch is the unconditional substrate (the orchestrator dispatches a fresh `Agent(subagent_type=<role>, run_in_background=true)` per Subtask). The precondition check that hard-fails is a **subagent-registry check** — the seven required custom subagent types (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`) must be registered in the running Claude Code session. Don't introduce conditional fallback branches when editing this skill; rely on the subagent-registry check to hard-fail when any required subagent type is missing.
-   - **`bees-execute`**: per-Subtask ephemeral Agent dispatch is the unconditional substrate (the orchestrator dispatches a fresh `Agent(subagent_type=<role>, run_in_background=true)` per Subtask). The precondition check that hard-fails is a **subagent-registry check** — the seven required custom subagent types (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`) must be registered in the running Claude Code session. It is no longer a `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env-var check. Don't introduce conditional fallback branches when editing this skill; rely on the subagent-registry check to hard-fail when any required subagent type is missing.
+   - **`quo-fix-issue`**: per-Subtask ephemeral Agent dispatch is the unconditional substrate (the orchestrator dispatches a fresh `Agent(subagent_type=<role>, run_in_background=true)` per Subtask). The precondition check that hard-fails is a **subagent-registry check** — the seven required custom subagent types (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`) must be registered in the running Claude Code session. Don't introduce conditional fallback branches when editing this skill; rely on the subagent-registry check to hard-fail when any required subagent type is missing.
+   - **`quo-execute`**: per-Subtask ephemeral Agent dispatch is the unconditional substrate (the orchestrator dispatches a fresh `Agent(subagent_type=<role>, run_in_background=true)` per Subtask). The precondition check that hard-fails is a **subagent-registry check** — the seven required custom subagent types (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`) must be registered in the running Claude Code session. It is no longer a `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` env-var check. Don't introduce conditional fallback branches when editing this skill; rely on the subagent-registry check to hard-fail when any required subagent type is missing.
 4. **Don't introduce stack-specific helpers** to the portable core (Rust changelogs, Node license tooling, etc.). Those route to companion repos per the README.
 5. **Don't introduce a tmux dependency** to any of the 14 portable-core skills.

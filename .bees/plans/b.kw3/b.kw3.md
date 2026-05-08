@@ -13,18 +13,18 @@ reference_materials: null
 ---
 ## Demo target — Epic 8s end-to-end validation
 
-This Bee is a stand-in created to validate the rewritten `/bees-execute` skill end-to-end (b.5tm Epic 8s acceptance criterion #7). It produces real, useful output: a `CHANGELOG.md` file at the repo root with an Unreleased section documenting the Epic 8s substrate switch.
+This Bee is a stand-in created to validate the rewritten `/quo-execute` skill end-to-end (b.5tm Epic 8s acceptance criterion #7). It produces real, useful output: a `CHANGELOG.md` file at the repo root with an Unreleased section documenting the Epic 8s substrate switch.
 
 ## Acceptance criteria
 
 1. `CHANGELOG.md` exists at the repo root with a top-level `# Changelog` heading.
 2. `CHANGELOG.md` contains an `## Unreleased` section header.
-3. The Unreleased section contains a bullet documenting the migration of `/bees-execute` from the Agent Teams substrate to ephemeral Agent dispatch (Epic 8s of Bee `b.5tm`).
-4. The Unreleased section contains a brief mention of "reconciliation loop" as the orchestration pattern, with a pointer to Section 3 of `skills/bees-execute/SKILL.md`.
+3. The Unreleased section contains a bullet documenting the migration of `/quo-execute` from the Agent Teams substrate to ephemeral Agent dispatch (Epic 8s of Bee `b.5tm`).
+4. The Unreleased section contains a brief mention of "reconciliation loop" as the orchestration pattern, with a pointer to Section 3 of `skills/quo-execute/SKILL.md`.
 
 ## Why
 
-Validates that `/bees-execute` runs end-to-end against a small Bee under the new ephemeral Agent dispatch substrate, with concurrent specialist work observable in TaskList, per-Task commits landing cleanly, PM dispatch wiring functional, and the Section 6 post-completion fresh-eyes sweep returning a finding.
+Validates that `/quo-execute` runs end-to-end against a small Bee under the new ephemeral Agent dispatch substrate, with concurrent specialist work observable in TaskList, per-Task commits landing cleanly, PM dispatch wiring functional, and the Section 6 post-completion fresh-eyes sweep returning a finding.
 
 ## Out of scope
 

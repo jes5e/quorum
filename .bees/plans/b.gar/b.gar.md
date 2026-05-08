@@ -26,8 +26,8 @@ Add a layered automated-testing approach for the quorum repo itself, replacing t
 
 **Layer 1 — Helper unit tests.** Per-helper pytest unit tests on every bundled Python helper. Today the bundled helpers are:
 
-- `skills/bees-setup/scripts/detect_fast_path.py` (new-machine fast-path detection)
-- `skills/bees-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper)
+- `skills/quo-setup/scripts/detect_fast_path.py` (new-machine fast-path detection)
+- `skills/quo-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper)
 
 Tests use pytest's `tmp_path` for filesystem isolation and `monkeypatch` for environment overrides. Coverage targets every public function, every error path, and every JSON contract field. Entrypoint: `pytest skills/`.
 
@@ -60,5 +60,5 @@ Both are linked via this Bee's `reference_materials`. Those subsections currentl
 
 ## Status
 
-`b.gar` is no longer blocked. With Layer 2.5 deferred and the dual-backend seam gone, nothing in the refreshed scope depends on `b.9xr`'s state. A future `/bees-breakdown-epic b.gar` can run against `main` at any time and decompose against Layers 1 and 2 directly.
+`b.gar` is no longer blocked. With Layer 2.5 deferred and the dual-backend seam gone, nothing in the refreshed scope depends on `b.9xr`'s state. A future `/quo-breakdown-epic b.gar` can run against `main` at any time and decompose against Layers 1 and 2 directly.
 

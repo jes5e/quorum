@@ -11,7 +11,7 @@ reference_materials: null
 ---
 ## Description
 
-The post-completion review step in /bees-fix-issue (Step 8) and /bees-execute (Step 6) currently invokes /bees-code-review. Two compounding problems with that:
+The post-completion review step in /quo-fix-issue (Step 8) and /quo-execute (Step 6) currently invokes /bees-code-review. Two compounding problems with that:
 
 1. **/bees-code-review explicitly ignores natural-language documentation.** The skill prose says "Focus only on source code files. Ignore natural language documentation and unit test code." That's correct *as one lane of a three-lane in-flight review* (code/doc/test in parallel) — but at the post-completion stage it leaves prose changes unreviewed, which is unsafe for doc-heavy fixes (e.g. b.9sv had 5 of 8 changed files as pure prose).
 
@@ -21,10 +21,10 @@ The combined effect on b.9sv (the run that surfaced this finding): the post-comp
 
 ## Current behavior
 
-`skills/bees-fix-issue/SKILL.md:335` ("### 8. Post-Completion Code Review"):
+`skills/quo-fix-issue/SKILL.md:335` ("### 8. Post-Completion Code Review"):
 > Invoke the /bees-code-review skill against all changes made during this session
 
-`skills/bees-execute/SKILL.md:444` ("### 6. Post-Completion Code Review"): same shape, same skill invocation.
+`skills/quo-execute/SKILL.md:444` ("### 6. Post-Completion Code Review"): same shape, same skill invocation.
 
 Both run as the team-lead (the orchestrating agent), both use /bees-code-review, both inherit its "ignore docs" scope.
 
@@ -47,8 +47,8 @@ The implementing agent will be tempted to "be helpful" and reuse /bees-code-revi
 
 ## Files to modify
 
-- `skills/bees-fix-issue/SKILL.md` — rewrite Step 8 ("Post-Completion Code Review", currently at line 335) per the spec above. Rename the step heading from "Post-Completion Code Review" to "Post-Completion Review" (drop "Code" — it's no longer code-only).
-- `skills/bees-execute/SKILL.md` — rewrite Step 6 ("Post-Completion Code Review", currently at line 444) symmetrically. Same heading rename.
+- `skills/quo-fix-issue/SKILL.md` — rewrite Step 8 ("Post-Completion Code Review", currently at line 335) per the spec above. Rename the step heading from "Post-Completion Code Review" to "Post-Completion Review" (drop "Code" — it's no longer code-only).
+- `skills/quo-execute/SKILL.md` — rewrite Step 6 ("Post-Completion Code Review", currently at line 444) symmetrically. Same heading rename.
 - `README.md` and `docs/sdd.md` were checked at filing time — neither references "post-completion" by name, so no updates needed there. If the implementer's edit changes that (e.g., introduces user-facing terminology for the step), update the customer-facing doc accordingly.
 
 ## Suggested fix
@@ -82,7 +82,7 @@ The team-lead-side flow stays mostly the same: receive the reviewer's findings, 
 
 ## Out of scope
 
-- **The in-flight review loop** in /bees-execute Step 5 ("Final Bee-level Code, Doc and Eng reviews", line 404) and /bees-fix-issue Step 4 ("Review Loop"). Those still use the three lane-specific review skills and that's correct — they are parallel lanes of the work, not a final synthesis pass.
+- **The in-flight review loop** in /quo-execute Step 5 ("Final Bee-level Code, Doc and Eng reviews", line 404) and /quo-fix-issue Step 4 ("Review Loop"). Those still use the three lane-specific review skills and that's correct — they are parallel lanes of the work, not a final synthesis pass.
 - **Test coverage of the change.** This issue is purely about the post-completion step's design. Test-writing concerns are handled inside the in-flight review loop.
 - **/bees-code-review's own prose.** The "ignore documentation" instruction is correct *for that skill's role* (one lane of a three-lane review). Don't change /bees-code-review.
 
@@ -94,4 +94,4 @@ The team-lead-side flow stays mostly the same: receive the reviewer's findings, 
 
 ## Adjacent finding (note, do not bundle)
 
-The b.9sv "ignore documentation" gap was *masked* by the in-flight Doc Reviewer doing its job. A future fix that bypasses or fails to spawn the Doc Reviewer in the in-flight loop would have no doc review at all. Worth a separate audit later: does any /bees-fix-issue or /bees-execute path skip the Doc Reviewer? Out of scope for this ticket.
+The b.9sv "ignore documentation" gap was *masked* by the in-flight Doc Reviewer doing its job. A future fix that bypasses or fails to spawn the Doc Reviewer in the in-flight loop would have no doc review at all. Worth a separate audit later: does any /quo-fix-issue or /quo-execute path skip the Doc Reviewer? Out of scope for this ticket.

@@ -1,7 +1,7 @@
 ---
 id: b.iv4
 type: bee
-title: 'Refactor /bees-file-issue: fold Step 4 into Step 3 (option-a structural cleanup)'
+title: 'Refactor /quo-file-issue: fold Step 4 into Step 3 (option-a structural cleanup)'
 parent: null
 reference_materials: null
 created_at: '2026-05-07T11:30:24.765544'
@@ -12,14 +12,14 @@ guid: iv4o16qh5b8dug5f8njoqff8i4hd5eqh
 
 ## Description
 
-Refactor `skills/bees-file-issue/SKILL.md` Steps 3 and 4 by folding
+Refactor `skills/quo-file-issue/SKILL.md` Steps 3 and 4 by folding
 Step 4 entirely into Step 3, eliminating the temporal-ordering
 ambiguity between "create the ticket" and "capture doc divergence in
 the body" that today is bridged by a one-line clarifier paragraph.
 
 ## Background and rationale
 
-During the execution of `b.31f` Epic 8 (`/bees-file-issue` redesign),
+During the execution of `b.31f` Epic 8 (`/quo-file-issue` redesign),
 the per-Task PM review surfaced a temporal-ordering ambiguity between
 Step 3 (create ticket via `bees create-ticket`) and Step 4 (the new
 "capture `## Doc divergence noted` in the body" step). PM offered two
@@ -45,7 +45,7 @@ is sufficient to remove the ambiguity for any reader who notices it.
 
 Option (a) remains the cleaner long-run shape. This Issue exists so
 the cleaner alternative isn't lost — when a future reader of
-`skills/bees-file-issue/SKILL.md` Steps 3 and 4 finds the
+`skills/quo-file-issue/SKILL.md` Steps 3 and 4 finds the
 interleaving still confusing, this Issue is the entry point for the
 restructure.
 
@@ -54,7 +54,7 @@ restructure.
 When the trigger condition is met (a reader finds Steps 3/4
 confusing despite the option (b) clarifier):
 
-1. Read `skills/bees-file-issue/SKILL.md` Steps 3 and 4.
+1. Read `skills/quo-file-issue/SKILL.md` Steps 3 and 4.
 2. Restructure: collapse Step 4's "capture `## Doc divergence noted`"
    guidance into Step 3's body-authoring prose. Step 3's body
    template becomes the canonical location where ALL optional
@@ -66,10 +66,10 @@ confusing despite the option (b) clarifier):
 4. Verify the restructured prose preserves all current behavior:
    the doc-divergence capture pattern, mid-conversation context
    awareness, the optional-rationale-sections template, and the
-   `/bees-fix-issue` doc-writer consumption hook.
-5. Run a quick read-through against `skills/bees-fix-issue/SKILL.md`
+   `/quo-fix-issue` doc-writer consumption hook.
+5. Run a quick read-through against `skills/quo-fix-issue/SKILL.md`
    to verify the cross-skill references (mentions of
-   `/bees-file-issue`'s steps by number) are still accurate, or
+   `/quo-file-issue`'s steps by number) are still accurate, or
    make them name-based instead of number-based to avoid future
    renumbering churn.
 
@@ -79,11 +79,11 @@ This is a quality / clarity refactor, not a bug. File when the
 reader-confusion threshold is met:
 
 - A future maintainer (human or agent) reads
-  `skills/bees-file-issue/SKILL.md` Steps 3-4 and finds the
+  `skills/quo-file-issue/SKILL.md` Steps 3-4 and finds the
   interleaving confusing despite the option (b) clarifier paragraph.
-- Or: a `/bees-file-issue` review run flags Steps 3-4 ordering
+- Or: a `/quo-file-issue` review run flags Steps 3-4 ordering
   as still ambiguous.
-- Or: a sibling skill's redesign (`/bees-plan`, `/bees-fix-issue`)
+- Or: a sibling skill's redesign (`/quo-plan`, `/quo-fix-issue`)
   prompts a coherence pass across the planning/filing skills and
   the option (b) shape stands out as inconsistent.
 
@@ -93,9 +93,9 @@ If none of these triggers fire, the option (b) shape is fine to leave.
 
 - Re-litigating the option (a) vs option (b) choice for `b.31f`'s
   in-flight fix. That decision is made and the fix is committed.
-- Other refactors to `/bees-file-issue` beyond Steps 3-4. Any other
+- Other refactors to `/quo-file-issue` beyond Steps 3-4. Any other
   changes should be filed separately.
-- Changes to `/bees-fix-issue` beyond the cross-reference accuracy
+- Changes to `/quo-fix-issue` beyond the cross-reference accuracy
   check in step 5 of the suggested fix.
 
 ## Dependencies

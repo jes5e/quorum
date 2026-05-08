@@ -12,7 +12,7 @@ reference_materials: null
 ---
 ## Description
 
-Several skills tell Claude to "search the hive", "find the Bee", "find Epics in `ready` state", etc. — but don't give a concrete `bees` CLI command to run. Claude has to guess the verb. The bees CLI doesn't have an obvious "list tickets in a hive" command (the right answer is `bees execute-freeform-query --query-yaml '...'`), so the guess routinely lands on a non-existent verb like `bees list-tickets`. This was surfaced when running `/bees-file-issue` for the first time — Step 2 ("Check if there's already an issue ticket for this issue (search existing issues hive)") at `skills/bees-file-issue/SKILL.md:55` made the agent guess `bees list-tickets`, which exited 2 with the full subcommand-list dump.
+Several skills tell Claude to "search the hive", "find the Bee", "find Epics in `ready` state", etc. — but don't give a concrete `bees` CLI command to run. Claude has to guess the verb. The bees CLI doesn't have an obvious "list tickets in a hive" command (the right answer is `bees execute-freeform-query --query-yaml '...'`), so the guess routinely lands on a non-existent verb like `bees list-tickets`. This was surfaced when running `/quo-file-issue` for the first time — Step 2 ("Check if there's already an issue ticket for this issue (search existing issues hive)") at `skills/quo-file-issue/SKILL.md:55` made the agent guess `bees list-tickets`, which exited 2 with the full subcommand-list dump.
 
 This pattern is exactly what `CONTRIBUTING.md` flags under **Anti-patterns**: "Don't replace concrete shell snippets with vague prose ('run the appropriate test command')." And under **Reviewing changes**: "If you change a CLI invocation, run `bees <command> --help` and verify the flag still exists with the same name." Some skills follow that rule; others don't, and the inconsistency is the bug.
 
@@ -20,18 +20,18 @@ This pattern is exactly what `CONTRIBUTING.md` flags under **Anti-patterns**: "D
 
 Some skills DO ship concrete query recipes. These are the good templates:
 
-- `skills/bees-status/SKILL.md:33,38,44` — three working recipes covering all-Plan-Bees, all-Epics-under-Plan-Bees, all-Issue-Bees. Use `report: [...]` clauses for tabular output.
-- `skills/bees-fix-issue/SKILL.md:47` — concrete recipe for open-issue discovery in `all` and no-args modes: `[type=bee, hive=issues, status=open]` with `report: [title]`.
-- `skills/bees-breakdown-epic/SKILL.md:31` — concrete recipe for finding ready Plan Bees in the no-args path: `[type=bee, hive=plans, status=ready]`.
+- `skills/quo-status/SKILL.md:33,38,44` — three working recipes covering all-Plan-Bees, all-Epics-under-Plan-Bees, all-Issue-Bees. Use `report: [...]` clauses for tabular output.
+- `skills/quo-fix-issue/SKILL.md:47` — concrete recipe for open-issue discovery in `all` and no-args modes: `[type=bee, hive=issues, status=open]` with `report: [title]`.
+- `skills/quo-breakdown-epic/SKILL.md:31` — concrete recipe for finding ready Plan Bees in the no-args path: `[type=bee, hive=plans, status=ready]`.
 
 Other skills DO NOT ship the recipe. These are the bug sites:
 
-- `skills/bees-file-issue/SKILL.md:55` — Step 2 says "Check if there's already an issue ticket for this issue (search existing issues hive)" with no command. Likely Claude needs `[type=bee, hive=issues, status=open]` plus a title-regex filter.
-- `skills/bees-plan/SKILL.md:51` — "Check if there's existing work that overlaps (search the plans and issues hives)" with no command. Skill has zero `execute-freeform-query` blocks anywhere.
-- `skills/bees-execute/SKILL.md:42-44` — three `## 1. Find Bee to work on` sub-cases ("find all bees for this repo", "find all Epics in the `ready` state that are unblocked", "find the Bee that is a parent of that Epic") with no commands.
-- `skills/bees-execute/SKILL.md:79-83` — `## 2. Find Epic to work on and validate` says "Find all Epics in the Bee and recommend the best one" with no command.
-- `skills/bees-breakdown-epic/SKILL.md:27` — Bee-ID-given path: "Find workable Epics automatically (see below)" with no command at point of reference.
-- `skills/bees-breakdown-epic/SKILL.md:36-37` — `## Once you have a Bee ID`: "Find workable Epics by querying with the `bees` CLI for any Epic children of that Bee in the `drafted` state" — describes the query but doesn't give the recipe.
+- `skills/quo-file-issue/SKILL.md:55` — Step 2 says "Check if there's already an issue ticket for this issue (search existing issues hive)" with no command. Likely Claude needs `[type=bee, hive=issues, status=open]` plus a title-regex filter.
+- `skills/quo-plan/SKILL.md:51` — "Check if there's existing work that overlaps (search the plans and issues hives)" with no command. Skill has zero `execute-freeform-query` blocks anywhere.
+- `skills/quo-execute/SKILL.md:42-44` — three `## 1. Find Bee to work on` sub-cases ("find all bees for this repo", "find all Epics in the `ready` state that are unblocked", "find the Bee that is a parent of that Epic") with no commands.
+- `skills/quo-execute/SKILL.md:79-83` — `## 2. Find Epic to work on and validate` says "Find all Epics in the Bee and recommend the best one" with no command.
+- `skills/quo-breakdown-epic/SKILL.md:27` — Bee-ID-given path: "Find workable Epics automatically (see below)" with no command at point of reference.
+- `skills/quo-breakdown-epic/SKILL.md:36-37` — `## Once you have a Bee ID`: "Find workable Epics by querying with the `bees` CLI for any Epic children of that Bee in the `drafted` state" — describes the query but doesn't give the recipe.
 
 The good-template recipes also use inconsistent shapes (whether to include `report:`, which fields to project, no canonical recipe template documented anywhere) — fixable as part of this same change.
 
@@ -65,11 +65,11 @@ report: [title, ticket_status, ...]'
 
 | Site | Recipe sketch (verify against `bees execute-freeform-query --help` before writing) |
 |---|---|
-| `bees-file-issue:55` | `[type=bee, hive=issues, status=open]` with `report: [title]` — same shape as `bees-fix-issue:47`. The agent then matches the user's description against returned titles to detect duplicates. |
-| `bees-plan:51` | Two queries: `[type=bee, hive=plans]` and `[type=bee, hive=issues, status=open]`, both with `report: [title]`. Agent scans both result sets for overlap with the user's idea. |
-| `bees-execute:42-44` | Three recipes: (a) all Plan Bees in this repo: `[type=bee, hive=plans]`. (b) ready+unblocked Epics under a given Bee: needs traversal stage `[parent=<bee-id>, type=t1, status=ready]`, then filter unblocked. (c) parent-Bee-from-Epic: query `[id=<epic-id>]` then `[parent]` stage. |
-| `bees-execute:79-83` | All Epics under the chosen Bee: `[parent=<bee-id>, type=t1]` with `report: [title, ticket_status, up_dependencies]`. Then filter in-prose for `ready`/`in_progress` and unblocked dependencies. |
-| `bees-breakdown-epic:27,36-37` | All `drafted` Epic children of given Bee: `[parent=<bee-id>, type=t1, status=drafted]`. |
+| `quo-file-issue:55` | `[type=bee, hive=issues, status=open]` with `report: [title]` — same shape as `quo-fix-issue:47`. The agent then matches the user's description against returned titles to detect duplicates. |
+| `quo-plan:51` | Two queries: `[type=bee, hive=plans]` and `[type=bee, hive=issues, status=open]`, both with `report: [title]`. Agent scans both result sets for overlap with the user's idea. |
+| `quo-execute:42-44` | Three recipes: (a) all Plan Bees in this repo: `[type=bee, hive=plans]`. (b) ready+unblocked Epics under a given Bee: needs traversal stage `[parent=<bee-id>, type=t1, status=ready]`, then filter unblocked. (c) parent-Bee-from-Epic: query `[id=<epic-id>]` then `[parent]` stage. |
+| `quo-execute:79-83` | All Epics under the chosen Bee: `[parent=<bee-id>, type=t1]` with `report: [title, ticket_status, up_dependencies]`. Then filter in-prose for `ready`/`in_progress` and unblocked dependencies. |
+| `quo-breakdown-epic:27,36-37` | All `drafted` Epic children of given Bee: `[parent=<bee-id>, type=t1, status=drafted]`. |
 
 **Phase 2 — canonicalize the template.** Add a `## Querying tickets` (or similarly-named) subsection to `CONTRIBUTING.md` `Skill conventions`, or to `docs/doc-writing-guide.md`. Cover:
 
@@ -78,7 +78,7 @@ report: [title, ticket_status, ...]'
 - When to include `report:` (when the agent will display or pattern-match results) vs. omit (when the agent only needs ticket IDs to traverse).
 - Reference the help text: `bees execute-freeform-query --help` lists all stage filters and graph stages; verify before writing a new recipe.
 
-**Phase 3 — verify existing recipes.** As part of the same change, run each existing recipe (`bees-status:33,38,44`, `bees-fix-issue:47`, `bees-breakdown-epic:31`) against the current `bees` CLI in this repo and verify the output shape still matches what the surrounding prose expects. Recipes that depend on field names (`title`, `ticket_status`, `up_dependencies`, `children`) should be cross-checked against `bees execute-freeform-query --help` for any field renames since the recipes were written.
+**Phase 3 — verify existing recipes.** As part of the same change, run each existing recipe (`quo-status:33,38,44`, `quo-fix-issue:47`, `quo-breakdown-epic:31`) against the current `bees` CLI in this repo and verify the output shape still matches what the surrounding prose expects. Recipes that depend on field names (`title`, `ticket_status`, `up_dependencies`, `children`) should be cross-checked against `bees execute-freeform-query --help` for any field renames since the recipes were written.
 
 **Out of scope for this ticket** (potential follow-ups, do not bundle):
 

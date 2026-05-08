@@ -3,19 +3,19 @@
 A portable [Claude Code](https://claude.com/claude-code) skill set for running an end-to-end SDLC on top of [bees](https://github.com/gabemahoney/bees) tickets — plan, break down, execute, review, fix, repeat. Works on any project, any language, any POSIX or Windows shell.
 
 ```
-/bees-setup                  ← one-time per repo (safe to re-run)
+/quo-setup                  ← one-time per repo (safe to re-run)
        │
        ├──────────────────────────────────────────┐
        ▼                                          ▼
-/bees-plan                            /bees-plan-from-specs
+/quo-plan                            /quo-plan-from-specs
 (planning from an idea)               (PRD + SDD already on disk)
        │                                          │
        ▼                                          │
 Spec Bee  (Specs hive, top-level)                 │
-  ├── PRD  (t1=Doc, via /bees-write-prd)          │
-  └── SDD  (t1=Doc, via /bees-write-sdd)          │
+  ├── PRD  (t1=Doc, via /quo-write-prd)          │
+  └── SDD  (t1=Doc, via /quo-write-sdd)          │
        │                                          │
-       │ /bees-spec-review (auto quality gate)    │
+       │ /quo-spec-review (auto quality gate)    │
        │   gates Spec Bee drafted → ready         │
        │                                          │
        │ reference_materials                      │ reference_materials
@@ -25,13 +25,13 @@ Spec Bee  (Specs hive, top-level)                 │
           Plan Bee  (Plans hive, top-level)
                           │
                           ▼
-              /bees-breakdown-epic    ← Epic → Tasks/Subtasks
+              /quo-breakdown-epic    ← Epic → Tasks/Subtasks
                           │
                           ▼
-              /bees-execute           ← do the work, with reviews
+              /quo-execute           ← do the work, with reviews
                           │
                           ▼
-              /bees-file-issue + /bees-fix-issue
+              /quo-file-issue + /quo-fix-issue
                           ↑
                    (anytime, for bugs/follow-ups)
 ```
@@ -42,12 +42,12 @@ The skills orchestrate work via Claude Code's ephemeral background subagents —
 
 [Apiary](https://github.com/gabemahoney/apiary), built by the bees creator, is the original bees skill set and remains a great fit for many projects. **quorum is an alternative**, shaped by these priorities:
 
-- **Cumulative project-level docs.** Project-level PRD and SDD (paths configured under CLAUDE.md `## Documentation Locations`) accumulate `### Feature:` subsections as features ship, and become the source of truth that agents (`bees-execute`, `bees-fix-issue`) read for spec-drift detection. The `bees-setup` skill can bootstrap baseline docs from an existing codebase via guided Q&A. Per-feature specs are authored as Spec Bee children at plan time and folded back into the cumulative project docs after implementation lands, by the post-implementation `doc-writer` agent dispatched by `/bees-execute` and `/bees-fix-issue`.
+- **Cumulative project-level docs.** Project-level PRD and SDD (paths configured under CLAUDE.md `## Documentation Locations`) accumulate `### Feature:` subsections as features ship, and become the source of truth that agents (`quo-execute`, `quo-fix-issue`) read for spec-drift detection. The `quo-setup` skill can bootstrap baseline docs from an existing codebase via guided Q&A. Per-feature specs are authored as Spec Bee children at plan time and folded back into the cumulative project docs after implementation lands, by the post-implementation `doc-writer` agent dispatched by `/quo-execute` and `/quo-fix-issue`.
 - **Language-agnostic.** Works on Rust, Node, Python, Go, Java, polyglot, or unknown stacks. Stack-specific commands (compile, format, lint, narrow test, full test) are detected at setup and stored in CLAUDE.md, then read by skills at runtime — no skill-editing needed when you switch projects.
 - **Cross-platform.** Native macOS, Linux, and Windows PowerShell (or WSL/Git Bash). Every shell snippet that runs is provided as a labeled OS-conditional block; the bundled helper scripts (fast-path detector, scoped-marker parser) ship as cross-platform Python.
 - **Plain-English statuses.** Plan-hive bees use `drafted` / `ready` / `in_progress` / `done`; issue-hive bees use `open` / `done`. No translation layer, no insect-metaphor jargon to remember.
-- **PRD/SDD-first or scope-first, your choice.** `/bees-plan` is the interactive entry point for an idea you haven't speced out — it authors per-feature PRD and SDD as `t1=Doc` children of a new Spec Bee in the Specs hive and links the Spec Bee from the resulting Plan Bee's `reference_materials` (no project-doc mutation at plan time). `/bees-plan-from-specs` is the express path when you already have a finalized **single-feature** PRD and SDD on disk; experienced users with finalized cumulative specs can also reach for `/bees-plan-from-specs --feature "<title>"` to scope one `### Feature:` subsection of the cumulative docs without going back through `/bees-plan`'s discovery loop. The single-feature scope follows the Plan Bee end-to-end — `/bees-breakdown-epic`, `/bees-execute`, and `/bees-fix-issue` all detect the scoping marker on the Plan Bee body and restrict spec-compare logic to the matching feature. Both entry points produce the same Plan Bee shape and feed the same downstream chain. Cumulative project-level PRD/SDD are updated after implementation by the `doc-writer` agent, not at plan time.
-- **Idempotent.** Every skill that mutates project state (`bees-setup` especially) detects existing configuration and only prompts where something is missing or you ask to change it. Re-runs are safe.
+- **PRD/SDD-first or scope-first, your choice.** `/quo-plan` is the interactive entry point for an idea you haven't speced out — it authors per-feature PRD and SDD as `t1=Doc` children of a new Spec Bee in the Specs hive and links the Spec Bee from the resulting Plan Bee's `reference_materials` (no project-doc mutation at plan time). `/quo-plan-from-specs` is the express path when you already have a finalized **single-feature** PRD and SDD on disk; experienced users with finalized cumulative specs can also reach for `/quo-plan-from-specs --feature "<title>"` to scope one `### Feature:` subsection of the cumulative docs without going back through `/quo-plan`'s discovery loop. The single-feature scope follows the Plan Bee end-to-end — `/quo-breakdown-epic`, `/quo-execute`, and `/quo-fix-issue` all detect the scoping marker on the Plan Bee body and restrict spec-compare logic to the matching feature. Both entry points produce the same Plan Bee shape and feed the same downstream chain. Cumulative project-level PRD/SDD are updated after implementation by the `doc-writer` agent, not at plan time.
+- **Idempotent.** Every skill that mutates project state (`quo-setup` especially) detects existing configuration and only prompts where something is missing or you ask to change it. Re-runs are safe.
 
 If you want the lightweight, ephemeral-spec, async-team-spawning experience of Apiary, use Apiary. If you want persistent docs that grow with your project across many features and contributors, quorum is built for that.
 
@@ -100,12 +100,12 @@ If Claude Code is already running when you copy the files, the new subagent type
 - **Run `/agents` in the session** — opens Claude Code's agents UI and hot-reloads the registry. Faster than a full restart; preserves the current session.
 - **Restart Claude Code** — quit and relaunch. Always works.
 
-Either way, until one of these is done, the bees-execute / bees-fix-issue / bees-breakdown-epic skills will fail with `Agent type 'engineer' not found` (or similar).
+Either way, until one of these is done, the quo-execute / quo-fix-issue / quo-breakdown-epic skills will fail with `Agent type 'engineer' not found` (or similar).
 
 In any repo where you want to use the workflow, run:
 
 ```
-/bees-setup
+/quo-setup
 ```
 
 It will colonize hives (Plans + Issues + Specs), write a `## Documentation Locations` and `## Build Commands` section to CLAUDE.md, and offer to bootstrap baseline PRD/SDD docs from your existing codebase. Safe to re-run if you skip a step and want to come back to it later.
@@ -122,26 +122,26 @@ bees update-config
 
 The migration converts each ticket's old `egg` array into one `reference_materials` entry per file and clears the obsolete custom-resolver registration from `~/.bees/config.json`. New repos and machines that never ran an older version are unaffected.
 
-If your repo was set up before the `Specs` hive existed, re-run `/bees-setup` — it detects the missing `Specs` hive, prompts for its path, and leaves your existing `Plans` and `Issues` hives untouched.
+If your repo was set up before the `Specs` hive existed, re-run `/quo-setup` — it detects the missing `Specs` hive, prompts for its path, and leaves your existing `Plans` and `Issues` hives untouched.
 
 ## The skills
 
 | Skill | What it does |
 |---|---|
-| `/bees-setup` | One-time configuration: hives, CLAUDE.md sections, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. On a new machine in an already-set-up repo, `/bees-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through. |
-| `/bees-plan` | Interactive scope discovery for an idea, refactor, or feature without finalized specs. Authors per-feature PRD and SDD as `t1=Doc` children of a new Spec Bee in the Specs hive and links the Spec Bee from the Plan Bee's `reference_materials` — no project-doc mutation at plan time. Cumulative project-level PRD/SDD are updated after implementation by the `doc-writer` agent. Produces a Plan Bee with Epics. |
-| `/bees-plan-from-specs` | Express path for when you already have a finalized PRD and SDD on disk. Default mode targets a **single-feature** PRD+SDD and hard-fails on PRDs **or SDDs** containing multiple `### Feature:` subsections. Pass `--feature "<title>"` to scope a single subsection inside a cumulative PRD+SDD — useful for re-planning one feature without going back through `/bees-plan`'s discovery loop. Produces a Plan Bee with Epics. |
-| `/bees-write-prd` | Author or revise a PRD as a `t1=Doc` child titled `PRD` under a Spec Bee in the Specs hive. Composable — runs solo for revisions (`/bees-write-prd <spec-bee-id>`), or inline from `/bees-plan` via the Skill tool when initial specs are being authored. |
-| `/bees-write-sdd` | Author or revise an SDD as a `t1=Doc` child titled `SDD` under a Spec Bee in the Specs hive. Composable — runs solo for revisions (`/bees-write-sdd <spec-bee-id>`), or inline from `/bees-plan` via the Skill tool when initial specs are being authored. |
-| `/bees-breakdown-epic` | Decompose a single Epic into Tasks and Subtasks with the mandatory description template applied. Commits the new ticket files at end-of-skill (when the Plans hive lives in-repo) and presents a next-steps menu with per-option rationale. |
-| `/bees-execute` | Execute a Plan Bee end-to-end — dispatch the ephemeral background subagents (Engineer, Test Writer, Doc Writer, PM, Code/Test/Doc Reviewer), walk every Epic in dependency order, commit per Task, review at Bee close. |
-| `/bees-file-issue` | File a new issue ticket in the issues hive. Issues cover bugs, follow-ups, small features, tech debt — anything ticket-worthy that isn't planned upfront. Two invocation modes: (a) **in-conversation capture** — `/bees-file-issue` (interactive) or `/bees-file-issue <description>` produces an Issue whose body carries the full spec (Description / Current behavior / Expected behavior / Impact / Suggested fix); (b) **external-reference mode** — `/bees-file-issue --reference <url>` (or its `--from-github <url>` alias) produces a thin Issue (2-3 sentence summary in the body) whose `reference_materials` points at an external resource (GitHub Issue, Linear ticket, Slack archive, internal bug tracker URL, etc.) under one of three canonical resolver names (`github-issue` / `linear-issue` / `url`, picked by URL pattern); `/bees-fix-issue` fetches the upstream content via `WebFetch` when picking the Issue up. Symmetric with `/bees-plan-from-specs` on the planning side. |
-| `/bees-fix-issue` | Fix one or more issue tickets. Single, list, or `all` modes. Dispatches the same ephemeral background subagents as `bees-execute` but at issue scope. |
-| `/bees-status` | Show the workflow stages and current progress across all hives. Useful for "where am I?" |
-| `/bees-engineer-review` | Review the Engineer's diff during a /bees-execute or /bees-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. |
-| `/bees-doc-writer-review` | Review the Doc Writer's documentation during a /bees-execute or /bees-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. Checks README and architecture docs are updated with new functionality. |
-| `/bees-test-writer-review` | Review the Test Writer's test code during a /bees-execute or /bees-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. |
-| `/bees-spec-review` | Fresh-eyes review of a Spec Bee's PRD and SDD `t1=Doc` children for clarity, completeness, and internal consistency. Primary use - invoked automatically by `/bees-plan` (after both writers complete, before Spec Bee promotion) and by `/bees-write-prd` / `/bees-write-sdd` (after the user-approval gate, before the PRD/SDD child's `drafted → ready` promotion) as a quality gate over the spec content; the per-writer review is skipped when the writer is invoked inline from `/bees-plan` since the `/bees-plan` review covers both children end-to-end. Standalone use - ad-hoc spec review of a Spec Bee, scoped optionally to one Doc child via `--doc PRD` or `--doc SDD`. Returns a simple list of improvement work items. |
+| `/quo-setup` | One-time configuration: hives, CLAUDE.md sections, optional PRD/SDD bootstrap from existing codebase. Idempotent — safe to re-run. On a new machine in an already-set-up repo, `/quo-setup` detects the existing hive markers and offers to just re-register them, skipping the full walk-through. |
+| `/quo-plan` | Interactive scope discovery for an idea, refactor, or feature without finalized specs. Authors per-feature PRD and SDD as `t1=Doc` children of a new Spec Bee in the Specs hive and links the Spec Bee from the Plan Bee's `reference_materials` — no project-doc mutation at plan time. Cumulative project-level PRD/SDD are updated after implementation by the `doc-writer` agent. Produces a Plan Bee with Epics. |
+| `/quo-plan-from-specs` | Express path for when you already have a finalized PRD and SDD on disk. Default mode targets a **single-feature** PRD+SDD and hard-fails on PRDs **or SDDs** containing multiple `### Feature:` subsections. Pass `--feature "<title>"` to scope a single subsection inside a cumulative PRD+SDD — useful for re-planning one feature without going back through `/quo-plan`'s discovery loop. Produces a Plan Bee with Epics. |
+| `/quo-write-prd` | Author or revise a PRD as a `t1=Doc` child titled `PRD` under a Spec Bee in the Specs hive. Composable — runs solo for revisions (`/quo-write-prd <spec-bee-id>`), or inline from `/quo-plan` via the Skill tool when initial specs are being authored. |
+| `/quo-write-sdd` | Author or revise an SDD as a `t1=Doc` child titled `SDD` under a Spec Bee in the Specs hive. Composable — runs solo for revisions (`/quo-write-sdd <spec-bee-id>`), or inline from `/quo-plan` via the Skill tool when initial specs are being authored. |
+| `/quo-breakdown-epic` | Decompose a single Epic into Tasks and Subtasks with the mandatory description template applied. Commits the new ticket files at end-of-skill (when the Plans hive lives in-repo) and presents a next-steps menu with per-option rationale. |
+| `/quo-execute` | Execute a Plan Bee end-to-end — dispatch the ephemeral background subagents (Engineer, Test Writer, Doc Writer, PM, Code/Test/Doc Reviewer), walk every Epic in dependency order, commit per Task, review at Bee close. |
+| `/quo-file-issue` | File a new issue ticket in the issues hive. Issues cover bugs, follow-ups, small features, tech debt — anything ticket-worthy that isn't planned upfront. Two invocation modes: (a) **in-conversation capture** — `/quo-file-issue` (interactive) or `/quo-file-issue <description>` produces an Issue whose body carries the full spec (Description / Current behavior / Expected behavior / Impact / Suggested fix); (b) **external-reference mode** — `/quo-file-issue --reference <url>` (or its `--from-github <url>` alias) produces a thin Issue (2-3 sentence summary in the body) whose `reference_materials` points at an external resource (GitHub Issue, Linear ticket, Slack archive, internal bug tracker URL, etc.) under one of three canonical resolver names (`github-issue` / `linear-issue` / `url`, picked by URL pattern); `/quo-fix-issue` fetches the upstream content via `WebFetch` when picking the Issue up. Symmetric with `/quo-plan-from-specs` on the planning side. |
+| `/quo-fix-issue` | Fix one or more issue tickets. Single, list, or `all` modes. Dispatches the same ephemeral background subagents as `quo-execute` but at issue scope. |
+| `/quo-status` | Show the workflow stages and current progress across all hives. Useful for "where am I?" |
+| `/quo-engineer-review` | Review the Engineer's diff during a /quo-execute or /quo-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. |
+| `/quo-doc-writer-review` | Review the Doc Writer's documentation during a /quo-execute or /quo-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. Checks README and architecture docs are updated with new functionality. |
+| `/quo-test-writer-review` | Review the Test Writer's test code during a /quo-execute or /quo-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. |
+| `/quo-spec-review` | Fresh-eyes review of a Spec Bee's PRD and SDD `t1=Doc` children for clarity, completeness, and internal consistency. Primary use - invoked automatically by `/quo-plan` (after both writers complete, before Spec Bee promotion) and by `/quo-write-prd` / `/quo-write-sdd` (after the user-approval gate, before the PRD/SDD child's `drafted → ready` promotion) as a quality gate over the spec content; the per-writer review is skipped when the writer is invoked inline from `/quo-plan` since the `/quo-plan` review covers both children end-to-end. Standalone use - ad-hoc spec review of a Spec Bee, scoped optionally to one Doc child via `--doc PRD` or `--doc SDD`. Returns a simple list of improvement work items. |
 
 ## Status vocabulary
 
@@ -165,7 +165,7 @@ If you opt into doc creation (recommended — see [Why this exists](#why-this-ex
 - `docs/prd.md` — project-level Product Requirements. Grows as features ship.
 - `docs/sdd.md` — project-level Software Design. Grows as features ship.
 
-Per-feature PRD/SDD content is authored at plan time as `t1=Doc` children of a Spec Bee in the Specs hive (PRD and SDD as separate Docs), not appended to the cumulative project-level docs. After implementation lands, the post-implementation `doc-writer` agent dispatched by `/bees-execute` and `/bees-fix-issue` folds the shipped feature into the cumulative project PRD and SDD (paths configured under CLAUDE.md `## Documentation Locations`) by adding a new `### Feature: <title>` subsection under the cumulative `## Per-feature scope` (PRD) and `## Per-feature design` (SDD) headers — never overwriting earlier content. Old features stay documented; new features add to the record only once they ship.
+Per-feature PRD/SDD content is authored at plan time as `t1=Doc` children of a Spec Bee in the Specs hive (PRD and SDD as separate Docs), not appended to the cumulative project-level docs. After implementation lands, the post-implementation `doc-writer` agent dispatched by `/quo-execute` and `/quo-fix-issue` folds the shipped feature into the cumulative project PRD and SDD (paths configured under CLAUDE.md `## Documentation Locations`) by adding a new `### Feature: <title>` subsection under the cumulative `## Per-feature scope` (PRD) and `## Per-feature design` (SDD) headers — never overwriting earlier content. Old features stay documented; new features add to the record only once they ship.
 
 The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you can override the defaults if your project uses a different structure (e.g., `specs/` instead of `docs/`).
 
@@ -197,7 +197,7 @@ Stack-specific helpers (changelog management, license attribution generation, et
 
 Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow design rationale, intentional asymmetries between skills, anti-patterns, and skill conventions. Two principles you'll see referenced everywhere:
 
-1. **Skills must work on Rust, Node, Python, Go, Java, and unknown stacks.** Don't hardcode language-specific commands or file paths in skill prose; use the CLAUDE.md `## Build Commands` and `## Documentation Locations` lookups instead. (See `bees-execute` and `bees-fix-issue` for examples of how to reference these.)
+1. **Skills must work on Rust, Node, Python, Go, Java, and unknown stacks.** Don't hardcode language-specific commands or file paths in skill prose; use the CLAUDE.md `## Build Commands` and `## Documentation Locations` lookups instead. (See `quo-execute` and `quo-fix-issue` for examples of how to reference these.)
 2. **Skills must work on POSIX and Windows.** Every shell snippet should be provided in OS-conditional blocks (POSIX bash + Windows PowerShell at minimum). Helper scripts should be Python or come in OS-paired implementations.
 
 ## License

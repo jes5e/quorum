@@ -10,7 +10,7 @@ guid: 6k2kd181r99xnv6aq48bjabzkng99yz3
 reference_materials: null
 ---
 ## Description
-Engineer (and other runtime agents spawned by `bees-execute` / `bees-fix-issue`) routinely generate shell commands that defeat the user's Bash allow rules in Claude Code's permission matcher, forcing the user to approve every run even when a broad rule like `Bash(python3 *)` is in place.
+Engineer (and other runtime agents spawned by `quo-execute` / `quo-fix-issue`) routinely generate shell commands that defeat the user's Bash allow rules in Claude Code's permission matcher, forcing the user to approve every run even when a broad rule like `Bash(python3 *)` is in place.
 
 ## Current behavior
 Two recurring offenders observed in real sessions on this repo:
@@ -37,7 +37,7 @@ Runtime agents prefer one-literal-command invocations that match user allow rule
 - Not a correctness bug — commands still execute correctly when approved — but a meaningful productivity drag during execution.
 
 ## Suggested fix
-Append a short shell-command etiquette block to the role-instruction prompts for Engineer, Test Writer, Doc Writer, and PM in both `skills/bees-execute/SKILL.md` and `skills/bees-fix-issue/SKILL.md`. Suggested wording (cross-platform, language-agnostic, project-agnostic):
+Append a short shell-command etiquette block to the role-instruction prompts for Engineer, Test Writer, Doc Writer, and PM in both `skills/quo-execute/SKILL.md` and `skills/quo-fix-issue/SKILL.md`. Suggested wording (cross-platform, language-agnostic, project-agnostic):
 
 > When running shell commands, prefer one literal command per invocation. Don't append diagnostic tails like `; echo exit=$?` or `&& echo done` — the Bash tool already reports exit status. Avoid embedded newlines, `$VAR` / `$?` / `$(...)`, and compound commands when a simple one works. If you need a multi-step script, write it to a file and run the file rather than passing it inline via `-c` or a heredoc.
 
@@ -50,8 +50,8 @@ Append a short shell-command etiquette block to the role-instruction prompts for
 - Don't add it to `docs/doc-writing-guide.md`. Runtime prompts only.
 
 **Key files:**
-- `skills/bees-execute/SKILL.md` — role-instruction sections for Engineer (~L243-258), Test Writer, Doc Writer, PM.
-- `skills/bees-fix-issue/SKILL.md` — equivalent role-instruction sections.
+- `skills/quo-execute/SKILL.md` — role-instruction sections for Engineer (~L243-258), Test Writer, Doc Writer, PM.
+- `skills/quo-fix-issue/SKILL.md` — equivalent role-instruction sections.
 
 **Acceptance:**
 - Both SKILL.md files carry the etiquette block in the relevant agent role-instruction sections (Engineer, Test Writer, Doc Writer, PM).

@@ -1,7 +1,7 @@
 ---
 id: b.ctf
 type: bee
-title: bees-execute Epic-discovery prose says 'filter by up_dependencies status' but
+title: quo-execute Epic-discovery prose says 'filter by up_dependencies status' but
   recipe returns only dep IDs
 parent: null
 created_at: '2026-04-30T21:57:24.752272'
@@ -12,11 +12,11 @@ reference_materials: null
 ---
 ## Description
 
-Surfaced during code review of commit 861e49f (b.tsj fix). The new query recipes in `skills/bees-execute/SKILL.md` ask the agent to filter Epics by their dependencies' statuses, but the recipes only project `up_dependencies` as IDs — leaving the agent to invent the status-lookup step. Same vague-prose anti-pattern b.tsj was filed for, applied here at the *prose-after-the-recipe* level rather than at the recipe level.
+Surfaced during code review of commit 861e49f (b.tsj fix). The new query recipes in `skills/quo-execute/SKILL.md` ask the agent to filter Epics by their dependencies' statuses, but the recipes only project `up_dependencies` as IDs — leaving the agent to invent the status-lookup step. Same vague-prose anti-pattern b.tsj was filed for, applied here at the *prose-after-the-recipe* level rather than at the recipe level.
 
 ## Current behavior
 
-`skills/bees-execute/SKILL.md:53-58` (Bee-ID-given path):
+`skills/quo-execute/SKILL.md:53-58` (Bee-ID-given path):
 
 ```bash
 bees execute-freeform-query --query-yaml 'stages:
@@ -28,7 +28,7 @@ report: [title, up_dependencies]'
 
 `up_dependencies` (verified against live `bees execute-freeform-query` output) is a list of ticket IDs only. To know each dep's status, the agent needs a follow-up `bees show-ticket --ids <dep-id>` per dependency, or a multi-stage query that traverses the dep set and reports their statuses. Neither is shown in the prose.
 
-The same gap repeats at `skills/bees-execute/SKILL.md:109-114` in `### 2. Find Epic to work on and validate`:
+The same gap repeats at `skills/quo-execute/SKILL.md:109-114` in `### 2. Find Epic to work on and validate`:
 
 ```bash
 bees execute-freeform-query --query-yaml 'stages:
@@ -59,7 +59,7 @@ The correctness mode (skipping the dep check) is the bad case. An Epic in `ready
 
 For each of the two recipes, add a follow-up step. Two reasonable shapes:
 
-**Shape A — explicit batch lookup** (matches existing `bees show-ticket --ids <id1> <id2>` patterns in `bees-fix-issue`):
+**Shape A — explicit batch lookup** (matches existing `bees show-ticket --ids <id1> <id2>` patterns in `quo-fix-issue`):
 
 ```bash
 # After getting the Epic candidates, batch-look-up their up_dependencies' statuses:
@@ -83,15 +83,15 @@ Shape A is simpler to read and implement. Recommend Shape A.
 
 ## Files to modify
 
-- `skills/bees-execute/SKILL.md:53-58` — add follow-up step to the Bee-ID-given recipe.
-- `skills/bees-execute/SKILL.md:109-114` — add follow-up step to the \"Find Epic to work on\" recipe.
+- `skills/quo-execute/SKILL.md:53-58` — add follow-up step to the Bee-ID-given recipe.
+- `skills/quo-execute/SKILL.md:109-114` — add follow-up step to the \"Find Epic to work on\" recipe.
 
 ## Adjacent (note, do not bundle)
 
-`skills/bees-fix-issue/SKILL.md:90-93` has a similar gap pre-dating these commits:
+`skills/quo-fix-issue/SKILL.md:90-93` has a similar gap pre-dating these commits:
 
 > Check `up_dependencies` array for any blockers. They must be in a completed state.
 
-…with no lookup procedure. That's pre-existing prose (not part of either commit reviewed here), so it's out of scope for this ticket. If the same fix shape applies cleanly, it could be carried over in the same change — but a separate ticket would be cleaner if the bees-fix-issue context differs.
+…with no lookup procedure. That's pre-existing prose (not part of either commit reviewed here), so it's out of scope for this ticket. If the same fix shape applies cleanly, it could be carried over in the same change — but a separate ticket would be cleaner if the quo-fix-issue context differs.
 
 Out of scope: changing the ticket-discovery query shapes themselves (`[parent=<bee-id>, type=t1, status=ready]`, etc.). Those were verified against the live CLI during the same review and are correct. The issue is only the missing dep-status follow-up step.
