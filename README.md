@@ -1,6 +1,6 @@
 # <img src="assets/header.png" alt="" width="48" valign="middle"> quorum
 
-A portable [Claude Code](https://claude.com/claude-code) skill set for running an end-to-end SDLC on top of structured ticket systems — plan, break down, execute, review, fix, repeat. [bees](https://github.com/gabemahoney/bees) is the supported backend today; [beads](https://github.com/gastownhall/beads) is planned future support. Works on any project, any language, any POSIX or Windows shell.
+**quorum** is a [Claude Code](https://claude.com/claude-code) skill set for running a multi-agent SDLC over a structured ticket system. It's built for shipping large features and full applications with LLMs. Plan, break down, execute, review, fix, repeat. Each step is picked up by a separate ephemeral agent — Engineer, Test Writer, Doc Writer, Product Manager, and three Reviewers — each running with role-isolated tools and handing off through ticket state, not chat history.
 
 ```
 /quo-setup                           ← one-time per repo (safe to re-run)
@@ -18,7 +18,7 @@ A portable [Claude Code](https://claude.com/claude-code) skill set for running a
 /quo-status                          ← anytime, "where am I?"
 ```
 
-The skills orchestrate work via Claude Code's ephemeral background subagents — no special setup is required beyond the bees CLI and Claude Code itself.
+No special setup beyond Claude Code itself and the [bees](https://github.com/gabemahoney/bees) CLI — the supported ticket backend today, with [beads](https://github.com/gastownhall/beads) planned.
 
 ## Why this exists
 
