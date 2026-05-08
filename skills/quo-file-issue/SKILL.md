@@ -55,12 +55,12 @@ If the precondition is missing, stop with `Run /quo-setup first.` and direct the
 Before any other step, parse the argument string for an external-reference signal and route accordingly. Three input shapes route to the External-reference branch:
 
 - `--reference <url>` — generic external-reference mode.
-- `--from-github <url>` — friendlier alias for the GitHub Issues case; same code path as `--reference`. Any future per-source aliases (`--from-linear`, `--from-jira`, etc.) are folded into this same branch — the resolver-name selection in the External-reference branch (below) is what differentiates them downstream. The alias does **not** pin the resolver name to `github-issue`: sub-step B's URL-pattern heuristic still runs unconditionally, so a non-GitHub URL passed via `--from-github` (e.g., a Linear or generic URL) will pick up `linear-issue` or `url` per the pattern table, not `github-issue`. The alias controls argument parsing, not resolver selection.
+- `--from-github <url>` — friendlier alias for the GitHub Issues case; same code path as `--reference`. Any future per-source aliases (`--from-linear`, `--from-jira`, etc.) are folded into this same branch — the resolver-name selection in the External-reference branch (below) is what differentiates them downstream. The alias does **not** pin the resolver name to `github-issue`: sub-step C's URL-pattern heuristic still runs unconditionally, so a non-GitHub URL passed via `--from-github` (e.g., a Linear or generic URL) will pick up `linear-issue` or `url` per the pattern table, not `github-issue`. The alias controls argument parsing, not resolver selection.
 - **Bare-URL positional** — a positional argument token that begins with `http://` or `https://` after argument tokenization is treated as the URL value and routed to the External-reference branch, identical in effect to `--reference <url>`. Detection is anchored at the start of the token (`^https?://`); only standalone tokens are URL-shaped. The flag forms above remain accepted as silent no-op aliases — they are not deprecated, do not warn, and are still useful for discoverability — but on the bare-URL path no flag is required.
 
 **Tokenization happens before URL detection.** A URL embedded inside a quoted free-text token (e.g., `/quo-file-issue "Fix the bug at https://example.com/foo"`) is **not** auto-detected — the entire quoted string is a single description token, and the `^https?://` test is applied to the start of the token, which begins with `Fix`, not `http`. Such invocations continue to route to the in-conversation capture flow with the URL preserved verbatim inside the description. Only standalone positional tokens that themselves begin with `http://` or `https://` are URL-shaped positionals.
 
-If any external-reference flag is present, OR the positional argument is a URL-shaped token (begins with `http://` or `https://`), capture the URL value and route to the **External-reference branch** at the end of this Steps section; skip Step 0's discrete-step gate and Step 1's distill-vs-restart fork — though Step 0's err-toward-distilling principle still informs sub-step A.1's body authoring (see the External-reference branch below). The external-reference path has its own thin-body authoring and its own `bees create-ticket` invocation — Steps 1, 2, 3a, 3b, 3c, and the inner sub-steps of Step 3 are not reached on this path. Steps 4 (commit) and 5 (report back) are shared with the in-conversation capture flow.
+If any external-reference flag is present, OR the positional argument is a URL-shaped token (begins with `http://` or `https://`), capture the URL value and route to the **External-reference branch** at the end of this Steps section; skip Step 0's discrete-step gate and Step 1's distill-vs-restart fork — though Step 0's err-toward-distilling principle still informs sub-step B.1's body authoring (see the External-reference branch below). The external-reference path has its own thin-body authoring and its own `bees create-ticket` invocation — Steps 1, 2, 3a, 3b, 3c, and the inner sub-steps of Step 3 are not reached on this path. Steps 4 (commit) and 5 (report back) are shared with the in-conversation capture flow.
 
 If no external-reference flag is present and the positional argument is not URL-shaped, proceed to Step 0 below and the standard in-conversation capture flow (Steps 0 → 1 → 2 → 3 → 4 → 5).
 
@@ -224,7 +224,79 @@ When the distill branch (1a) of the "Gather issue information" step has already 
 
 This branch handles the external-reference invocation modes parsed by the "Mode fork" step above. When this branch runs, Steps 1, 2, 3a, 3b, and 3c are **not** reached — this branch produces the Issue body and runs `bees create-ticket` itself. Flow rejoins the standard path at Step 4 (commit) and Step 5 (report back).
 
-#### A. Author a thin Issue body (2-3 sentences)
+The dedupe sub-step (A) below runs **first**, before any body authoring or ticket creation. The dedupe behavior applies uniformly to every entry surface that converges on this branch: bare-URL positional (e.g. `/quo-file-issue https://example.com/...`), `--reference <url>`, `--from-github <url>`, any future `--from-<source>` aliases, and the inline-invocation `url:` payload from the Skill tool. A future maintainer adding another alias must NOT introduce a code path that bypasses Sub-step A.
+
+#### A. Dedupe check against existing open Issues
+
+Before authoring a body or running `bees create-ticket`, query the Issues hive for any open Issue whose `reference_materials` already points at the same URL. The dedupe gate fires unconditionally on this branch — both on the user-typed slash-command path AND on the inline-Skill-tool dispatch path. Do NOT short-circuit the gate when invoked programmatically; the dedupe `AskUserQuestion` is the user's only opportunity to disambiguate, and programmatic callers honor it identically to user-typed invocations (per the `## Inline invocation via the Skill tool` contract section's behavioral-guarantees block).
+
+**Status scope.** The query filters on `status=open` only. Closed-and-archived Issues MUST NOT trigger the dedupe prompt — those are already-fixed bugs, and surfacing them on a re-file would confuse the user into choosing "Use existing" against a closed ticket.
+
+**Match semantics.** Match is **exact-string** on `reference_materials[*].value` against the captured URL. Iterate the `reference_materials` array entries on each candidate ticket (a Bee may carry multiple) and consider the ticket a match if ANY entry's `value` equals the URL byte-for-byte. Do NOT introduce trailing-slash normalization, host-case normalization, query-string stripping, or any other fuzzy-match heuristic — exact-string is intentional and matches what sub-step D (`--reference-materials`) writes today.
+
+##### A.1. Run the bees query (two-step canonical path)
+
+The query path defaults to a **two-step canonical fallback**. The implementer MAY substitute a single freeform-query that places `reference_materials` in a stage-filter clause if and only if the installed bees CLI supports `reference_materials` as a stage-filter term — verify against `bees execute-freeform-query --help` at implementation time. As of this skill's authoring time, `reference_materials` is NOT a supported stage-filter term (the supported terms are `type`, `status`, `title~`, `tag~`, `id`, `parent`, `guid`, `hive`, `hive~` plus the four graph stages), and the `report:` clause likewise rejects `reference_materials`, so a single freeform-query that *reports* `reference_materials` is also not viable. Both reads of `reference_materials` therefore go through `bees show-ticket`. If a future bees CLI version adds `reference_materials` to the stage-filter vocabulary, the one-step path becomes viable — preserve the same observable contract (`status=open` scope, exact-string match on `reference_materials[*].value`, three-way `AskUserQuestion` on hit) when switching paths.
+
+Step 1 — enumerate all open Issues by ID, title, and status. The single-quoted YAML literal works identically on POSIX bash/zsh and Windows PowerShell, so a single labeled block covers both:
+
+```bash
+# POSIX (bash / zsh) and Windows (PowerShell) — single-quoted YAML literal works identically:
+bees execute-freeform-query --query-yaml 'stages:
+  - [type=bee, hive=issues, status=open]
+report: [title, ticket_status]'
+```
+
+Step 2 — batch-read the candidate tickets' bodies (which include `reference_materials`) and filter client-side. The `bees show-ticket --ids <id1> <id2> ...` invocation is OS-agnostic but the labeled comment line is required per design rule 2:
+
+```bash
+# POSIX (bash / zsh):
+bees show-ticket --ids <id1> <id2> ...
+```
+
+```powershell
+# Windows (PowerShell):
+bees show-ticket --ids <id1> <id2> ...
+```
+
+Parse the JSON result, iterate each ticket's `reference_materials` array, and keep tickets where any entry's `value` equals the captured URL exactly. The result is a (possibly empty) list of matching open Issue tickets, each with its `ticket_id`, `title`, and `ticket_status` already in hand from Step 1's `report:` projection.
+
+##### A.2. Disambiguate via `AskUserQuestion`
+
+Three branches based on the match-list size:
+
+- **Zero matches.** Skip the prompt and continue to Sub-step B (Author a thin Issue body). The skill behaves exactly as it did before this dedupe check existed.
+- **Exactly one match.** Issue an `AskUserQuestion` with exactly three finite choices (`AskUserQuestion` is multi-choice only — no fake free-text option per CLAUDE.md `## AskUserQuestion usage`):
+  - **`Use existing`** — return the matched ticket ID without invoking `bees create-ticket`. The inline-invocation return shape carries `action=reused-existing` (lowercase, hyphenated — exact spelling, matching the `## Inline invocation via the Skill tool` contract). Skip Sub-steps B, C, D and proceed to Step 4 (commit) — though there is nothing new to commit on this path, the report-back at Step 5 still runs and surfaces "Reusing existing Issue <id>".
+  - **`File new`** — proceed with Sub-steps B, C, D as if no match existed. The return shape carries `action=created`.
+  - **`Cancel`** — exit the skill cleanly. See "Cancel exit hygiene" below.
+
+  The prompt body MUST include the matched ticket's ID, title, and status so the user can decide intelligently. Example prompt-body shape (literal — adjust the values to the matched ticket):
+
+  ```
+  An open Issue already references this URL:
+
+    ID:     b.<id>
+    Title:  <matched ticket title>
+    Status: open
+
+  Use the existing Issue, file a new one anyway, or cancel?
+  ```
+
+- **More than one match** (rare, but possible from prior partial runs). Issue a single `AskUserQuestion` with one option per candidate plus `File new` and `Cancel`. `AskUserQuestion` permits up to 4 questions per call but does not bound option count per question, so any reasonable candidate set fits. Use a short option-label format like `Use existing (b.<id>)` so each label fits the option-label budget; surface the long-form ID/title/status for every candidate in the prompt body. Picking any `Use existing (b.<id>)` returns that ticket's ID with `action=reused-existing`; `File new` and `Cancel` behave as in the single-match branch.
+
+##### A.3. Cancel exit hygiene
+
+When the user picks `Cancel`, exit the skill cleanly **before any mutation**:
+
+- Do NOT invoke `bees create-ticket` (or any other mutating bees command).
+- Do NOT write a scratch body file under `<tempdir>/.quorum/` — Sub-step D's `--body-file` fallback is not reached on this path; create no file the OS will inherit.
+- Do NOT proceed to Step 4 (commit) — there is nothing to commit.
+- Do NOT proceed to Step 5 (report back) — Cancel is a clean abort, not a successful filing.
+
+The Cancel branch leaves the bees workspace and the host repo byte-for-byte unchanged from before the skill ran.
+
+#### B. Author a thin Issue body (2-3 sentences)
 
 The Issue body in external-reference mode is a thin summary, **not** the full body-template from Step 3a. Two sources for the summary, in order of preference:
 
@@ -246,7 +318,7 @@ The `external reference` line is a convention, not a contract — `reference_mat
 
 **Title.** Pick a concise title (under 80 characters) that names what the upstream issue is about, not just the URL slug. If the user supplied a title or the conversation distilled to one, prefer that; otherwise summarize from the upstream content (or ask the user in prose for a title if neither source is available).
 
-#### B. Pick a resolver name (URL-pattern heuristic)
+#### C. Pick a resolver name (URL-pattern heuristic)
 
 The resolver name written into `reference_materials` is selected by URL pattern matching. The bees CLI may not yet have a concrete resolver implementation registered for these names — that is intentional and out of scope for this skill (concrete resolvers are tracked separately as their owners materialize). The skill writes the canonical resolver name regardless; downstream `/quo-fix-issue`'s PM and Engineer fall back to fetching the URL via `WebFetch` until a real resolver lands.
 
@@ -262,11 +334,11 @@ The URL host and path determine the resolver name — match on host first, then 
 
 **Concrete-resolver gap (intentional).** No concrete `github-issue`, `linear-issue`, or `url` resolver exists in the bees CLI today. That is a separate piece of work, owned by whoever builds each resolver. Until those land, the workflow falls back to `WebFetch` on the URL whenever the upstream content is needed — see `agents/pm.md` and `agents/engineer.md` for the fetch convention. Writing the canonical resolver name now (rather than e.g. always writing `url`) future-proofs existing Issue tickets so they do not need to be migrated when concrete resolvers ship.
 
-#### C. Run `bees create-ticket` with `--reference-materials`
+#### D. Run `bees create-ticket` with `--reference-materials`
 
 Unlike the in-conversation capture path, the external-reference branch passes the body inline (it is short, one-line-ish) and the URL as a `--reference-materials` JSON argument. No temp body file is written on this path.
 
-The exception: if the thin body authored in (A) contains anything that would trip Claude Code's command-injection guard — a newline followed by a `#` heading, backticks, or shell-special characters — fall back to the temp-file convention from Step 3c (write the body under `<tempdir>/.quorum/bees-body-<short-suffix>.md` after creating the namespaced subdir, then pass `--body-file <path>`). Most thin bodies will fit on `--body` cleanly; the temp-file fallback is the safety valve.
+The exception: if the thin body authored in (B) contains anything that would trip Claude Code's command-injection guard — a newline followed by a `#` heading, backticks, or shell-special characters — fall back to the temp-file convention from Step 3c (write the body under `<tempdir>/.quorum/bees-body-<short-suffix>.md` after creating the namespaced subdir, then pass `--body-file <path>`). Most thin bodies will fit on `--body` cleanly; the temp-file fallback is the safety valve.
 
 ```bash
 # POSIX (bash / zsh) — inline-body path:
@@ -341,7 +413,7 @@ Show the user:
 - The title
 - A one-line summary of what was filed
 - Whether the issue captured a doc-divergence observation (the `## Doc divergence noted` section in the body) so the user knows `/quo-fix-issue`'s doc-sync pass will consume it.
-- If the issue was filed in external-reference mode (bare URL, `--reference`, or `--from-github`): the referenced URL and the resolver name written into `reference_materials` (see sub-step B for how the resolver name is selected from the URL pattern), so the user knows `/quo-fix-issue` will fetch upstream content rather than treat the body as the spec.
+- If the issue was filed in external-reference mode (bare URL, `--reference`, or `--from-github`): the referenced URL and the resolver name written into `reference_materials` (see sub-step C for how the resolver name is selected from the URL pattern), so the user knows `/quo-fix-issue` will fetch upstream content rather than treat the body as the spec.
 
 When invoked inline via the Skill tool, the report shape is structured per the contract section below — return the new (or matched-existing) Issue's ticket ID and final status as the load-bearing payload so the caller can wire its own follow-up state (e.g., kicking off a fix run against the freshly-filed Issue without prompting the user for the ticket ID).
 
@@ -357,10 +429,10 @@ The Skill-tool caller passes a single free-text `args` string carrying the URL a
 url: <url>
 
 summary:
-<OPTIONAL — pre-distilled 2-3 sentence summary of the upstream source. When present, the External-reference branch's sub-step A.2 `WebFetch` step is skipped and the supplied summary is used directly as the thin body's summary content.>
+<OPTIONAL — pre-distilled 2-3 sentence summary of the upstream source. When present, the External-reference branch's sub-step B.2 `WebFetch` step is skipped and the supplied summary is used directly as the thin body's summary content.>
 ```
 
-Any additional context fields the caller may supply — e.g., the OPTIONAL `summary:` block above, or a future caller-supplied title hint — are OPTIONAL. The skill parses the `args` string, captures the URL, and routes execution through the Mode fork's External-reference branch (an inline-invocation `url:` payload is treated as equivalent to `/quo-file-issue --reference <url>`). The resolver-name selection in sub-step B still runs unconditionally on this path; the caller does not pass the resolver name.
+Any additional context fields the caller may supply — e.g., the OPTIONAL `summary:` block above, or a future caller-supplied title hint — are OPTIONAL. The skill parses the `args` string, captures the URL, and routes execution through the Mode fork's External-reference branch (an inline-invocation `url:` payload is treated as equivalent to `/quo-file-issue --reference <url>`). The resolver-name selection in sub-step C still runs unconditionally on this path; the caller does not pass the resolver name.
 
 ### Output shape (this skill → caller)
 
@@ -378,12 +450,12 @@ The inline path is functionally identical to the user-typed slash-command path f
 
 - **User-facing AskUserQuestion gates still fire on the inline path.** The Skill-tool caller does NOT short-circuit any user-facing approval. The user owns the approval, not the caller. The gates that still fire are, at minimum:
   - The in-conversation capture path's distilled-draft `Approve` / `Revise` / `Cancel` gate (Step 1a of the "Gather issue information" step). Note: although a Skill-tool `url:` payload routes through the External-reference branch (which does not reach Step 1a in normal operation), the gate is named here for completeness — if a future inline path drops the URL flag and lands on the in-conversation capture flow, the distill gate is still expected to fire.
-  - The External-reference branch's body-confirmation step (sub-step A.3) — the path where the user is asked in prose for a one- or two-sentence summary when neither prior conversation nor `WebFetch` produces a useful summary. When the caller supplies the OPTIONAL `summary:` block in the `args` payload, sub-step A.2's `WebFetch` is skipped and the supplied summary is used directly, which routinely satisfies sub-step A's summary need without reaching the prose ask in A.3 — but the branching logic itself is not bypassed by the inline path.
-  - The dedupe disambiguation gate. When the Step 2 / pre-create dedupe lookup matches an existing open Issue with the same URL or near-duplicate scope, the user is asked via `AskUserQuestion` whether to use the existing ticket, file anyway, or cancel. The inline path does not bypass this gate; the caller waits for the user's choice and then receives the appropriate `action` value (`reused-existing` on `Use existing`, `created` on `File anyway`) in the output payload.
+  - The External-reference branch's body-confirmation step (sub-step B.3) — the path where the user is asked in prose for a one- or two-sentence summary when neither prior conversation nor `WebFetch` produces a useful summary. When the caller supplies the OPTIONAL `summary:` block in the `args` payload, sub-step B.2's `WebFetch` is skipped and the supplied summary is used directly, which routinely satisfies sub-step B's summary need without reaching the prose ask in B.3 — but the branching logic itself is not bypassed by the inline path.
+  - The dedupe disambiguation gate. When the External-reference branch's Sub-step A.2 dedupe disambiguation matches an existing open Issue with the same URL or near-duplicate scope, the user is asked via `AskUserQuestion` whether to use the existing ticket, file anyway, or cancel. The inline path does not bypass this gate; the caller waits for the user's choice and then receives the appropriate `action` value (`reused-existing` on `Use existing`, `created` on `File anyway`) in the output payload.
 - **Idempotency.** Re-running the skill against the same URL produces an idempotent result — a duplicate file does NOT create a duplicate ticket. The dedupe path returns the existing ticket ID with `action=reused-existing`. This is the observable behavior callers and reviewers can verify by invoking the skill twice in a row against the same URL.
 - **Lifecycle.** The Issue ticket is created at `status=open` (the only status the Issues hive supports for new tickets). The inline path does NOT flip the Issue to `done` — the close-out flip is owned by `/quo-fix-issue` per its Section 6 close-out, not by this skill or its callers. `issue_status` in the output payload is therefore always `open` on a successful return.
-- **Scratch-file convention.** When the External-reference branch falls back to the `--body-file` path (sub-step C's safety valve for thin bodies that contain `#` or shell-special characters), the scratch file is written under `<tempdir>/.quorum/` with create-if-absent, and is never removed. Identical to the user-typed path.
+- **Scratch-file convention.** When the External-reference branch falls back to the `--body-file` path (sub-step D's safety valve for thin bodies that contain `#` or shell-special characters), the scratch file is written under `<tempdir>/.quorum/` with create-if-absent, and is never removed. Identical to the user-typed path.
 
 ### Cross-reference
 
-The gate set named under "User-facing AskUserQuestion gates still fire on the inline path" is keyed off the gates that fire in the existing skill flow — Step 1a's distill gate, sub-step A.3's prose confirmation, and the dedupe disambiguation gate. If a future Task adds, removes, or renames a user-facing gate in this skill, this contract section MUST be revised in lockstep so callers' expectations match the skill's actual behavior. Likewise, the `action` vocabulary (`created` / `reused-existing`) is a published string contract — changing the spelling on either side without updating the other will silently break dedupe-aware callers.
+The gate set named under "User-facing AskUserQuestion gates still fire on the inline path" is keyed off the gates that fire in the existing skill flow — Step 1a's distill gate, sub-step B.3's prose confirmation, and the dedupe disambiguation gate (sub-step A.2). If a future Task adds, removes, or renames a user-facing gate in this skill, this contract section MUST be revised in lockstep so callers' expectations match the skill's actual behavior. Likewise, the `action` vocabulary (`created` / `reused-existing`) is a published string contract — changing the spelling on either side without updating the other will silently break dedupe-aware callers.
