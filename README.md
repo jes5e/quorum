@@ -9,9 +9,6 @@ A portable [Claude Code](https://claude.com/claude-code) skill set for running a
 /quo-plan  or  /quo-plan-from-specs  ← from an idea  /  from PRD+SDD on disk
         │
         ▼
-    Plan Bee
-        │
-        ▼
 /quo-breakdown-epic                  ← Epic → Tasks/Subtasks
         │
         ▼
