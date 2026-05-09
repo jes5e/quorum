@@ -420,7 +420,7 @@ Once the issue is fixed:
       ```
 
       **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue. The per-issue scoping `<issue-id>` on the `git add` path also keeps drift in *other* issues' on-disk records out of this commit; if other issues have stale working-tree state, that gets caught by the next `/quo-fix-issue` run on those issues, not swept in here.
-   4. Commit with a descriptive message per system/project git guidance.
+   4. Commit with a descriptive message per system/project git guidance. The commit's subject line MUST follow the literal format `Fix issue: <title> (<issue-id>)` (e.g., `Fix issue: Tighten dispatch contract gap (b.abc)`) — Section 8's post-hoc SHA-derivation fallback `--grep`-filters the session log against the literal `(<issue-id>)` token in this subject, so the parenthesized-ID suffix is a load-bearing contract, not a stylistic preference.
 3. Mark the per-issue TaskList tasks (named per Section 3's issue-scoped naming convention — `engineer-<issue-id>`, `test-writer-<issue-id>`, `doc-writer-<issue-id>`, `pm-<issue-id>` if dispatched, plus the reviewer tasks from Section 4: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`) as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns.
 4. Output the summary:
 
@@ -444,7 +444,7 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, and reviewer verdicts from the whole run; that context biases it toward "did the four phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the issue body and nothing else — that's the point.
 
-1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when quo-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Step 7.2). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
+1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when quo-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Section 6 step 2.4). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
 
 2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. The agent will not see anything else from this session, so the prompt must be self-contained. Starting skeleton (substitute `<pre-session-sha>` and the issue ID list before sending):
 
@@ -531,19 +531,19 @@ The recommendation is scoped to the `github-issue` resolver only. `linear-issue`
 
 4. **Capture the per-issue commit SHA** from Section 6 step 2.4's commit step. Two equivalent paths to obtain it:
    - **Track at commit time (preferred).** Record the commit SHA the moment Section 6 step 2.4's `git commit` returns, keyed by issue ID, and re-use the captured SHA here. If the captured SHA is the full 40-char form, abbreviate it (e.g., `git rev-parse --short <full-sha>`) before emitting in step 5 — short enough to read at a glance, long enough to be unambiguous in any reasonable repo.
-   - **Re-derive post-hoc.** If not tracked at commit time, resolve the commit per Issue by `--grep`-filtering the session's commits against the per-issue commit-message convention from Section 6 step 2.4 (every per-issue commit's subject begins with `Fix issue: <title> (<issue-id>)`). Run, once per fixed Issue:
+   - **Re-derive post-hoc.** If not tracked at commit time, resolve the commit per Issue by `--grep`-filtering the session's commits against the per-issue commit-message contract anchored at Section 6 step 2.4 (every per-issue commit's subject ends with the literal `(<issue-id>)` suffix). Run, once per fixed Issue:
 
      ```bash
      # POSIX (bash / zsh):
-     git log --reverse --format=%h --grep='Fix issue:.*(<issue-id>)' <pre-session-sha>..HEAD
+     git log --reverse --format=%h -F --grep='(<issue-id>)' <pre-session-sha>..HEAD
      ```
 
      ```powershell
      # Windows (PowerShell):
-     git log --reverse --format=%h --grep='Fix issue:.*(<issue-id>)' <pre-session-sha>..HEAD
+     git log --reverse --format=%h -F --grep='(<issue-id>)' <pre-session-sha>..HEAD
      ```
 
-     Substitute the literal Issue ID (e.g., `b.abc`) for `<issue-id>` and the session-start SHA captured at Section 7 step 1 for `<pre-session-sha>`. Each invocation returns at most one match — the per-issue commit for that Issue — and `%h` emits the abbreviated SHA directly so no follow-up `git rev-parse --short` step is needed. Scoping each lookup by `(<issue-id>)` is load-bearing: it filters out any extra commits Section 7 step 6's "Fix in this session" branch may have landed in the same `<pre-session-sha>..HEAD` window, which would otherwise mis-pair against the fixed-issue list under a positional bulk-log pairing.
+     Substitute the literal Issue ID (e.g., `b.abc`) for `<issue-id>` and the session-start SHA captured at Section 7 step 1 for `<pre-session-sha>`. The `-F` flag (`--fixed-strings`) makes the entire grep pattern literal — the `.` in the ID and the surrounding `(` `)` parens match as themselves rather than as regex metacharacters, removing any regex-vs-literal ambiguity for future maintainers. Each invocation returns at most one match — the per-issue commit for that Issue — and `%h` emits the abbreviated SHA directly so no follow-up `git rev-parse --short` step is needed. Scoping each lookup by the parenthesized `(<issue-id>)` token is load-bearing: the literal parens (anchored as a contract by Section 6 step 2.4) make the token unique per issue, filtering out any extra commits Section 7 step 6's "Fix in this session" branch may have landed in the same `<pre-session-sha>..HEAD` window, which would otherwise mis-pair against the fixed-issue list under a positional bulk-log pairing.
 
 5. **Append a bullet** of the form `gh issue close <n> --repo <owner>/<repo> -c "Fixed in <sha>."` to the recommendation block, one bullet per matching `reference_materials` entry.
 

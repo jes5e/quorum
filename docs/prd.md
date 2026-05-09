@@ -217,7 +217,7 @@ quorum exists as an alternative to [Apiary](https://github.com/gabemahoney/apiar
 - Option labels are identical across both skills: **"Stop after each Epic"** (Mode 1) and **"Work through all Epics"** (Mode 2).
 - The captured choice persists for the rest of the run; neither skill re-prompts at subsequent Epic boundaries.
 - Mode 2 still pauses on the orchestrator-enforced stops listed in each skill's prose: `/quo-execute`'s drafted-or-blocked-on-drafted Epic stop in Section 4.2 branch 1, the Epic-boundary context-clear discipline before the next Epic begins, and any final reviewer-surfaced blocker from Sections 5 and 6; `/quo-breakdown-epic`'s drafted-siblings-with-reshape-risk case in Section 7 and any final reviewer-surfaced blocker.
-- README skill-table rows for `/quo-breakdown-epic` and `/quo-execute` mention the two-mode choice in identical phrasing (one short clause per row).
+- README skill-table rows for `/quo-breakdown-epic` and `/quo-execute` mention the two-mode choice with near-identical phrasing — the named-mode fragment **"Mode 1 (Stop after each Epic) or Mode 2 (Work through all Epics)"** is identical across both rows, and the surrounding scope-clause wording reflects each skill's loop-scope semantics ("when more than one Epic *remains* in scope" for `/quo-breakdown-epic`, which loops over remaining drafted siblings; "when more than one Epic *is* in scope" for `/quo-execute`, which operates over the full Epic set under the Bee).
 
 **Out of scope.**
 
