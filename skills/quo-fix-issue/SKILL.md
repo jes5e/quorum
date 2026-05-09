@@ -432,7 +432,7 @@ Once the issue is fixed:
 **Ignored Review Feedback**: [list items that were flagged but not addressed, or "None"]
 ```
 
-5. In batch mode (`all` or list mode): proceed to the next issue in the batch (go back to step 2). In single mode: continue to step 8.
+5. In batch mode (`all` or list mode): proceed to the next issue in the batch (go back to step 2). In single mode: continue to step 7.
 
 ### 7. Post-Completion Review
 
@@ -500,3 +500,50 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
    - **Fix in this session**: Dispatch fresh ephemeral Agents per Section 3's dispatch shape (Engineer / Test Writer / Doc Writer as needed) to address the findings. Stay in delegate mode. Section 3's TaskList naming convention is issue-scoped (`<role>-<issue-id>`) and does not cover post-completion follow-up Agents that span the whole session, so for these dispatches use the **post-completion-scoped** name `<role>-postcomp-<n>`, where `<n>` is the 1-based index of the finding being addressed in the fresh reviewer's numbered list (e.g., `engineer-postcomp-1`, `doc-writer-postcomp-2`, `engineer-postcomp-3`). The per-finding discriminator is load-bearing: Section 3's "exactly one TaskList task per Agent" rule still applies here, so two findings that each need an Engineer follow-up must dispatch to distinct task names (`engineer-postcomp-1` and `engineer-postcomp-3`, say) rather than colliding on a shared `engineer-postcomp`. When each follow-up Agent returns, persist the result the same way Section 3's reconcile-on-completion step does: confirm any bees ticket transitions the worker committed to, then mark the corresponding `<role>-postcomp-<n>` TaskList task `completed` and clear it from the active set (mirroring Section 6 step 3's per-issue close-out). After fixes are done, commit.
    - **File as issue tickets**: For each issue, invoke `/quo-file-issue` with the issue description. Report the created ticket IDs to the user. If the orchestrator created any TaskList progress entries during this Section 7 pass (for example, to track per-finding filing progress), use the same per-finding discriminator pattern as the "Fix in this session" branch — name each entry `file-issue-postcomp-<n>` where `<n>` is the 1-based index of the finding being filed — and mark them `completed` and clear them from the active set before exiting, the same close-out discipline as the "Fix in this session" branch.
    - **Skip**: Done.
+
+### 8. Recommend upstream GitHub close commands
+
+After Section 7's post-completion review either reports clean (step 4) or the per-finding follow-ups in step 6 close out, and **before yielding the turn**, emit a copy-paste-ready recommendation block of `gh issue close ...` commands for each fixed Issue whose `reference_materials` carries a `github-issue` resolver. **Pure recommendation — the skill NEVER runs `gh issue close` itself.** No `gh` auth assumption is baked into the workflow; the user copies the command(s) and runs them from a machine where they're authenticated.
+
+The recommendation is scoped to the `github-issue` resolver only. `linear-issue` close requires Linear's own CLI/API which isn't bundled with the workflow; the generic `url` resolver has no close concept. Adding either to this block is a separate Issue once the corresponding integration is decided — do **not** generalize the recommendation to those resolvers here.
+
+**Procedure:**
+
+1. **Iterate the run's fixed-issue list** — the IDs of Issues that this run actually marked `done` via Section 6 (single-issue mode: one ID; list / `all` mode: the full session list, in fixed order). Issues that were skipped (per Section 2's blocked-issue handling in batch mode) or never reached (e.g., `bees show-ticket` validation soft-failed in Section 1) are NOT part of this list.
+
+2. **For each fixed Issue, read its `reference_materials`.** The orchestrator captured this earlier in Section 2 / Section 3's dispatch reads — re-use that captured value if still in context. If not, re-read via:
+
+   ```bash
+   # POSIX (bash / zsh):
+   bees show-ticket --ids <issue-id>
+   ```
+
+   ```powershell
+   # Windows (PowerShell):
+   bees show-ticket --ids <issue-id>
+   ```
+
+   `reference_materials` is a JSON array of `{value, resolver}` objects; an empty / null value means the Issue was filed via the in-conversation default capture mode (no upstream URL) and contributes nothing to this block.
+
+3. **For each `reference_materials` entry whose `resolver == "github-issue"`**, parse `value` against the canonical GitHub Issue URL pattern `https://github.com/<owner>/<repo>/issues/<n>` (HTTP and HTTPS both acceptable; trailing slashes / fragments / query strings ignored) to extract `<owner>`, `<repo>`, and `<n>`. If the URL does not match this shape, skip the entry — by construction `/quo-file-issue`'s `github-issue` resolver writes only canonical Issue URLs, so a mismatch indicates a malformed entry rather than a legitimate variant to handle.
+
+4. **Capture the per-issue commit SHA** from Section 6 step 2.4's commit step. Two equivalent paths to obtain it:
+   - **Track at commit time (preferred).** Record the commit SHA the moment Section 6 step 2.4's `git commit` returns, keyed by issue ID, and re-use the captured SHA here. If the captured SHA is the full 40-char form, abbreviate it (e.g., `git rev-parse --short <full-sha>`) before emitting in step 5 — short enough to read at a glance, long enough to be unambiguous in any reasonable repo.
+   - **Re-derive post-hoc.** If not tracked at commit time, resolve the commit by walking back from `HEAD` over the session's commits — there is one commit per fixed Issue per Section 6 step 2 (in fixed-list order, matching the run's fixed-issue iteration order). Use `git log --reverse --format=%h <pre-session-sha>..HEAD` (the same `<pre-session-sha>` captured at Section 7 step 1) to enumerate the session's commits in fix order — `--reverse` flips `git log`'s default newest-first ordering to oldest-first so position 1 in the output pairs with the first-fixed Issue, and `%h` emits the abbreviated SHA directly so no follow-up `git rev-parse --short` step is needed. Pair the output to the fixed-issue list by position.
+
+5. **Append a bullet** of the form `gh issue close <n> --repo <owner>/<repo> -c "Fixed in <sha>."` to the recommendation block, one bullet per matching `reference_materials` entry.
+
+6. **Suppress the entire recommendation block** if zero bullets were collected — keeps the trace clean for users who never used the URL path. Equivalently: emit nothing on runs where every fixed Issue's `reference_materials` is null/empty or carries only non-`github-issue` resolvers.
+
+**Output shape (when at least one bullet was collected):**
+
+```
+Upstream GitHub Issues to consider closing:
+
+- gh issue close <n1> --repo <owner1>/<repo1> -c "Fixed in <commit-sha-1>."
+- gh issue close <n2> --repo <owner2>/<repo2> -c "Fixed in <commit-sha-2>."
+```
+
+Bullet ordering matches the run's fixed-issue iteration order (single-issue mode: one bullet; list / `all` mode: bullets in fixed-list order). When a single fixed Issue carries multiple `github-issue` entries in `reference_materials` (uncommon but legal — the resolver list is an array), emit one bullet per matching entry, in array order.
+
+The recommendation block is informational console output — NOT an `AskUserQuestion` gate. The user is not asked to confirm; the orchestrator emits the block and yields.

@@ -203,3 +203,32 @@ quorum exists as an alternative to [Apiary](https://github.com/gabemahoney/apiar
 - Changes to the slow path's Hive Configuration walkthrough. The existing prompt-to-colonize-missing-hive behavior already handles the strict-subset case once the fast path declines; no behavior change there.
 - Migration tooling for older repos. Re-running `/quo-setup` is sufficient — the slow path will surface and colonize the missing canonical hive(s).
 - Changes to the canonical hive set itself. The set `{issues, plans, specs}` is fixed by `## Valid configuration` in `quo-setup/SKILL.md`; this fix only ensures the fast path enforces it.
+
+### Feature: Recommend gh issue close at end of /quo-fix-issue for github-issue resolver
+
+**What.** At the very end of a `/quo-fix-issue` run — after Section 7's post-completion review either reports clean or finishes its follow-ups, and before the orchestrator yields the turn — the skill emits a copy-paste-ready recommendation block of `gh issue close ...` commands, one bullet per fixed Issue whose `reference_materials` carries a `github-issue` resolver. Each bullet is shaped as `gh issue close <n> --repo <owner>/<repo> -c "Fixed in <commit-sha>."`, with `<owner>`, `<repo>`, and `<n>` parsed from the canonical GitHub Issue URL pattern (`https://github.com/<owner>/<repo>/issues/<n>`) stored on the Issue's `reference_materials` entry, and `<commit-sha>` the abbreviated SHA of the per-issue commit produced by Section 6. The recommendation block is suppressed entirely on runs where zero fixed Issues carry a `github-issue` resolver. Pure recommendation — the skill never runs `gh issue close` itself.
+
+**Why.** The "Auto-detect URLs in /quo-file-issue and /quo-fix-issue" feature made it frictionless to file and fix bees Issues that point at upstream GitHub Issues. After a fix lands, however, the upstream GitHub Issue still requires a manual close — and the user has to reconstruct the `gh issue close` command from memory: the issue number, the `owner/repo` slug, and the commit SHA that fixed it are all readily available to the workflow but not to the user at the end of the run. Surfacing them as a copy-paste-ready block closes the loop without baking a `gh` auth assumption into the workflow itself; the user copies the command(s) and runs them from a machine where they're authenticated.
+
+**Acceptance criteria.**
+
+- After a `/quo-fix-issue` run completes (single-issue, list, or `all` mode) and Section 7's post-completion review either reports clean or its follow-ups close out, and **before** the orchestrator yields the turn, the skill emits a recommendation block of the shape:
+
+  ```
+  Upstream GitHub Issues to consider closing:
+
+  - gh issue close <n1> --repo <owner1>/<repo1> -c "Fixed in <commit-sha-1>."
+  - gh issue close <n2> --repo <owner2>/<repo2> -c "Fixed in <commit-sha-2>."
+  ```
+- One bullet per fixed Issue whose `reference_materials[*].resolver == "github-issue"`. Bullets are emitted in the run's fixed-issue iteration order (single-issue mode: one bullet; list / `all` mode: bullets in fixed-list order). When a single fixed Issue carries multiple `github-issue` entries in `reference_materials`, one bullet is emitted per matching entry, in array order.
+- The entire recommendation block is suppressed on runs where every fixed Issue's `reference_materials` is null/empty or carries only non-`github-issue` resolvers (`linear-issue`, `url`, etc.).
+- Issues that were skipped (per Section 2's blocked-issue handling in batch mode) or never reached (e.g., upfront validation soft-failed) do not contribute bullets.
+- The recommendation block is informational console output — the user is not asked to confirm via `AskUserQuestion`; the orchestrator emits the block and yields.
+- The skill never invokes `gh issue close` itself. The block is pure recommendation; no `gh` auth assumption is baked into the workflow.
+
+**Out of scope.**
+
+- Recommendation bullets for `linear-issue` or `url` resolvers. `linear-issue` close requires Linear's own CLI/API which isn't bundled with the workflow; the generic `url` resolver has no close concept. Adding either is a separate Issue once the corresponding integration is decided.
+- The skill running `gh issue close` itself. The workflow does not assume the user is authenticated against `gh` on the same machine where `/quo-fix-issue` runs; surfacing the command for copy-paste keeps the auth surface owned by the user.
+- Verifying that the upstream Issue is actually open before recommending the close. The recommendation is unconditional on the bees side — if the upstream is already closed, `gh issue close` is a no-op and the user can ignore the bullet.
+- Equivalent recommendations on the planning side (`/quo-execute`). Plan Bees do not currently flow from upstream URLs, so there is no symmetric close-upstream gesture to make at Bee-close time.

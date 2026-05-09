@@ -2,10 +2,11 @@
 id: b.h3s
 type: bee
 title: Recommend gh issue close at end of /quo-fix-issue for github-issue resolver
-status: open
-created_at: '2026-05-08T22:53:08.904680'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-08T22:53:08.904680'
+status: done
+schema_version: '0.1'
 guid: h3s3hv5hkb61hnafroz2qn8uyajbmnc5
 ---
 
@@ -74,4 +75,3 @@ Why end of Section 7, not end of Section 6? Section 6 is per-issue and runs once
 **Rejected alternative — emit the recommendation per-issue inside Section 6 instead of once at end of Section 7.** Per-issue makes the run noisy in batch mode (many fixed Issues → many `gh close` commands scattered through the trace). End-of-run consolidates the block as the final session output, matching the user expectations from the inspiring session.
 
 **Rejected alternative — auto-close after explicit user confirmation via `AskUserQuestion` at end of Section 7.** Tempting because it preserves user control while reducing friction. Rejected because (a) it still requires `gh` auth assumption on every workflow machine; (b) it adds an `AskUserQuestion` gate to every batch run, which is friction for users who already know they want to close upstream; (c) a pure recommendation block is a strict superset of the auto-close path (the user can copy/run the command, OR not). Lighter touch wins.
-
