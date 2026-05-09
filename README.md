@@ -98,6 +98,18 @@ In any repo where you want to use the workflow, run:
 
 It will colonize hives (Plans + Issues + Specs), write a `## Documentation Locations` and `## Build Commands` section to CLAUDE.md, and offer to bootstrap baseline PRD/SDD docs from your existing codebase. Safe to re-run if you skip a step and want to come back to it later.
 
+## File and fix issues from a GitHub URL
+
+Both `/quo-file-issue` and `/quo-fix-issue` accept a bug-tracker URL (GitHub Issue, Linear ticket, internal bug tracker, Slack archive) directly as an argument. The URL is auto-detected, a thin Issue ticket is filed with `reference_materials` pointing at the upstream resource, and the upstream body is fetched via `WebFetch` when the issue is picked up — no copy-pasting the report into a ticket body.
+
+```
+/quo-file-issue https://github.com/owner/repo/issues/123         # just file it
+/quo-fix-issue  https://github.com/owner/repo/issues/123         # file and fix in one go
+/quo-fix-issue  b.abc https://github.com/owner/repo/issues/456   # mix existing bees IDs and URLs
+```
+
+Re-running on the same URL dedupes against the existing Issue rather than creating a duplicate.
+
 ## The skills
 
 ### Skills you invoke
