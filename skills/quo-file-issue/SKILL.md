@@ -267,7 +267,7 @@ Three branches based on the match-list size:
 
 - **Zero matches.** Skip the prompt and continue to Sub-step B (Author a thin Issue body). The skill behaves exactly as it did before this dedupe check existed.
 - **Exactly one match.** Issue an `AskUserQuestion` with exactly three finite choices (`AskUserQuestion` is multi-choice only — no fake free-text option per CLAUDE.md `## AskUserQuestion usage`):
-  - **`Use existing`** — return the matched ticket ID without invoking `bees create-ticket`. The inline-invocation return shape carries `action=reused-existing` (lowercase, hyphenated — exact spelling, matching the `## Inline invocation via the Skill tool` contract). Skip Sub-steps B, C, D and proceed to Step 4 (commit) — though there is nothing new to commit on this path, the report-back at Step 5 still runs and surfaces "Reusing existing Issue <id>".
+  - **`Use existing`** — return the matched ticket ID without invoking `bees create-ticket`. The inline-invocation return shape carries `action=reused-existing` (lowercase, hyphenated — exact spelling, matching the `## Inline invocation via the Skill tool` contract). Skip Sub-steps B, C, D **and** skip Step 4 (commit) — no new ticket file was created and no `git add` / `git commit` runs on this path, which would either fail with "nothing to commit" or silently fold unrelated staged changes into a misleading `File issue: <title>` commit. Proceed directly to Step 5 (report back), which surfaces "Reusing existing Issue <id>" per Step 5's dedupe-reuse clause.
   - **`File new`** — proceed with Sub-steps B, C, D as if no match existed. The return shape carries `action=created`.
   - **`Cancel`** — exit the skill cleanly. See "Cancel exit hygiene" below.
 
@@ -283,7 +283,7 @@ Three branches based on the match-list size:
   Use the existing Issue, file a new one anyway, or cancel?
   ```
 
-- **More than one match** (rare, but possible from prior partial runs). Issue a single `AskUserQuestion` with one option per candidate plus `File new` and `Cancel`. `AskUserQuestion` permits up to 4 questions per call but does not bound option count per question, so any reasonable candidate set fits. Use a short option-label format like `Use existing (b.<id>)` so each label fits the option-label budget; surface the long-form ID/title/status for every candidate in the prompt body. Picking any `Use existing (b.<id>)` returns that ticket's ID with `action=reused-existing`; `File new` and `Cancel` behave as in the single-match branch.
+- **More than one match** (rare, but possible from prior partial runs). Issue a single `AskUserQuestion` with one option per candidate plus `File new` and `Cancel`. `AskUserQuestion` permits up to 4 questions per call but does not bound option count per question, so any reasonable candidate set fits. Use a short option-label format like `Use existing (b.<id>)` so each label fits the option-label budget; surface the long-form ID/title/status for every candidate in the prompt body. Picking any `Use existing (b.<id>)` returns that ticket's ID with `action=reused-existing` and follows the same dedupe-reuse skip-Step-4 path as the single-match `Use existing` branch above (no `git add` / `git commit`, proceed directly to Step 5); `File new` and `Cancel` behave as in the single-match branch.
 
 ##### A.3. Cancel exit hygiene
 
@@ -408,12 +408,21 @@ If the Issues hive lives outside the repo, no git commit is needed here — the 
 
 ### 5. Report back
 
-Show the user:
+Two report shapes based on which path produced the result:
+
+**Happy path — newly-filed Issue (`action=created`).** Show the user:
 - The ticket ID
 - The title
 - A one-line summary of what was filed
 - Whether the issue captured a doc-divergence observation (the `## Doc divergence noted` section in the body) so the user knows `/quo-fix-issue`'s doc-sync pass will consume it.
 - If the issue was filed in external-reference mode (bare URL, `--reference`, or `--from-github`): the referenced URL and the resolver name written into `reference_materials` (see sub-step C for how the resolver name is selected from the URL pattern), so the user knows `/quo-fix-issue` will fetch upstream content rather than treat the body as the spec.
+
+**Dedupe-reuse path — matched existing Issue (`action=reused-existing`).** When the External-reference branch's Sub-step A.2 disambiguation returned `Use existing` (single-match) or any `Use existing (b.<id>)` (multi-match), surface the reuse explicitly rather than the file-a-new-ticket bullet list. Show the user:
+- A `Reusing existing Issue <id>` headline naming the matched ticket ID.
+- The matched ticket's title and status (`open`).
+- The dedupe match — i.e. the URL that matched the existing ticket's `reference_materials[*].value`, so the user can confirm the reuse decision was made against the right ticket.
+
+The dedupe-reuse report-back replaces the happy-path bullets; do not also render the file-a-new-ticket summary on this path (no new ticket was filed, and no doc-divergence section was authored on this run).
 
 When invoked inline via the Skill tool, the report shape is structured per the contract section below — return the new (or matched-existing) Issue's ticket ID and final status as the load-bearing payload so the caller can wire its own follow-up state (e.g., kicking off a fix run against the freshly-filed Issue without prompting the user for the ticket ID).
 
