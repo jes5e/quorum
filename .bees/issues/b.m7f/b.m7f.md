@@ -2,10 +2,11 @@
 id: b.m7f
 type: bee
 title: Surface a one-time Mode 1 (stop per Epic) vs Mode 2 (work through all) choice at start of /quo-breakdown-epic and /quo-execute runs
-status: open
-created_at: '2026-05-08T20:44:46.070740'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-08T20:44:46.070740'
+status: done
+schema_version: '0.1'
 guid: m7fj9eppze2kymd37spq84t5tnkqi3x9
 ---
 
@@ -44,4 +45,3 @@ The choice is made once, up front, and applies to the rest of the run.
 This issue is a refinement of an existing pattern: the user has been overriding the default per-Epic prompt via personal memory entries ("Auto-chain breakdown across Epics in /quo-breakdown-epic", "bees-execute auto-continue across Epics") for some time. The behavior the user wants exists; the gap is that it's only reachable via memory and isn't a first-class user-facing affordance. Surfacing it as an explicit mode choice solves the discoverability and per-session-control problems without changing the underlying loop behavior of either skill.
 
 The "important reason to stop" qualifier is load-bearing: Mode 2 is not "skip every interactive prompt" — it's "skip discretionary continue-or-not prompts; preserve every prompt where proceeding without user input would risk concrete downstream cost (stale Tasks, broken Epics, missed contract reshape)."
-

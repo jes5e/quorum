@@ -82,6 +82,19 @@ dependency chain and recommend the one that makes the most sense:
   - Epic 2
   - etc
 
+### 1.5 Pick a multi-Epic run mode (only when more than one Epic remains)
+
+After the Epic-to-break-down has been picked but **before** any breakdown work begins, check the count of `drafted` Epics that remain under the parent Bee from the query already run above (the `[parent=<bee-id>, type=t1, status=drafted]` query). If two or more drafted Epics remain (i.e., there is at least one drafted sibling beyond the one just selected), present a one-time mode choice with `AskUserQuestion`:
+
+- Question: "How should this run handle multiple Epics? (You will not be asked again this run.)"
+- Options:
+  - **Stop after each Epic** — pause at every Epic boundary so you can review and approve continuation. Today's per-Epic confirmation behavior — Section 7's full menu fires after each Epic is broken down.
+  - **Work through all Epics** — auto-continue across Epics; only stop when proceeding without your input would risk concrete downstream cost. Specifically, Mode 2 still pauses on (a) Section 7's drafted-siblings-with-reshape-risk case (the *"execute this Epic first; defer downstream breakdown"* recommendation, which is a contract-stability concern) and (b) any final reviewer-surfaced blocker the orchestrator escalates.
+
+Capture the user's choice once and store it as the **multi-Epic run mode** for the rest of this run. The choice persists across Epic boundaries — do not re-prompt at every Epic. Section 7's next-Epic loop branches on this captured value.
+
+If only one drafted Epic remains under the Bee at the time this step runs, **skip the question entirely** — there is no sibling to chain to, and Section 7's menu still has the same six options for the user to pick from manually.
+
 ### 2. Fetch and Analyze Epic
 
 Fetch full Epic details using the bees CLI to understand scope of total work.
@@ -571,6 +584,19 @@ The "Recommended" badge depends on two facts about the parent Bee: whether any d
    - **Drafted-siblings-remain, no-reshape-risk case** (drafted siblings exist; either none depend on the just-broken-down Epic, or every dependency is pure ordering coupling): Recommended option is **"In a fresh session, break down the next Epic"**. Rationale (for the option's `Best when …` subtitle): name which siblings are still drafted (by ID) and note that their Tasks won't go stale because the dependency is pure ordering, not contract reshape.
 
 5. Surface the rationale **only** as the Recommended option's `Best when …` subtitle (one short sentence, ≤ ~150 chars so it fits the option-card UI). Do **not** emit a freestanding rationale paragraph above the `AskUserQuestion` menu — the Claude Code UI does not render long header prose reliably and has been observed truncating mid-sentence, leaving the user unable to read the reasoning. Keep any prose above the menu limited to the standing notes from the parent Step 7 section (the fresh-session note and, if applicable, the out-of-repo Plans-hive note); do not add a new paragraph that explains the Recommended pick. Do **not** surface an extra confirm-or-defer prompt the user can't meaningfully answer.
+
+#### Branch on the captured multi-Epic run mode
+
+Before rendering the menu in `#### Menu options` below, branch on the multi-Epic run mode captured in Section 1.5:
+
+- **Mode 1 (Stop after each Epic), or Section 1.5 was skipped** (only one drafted Epic remained at run start): render the full six-option menu in `#### Menu options` verbatim with the Recommended badge placed per `#### Pick the Recommended option`. This is the existing per-Epic confirmation behavior.
+
+- **Mode 2 (Work through all Epics)**: branch on which case the `#### Pick the Recommended option` logic identified for this Epic boundary:
+  - **No-drafted-siblings case** — planning is done. Render the full menu so the user can pick what to do next (typically *"In a fresh session, execute the whole Bee"*); there is no auto-continue target since no drafted Epics remain.
+  - **Drafted-siblings-remain, reshape-risk case** — this is one of Mode 2's mandatory pause cases. Render the full menu with *"In a fresh session, execute this Epic first; defer downstream breakdown"* as the Recommended pick exactly as it would in Mode 1. Mode 2 does not auto-continue past a contract-stability concern; the user must resolve the reshape risk explicitly.
+  - **Drafted-siblings-remain, no-reshape-risk case** — auto-select *"In a fresh session, break down the next Epic"* (or the same-session continuation noted in that option's prose). Do not present the menu; proceed directly to break down the next drafted Epic in this same session against the same captured Mode 2 choice. Surface a one-line note to the user announcing the auto-continue and naming the next Epic ID being broken down so they can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to break down `<next-epic-id>` — `<title>`."*).
+
+The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces: any final Bee-level reviewer finding flagged as a blocker, any genuine red flag the orchestrator surfaces during the next Epic's breakdown, and any precondition or contract violation. Mode 2 is *"skip discretionary continue-or-not prompts"*, not *"skip every interactive prompt"*.
 
 #### Menu options
 

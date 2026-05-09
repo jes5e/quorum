@@ -151,6 +151,18 @@ bees show-ticket --ids <dep-id-1> <dep-id-2> <...>
 
 For each candidate Epic, check the returned `ticket_status` of its dependencies. An Epic is workable only if all its `up_dependencies` are in `done` status. An Epic with no `up_dependencies` is unblocked by default.
 
+#### Pick a multi-Epic run mode (only when more than one Epic is in scope)
+
+Before starting work on the first Epic, count the Epics returned by the `[parent=<bee-id>, type=t1]` query above (the full set under the Bee, not just the workable subset — Epics in `ready`/`in_progress` plus any in `done` that already shipped count toward "scope"). If two or more Epics exist under the Bee — i.e., the run will cross at least one Epic boundary — present a one-time mode choice with `AskUserQuestion`:
+
+- Question: "How should this run handle multiple Epics? (You will not be asked again this run.)"
+- Options:
+  - **Stop after each Epic** — pause at every Epic boundary so you can review and approve continuation. Today's per-Epic confirmation behavior — Section 4.2 branch 2 asks *"do you want to continue with the next logical Epic?"* between each Epic.
+  - **Work through all Epics** — auto-continue across Epics; only stop when proceeding without your input would risk concrete downstream cost. Specifically, Mode 2 still pauses on (a) Section 4.2 branch 1's drafted-or-blocked-on-drafted Epic stop (no auto-continue across un-broken-down Epics — the loop must exit so the user can run `/quo-breakdown-epic`), (b) the Epic-boundary context-clear discipline before the next Epic begins, and (c) any final reviewer-surfaced blocker the orchestrator escalates from Sections 5 and 6.
+
+Capture the user's choice once and store it as the **multi-Epic run mode** for the rest of this run. The choice persists across Epic boundaries — do not re-prompt at every Epic. Section 4.2's branch-2 logic branches on this captured value.
+
+If only one Epic exists under the Bee at the time this step runs, **skip the question entirely** — there is no Epic boundary to chain across.
 
 #### Check if stale
 Be aware that the Epic was written before coding started. If the Epic has `up_dependencies` that have been completed then
@@ -397,9 +409,10 @@ Classify the result into exactly one of three branches (the status vocabulary `d
 
    Then exit the skill.
 
-2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Ask the user if they want to continue with the next logical one. If so, clear your working context per the Epic-boundary context-clear discipline established above in this Section 4.2, then return to step 2.
+2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Branch on the **multi-Epic run mode** captured in Section 2:
 
-   If the user declines, move to final Bee review.
+   - **Mode 1 (Stop after each Epic), or Section 2's mode prompt was skipped** (only one Epic existed in scope at run start): ask the user if they want to continue with the next logical Epic. If they accept, clear your working context per the Epic-boundary context-clear discipline established above in this Section 4.2, then return to step 2. If they decline, move to final Bee review.
+   - **Mode 2 (Work through all Epics)**: auto-continue. Surface a one-line note announcing the auto-continue and naming the next Epic ID being picked up so the user can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to `<next-epic-id>` — `<title>`."*). Then clear your working context per the Epic-boundary context-clear discipline established above and return to step 2. The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces — branch 1's drafted-or-blocked-on-drafted Epic stop above takes precedence (the order-of-evaluation rule already requires evaluating branch 1 first), and any final reviewer-surfaced blocker from Sections 5 and 6 still halts the run.
 
 3. **All Epics under this Bee are `done`** — proceed to Step 5 final Bee review.
 
