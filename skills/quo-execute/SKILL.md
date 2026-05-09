@@ -153,7 +153,7 @@ For each candidate Epic, check the returned `ticket_status` of its dependencies.
 
 #### Pick a multi-Epic run mode (only when more than one Epic is in scope)
 
-Before starting work on the first Epic, count the Epics returned by the `[parent=<bee-id>, type=t1]` query above (the full set under the Bee, not just the workable subset — Epics in `ready`/`in_progress` plus any in `done` that already shipped count toward "scope"). If two or more Epics exist under the Bee — i.e., the run will cross at least one Epic boundary — present a one-time mode choice with `AskUserQuestion`:
+Before starting work on the first Epic, count the Epics returned by the `[parent=<bee-id>, type=t1]` query above (the full set under the Bee, not just the workable subset — Epics in `drafted`/`ready`/`in_progress` plus any in `done` that already shipped count toward "scope"). If two or more Epics exist under the Bee **and at least one of them is workable (`ready` / `in_progress`) or `drafted`** — i.e., the run will cross at least one Epic boundary — present a one-time mode choice with `AskUserQuestion`. If every Epic under the Bee is already `done`, **skip the question entirely** — Section 4.2 branch 3 will exit the run with no Epic boundary crossed.
 
 - Question: "How should this run handle multiple Epics? (You will not be asked again this run.)"
 - Options:

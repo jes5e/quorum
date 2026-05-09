@@ -84,7 +84,35 @@ dependency chain and recommend the one that makes the most sense:
 
 ### 1.5 Pick a multi-Epic run mode (only when more than one Epic remains)
 
-After the Epic-to-break-down has been picked but **before** any breakdown work begins, check the count of `drafted` Epics that remain under the parent Bee from the query already run above (the `[parent=<bee-id>, type=t1, status=drafted]` query). If two or more drafted Epics remain (i.e., there is at least one drafted sibling beyond the one just selected), present a one-time mode choice with `AskUserQuestion`:
+After the Epic-to-break-down has been picked but **before** any breakdown work begins, check the count of `drafted` Epics that remain under the parent Bee from the query already run above (the `[parent=<bee-id>, type=t1, status=drafted]` query).
+
+**If the drafted-siblings query has not been run yet** — this happens on the `/quo-breakdown-epic <epic-id>` invocation form, where Section 1's first branch ("If caller provides Epic ID") uses the Epic ID directly without resolving the parent Bee or enumerating its drafted children — derive the parent Bee ID from the Epic by running `bees show-ticket --ids <epic-id>` and reading the response's parent field, then run the `[parent=<bee-id>, type=t1, status=drafted]` query before evaluating the gating predicate below. (On the Bee-ID and no-args paths in Section 1, the query has already been run and you can skip this derive-and-query step.)
+
+```bash
+# POSIX (bash / zsh):
+bees show-ticket --ids <epic-id>
+```
+
+```powershell
+# Windows (PowerShell):
+bees show-ticket --ids <epic-id>
+```
+
+```bash
+# POSIX (bash / zsh):
+bees execute-freeform-query --query-yaml 'stages:
+  - [parent=<bee-id>, type=t1, status=drafted]
+report: [title, up_dependencies]'
+```
+
+```powershell
+# Windows (PowerShell):
+bees execute-freeform-query --query-yaml 'stages:
+  - [parent=<bee-id>, type=t1, status=drafted]
+report: [title, up_dependencies]'
+```
+
+If two or more drafted Epics remain (i.e., there is at least one drafted sibling beyond the one just selected), present a one-time mode choice with `AskUserQuestion`:
 
 - Question: "How should this run handle multiple Epics? (You will not be asked again this run.)"
 - Options:

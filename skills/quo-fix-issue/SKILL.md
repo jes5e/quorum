@@ -531,7 +531,19 @@ The recommendation is scoped to the `github-issue` resolver only. `linear-issue`
 
 4. **Capture the per-issue commit SHA** from Section 6 step 2.4's commit step. Two equivalent paths to obtain it:
    - **Track at commit time (preferred).** Record the commit SHA the moment Section 6 step 2.4's `git commit` returns, keyed by issue ID, and re-use the captured SHA here. If the captured SHA is the full 40-char form, abbreviate it (e.g., `git rev-parse --short <full-sha>`) before emitting in step 5 — short enough to read at a glance, long enough to be unambiguous in any reasonable repo.
-   - **Re-derive post-hoc.** If not tracked at commit time, resolve the commit by walking back from `HEAD` over the session's commits — there is one commit per fixed Issue per Section 6 step 2 (in fixed-list order, matching the run's fixed-issue iteration order). Use `git log --reverse --format=%h <pre-session-sha>..HEAD` (the same `<pre-session-sha>` captured at Section 7 step 1) to enumerate the session's commits in fix order — `--reverse` flips `git log`'s default newest-first ordering to oldest-first so position 1 in the output pairs with the first-fixed Issue, and `%h` emits the abbreviated SHA directly so no follow-up `git rev-parse --short` step is needed. Pair the output to the fixed-issue list by position.
+   - **Re-derive post-hoc.** If not tracked at commit time, resolve the commit per Issue by `--grep`-filtering the session's commits against the per-issue commit-message convention from Section 6 step 2.4 (every per-issue commit's subject begins with `Fix issue: <title> (<issue-id>)`). Run, once per fixed Issue:
+
+     ```bash
+     # POSIX (bash / zsh):
+     git log --reverse --format=%h --grep='Fix issue:.*(<issue-id>)' <pre-session-sha>..HEAD
+     ```
+
+     ```powershell
+     # Windows (PowerShell):
+     git log --reverse --format=%h --grep='Fix issue:.*(<issue-id>)' <pre-session-sha>..HEAD
+     ```
+
+     Substitute the literal Issue ID (e.g., `b.abc`) for `<issue-id>` and the session-start SHA captured at Section 7 step 1 for `<pre-session-sha>`. Each invocation returns at most one match — the per-issue commit for that Issue — and `%h` emits the abbreviated SHA directly so no follow-up `git rev-parse --short` step is needed. Scoping each lookup by `(<issue-id>)` is load-bearing: it filters out any extra commits Section 7 step 6's "Fix in this session" branch may have landed in the same `<pre-session-sha>..HEAD` window, which would otherwise mis-pair against the fixed-issue list under a positional bulk-log pairing.
 
 5. **Append a bullet** of the form `gh issue close <n> --repo <owner>/<repo> -c "Fixed in <sha>."` to the recommendation block, one bullet per matching `reference_materials` entry.
 
