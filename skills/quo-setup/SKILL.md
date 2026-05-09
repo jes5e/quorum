@@ -120,21 +120,23 @@ The script emits a JSON payload to stdout:
 ```json
 {
   "repo_root": "/abs/path/to/repo",
-  "on_disk_hives": [{"name": "issues", "path": "/abs/path/to/repo/.bees/issues"}, {"name": "plans", "path": "/abs/path/to/repo/.bees/plans"}],
+  "on_disk_hives": [{"name": "issues", "path": "/abs/path/to/repo/.bees/issues"}, {"name": "plans", "path": "/abs/path/to/repo/.bees/plans"}, {"name": "specs", "path": "/abs/path/to/repo/.bees/specs"}],
   "any_registered_for_repo": false,
   "registered_hive_names": [],
   "claude_md_path": "/abs/path/to/repo/CLAUDE.md",
   "claude_md_doc_locations_set_up": true,
   "claude_md_build_commands_set_up": true,
+  "on_disk_hive_names_superset_of_canonical": true,
   "fast_path_eligible": true
 }
 ```
 
-`fast_path_eligible` is true iff **all three** of the following hold:
+`fast_path_eligible` is true iff **all four** of the following hold:
 
 1. At least one `.bees/<hive>/.hive/identity.json` marker exists in the repo (`on_disk_hives` non-empty).
 2. None of the registered scopes in `~/.bees/config.json` cover the current repo path (`any_registered_for_repo` is false).
 3. CLAUDE.md already contains both `## Documentation Locations` and `## Build Commands` sections with all required contract bullets present (`claude_md_doc_locations_set_up` and `claude_md_build_commands_set_up` are both true). Empty values for individual rows are acceptable — the user may have legitimately skipped a guide; what matters is that the section was previously walked through and the contract keys are in place.
+4. The on-disk hive names are a superset of the canonical set `{issues, plans, specs}` (`on_disk_hive_names_superset_of_canonical` is true). A strict-subset state — for example, a repo set up before `specs` became canonical that has only `.bees/issues` and `.bees/plans` committed — must NOT take the fast path: re-registering only what's on disk would silently leave the missing canonical hive(s) invisible, so the slow path's Hive Configuration walkthrough must run to surface and colonize the gap. Extra non-canonical hives on top of the canonical three are fine; only a strict subset disqualifies.
 
 If `fast_path_eligible` is **false**, fall through to the existing slow path starting at *Resolve bundled helper script paths* — there is no behavior change for first-time setup or for already-fully-configured machines.
 

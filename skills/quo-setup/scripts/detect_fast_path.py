@@ -20,6 +20,7 @@ Output schema:
       "claude_md_path": "/abs/path/CLAUDE.md",
       "claude_md_doc_locations_set_up": true|false,
       "claude_md_build_commands_set_up": true|false,
+      "on_disk_hive_names_superset_of_canonical": true|false,
       "fast_path_eligible": true|false
     }
 
@@ -27,6 +28,11 @@ Output schema:
   - on_disk_hives is non-empty
   - any_registered_for_repo is false
   - both CLAUDE.md sections are populated
+  - on-disk hive names are a superset of the canonical set
+    {"issues", "plans", "specs"} — a strict subset (e.g., a repo set up
+    before specs became canonical) falls through to the slow path so the
+    existing Hive Configuration walkthrough catches and prompts for the
+    missing canonical hive(s).
 """
 
 import argparse
@@ -57,6 +63,13 @@ REQUIRED_BUILD_KEYS = [
 
 # Build keys for which an empty value is acceptable (matches the contract in CLAUDE.md).
 BUILD_KEYS_ALLOWED_EMPTY = {"Compile/type-check"}
+
+# Canonical hive set the workflow expects on disk. A strict-subset on-disk state
+# (e.g., a repo set up before specs became canonical, with only issues + plans
+# committed) must NOT be fast-pathed — re-registering only what's on disk leaves
+# the missing canonical hive(s) invisible. Falling through to the slow path lets
+# the existing Hive Configuration walkthrough surface and colonize the gap.
+CANONICAL_HIVE_NAMES = frozenset({"issues", "plans", "specs"})
 
 
 def find_on_disk_hives(repo_root: Path):
@@ -278,11 +291,15 @@ def main():
     registered_names = find_repo_registration(config, repo_root)
     claude = inspect_claude_md(repo_root)
 
+    on_disk_names = {h["name"] for h in on_disk}
+    on_disk_hive_names_superset_of_canonical = CANONICAL_HIVE_NAMES.issubset(on_disk_names)
+
     fast_path_eligible = bool(
         on_disk
         and not registered_names
         and claude["claude_md_doc_locations_set_up"]
         and claude["claude_md_build_commands_set_up"]
+        and on_disk_hive_names_superset_of_canonical
     )
 
     out = {
@@ -290,6 +307,7 @@ def main():
         "on_disk_hives": on_disk,
         "any_registered_for_repo": bool(registered_names),
         "registered_hive_names": registered_names,
+        "on_disk_hive_names_superset_of_canonical": on_disk_hive_names_superset_of_canonical,
         "fast_path_eligible": fast_path_eligible,
     }
     out.update(claude)

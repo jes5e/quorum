@@ -183,3 +183,23 @@ quorum exists as an alternative to [Apiary](https://github.com/gabemahoney/apiar
 - Removing the `--reference` and `--from-github` flag literals from skill prose. They remain documented as accepted alias forms.
 - Changes to the external-reference Issue body shape (thin 2-3 sentence summary, optional `## Doc divergence noted`, `External reference:` convention line, `reference_materials` JSON shape).
 - Authentication-gated URL handling (private GitHub Issues, Linear tickets behind SSO). The `WebFetch` fallback path already covers public URLs; auth-gated URLs continue to fall back to the "Ask the user" branch in `/quo-file-issue`'s external-reference flow.
+
+### Feature: Fast-path eligibility — canonical-hive completeness check
+
+**What.** `/quo-setup`'s fast-path detector (`skills/quo-setup/scripts/detect_fast_path.py`) gains a fourth eligibility criterion: the on-disk hive set must be a **superset** of the canonical set `{issues, plans, specs}`. A repo whose `.bees/` directory is a strict subset of canonical — for example, an older repo with only `.bees/issues` and `.bees/plans` committed because it was set up before `specs` became canonical — no longer satisfies fast-path eligibility and falls through to the slow path's existing Hive Configuration walkthrough, where the missing canonical hive(s) are surfaced and colonized. Repos with extra non-canonical hives on top of the canonical three remain fast-path eligible. The fast-path Diagnose / Re-register / Confirm-and-exit flow is otherwise unchanged for the fully-canonical case.
+
+**Why.** Before this fix the fast path triggered whenever any `.bees/<hive>/.hive/identity.json` marker existed and the other three eligibility bits held. On a strict-subset repo the detector then re-registered only the on-disk hives and exited with "You're ready to go" — leaving the missing canonical hive(s) invisible until something downstream forced the slow path to run. Users on an older repo cloned to a new machine had no obvious signal that their setup was incomplete, and downstream skills that hard-fail on a missing Specs hive surfaced the gap only after work was already in flight. Adding the canonical-completeness check moves the gap to setup time, where the slow path's existing walkthrough is the right tool to colonize the missing hive.
+
+**Acceptance criteria.**
+
+- A repo with `.bees/issues` + `.bees/plans` + `.bees/specs` (canonical-complete) and an unregistered scope continues to take the fast path.
+- A repo with `.bees/issues` + `.bees/plans` only (strict-subset of canonical) no longer takes the fast path; `/quo-setup` falls through to the slow path's Hive Configuration walkthrough and prompts to colonize the missing Specs hive.
+- A repo with the canonical three plus extra non-canonical hives (e.g., `.bees/ideas`) remains fast-path eligible — only a strict subset disqualifies.
+- The detector's JSON output gains a new diagnostic field, `on_disk_hive_names_superset_of_canonical` (boolean), reflecting the new criterion. `fast_path_eligible` is true iff all four criteria hold (non-empty on-disk hives, no scope already registered for the repo, both CLAUDE.md sections populated, on-disk hive names are a superset of canonical).
+- `skills/quo-setup/SKILL.md`'s eligibility-criteria list reads "all four" with the new criterion 4 documented inline; the example JSON payload includes the new field.
+
+**Out of scope.**
+
+- Changes to the slow path's Hive Configuration walkthrough. The existing prompt-to-colonize-missing-hive behavior already handles the strict-subset case once the fast path declines; no behavior change there.
+- Migration tooling for older repos. Re-running `/quo-setup` is sufficient — the slow path will surface and colonize the missing canonical hive(s).
+- Changes to the canonical hive set itself. The set `{issues, plans, specs}` is fixed by `## Valid configuration` in `quo-setup/SKILL.md`; this fix only ensures the fast path enforces it.
