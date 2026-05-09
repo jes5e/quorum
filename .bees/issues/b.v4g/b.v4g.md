@@ -2,10 +2,11 @@
 id: b.v4g
 type: bee
 title: Harden /quo-file-issue inline-dispatch handoff prose for /quo-fix-issue
-status: open
-created_at: '2026-05-08T22:06:16.053831'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-08T22:06:16.053831'
+status: done
+schema_version: '0.1'
 guid: v4g2tmwxfytuh7e6njkpswzwtjrxxe79
 ---
 
@@ -67,4 +68,3 @@ Trade-offs surfaced:
 **Rejected alternative — change `/quo-file-issue`'s Step 5 "Report back" to suppress its bullet list on the inline path.** Tempting because the bullet list is part of what visually misleads the orchestrator. Rejected: the bullet list is informationally useful even on the inline path; the right tweak is a callout that distinguishes "report" from "exit," not removing the report.
 
 **Rejected alternative — push the fix into `/quo-fix-issue`'s reconciliation loop instead of the prose.** Tempting because Section 3 already does state-driven reconciliation. Rejected: Section 3's loop is per-issue and starts *after* the URL-resolution sub-step completes; tweaking the loop would not address the gap, which is in Section 1's sub-step boundary.
-

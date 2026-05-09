@@ -145,6 +145,8 @@ Post-resolution working list:
 
 The display is informational ONLY — NO `AskUserQuestion`, NO ability to re-order. Its purpose is to let the user confirm prerequisite ordering survived the in-place substitution; if the user is unhappy with the result they can `Ctrl-C` and re-run with corrected positional order. The display fires only when at least one URL token was present in the user-supplied input — on the all-IDs path (no URL tokens), suppress the display entirely (the working list at that point is identical to the user's input and adds no signal).
 
+**End of URL-resolution sub-step — continue Section 1 and then Step 2.** After every URL token in the working list has been resolved (or soft-failed) and the post-resolution working-list display has fired, the URL-resolution sub-step is complete. Continue Section 1 at the upfront `bees show-ticket --ids` validation pass (per the "Notes for list mode" block above), then proceed to Step 2 (Validate Issue), Step 3 (per-issue Agent dispatch), Step 4 (review loop), Step 5 (doc verify), Step 6 (mark Issue done + commit), and Step 7 (post-completion review) — the URL-resolution sub-step replaces nothing else in `/quo-fix-issue`'s flow. The structured return from each `/quo-file-issue` Skill-tool dispatch is a hand-off marker (per `skills/quo-file-issue/SKILL.md`'s `### Behavioral guarantees` "hand-off marker, not a workflow exit" guarantee), NOT a signal that the `/quo-fix-issue` run has terminated.
+
 ### 2. Validate Issue
 
 ```bash
