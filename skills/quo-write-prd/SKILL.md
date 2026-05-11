@@ -256,15 +256,14 @@ On the solo path, run the gate:
 
 ##### Loop-back UX
 
-`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`). Handle the findings as follows:
+`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`) and — load-bearing — a `**Next action for the orchestrator:**` trailer line that names the precise routing this step must take. **Follow the trailer literally.** The trailer is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory. If the trailer and the prose ever diverge, the trailer wins (and that divergence is a bug in `/quo-spec-review` to file).
+
+Behavioral details (apply after gating per the trailer):
 
 - **No findings** — proceed to Step 6b's promotion immediately. No user prompt needed.
-- **Only `suggestion` and/or `nit` items, no `blocker`** — surface the full work-item list to the user via `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage` (it's multi-choice only). Finite choices:
-  - **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced findings; promote anyway. Record the acknowledged findings in the Step 8 end-of-skill report so the choice is visible.
-  - **Revise** — loop back to Step 4's body authoring with the findings included as revision context, then re-run Step 5's write-and-update path and re-invoke `/quo-spec-review <spec-bee-id> --doc PRD` for a re-check.
-- **One or more `blocker` items** — surface the full work-item list to the user via `AskUserQuestion` with finite choices:
-  - **Revise** (recommended) — loop back to Step 4's body authoring with the findings, then re-run Step 5's write-and-update path and re-invoke `/quo-spec-review <spec-bee-id> --doc PRD` for a re-check.
-  - **Proceed anyway (override blockers)** — the user takes explicit responsibility for promoting despite the blockers. Record the override (with the full list of overridden blocker findings) in the Step 8 end-of-skill report so the choice is visible. The override path exists because spec quality is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., greenfield work where a "Generic existing-behavior" flag is genuinely the right shape).
+- **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced `suggestion`/`nit` findings; promote anyway. Record the acknowledged findings in the Step 8 end-of-skill report so the choice is visible.
+- **Revise** — loop back to Step 4's body authoring with the findings included as revision context, then re-run Step 5's write-and-update path and re-invoke `/quo-spec-review <spec-bee-id> --doc PRD` for a re-check.
+- **Proceed anyway (override blockers)** — the user takes explicit responsibility for promoting despite the blockers. Record the override (with the full list of overridden blocker findings) in the Step 8 end-of-skill report so the choice is visible. The override path exists because spec quality is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., greenfield work where a "Generic existing-behavior" flag is genuinely the right shape).
 
 `blocker` severity is the primary gate — by default, blockers prevent the PRD child's `drafted → ready` transition until either addressed or explicitly overridden. `suggestion` and `nit` are informational — they surface but do not gate. The user can address them or proceed past them.
 

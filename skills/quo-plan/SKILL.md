@@ -245,15 +245,21 @@ With both writer skills returned successfully, run an automatic spec-review qual
 
 ##### Loop-back UX
 
-`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`). Handle the findings as follows:
+`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`) and — load-bearing — a `**Next action for the orchestrator:**` trailer line that names the precise routing this step must take. **Follow the trailer literally.** The trailer is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory. If the trailer and the prose ever diverge, the trailer wins (and that divergence is a bug in `/quo-spec-review` to file).
 
-- **No findings** — proceed to "Promote the Spec Bee" immediately. No user prompt needed.
-- **Only `suggestion` and/or `nit` items, no `blocker`** — surface the full work-item list to the user via `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage` (it's multi-choice only). Finite choices:
-  - **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced findings; promote anyway. Record the acknowledged findings in Step 5e's end-of-skill report so the choice is visible.
-  - **Revise** — loop back to the writer-skill re-invocation path described in step 4 above, then re-invoke `/quo-spec-review <spec-bee-id>` for a re-check.
-- **One or more `blocker` items** — surface the full work-item list to the user via `AskUserQuestion` with finite choices:
-  - **Revise** (recommended) — loop back to the writer-skill re-invocation path, then re-invoke `/quo-spec-review <spec-bee-id>` for a re-check.
-  - **Proceed anyway (override blockers)** — the user takes explicit responsibility for promoting despite the blockers. Record the override (with the full list of overridden blocker findings) in the end-of-skill report so the choice is visible. The override path exists because spec quality is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., greenfield work where a "Generic existing-behavior" flag is genuinely the right shape).
+Quick-reference summary of what the three trailer shapes prescribe (the trailer text in `/quo-spec-review`'s output is the canonical source):
+
+| Review output | Trailer-prescribed action |
+| --- | --- |
+| No findings | Promote the Spec Bee immediately; no user prompt. |
+| Suggestions / nits only (no blockers) | `AskUserQuestion`: `Proceed (acknowledge findings)` / `Revise`. Do not yield without prompting. |
+| One or more blockers | `AskUserQuestion`: `Revise` (recommended) / `Proceed anyway (override blockers)`. Do not yield without prompting. |
+
+Behavioral details (apply after gating per the trailer):
+
+- **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced `suggestion`/`nit` findings; promote anyway. Record the acknowledged findings in Step 5e's end-of-skill report so the choice is visible.
+- **Revise** — loop back to the writer-skill re-invocation path described in step 4 above, then re-invoke `/quo-spec-review <spec-bee-id>` for a re-check.
+- **Proceed anyway (override blockers)** — the user takes explicit responsibility for promoting despite the blockers. Record the override (with the full list of overridden blocker findings) in the end-of-skill report so the choice is visible. The override path exists because spec quality is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., greenfield work where a "Generic existing-behavior" flag is genuinely the right shape).
 
 `blocker` severity is the primary gate — by default, blockers prevent the Spec Bee's `drafted → ready` transition until either addressed or explicitly overridden. `suggestion` and `nit` are informational — they surface but do not gate. The user can address them or proceed past them.
 

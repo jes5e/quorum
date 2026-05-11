@@ -431,7 +431,7 @@ Reviewer role contracts (responsibilities, model assignment, gating, instruction
 - **Test Reviewer** (`agents/test-reviewer.md`) — reviews the Test Writer's output and surfaces gaps against test-quality standards.
 - **Doc Reviewer** (`agents/doc-reviewer.md`) — reviews the Doc Writer's output and surfaces gaps against documentation standards.
 
-- Get the feedback, and make a judgement call about whether that work must be done
+- Get the feedback, and make a judgement call about whether that work must be done. Each of the three review skills above (`/quo-engineer-review`, `/quo-test-writer-review`, `/quo-doc-writer-review`) emits a `**Next action for the orchestrator:**` trailer line at the bottom of its output that names the precise routing this step must take after consuming the findings. **Follow the trailer literally** — it is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory.
   - If feedback requires action, dispatch fresh ephemeral implementer Agents per Section 3's dispatch shape (Engineer / Test Writer / Doc Writer / PM as needed). Stay in delegate mode.
     - **IMPORTANT** Stay in delegate mode and do not do the work yourself.
     - If the feedback was minor enough, you may choose to **NOT** spawn the Product Manager on this iteration

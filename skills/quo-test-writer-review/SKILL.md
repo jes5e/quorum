@@ -149,7 +149,11 @@ This is OK. Don't feel obliged to report things. Only report if there is somethi
 
 ### Step 4: Generate Work Item List
 
-Output a simple numbered list directly in your response:
+Output a simple numbered list directly in your response. **Always append a `**Next action for the orchestrator:**` trailer line** that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The orchestrator skills' review-loop sections defer to "follow the **Next action for the orchestrator:** line in this skill's output" for routing.
+
+Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the trailer collapses to two shapes: findings-present (any items returned) versus clean (no items). Use these phrasings verbatim:
+
+**Shape 1 — Findings present** (one or more items in the list):
 
 ```markdown
 ## Test Review Work Items
@@ -159,6 +163,18 @@ Output a simple numbered list directly in your response:
 3. Fix incorrect assertion in test_cache.py:88 - expects 200 but endpoint returns 201 on create
 4. Remove test_legacy_flow() in test_api.py:200 - tests deleted endpoint, always passes vacuously
 5. Mock external HTTP call in test_fetcher.py:55 - test makes real network request, causes flakiness
+
+**Next action for the orchestrator:** findings present — judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Test Writer Agent to address them and re-invoke this skill on the updated tests; if no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield without doing this.
+```
+
+**Shape 2 — No findings** (clean review):
+
+```markdown
+## Test Review Work Items
+
+No test issues found.
+
+**Next action for the orchestrator:** no findings — proceed to the next review lane (or to Task / Issue close-out if this was the last lane). No re-dispatch needed for the Test Writer on this iteration.
 ```
 
 

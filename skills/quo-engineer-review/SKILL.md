@@ -147,7 +147,11 @@ This is OK. Don't feel obliged to report things. Only report if there is somethi
 
 ### Step 4: Generate Work Item List
 
-Output a simple numbered list directly in your response:
+Output a simple numbered list directly in your response. **Always append a `**Next action for the orchestrator:**` trailer line** that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The orchestrator skills' review-loop sections defer to "follow the **Next action for the orchestrator:** line in this skill's output" for routing.
+
+Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the trailer collapses to two shapes: findings-present (any items returned) versus clean (no items). Use these phrasings verbatim:
+
+**Shape 1 — Findings present** (one or more items in the list):
 
 ```markdown
 ## Code Review Work items
@@ -156,5 +160,17 @@ Output a simple numbered list directly in your response:
 2. Add input validation to cache.py:45 endpoint - validate user input format
 3. Refactor process_transactions() in llm_categorizer.py:120 - function is 60 lines, extract helper functions
 4. Remove commented-out code in llm_categorizer.py:200-210
+
+**Next action for the orchestrator:** findings present — judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Engineer Agent to address them and re-invoke this skill on the updated diff; if no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield without doing this.
+```
+
+**Shape 2 — No findings** (clean review):
+
+```markdown
+## Code Review Work items
+
+No code issues found.
+
+**Next action for the orchestrator:** no findings — proceed to the next review lane (or to Task / Issue close-out if this was the last lane). No re-dispatch needed for the Engineer on this iteration.
 ```
 

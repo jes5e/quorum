@@ -109,7 +109,11 @@ Look for docs that are now incorrect: outdated commands, deprecated features sti
 
 ### 6. Output Work Items
 
-Return specific, actionable items as numbered list:
+Return specific, actionable items as numbered list. **Always append a `**Next action for the orchestrator:**` trailer line** that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The orchestrator skills' review-loop sections defer to "follow the **Next action for the orchestrator:** line in this skill's output" for routing.
+
+Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the trailer collapses to two shapes: findings-present (any items returned) versus clean (no items). Use these phrasings verbatim:
+
+**Shape 1 — Findings present** (one or more items in the list):
 
 ```markdown
 ## Documentation Review Work Items
@@ -117,13 +121,18 @@ Return specific, actionable items as numbered list:
 1. Update README.md Quick Start - add `new-command` usage
 2. Mark Component X as Implemented in architecture docs:289
 3. Remove deprecated `old-cmd` from README Commands section
+
+**Next action for the orchestrator:** findings present — judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Doc Writer Agent to address them and re-invoke this skill on the updated docs; if no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield without doing this.
 ```
 
-Or if no issues:
+**Shape 2 — No findings** (clean review):
+
 ```markdown
 ## Documentation Review Work Items
 
 No documentation issues found. README and architecture docs are up to date!
+
+**Next action for the orchestrator:** no findings — proceed to the next review lane (or to Task / Issue close-out if this was the last lane). No re-dispatch needed for the Doc Writer on this iteration.
 ```
 
 NOTE: It is OK to return "no issues found". Only return issues if they are very important.
