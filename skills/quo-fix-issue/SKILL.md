@@ -365,9 +365,10 @@ The per-issue PM Agent dispatched in Section 4 has already produced a spec-align
 
 If the Issue body carried a `## Doc divergence noted` section, the doc updates implied by that section have already been applied by the Section 3 Doc Writer pass — Section 5's job here is to **confirm** that consumption landed (the named file/section now matches today's behavior post-fix), not to re-discover the divergence from scratch.
 
-Report what was found:
-- "Docs verified accurate — no changes needed"
-- OR "Updated [doc path] §X.Y to reflect [change]" — name the actual file (e.g. the configured Internal architecture docs path) rather than a generic "SDD §20".
+Report what was confirmed (informational only — Section 5 never performs orchestrator-direct doc updates; any doc changes are the Doc Writer's lane per `agents/doc-writer.md` and were already applied in Section 3 when this Issue carried a `## Doc divergence noted` section):
+
+- The PM's spec-alignment verdict from the Section 4 dispatch — either the deep-review outcome against the substantive spec source, or the `no spec drift surface to review for this Issue` short-circuit verdict from `agents/pm.md` — and confirmation that it has been captured in the per-issue summary.
+- When the Issue body carried a `## Doc divergence noted` section, confirmation that the Section 3 Doc Writer pass consumed it — i.e. the named file/section now matches today's behavior post-fix. When the Issue body had no such section, this bullet is N/A.
 
 ### 6. After Issue is fixed
 
