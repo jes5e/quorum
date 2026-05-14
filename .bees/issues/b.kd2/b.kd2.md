@@ -5,7 +5,7 @@ title: Dispatch prompt must not loosen role boundaries
 parent: null
 reference_materials: null
 created_at: '2026-05-14T11:02:02.086897'
-status: open
+status: done
 schema_version: '0.1'
 guid: kd2cgvvgv2q1ya9deo4ydywdpugxexyd
 ---
@@ -69,4 +69,3 @@ Including `quo-breakdown-epic` in the fix is for consistency: the same dispatch-
 
 ## Tracking
 **Line-number references in this body** (e.g. `line 270`, `line 344`) are anchored to the SKILL.md / agents files as of 2026-05-14. If the files drift before this Issue is fixed, the Engineer should re-resolve each reference by content — every cited block has a quoted-prose or sub-section-heading anchor that survives line-number renumbering.
-

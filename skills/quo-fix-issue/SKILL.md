@@ -269,6 +269,16 @@ bees show-ticket --ids <issue-id>
 
 Embed the returned body block in the dispatch prompt as a quoted block. Do not summarise, paraphrase, or "clean up" identifier spellings. Framing prose around the quoted block (e.g., "your gating precondition is met — start now") is fine; the body itself stays untouched. The orchestrator's own progress signal is the TaskList progress UI (see below) — the dispatch prompt does not need to ask the worker to ping back, because Agent completion notifications are delivered automatically by the substrate.
 
+The framing prose around the quoted block MUST NOT loosen the role boundaries defined in the dispatched role's contract file (`agents/<role>.md`). The rule applies to **every** dispatched role type — both the implementer roles (Engineer / Test Writer / Doc Writer) and the review-only roles (PM, Code Reviewer, Test Reviewer, Doc Reviewer). Concrete examples of forbidden softening (illustrative, not exhaustive):
+
+- MUST NOT tell the Engineer it may also write tests or docs.
+- MUST NOT tell the Test Writer it may also modify source code.
+- MUST NOT tell the Doc Writer it may also modify source or test files.
+- MUST NOT tell the PM or any reviewer (Code Reviewer / Test Reviewer / Doc Reviewer) it may write source, tests, or docs — these are review-only roles, and the contract files state "Does NOT modify source code, tests, or docs" (PM) and "Does NOT review <other-lanes>" (each reviewer) explicitly.
+- MUST NOT tell one reviewer it may also review another reviewer's lane (e.g., Code Reviewer reviewing tests, or Test Reviewer reviewing documentation).
+
+The role boundaries are a structural property of the workflow — if the orchestrator finds itself tempted to carve an exception ("you may also add this one test file" / "you may also touch this one source line"), that is a signal the per-role division of labor needs orchestrator-level coordination (a follow-up Test Writer dispatch, a redirect of the Issue, etc.), NOT a softening clause in the dispatch prompt. Workers do not message each other; the only handoff is from worker to orchestrator (the diff in execution mode, the JSON return in research mode), never worker-to-worker. So a softening clause cannot be made safe by adding "coordinate with the other role's diff" or similar coordination prose — that channel does not exist.
+
 When the Issue's `reference_materials` is non-empty (the external-reference mode produced by any of `/quo-file-issue`'s URL entry surfaces — bare URL `/quo-file-issue <url>`, the flag forms `/quo-file-issue --reference <url>` / `--from-github <url>`, or this skill's URL-resolution sub-step's inline-Skill-tool dispatch — all of which produce the same `reference_materials` shape), embed the `reference_materials` JSON value alongside the (thin) body in the dispatch prompt so the worker can read the resolver name and URL. Workers (the Engineer always; the PM additionally on Complex fixes per the orchestrator-direct complexity gate above) handle the upstream content fetch via `WebFetch` per their role contracts in `agents/engineer.md` and `agents/pm.md`; the orchestrator does not pre-fetch the URL. On Simple fixes the PM is not dispatched at all, so the Engineer is the sole fetcher on that path.
 
 #### Hub-and-spoke via substrate
