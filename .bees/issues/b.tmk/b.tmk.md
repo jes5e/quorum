@@ -39,12 +39,9 @@ Single combined design with three parts:
 
 2. **Move PM dispatch from Section 3 to Section 4.** The PM lands alongside the reviewer Agents (Code Reviewer / Test Reviewer / Doc Reviewer), after the diff exists. This matches `agents/pm.md`'s existing role contract — the PM is the per-Task quality gate that runs **after** the implementers have produced their work — and removes the internal contradiction at line 220.
 
-3. **Self-short-circuit in `agents/pm.md`** for the no-spec-surface case. The PM proceeds with deep review when **any** of these is true (positive triggers — a spec surface exists):
-   - The Issue body explicitly references a PRD/SDD path (per CLAUDE.md `## Documentation Locations`).
-   - `up_dependencies` includes a Plan Bee (a parent Plan provides spec context the fix should honor).
-   - `reference_materials` is non-null **and** the upstream content fetched via `WebFetch` is substantive — i.e. more than a one-line title plus a one-sentence body. A one-sentence rename ticket (e.g. "Rename foo to bar") is NOT substantive on this rubric.
+3. **Self-short-circuit in `agents/pm.md`** for the no-spec-surface case. The judgement is **content-based**, not shape-based. The PM first reads every available spec source: the Issue body itself, the Plan Bee body if `up_dependencies` links one, the PRD/SDD-equivalent docs (per CLAUDE.md `## Documentation Locations`) if the body cites them, and the upstream content fetched via `WebFetch` if `reference_materials` is set. After reading, the PM assesses whether those sources **collectively** carry substantive spec content — behavior described, architecture constrained, requirements specified — beyond a title plus a one-sentence problem statement that merely identifies what to fix without specifying how. When substantive content is present in **any** source, the PM proceeds with deep review against that substantive source. When substance is absent across **all** available sources, the PM exits with a one-line verdict ("no spec drift surface to review for this Issue") and skips the deep review. The orchestrator reads either outcome as a clean signal and includes it in the per-issue summary.
 
-   Conversely, the PM short-circuits when **all** of the above are false. The short-circuit exits quickly with a one-line verdict ("no spec drift surface to review for this Issue") and skips the deep review. The orchestrator reads that as a clean signal and includes it in the per-issue summary.
+   The short-circuit MUST NOT key off shape signals — "PRD/SDD path mentioned in body," "Plan Bee linked in `up_dependencies`," "`reference_materials` is non-null" — because those do not reliably correlate with spec richness. A body can cite a PRD path and be a one-line rename; a Plan Bee can be linked for a trivial typo fix; a one-sentence GitHub Issue can sit behind a non-null `reference_materials` entry. Conversely a self-describing body with no external pointers can contain rich behavioral spec the PM must verify against. Substance can only be assessed after the PM has read the content; the orchestrator-side shape-check that this ticket eliminates from Section 3 must not be reintroduced inside the PM as a content-blind pre-read gate.
 
 The Section 4 timing keeps the PM aligned with the role contract. The always-dispatched pattern matches Doc Writer's existing precedent. The self-short-circuit preserves the safety net (PM is available for every Issue with a spec surface) while eliminating the noise on trivial fixes the original Complex gate was trying to suppress.
 
@@ -73,7 +70,14 @@ Skill-prose + role-contract change. No source code or tests are touched.
 
 **In `agents/pm.md`:**
 
-Add a no-spec-surface short-circuit path at the top of the PM's flow. When the PM determines (after reading the Issue body, walking `up_dependencies` for any Plan Bee, and consulting `reference_materials`) that there's no meaningful spec surface to verify against, it exits quickly with a one-line verdict ("no spec drift surface to review for this Issue") and skips the deep review. Triggers: issue body is fully self-describing, no PRD/SDD reference in the body, `up_dependencies` does not include a Plan Bee, `reference_materials` is null or the upstream URL content fetched via `WebFetch` is trivially short.
+Add a no-spec-surface short-circuit path at the top of the PM's flow. The decision is **content-based**, not shape-based:
+
+1. **Read every available spec source first.** Pull in the Issue body itself, the Plan Bee body if `up_dependencies` links one (via the existing Path B in `agents/pm.md`'s Scoped-marker logic), the PRD/SDD-equivalent docs from CLAUDE.md `## Documentation Locations` if the body cites them, and the upstream content fetched via `WebFetch` if `reference_materials` is set (using the existing resolver-branching logic for `github-issue` / `linear-issue` / `url` / `file-path` / `bees`).
+2. **Assess substance across the collective sources.** Substantive spec content describes behavior, constrains architecture, or specifies requirements, beyond a title plus a one-sentence problem statement that merely identifies what to fix without specifying how.
+3. **Short-circuit when substance is absent across ALL sources.** Exit with a one-line verdict ("no spec drift surface to review for this Issue") and skip the deep review.
+4. **Deep review when substance is present in ANY source.** Proceed against the substantive source(s) using the existing spec-vs-diff review path.
+
+The short-circuit MUST NOT key off shape signals — "PRD/SDD path mentioned in body," "Plan Bee linked in `up_dependencies`," "`reference_materials` is non-null" — because those do not reliably correlate with spec richness. A body can cite a PRD path and be a one-line rename; a Plan Bee can be linked for a trivial typo fix; a one-sentence GitHub Issue can sit behind a non-null `reference_materials` entry. Conversely a self-describing body with no external pointers can contain rich behavioral spec the PM must verify against. Substance can only be assessed after content has been read.
 
 **In `README.md`:**
 
@@ -108,7 +112,7 @@ The Complex-gate problem surfaced first as a user complaint that "we treat simpl
 
 ## Decisions and rejected alternatives
 
-Five alternatives were considered:
+Six alternatives were considered:
 
 - **Make the PM explicitly two-phase** (pre-flight at Section 3 dispatch time, spec-vs-diff at Section 4 review time). Rejected: doubles the PM's invocation count per Issue and forces `agents/pm.md` to split its instructions into two modes the orchestrator must select between. The pre-flight phase's added signal (Issue-body-vs-codebase framing check) is real but small relative to spec-vs-diff review, and the role-doubling complexity is not worth it.
 
@@ -117,6 +121,8 @@ Five alternatives were considered:
 - **Keep the Complex gate; move PM dispatch to Section 4** (this Issue's original narrower scope, before the 2026-05-14 design conversation expanded it). Rejected as insufficient: fixes the timing contradiction but leaves the orchestrator-direct Complex/Simple gate in place, which is independently miscalibrated. The orchestrator lacks the context to predict spec-drift risk pre-Engineer, and the gate's bullet lists are structurally non-symmetric (categories vs risk surfaces). Fixing only the timing leaves users with the same false-positive Complex classifications on routine fixes.
 
 - **Drop the Complex gate; keep PM in Section 3.** Rejected: brings back the "PM dispatched before a diff exists" problem on every Issue rather than only Complex ones. Strictly worse than the current state on the timing axis.
+
+- **Shape-based short-circuit triggers inside the PM** (e.g., "short-circuit when no PRD/SDD path is mentioned in the body AND `up_dependencies` does not include a Plan Bee AND `reference_materials` is null or short"). Rejected as the same miscalibration as the original orchestrator-direct gate, just relocated from Section 3 to `agents/pm.md`. Shape signals do not reliably correlate with spec richness — a body can cite a PRD path and be a one-line rename; a Plan Bee can be linked for a trivial typo fix; a one-sentence GitHub Issue can sit behind a non-null `reference_materials` entry; conversely a self-describing body with no external pointers can carry rich behavioral spec. Pre-read shape checks reproduce the exact failure mode the orchestrator-side gate had (predicting drift risk from signals that don't correlate with it). The PM has the context to read content and make a substance-based judgement, and that's where the judgement belongs — full stop, no shape-based fallback.
 
 - **Drop the Complex gate; move PM to Section 4; add a self-short-circuit (the chosen path).** Accepted: addresses all three concerns (whether, when, what) with a single coherent design. Matches the always-dispatched precedent set by Doc Writer in the same skill. **Cost profile:** one additional PM Agent invocation per Issue that today classifies as Simple (the PM used to be skipped entirely on those) — but that invocation typically hits the short-circuit and ends quickly, so the per-Issue token cost on the formerly-Simple path is small rather than zero. No latency penalty: PM runs in parallel with Code Reviewer / Test Reviewer / Doc Reviewer in Section 4, and the three reviewers already gate Section 5 entry, so adding PM to that parallel block does not lengthen Section 4. Section 4 timing also means the PM always has a diff to review when the short-circuit path does not fire.
 
