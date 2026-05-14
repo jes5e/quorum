@@ -5,7 +5,7 @@ title: 'PM dispatch in /quo-fix-issue: drop Complex gate, Section 4 timing, shor
 parent: null
 reference_materials: null
 created_at: '2026-05-14T10:58:50.270851'
-status: open
+status: done
 schema_version: '0.1'
 guid: tmksz56p92q51qcbki3n33vo983bm45b
 ---
@@ -130,4 +130,3 @@ Six alternatives were considered:
 This ticket's scope was expanded on 2026-05-14 from the narrower original framing ("PM Agent dispatched before a diff exists in /quo-fix-issue Complex path") to the broader combined design captured above. The original framing focused only on the Section 3 → Section 4 timing move with the Complex gate preserved. A design conversation surfaced that the gate itself is also miscalibrated, and that the cleanest combined fix is to address both miscalibrations together rather than land them as two sequential tickets that would touch overlapping prose. The Suggested fix above is the merged work list.
 
 **Line-number references in this body** (e.g. `lines 182-198`, `line 220`) are anchored to `skills/quo-fix-issue/SKILL.md` as of 2026-05-14. If the file drifts before this Issue is fixed, the Engineer should re-resolve each reference by content — every cited block has a quoted-prose or sub-section-heading anchor in the Current behavior / Suggested fix sections that survives line-number renumbering.
-

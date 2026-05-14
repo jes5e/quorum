@@ -178,25 +178,6 @@ If not blocked:
 
 The orchestrator (you, the Director) drives each Issue's fix through a **reconciliation loop** that dispatches **fresh, ephemeral background `Agent` invocations** against the custom subagent types defined in this skill set's sibling `agents/` directory. There is no long-lived team; there are no warmed Agents; there is no peer-to-peer messaging between workers. Unlike `/quo-execute`, an Issue has no Subtask breakdown — there is one implementation pass per Issue, so the dispatch scope here is **per-issue**, not per-Subtask.
 
-#### Assess complexity (orchestrator-direct)
-
-Before dispatching any Agent, analyze the Issue and the relevant source code to assess complexity. The decision is made directly by the orchestrator from skill prose — no Agent is dispatched to make this call. The classification gates whether the Product Manager Agent is dispatched for this Issue (see "Per-issue cold dispatch" below).
-
-**Simple fix** — one of:
-- Single file change (rename, config tweak, delete dead code)
-- Mechanical refactor (extract helper, move code between files)
-- Test-only change (add tests, fix flaky test)
-- Doc-only change
-
-**Complex fix** — any of:
-- Changes span 3+ source files
-- Modifies public API, proto definitions, or storage schema
-- Changes auth, security, or concurrency behavior
-- Alters behavior described in PRD or SDD
-- Could have non-obvious side effects on other modules
-
-Do not ask for confirmation.
-
 #### Reconciliation loop
 
 The loop is **event-driven, not clock-driven**. Each tick has three phases:
@@ -217,7 +198,7 @@ The loop is **event-driven, not clock-driven**. Each tick has three phases:
 2. **Reconcile.** Compare current state to target state and act:
    - For every implementer role whose gating precondition is met for this Issue and which has no Agent already in flight for it, dispatch a fresh Agent (see "Per-issue cold dispatch" below).
    - For every Agent that has reported completion, persist the result: confirm any bees ticket transitions the Agent committed to, mark the corresponding TaskList task `completed`, and unlock any newly-eligible downstream role.
-   - When all implementer Agents (Engineer if dispatched, Test Writer if dispatched, Doc Writer always) have returned for this Issue, advance to Section 4 (the review loop). If the Issue was classified Complex, the per-issue PM Agent is dispatched alongside the implementer Agents (see "Per-issue cold dispatch" below); the PM's report joins the implementer outputs as input to Section 4.
+   - When all implementer Agents (Engineer if dispatched, Test Writer if dispatched, Doc Writer always) have returned for this Issue, advance to Section 4 (the review loop). The per-issue PM Agent is dispatched in Section 4 alongside the reviewer Agents on every Issue (see Section 4's reviewer dispatch block); the orchestrator does not pre-judge whether a PM pass is needed.
 
 3. **Yield.** The orchestrator does not poll. After dispatching the work this tick uncovered, return control to the harness and wait for the **Agent completion notification** delivered by the `run_in_background=true` substrate. The notification is what triggers the next tick.
 
@@ -238,7 +219,7 @@ For each Issue, the orchestrator spawns one fresh Agent per role at issue scope:
 
 ```
 Agent(
-  subagent_type=<role>,            # one of: engineer, test-writer, doc-writer, pm
+  subagent_type=<role>,            # one of: engineer, test-writer, doc-writer
   run_in_background=true,
   prompt=<dispatch prompt with the issue body embedded verbatim>,
 )
@@ -251,9 +232,10 @@ Which roles to dispatch for a given Issue:
 - **Engineer** — dispatched when source code needs modification.
 - **Test Writer** — dispatched when tests need modification.
 - **Doc Writer** — always dispatched. The Doc Writer decides whether docs actually need updating after reading the diff; the orchestrator does not pre-judge.
-- **Product Manager** — dispatched **only for Complex fixes** (per the orchestrator-direct complexity gate above). Skipped entirely for Simple fixes.
 
-Reviewer Agents (Code Reviewer, Test Reviewer, Doc Reviewer) are introduced in Section 4 — they are dispatched after the implementer Agents return.
+The Product Manager is no longer an implementer-phase role — it is dispatched in Section 4 alongside the reviewers on every Issue (see Section 4's reviewer dispatch block).
+
+Reviewer Agents (Code Reviewer, Test Reviewer, Doc Reviewer) and the Product Manager Agent are introduced in Section 4 — they are dispatched after the implementer Agents return.
 
 ##### Per-issue cold dispatch (vs SDD's warm-Agent intent)
 
@@ -279,7 +261,7 @@ The framing prose around the quoted block MUST NOT loosen the role boundaries de
 
 The role boundaries are a structural property of the workflow — if the orchestrator finds itself tempted to carve an exception ("you may also add this one test file" / "you may also touch this one source line"), that is a signal the per-role division of labor needs orchestrator-level coordination (a follow-up Test Writer dispatch, a redirect of the Issue, etc.), NOT a softening clause in the dispatch prompt. Workers do not message each other; the only handoff is from worker to orchestrator (the diff in execution mode, the JSON return in research mode), never worker-to-worker. So a softening clause cannot be made safe by adding "coordinate with the other role's diff" or similar coordination prose — that channel does not exist.
 
-When the Issue's `reference_materials` is non-empty (the external-reference mode produced by any of `/quo-file-issue`'s URL entry surfaces — bare URL `/quo-file-issue <url>`, the flag forms `/quo-file-issue --reference <url>` / `--from-github <url>`, or this skill's URL-resolution sub-step's inline-Skill-tool dispatch — all of which produce the same `reference_materials` shape), embed the `reference_materials` JSON value alongside the (thin) body in the dispatch prompt so the worker can read the resolver name and URL. Workers (the Engineer always; the PM additionally on Complex fixes per the orchestrator-direct complexity gate above) handle the upstream content fetch via `WebFetch` per their role contracts in `agents/engineer.md` and `agents/pm.md`; the orchestrator does not pre-fetch the URL. On Simple fixes the PM is not dispatched at all, so the Engineer is the sole fetcher on that path.
+When the Issue's `reference_materials` is non-empty (the external-reference mode produced by any of `/quo-file-issue`'s URL entry surfaces — bare URL `/quo-file-issue <url>`, the flag forms `/quo-file-issue --reference <url>` / `--from-github <url>`, or this skill's URL-resolution sub-step's inline-Skill-tool dispatch — all of which produce the same `reference_materials` shape), embed the `reference_materials` JSON value alongside the (thin) body in the dispatch prompt so the worker can read the resolver name and URL. Workers (the Engineer in Section 3; the PM in Section 4) handle the upstream content fetch via `WebFetch` per their role contracts in `agents/engineer.md` and `agents/pm.md`; the orchestrator does not pre-fetch the URL.
 
 #### Hub-and-spoke via substrate
 
@@ -291,18 +273,13 @@ Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-cod
 
 #### Roles dispatched by the orchestrator
 
-The orchestrator dispatches the following four roles per Issue. The full role contracts (responsibilities, gating preconditions, instructions, shell-command etiquette) live in the role files; the orchestrator's job is to invoke the right role at the right time, not to carry the role's prose.
+The orchestrator dispatches the following three implementer roles per Issue. The full role contracts (responsibilities, gating preconditions, instructions, shell-command etiquette) live in the role files; the orchestrator's job is to invoke the right role at the right time, not to carry the role's prose.
 
 - **Engineer** (`agents/engineer.md`) — implements source-code changes for the fix. Model: Opus (always). Does not write tests or docs.
 - **Test Writer** (`agents/test-writer.md`) — writes / updates / deletes tests to verify the fix and reviews the Engineer's diff for missing coverage. At minimum, ensures there is at least one test that fails before the Engineer's fix and passes after — this is the regression guard that prevents the same bug from recurring. Model: Opus (always).
 - **Doc Writer** (`agents/doc-writer.md`) — reviews the Engineer's diff for documentation gaps and updates customer-facing and internal docs as needed, and additionally appends or updates the relevant `### Feature: <title>` subsection in the project's cumulative PRD and SDD (per the lookup-key paths in CLAUDE.md `## Documentation Locations`) when the fix lands user-visible behavior or architectural shifts that warrant a cumulative-doc entry — see `agents/doc-writer.md` for the categorization heuristic, idempotency rule, and `<title>` resolution recipe. In fix mode the Doc Writer is dispatched once per Issue (not per Subtask as in execute mode), and the Plan Bee — when one exists — is discovered via the Issue's `up_dependencies` rather than a parent-chain traversal; `agents/doc-writer.md` is the authoritative spec for that traversal. When the Issue body contains a `## Doc divergence noted` section (authored by `/quo-file-issue` when the filer flagged that an existing doc is wrong about the buggy behavior), the Doc Writer treats that section as an explicit doc-correction directive: the named file/section is wrong about today's behavior, and the documented correction is applied as part of this fix's doc updates. Model: user's choice (Opus or Sonnet, selected at the start of the run).
-- **Product Manager** (`agents/pm.md`) — reviews the fix against the spec source (the Issue body, plus PRD/SDD-equivalent paths from CLAUDE.md `## Documentation Locations`, optionally Scoped-marker-narrowed via a Plan Bee in `up_dependencies`), flags scope creep or spec divergence. Issues filed by `/quo-file-issue` in the default in-conversation capture mode do not carry `reference_materials` — the body itself is the spec. Issues filed via any of `/quo-file-issue`'s URL entry surfaces — bare URL (`/quo-file-issue <url>`), the flag forms (`/quo-file-issue --reference <url>` / `--from-github <url>`), or this skill's URL-resolution sub-step's inline-Skill-tool dispatch — carry a `reference_materials` entry whose `value` is an external URL and whose `resolver` is one of `github-issue`, `linear-issue`, or `url`; on this path the PM fetches the upstream content via `WebFetch` and treats it as the spec source (the Issue body is intentionally thin in this mode). When the PM transitively consults a Plan Bee reached through the Issue's `up_dependencies`, that Plan Bee's `reference_materials` may resolve via the `file-path` resolver (path on disk — Scoped-marker narrowing applies) or the `bees` resolver (Spec Bee ID, in which case the PM walks the Spec Bee's `t1=Doc` children for PRD and SDD content). `agents/pm.md` is the authoritative spec for all three resolver-driven paths (`file-path`, `bees`, and the external-URL resolvers like `github-issue` / `linear-issue` / `url`); the body-as-spec path is the fallback when `reference_materials` is null/empty. This bullet does not duplicate the resolver-branching details. Dispatched **only for Complex fixes** (see "Per-issue PM dispatch" below). Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
-Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) are introduced in Section 4.
-
-##### Per-issue PM dispatch
-
-When the orchestrator classifies an Issue as **Complex** (per "Assess complexity" above), it dispatches a fresh PM Agent alongside the implementer Agents for that Issue. The dispatch prompt must include the Issue ID, the Issue body verbatim, the Issue's `up_dependencies` array, and `<scoped-marker-resolver-path>` — a placeholder the orchestrator fills in at runtime so `agents/pm.md` can perform its Scoped-marker check (see "Scoped-marker PM dispatch wiring" below). Simple fixes skip the PM dispatch entirely.
+Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) and the Product Manager role (`agents/pm.md`) are introduced in Section 4 — the PM is always dispatched alongside the reviewers on every Issue, mirroring the always-dispatched pattern Doc Writer already uses in the implementer phase.
 
 #### TaskList as progress UI
 
@@ -323,13 +300,13 @@ The naming convention is the **canonical cross-reference** for downstream Sectio
 Naming is **issue-scoped** for every per-issue role — there is no Subtask breakdown under an Issue, so the parent ticket id used as the scope suffix is always the Issue id. The URL-resolution Skill-tool dispatches in Section 1's URL-resolution sub-step run *before* per-issue dispatch begins (the URL has not yet been resolved to an Issue ID at that point), so they use a positional-index discriminator instead:
 
 - **Implementer Agents** (Engineer, Test Writer, Doc Writer) — Name: `<role>-<issue-id>` (e.g., `engineer-veq`, `test-writer-veq`, `doc-writer-veq` for Issue `b.veq`).
-- **PM Agents** (when dispatched for Complex fixes) — Name: `pm-<issue-id>` (e.g., `pm-veq`).
 - **Reviewer Agents** (Code Reviewer, Test Reviewer, Doc Reviewer — see Section 4) — Name: `<reviewer>-<issue-id>` (e.g., `code-reviewer-veq`, `test-reviewer-veq`, `doc-reviewer-veq`).
+- **PM Agents** (dispatched per Issue in Section 4 alongside the reviewers) — Name: `pm-<issue-id>` (e.g., `pm-veq`).
 - **URL-resolution Skill-tool dispatches** (per Section 1's URL-resolution sub-step) — Name: `file-from-url-<n>`, where `<n>` is the 1-based index of the URL token in the user-supplied positional-argument list (e.g., `file-from-url-1`, `file-from-url-2` for two URL tokens). The 1-based positional index is what makes the entry deterministic and unambiguous — not the URL itself, which may be long, may repeat after dedupe, or may contain reserved characters that would collide with the naming convention. Each entry is created `pending` when the orchestrator decides to dispatch `/quo-file-issue` for the corresponding URL token, set `in_progress` the moment the Skill-tool dispatch lands, and set `completed` when the resolved `issue_ticket_id` is captured from the structured return (whether the underlying `action` is `created` for a freshly-filed Issue or `reused-existing` on the dedupe `Use existing` path). The URL-resolution sub-step's soft-fail / user-cancel path also closes out the entry — mark the failed entry `completed` (with the failure reason recorded via `metadata.activity` per the per-Agent activity convention above if useful) and clear it from the active set so the cumulative failure check at the upfront `bees show-ticket --ids` validation pass operates on a clean active set.
 
 #### Scoped-marker PM dispatch wiring
 
-When the orchestrator dispatches the per-issue PM Agent (per "Per-issue PM dispatch" above), the dispatch prompt must include the **resolved path** to the Scoped-marker helper as a `<scoped-marker-resolver-path>` substitution. The helper is a sibling-skill bundled script; resolve its path at runtime from this skill's own base directory:
+When the orchestrator dispatches the per-issue PM Agent in Section 4 (always dispatched, alongside the reviewers), the dispatch prompt must include the **resolved path** to the Scoped-marker helper as a `<scoped-marker-resolver-path>` substitution. The helper is a sibling-skill bundled script; resolve its path at runtime from this skill's own base directory:
 
 ```
 <this skill's base directory>/../quo-breakdown-epic/scripts/scoped_marker_resolver.py
@@ -353,7 +330,7 @@ The orchestrator's responsibility ends at passing the resolved path placeholder,
 
 ### 4. Review Loop
 
-Once the implementer Agents return, dispatch three concurrent ephemeral reviewer Agents per Section 3's dispatch shape, one per reviewer role: `Agent(subagent_type="code-reviewer", run_in_background=true)`, `Agent(subagent_type="test-reviewer", run_in_background=true)`, `Agent(subagent_type="doc-reviewer", run_in_background=true)`. Track each via a TaskList task per Section 3's issue-scoped naming convention: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`.
+Once the implementer Agents return, dispatch four concurrent ephemeral Agents per Section 3's dispatch shape — three reviewer roles plus the Product Manager: `Agent(subagent_type="code-reviewer", run_in_background=true)`, `Agent(subagent_type="test-reviewer", run_in_background=true)`, `Agent(subagent_type="doc-reviewer", run_in_background=true)`, `Agent(subagent_type="pm", run_in_background=true)`. Track each via a TaskList task per Section 3's issue-scoped naming convention: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`, `pm-<issue-id>`.
 
 Conditional spawn — only dispatch a reviewer whose corresponding implementer was used during this issue's implementation pass:
 - If the Engineer Agent ran during this issue's implementation pass, dispatch the code-reviewer Agent now.
@@ -362,38 +339,31 @@ Conditional spawn — only dispatch a reviewer whose corresponding implementer w
 
 Corollary: a doc-only fix dispatches only the doc-reviewer; a code+test fix without a Doc Writer pass dispatches only code-reviewer + test-reviewer.
 
-The reconciliation-loop tick defined in Section 3 covers Agent completion notification — there is no idle teammate to escalate to. The orchestrator yields after dispatching the reviewer Agents and the harness fires the next tick on the `run_in_background=true` substrate's completion notification.
+**PM is the exception to the conditional-spawn rules.** The Product Manager Agent is **always dispatched** per Issue regardless of which implementers ran — spec-alignment review is meaningful on any diff. The PM dispatches alongside the reviewers, not instead of any of them. This matches the always-dispatched pattern Doc Writer uses in Section 3 — the orchestrator does not pre-judge whether spec-drift risk is present; the PM Agent reads the spec sources, makes the substance-based judgement itself, and short-circuits in `agents/pm.md` when there is no spec drift surface to review.
 
-Reviewer role contracts (responsibilities, model assignment, gating, instructions) live in the role files; the orchestrator's job is to dispatch, not to carry the role's prose.
+The PM's dispatch prompt must include the Issue ID, the Issue body verbatim, the Issue's `up_dependencies` array, and `<scoped-marker-resolver-path>` — a placeholder the orchestrator fills in at runtime so `agents/pm.md` can perform its Scoped-marker check (see "Scoped-marker PM dispatch wiring" in Section 3).
+
+The reconciliation-loop tick defined in Section 3 covers Agent completion notification — there is no idle teammate to escalate to. The orchestrator yields after dispatching the reviewer Agents and the PM Agent, and the harness fires the next tick on the `run_in_background=true` substrate's completion notification.
+
+Role contracts (responsibilities, model assignment, gating, instructions) live in the role files; the orchestrator's job is to dispatch, not to carry the role's prose.
 
 - **Code Reviewer** (`agents/code-reviewer.md`) — reviews the Engineer's output and surfaces gaps against engineering standards.
 - **Test Reviewer** (`agents/test-reviewer.md`) — reviews the Test Writer's output and surfaces gaps against test-quality standards.
 - **Doc Reviewer** (`agents/doc-reviewer.md`) — reviews the Doc Writer's output and surfaces gaps against documentation standards.
+- **Product Manager** (`agents/pm.md`) — reviews the fix against the spec source (the Issue body, plus PRD/SDD-equivalent paths from CLAUDE.md `## Documentation Locations`, optionally Scoped-marker-narrowed via a Plan Bee in `up_dependencies`), flags scope creep or spec divergence. Issues filed by `/quo-file-issue` in the default in-conversation capture mode do not carry `reference_materials` — the body itself is the spec. Issues filed via any of `/quo-file-issue`'s URL entry surfaces — bare URL (`/quo-file-issue <url>`), the flag forms (`/quo-file-issue --reference <url>` / `--from-github <url>`), or this skill's URL-resolution sub-step's inline-Skill-tool dispatch — carry a `reference_materials` entry whose `value` is an external URL and whose `resolver` is one of `github-issue`, `linear-issue`, or `url`; on this path the PM fetches the upstream content via `WebFetch` and treats it as the spec source (the Issue body is intentionally thin in this mode). When the PM transitively consults a Plan Bee reached through the Issue's `up_dependencies`, that Plan Bee's `reference_materials` may resolve via the `file-path` resolver (path on disk — Scoped-marker narrowing applies) or the `bees` resolver (Spec Bee ID, in which case the PM walks the Spec Bee's `t1=Doc` children for PRD and SDD content). `agents/pm.md` is the authoritative spec for all three resolver-driven paths (`file-path`, `bees`, and the external-URL resolvers like `github-issue` / `linear-issue` / `url`); the body-as-spec path is the fallback when `reference_materials` is null/empty. The PM self-short-circuits in `agents/pm.md` when the collective spec sources carry no substantive content — see that role file for the content-based short-circuit rule. Model: user's choice (Opus or Sonnet, selected at the start of the run).
 
 - Get the feedback, and make a judgement call about whether that work must be done. Each of the three review skills above (`/quo-engineer-review`, `/quo-test-writer-review`, `/quo-doc-writer-review`) emits a `**Next action for the orchestrator:**` trailer line at the bottom of its output that names the precise routing this step must take after consuming the findings. **Follow the trailer literally** — it is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory.
-  - If feedback requires action, dispatch fresh ephemeral implementer Agents per Section 3's dispatch shape (Engineer / Test Writer / Doc Writer / PM as needed). The PM re-dispatch follows the same complex-vs-simple gate established in Section 3 — if the original fix was simple (no PM dispatched), do NOT dispatch the PM on iteration; if the original fix was complex, the PM may be re-dispatched (and may be skipped per the optional-on-iteration logic below).
+  - If feedback requires action, dispatch fresh ephemeral implementer Agents per Section 3's dispatch shape (Engineer / Test Writer / Doc Writer as needed) and/or re-dispatch the PM Agent per this section's dispatch shape if spec-alignment review needs another pass against the updated diff.
     - **IMPORTANT** Stay in delegate mode and do not do the work yourself.
-    - If the feedback was minor enough, you may choose to **NOT** spawn the Product Manager on this iteration
+    - If the feedback was minor enough, you may choose to **NOT** re-dispatch the Product Manager on this iteration
   - If not, move on but you MUST include the ignored feedback in the summary
   - Note: This could create an infinite loop so you may ignore feedback so long as you present it in the summary
 
 ### 5. Verify docs are still accurate
 
-The work this section requires depends on whether the Issue was classified Simple or Complex by Section 3's complexity gate:
-
-- **Complex fix** — the per-issue PM Agent dispatched in Section 3 has already verified spec alignment as part of its review (the PM reads the spec sources configured under CLAUDE.md `## Documentation Locations` and flags drift in its report). Section 5 is **informational** on this path: confirm the PM's spec-alignment finding landed in the per-issue summary, and skip the standalone check below. The PM's report covers it.
-- **Simple fix** — no PM was dispatched (per Section 3's complexity gate). The orchestrator runs Section 5's spec-vs-code check directly — orchestrator-direct, no Agent. This path is **load-bearing** on simple fixes.
-
-The standalone spec-vs-code check (load-bearing on the simple-fix path; informational confirmation on the complex-fix path):
+The per-issue PM Agent dispatched in Section 4 has already produced a spec-alignment verdict — either a deep review against the substantive spec source (when the PM found substantive content across the collective sources it consulted) or a one-line short-circuit verdict (`no spec drift surface to review for this Issue`, when no source carried substantive content). Either outcome lands in the per-issue summary. Section 5 is **informational confirmation** on every Issue — never load-bearing orchestrator-direct work: confirm the PM's verdict has been captured in the per-issue summary and proceed to Section 6.
 
 If the Issue body carried a `## Doc divergence noted` section, the doc updates implied by that section have already been applied by the Section 3 Doc Writer pass — Section 5's job here is to **confirm** that consumption landed (the named file/section now matches today's behavior post-fix), not to re-discover the divergence from scratch.
-
-After the fix is implemented, review the changes against the project's spec docs — the path configured under `Internal architecture docs` in CLAUDE.md `## Documentation Locations` (the SDD-equivalent), and any project PRD-equivalent if present. If the fix diverges from what the docs describe, determine whether:
-
-1. **The docs are correct and the fix is wrong** → fix the code
-2. **The docs are outdated and the fix is correct** → update the docs
-
-Either way, docs and code must be in sync when the issue is closed. Include any doc updates in the commit.
 
 Report what was found:
 - "Docs verified accurate — no changes needed"
@@ -431,7 +401,7 @@ Once the issue is fixed:
 
       **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue. The per-issue scoping `<issue-id>` on the `git add` path also keeps drift in *other* issues' on-disk records out of this commit; if other issues have stale working-tree state, that gets caught by the next `/quo-fix-issue` run on those issues, not swept in here.
    4. Commit with a descriptive message per system/project git guidance. The commit's subject line MUST follow the literal format `Fix issue: <title> (<issue-id>)` (e.g., `Fix issue: Tighten dispatch contract gap (b.abc)`) — Section 8's post-hoc SHA-derivation fallback `--grep`-filters the session log against the literal `(<issue-id>)` token in this subject, so the parenthesized-ID suffix is a load-bearing contract, not a stylistic preference.
-3. Mark the per-issue TaskList tasks (named per Section 3's issue-scoped naming convention — `engineer-<issue-id>`, `test-writer-<issue-id>`, `doc-writer-<issue-id>`, `pm-<issue-id>` if dispatched, plus the reviewer tasks from Section 4: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`) as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-issue cold dispatches established in Section 3 already complete-and-exit when each Agent returns.
+3. Mark the per-issue TaskList tasks (named per Section 3's issue-scoped naming convention — `engineer-<issue-id>`, `test-writer-<issue-id>`, `doc-writer-<issue-id>`, plus the Section 4 tasks: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`, `pm-<issue-id>`) as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-issue cold dispatches established in Section 3 and Section 4 already complete-and-exit when each Agent returns.
 4. Output the summary:
 
 ```markdown
