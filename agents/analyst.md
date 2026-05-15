@@ -58,13 +58,16 @@ Return the analysis as a single markdown response with the following shape. The 
 ### Alternatives considered
 <A bulleted list. For each alternative — including every distinct solution the Issue body proposed — name it, summarize it in one sentence, and say whether it was kept, refined, or set aside, with a one-or-two-sentence reason. When the body's framing implied a menu, every option from that menu MUST appear here so the user can see the Analyst engaged with each.>
 
+### Options the body did not consider
+<A bulleted list of approaches the Analyst's codebase research surfaced that were NOT in the Issue body's framing. This is a forcing function: it pushes the Analyst toward genuinely independent analysis rather than re-presenting the body's options under different names. At minimum, name one option the body did not consider, evaluate it against the Recommended approach, and say whether it was rejected (and why), refined into the Recommended approach, or promoted to the Recommended approach. If codebase research truly produced no options outside the body's framing — every approach worth considering was already in the body's menu — state explicitly "Codebase research surfaced no options outside the body's framing." followed by a one-sentence reason why the body's menu was exhaustive in this case. Empty content or "N/A" is not acceptable; the section's purpose is to make the Analyst's independent reasoning visible.>
+
 ### Upstream-fetch status
 <Only when `reference_materials` is non-empty. State whether `WebFetch` succeeded and what was read. On failure, surface the failure mode (network, auth-gated, etc.) so the orchestrator can decide whether to proceed or escalate.>
 
 Analyst verdict: <one of: recommend-as-stated | recommend-with-refinements | recommend-different-approach | escalate-to-user>
 ```
 
-The trailer line `Analyst verdict: <…>` is informational context for the user and the orchestrator's prose preamble — a structured one-word summary of the Analyst's conclusion that the orchestrator can surface verbatim or paraphrase when introducing the proposal. It is NOT a routing signal: the orchestrator routes on the user's `AskUserQuestion` choice (Approve / Revise / Cancel) at the gate that follows the proposal, not on the verdict value. Pick exactly one of the four values:
+The trailer line `Analyst verdict: <…>` is a **load-bearing framing signal** the orchestrator reads to shape the prose preamble that introduces the proposal to the user. When the verdict is `recommend-different-approach` or `escalate-to-user`, the orchestrator surfaces the divergence prominently — making clear that the Analyst's recommendation does NOT align with the Issue body's framing, so the user can engage with the proposal knowing the Analyst challenged the body rather than ratifying it. The verdict shapes how the user *encounters* the proposal; routing through the `AskUserQuestion` gate (Approve / Revise / Cancel) is still driven by the user's choice, not by the verdict value. Pick exactly one of the four values:
 
 - **`recommend-as-stated`** — codebase research agreed with the Issue body's framing; the Recommended approach reflects the body's approach without material change.
 - **`recommend-with-refinements`** — codebase research broadly agreed with the body's framing but the Recommended approach refines it (a different file boundary, a smaller surface, a corrected ordering, etc.). Refinements are listed in Why / Alternatives considered.
