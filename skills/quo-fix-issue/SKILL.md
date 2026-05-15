@@ -211,7 +211,7 @@ After the prose is surfaced, present the user with a finite-multi-choice gate vi
 
 - Question: "How should I proceed with this design proposal?"
 - Options:
-  - **Approve & dispatch Engineer (Recommended)** — Accept the Analyst's Recommended approach as the authoritative design directive for this Issue. The orchestrator carries the directive forward into Section 4's Engineer dispatch prompt.
+  - **Approve & proceed to implementation (Recommended)** — Accept the Analyst's Recommended approach as the authoritative design directive for this Issue. The orchestrator carries the directive forward into Section 4's implementer dispatch (the Engineer dispatch prompt when source code needs modification, the Test Writer and Doc Writer dispatches otherwise per Section 4's conditional-dispatch rules).
   - **Revise** — The user has feedback on the proposal. Iterate in prose (free-text reply), then optionally re-dispatch the Analyst with the user's feedback as additional context.
   - **Cancel** — Exit cleanly without dispatching any implementer Agent for this Issue. No commit is made; the Issue stays `open`.
 

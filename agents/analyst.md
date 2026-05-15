@@ -64,7 +64,7 @@ Return the analysis as a single markdown response with the following shape. The 
 Analyst verdict: <one of: recommend-as-stated | recommend-with-refinements | recommend-different-approach | escalate-to-user>
 ```
 
-The trailer line `Analyst verdict: <…>` is the load-bearing routing signal the orchestrator greps for. Pick exactly one of the four values:
+The trailer line `Analyst verdict: <…>` is informational context for the user and the orchestrator's prose preamble — a structured one-word summary of the Analyst's conclusion that the orchestrator can surface verbatim or paraphrase when introducing the proposal. It is NOT a routing signal: the orchestrator routes on the user's `AskUserQuestion` choice (Approve / Revise / Cancel) at the gate that follows the proposal, not on the verdict value. Pick exactly one of the four values:
 
 - **`recommend-as-stated`** — codebase research agreed with the Issue body's framing; the Recommended approach reflects the body's approach without material change.
 - **`recommend-with-refinements`** — codebase research broadly agreed with the body's framing but the Recommended approach refines it (a different file boundary, a smaller surface, a corrected ordering, etc.). Refinements are listed in Why / Alternatives considered.
