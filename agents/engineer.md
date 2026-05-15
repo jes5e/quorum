@@ -24,7 +24,7 @@ The Engineer is the implementation worker dispatched by an orchestrating executi
 - Mark ticket status as work proceeds. The status transition is the load-bearing handoff signal that downstream roles (test-writer, doc-writer, PM) are gated on, so do not skip it. The exact transitions depend on which mode dispatched you:
 
   - **Execute mode** (Subtask `t3` ticket): mark `status=in_progress` when starting the Subtask and `status=done` when finishing it. Subtask tickets support the full `drafted` → `ready` → `in_progress` → `done` ladder.
-  - **Fix mode** (Issue ticket): the Issue ticket type only supports `open` and `done` — do **not** attempt to set `in_progress` (the bees CLI rejects it with `Invalid status 'in_progress'`), and do **not** flip to `done` either. The orchestrating execution skill owns the `open` → `done` flip at issue close-out (Section 6 of `quo-fix-issue/SKILL.md`); your job is to leave the Issue at `open` and exit when the implementation is complete.
+  - **Fix mode** (Issue ticket): the Issue ticket type only supports `open` and `done` — do **not** attempt to set `in_progress` (the bees CLI rejects it with `Invalid status 'in_progress'`), and do **not** flip to `done` either. The orchestrating execution skill owns the `open` → `done` flip at issue close-out (Section 7 of `quo-fix-issue/SKILL.md`); your job is to leave the Issue at `open` and exit when the implementation is complete.
 
   Use the bees CLI to perform the status transitions in execute mode:
 

@@ -2,10 +2,11 @@
 id: b.1bv
 type: bee
 title: Workflow trusts Issue ticket bodies as authoritative design specs
-status: open
-created_at: '2026-05-15T18:24:42.418149'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-15T18:24:42.418149'
+status: done
+schema_version: '0.1'
 guid: 1bv7yshtsv7gb1xhyupf4s1osz41n8fo
 ---
 
@@ -97,4 +98,3 @@ This is the same logic that motivated the trailer-as-artifact pattern (b.sfy): p
 **Rejected: classify the body upfront (well-researched vs. casual brainstorm) and only dispatch the Analyst on the casual branch.** Fragile classification heuristic, and the failure mode (mis-classify a casual issue as well-researched and trust its bad framing) is exactly what this Issue is filed to fix. Always running the Analyst is the safe shape — when the body IS well-researched, the Analyst's research agrees with it cheaply (prompt-caching helps), so the overhead is bounded.
 
 **Rejected: dispatch the Analyst only when `reference_materials` is non-empty (external-reference mode).** Scopes the fix to upstream-GH-sourced Issues only, missing the bee-ticket-only path entirely. A locally-filed Issue can carry just-as-shallow a proposed-fix as a GH ticket — the Analyst's value isn't about the source URL, it's about challenging whatever the body proposes against the actual codebase. Always-dispatch is the right default; conditional dispatch would just re-introduce the trust-the-body failure mode on the un-gated branch.
-
