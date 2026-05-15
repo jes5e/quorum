@@ -5,7 +5,7 @@ title: Re-probe SendMessage-without-Agent-Teams as warm-Agent token-cost optimiz
 parent: null
 reference_materials: null
 created_at: '2026-05-03T16:11:37.802648'
-status: open
+status: done
 schema_version: '0.1'
 guid: x9wngmdh2gtry51hkmyy4fnmhuwrtky9
 ---
@@ -58,4 +58,3 @@ A periodic empirical probe verifies whether the upstream constraint has changed.
 
 - 2026-05-07 on Claude Code v2.1.132 — still gated. Verified by re-fetching https://docs.claude.com/en/docs/claude-code/sub-agents (canonical: code.claude.com/docs/en/sub-agents): the "Resume subagents" subsection still carries the sentence "The `SendMessage` tool is only available when [agent teams] are enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`." A direct empirical probe (`Agent(name=...)` + `SendMessage(to=...)` with the env var unset) could NOT be performed in this session because `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` was already set in the orchestrator's environment; future re-probes should run from a session where that env var is unset to obtain a direct empirical signal. Issue left `open` per the periodic-re-test lifecycle.
 - 2026-05-09 on Claude Code v2.1.137 — still gated. Verified by re-fetching https://docs.claude.com/en/docs/claude-code/sub-agents (which now 301-redirects to canonical https://code.claude.com/docs/en/sub-agents): the "Resume subagents" subsection on the "Create custom subagents" page still carries the sentence "The `SendMessage` tool is only available when [agent teams](/en/agent-teams) are enabled via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`." A direct empirical probe (`Agent(name=...)` + `SendMessage(to=...)` with the env var unset) again could NOT be performed in this session because `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` was already set in the orchestrator's environment (same constraint as the 2026-05-07 entry); future re-probes should run from a session where that env var is unset to obtain a direct empirical signal. Issue left `open` per the periodic-re-test lifecycle.
-
