@@ -247,7 +247,9 @@ After the create-or-update succeeds, present the resulting PRD ticket ID and a b
 
 After the user approves the PRD body in 6's main `AskUserQuestion`, but **before** issuing the `drafted → ready` promotion, invoke `/quo-spec-review` as an automatic quality gate. This step fires only on the solo path (the user invoked `/quo-write-prd <spec-bee-id>` directly from the prompt). On the inline-from-`/quo-plan` path, **skip Step 6a entirely** — the orchestrating `/quo-plan` skill runs its own end-to-end `/quo-spec-review` invocation in its Step 4c after both writers complete, and re-running per-writer review here would double-cost the budget for no added signal. Detection: the inline path is identified by the presence of a Skill-tool `args` payload conforming to the inline-invocation contract documented in `## Inline invocation via the Skill tool` below — i.e., a parsed `spec-bee-id:` + `distilled-scope:` block from the Skill-tool caller. This is **not** the same as Step 0's mid-conversation heuristic (which fires on solo runs whenever the prompt window already contains substantive prior context, per the err-toward-distilling principle); using Step 0's heuristic here would silently skip the gate on solo runs with rich prior conversation context, which is wrong. When you detect the inline path via the contract-shaped `args` payload, jump straight from Step 6's main `Approve` answer to Step 6b's promotion call.
 
-On the solo path, run the gate:
+On the solo path, run the gate.
+
+**Pre-commitment.** When the Skill call returns, your next tool use MUST be either `AskUserQuestion` (findings present) or `bees update-ticket --status ready` (no findings). A text-only response between the Skill return and that tool use is a defect.
 
 1. Invoke `/quo-spec-review <spec-bee-id> --doc PRD` via the Skill tool. The `--doc PRD` flag scopes the review to the PRD child only — the SDD child may not exist yet at this point (the user may be authoring the PRD before the SDD), and even if it does exist, a standalone PRD revision should not block on or surface SDD-side findings.
 2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.
@@ -256,7 +258,7 @@ On the solo path, run the gate:
 
 ##### Loop-back UX
 
-`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`) and — load-bearing — a `**Next action for the orchestrator:**` trailer line that names the precise routing this step must take. **Follow the trailer literally.** The trailer is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory. If the trailer and the prose ever diverge, the trailer wins (and that divergence is a bug in `/quo-spec-review` to file).
+`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`) and — load-bearing — a second-person imperative routing trailer (`**Your next tool call MUST be …**` / `**Your next tool use MUST …**`) plus a counter-anchor clause at the bottom of its output, naming the precise routing this step must take. **Follow the trailer literally.** The trailer is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory. If the trailer and the prose ever diverge, the trailer wins (and that divergence is a bug in `/quo-spec-review` to file).
 
 Behavioral details (apply after gating per the trailer):
 

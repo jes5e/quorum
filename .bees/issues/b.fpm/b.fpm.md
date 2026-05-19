@@ -2,10 +2,11 @@
 id: b.fpm
 type: bee
 title: Orchestrator yields after spec-review trailer, skipping AskUserQuestion gate
-status: open
-created_at: '2026-05-19T21:45:19.408705'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-19T21:45:19.408705'
+status: done
+schema_version: '0.1'
 guid: fpmmqzdmcwfwjwn5mtu1dpagfaecgnxs
 ---
 
@@ -112,4 +113,3 @@ The user weighed three options before filing this ticket:
 - **Diagnose deeper first** — partially done (this Issue body carries the deeper diagnosis), then user picked file-issue.
 
 The user did NOT explicitly pick between fix scopes A+B (spec-review only) vs A+B+C (extend to all four review skills). Both shapes are documented in "Suggested fix" with the trade-off named (visibility vs architectural consistency). The engineer working this ticket should pick the scope they think is right and surface the choice in their Design Proposal — A+B alone fully closes the reported failure surface; adding C is a structural pre-emption of the same failure mode at three lower-visibility sites.
-

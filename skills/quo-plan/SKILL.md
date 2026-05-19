@@ -233,6 +233,8 @@ With both writer skills returned successfully, run an automatic spec-review qual
 
 **Spec-review gate.** When the defensive status check passes, run `/quo-spec-review` as an automatic quality gate before promoting the Spec Bee. The writer skills' inline-invocation contracts explicitly skip their own per-writer spec-review steps (`/quo-write-prd`'s Step 6a and `/quo-write-sdd`'s Step 7a) when invoked inline — Site 1 here is the single end-to-end review pass for the PRD child, the SDD child, and cross-document consistency.
 
+**Pre-commitment.** When the Skill call returns, your next tool use MUST be either `AskUserQuestion` (findings present) or `bees update-ticket --status ready` (no findings). A text-only response between the Skill return and that tool use is a defect.
+
 1. Invoke `/quo-spec-review <spec-bee-id>` via the Skill tool, with **no `--doc` flag** so both children are reviewed plus the cross-document consistency pass runs. The `<spec-bee-id>` placeholder is the Spec Bee ID captured at the end of 4a (and confirmed `ready` after Step 4c's defensive status check just above — the writer skills already promoted the children to `ready`; this gate is the last quality check before the parent itself promotes).
 2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.
 3. On approve (no findings, or the user explicitly accepted the surfaced findings), proceed to "Promote the Spec Bee" below.
@@ -245,15 +247,15 @@ With both writer skills returned successfully, run an automatic spec-review qual
 
 ##### Loop-back UX
 
-`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`) and — load-bearing — a `**Next action for the orchestrator:**` trailer line that names the precise routing this step must take. **Follow the trailer literally.** The trailer is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory. If the trailer and the prose ever diverge, the trailer wins (and that divergence is a bug in `/quo-spec-review` to file).
+`/quo-spec-review` returns a numbered work-item list with severity tags (`blocker`, `suggestion`, `nit`) and — load-bearing — a second-person imperative routing trailer (`**Your next tool call MUST be …**` / `**Your next tool use MUST …**`) plus a counter-anchor clause at the bottom of its output, naming the precise routing this step must take. **Follow the trailer literally.** The trailer is the authoritative routing prescription; the prose below is reference context, not a load-bearing rule the orchestrator must recall from memory. If the trailer and the prose ever diverge, the trailer wins (and that divergence is a bug in `/quo-spec-review` to file).
 
 Quick-reference summary of what the three trailer shapes prescribe (the trailer text in `/quo-spec-review`'s output is the canonical source):
 
 | Review output | Trailer-prescribed action |
 | --- | --- |
 | No findings | Promote the Spec Bee immediately; no user prompt. |
-| Suggestions / nits only (no blockers) | `AskUserQuestion`: `Proceed (acknowledge findings)` / `Revise`. Do not yield without prompting. |
-| One or more blockers | `AskUserQuestion`: `Revise` (recommended) / `Proceed anyway (override blockers)`. Do not yield without prompting. |
+| Suggestions / nits only (no blockers) | `AskUserQuestion`: `Proceed (acknowledge findings)` / `Revise`. Do not produce a text response describing this gate — call the tool directly. |
+| One or more blockers | `AskUserQuestion`: `Revise` (recommended) / `Proceed anyway (override blockers)`. Do not produce a text response describing this gate — call the tool directly. |
 
 Behavioral details (apply after gating per the trailer):
 

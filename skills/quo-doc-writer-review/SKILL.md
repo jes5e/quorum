@@ -109,7 +109,7 @@ Look for docs that are now incorrect: outdated commands, deprecated features sti
 
 ### 6. Output Work Items
 
-Return specific, actionable items as numbered list. **Always append a `**Next action for the orchestrator:**` trailer line** that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The orchestrator skills' review-loop sections defer to "follow the **Next action for the orchestrator:** line in this skill's output" for routing.
+Return specific, actionable items as numbered list. **Always append a routing trailer in the second-person imperative form** — `**Your next tool use MUST address these findings now.**` (findings present) or `**Your next tool use MUST advance the workflow.**` (no findings) — that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.` — that explicitly forbids the narrate-instead-of-do failure mode. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form and the counter-anchor clause are both required components, not stylistic preferences (see `b.fpm`); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed step. The orchestrator skills' review-loop sections defer to "follow the routing trailer in this skill's output literally."
 
 Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the trailer collapses to two shapes: findings-present (any items returned) versus clean (no items). Use these phrasings verbatim:
 
@@ -122,7 +122,7 @@ Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the t
 2. Mark Component X as Implemented in architecture docs:289
 3. Remove deprecated `old-cmd` from README Commands section
 
-**Next action for the orchestrator:** findings present — judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Doc Writer Agent to address them and re-invoke this skill on the updated docs; if no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield without doing this.
+**Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Doc Writer Agent to address them and re-invoke this skill on the updated docs. If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
 
 **Shape 2 — No findings** (clean review):
@@ -132,7 +132,7 @@ Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the t
 
 No documentation issues found. README and architecture docs are up to date!
 
-**Next action for the orchestrator:** no findings — proceed to the next review lane (or to Task / Issue close-out if this was the last lane). No re-dispatch needed for the Doc Writer on this iteration.
+**Your next tool use MUST advance the workflow.** Proceed to the next review lane (or to Task / Issue close-out if this was the last lane); no re-dispatch needed for the Doc Writer on this iteration. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
 
 NOTE: It is OK to return "no issues found". Only return issues if they are very important.

@@ -201,7 +201,7 @@ NOTE: It is expected that many times you will return no important issues. This i
 
 ### Step 4: Generate Work Item List
 
-Output a simple numbered list directly in your response. **Always append a `**Next action for the orchestrator:**` trailer line** that names the precise routing the calling orchestrator (`/quo-plan`'s Step 4c, `/quo-write-prd`'s Step 6a, `/quo-write-sdd`'s Step 7a, or a standalone user invocation) must take after consuming this output. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule three levels deep, the prescription is structurally robust against orchestrator-side attention decay. The orchestrator skills' Loop-back UX sections downgrade to "follow the **Next action for the orchestrator:** line in this skill's output"; the exact phrasings live here.
+Output a simple numbered list directly in your response. **Always append a routing trailer in the second-person imperative form** — `**Your next tool call MUST be …**` (or `**Your next tool use MUST …**` where no single tool is named) — that names the precise routing the calling orchestrator (`/quo-plan`'s Step 4c, `/quo-write-prd`'s Step 6a, `/quo-write-sdd`'s Step 7a, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not produce a text response describing this gate — call the tool directly.` for `AskUserQuestion` shapes, or `… describing this transition …` for the `bees update-ticket --status ready` shape — that explicitly forbids the narrate-instead-of-do failure mode. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule three levels deep, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form and the counter-anchor clause are both required components, not stylistic preferences (see `b.fpm`); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed tool call. The orchestrator skills' Loop-back UX sections downgrade to "follow the routing trailer in this skill's output literally"; the exact phrasings live here.
 
 The trailer wording depends on which of the three output shapes applies. Use these phrasings verbatim (only the work-item content above the trailer varies):
 
@@ -214,7 +214,7 @@ The trailer wording depends on which of the three output shapes applies. Use the
 2. [blocker] SDD `## Codebase exploration findings` — generic "the routing layer" reference; cite the actual module path so the Engineer has a starting point.
 3. [suggestion] PRD `## Open Questions` — three entries with no named owner; assign each to a person or role.
 
-**Next action for the orchestrator:** blocker(s) present — gate the user via `AskUserQuestion` with finite choices (`Revise` (recommended) / `Proceed anyway (override blockers)`) before promoting. Do not yield without doing this.
+**Your next tool call MUST be `AskUserQuestion`** with finite choices `Revise` (recommended) / `Proceed anyway (override blockers)`. Do not produce a text response describing this gate — call the tool directly. The Spec Bee's `drafted → ready` promotion is gated on the user's answer.
 ```
 
 **Shape 2 — Suggestions / nits only** (no `[blocker]` items, but one or more `[suggestion]` or `[nit]` items):
@@ -226,7 +226,7 @@ The trailer wording depends on which of the three output shapes applies. Use the
 2. [suggestion] Cross-document — PRD goal G3 has no corresponding SDD requirement under `## Requirements`; either add an SR entry or downgrade G3 to a non-goal.
 3. [nit] SDD `## Test Fixtures` — heading uses the prescribed `none — ...` placeholder but the surrounding text re-states "no fixtures apply"; redundant wording.
 
-**Next action for the orchestrator:** findings present with no blockers — gate the user via `AskUserQuestion` with finite choices (`Proceed (acknowledge findings)` / `Revise`) before promoting. Do not yield without doing this.
+**Your next tool call MUST be `AskUserQuestion`** with finite choices `Proceed (acknowledge findings)` / `Revise`. Do not produce a text response describing this gate — call the tool directly. The Spec Bee's `drafted → ready` promotion is gated on the user's answer.
 ```
 
 **Shape 3 — No findings** (clean review):
@@ -236,10 +236,10 @@ The trailer wording depends on which of the three output shapes applies. Use the
 
 No spec issues found. PRD and SDD are clear, complete, and internally consistent.
 
-**Next action for the orchestrator:** promote the Spec Bee (or the scoped Doc child, when invoked with `--doc PRD` / `--doc SDD`) immediately and continue. No user prompt at this step.
+**Your next tool call MUST be `bees update-ticket --status ready`** against the Spec Bee (or the scoped Doc child, when invoked with `--doc PRD` / `--doc SDD`). Do not produce a text response describing this transition — call the tool directly. No user prompt at this step.
 ```
 
-**Standalone-invocation note.** When this skill is invoked standalone by a user (not by an orchestrating skill), the "orchestrator" the trailer addresses is the assistant turn presenting the findings to the user. The trailer still emits in all three shapes; the user is the human in the gate prompt. Do not suppress the trailer on the standalone path — its presence is also useful as a self-check that the skill considered the routing question.
+**Standalone-invocation note.** When this skill is invoked standalone by a user (not by an orchestrating skill), the second-person `Your next tool call MUST be …` trailer addresses the assistant turn presenting the findings to the user — you are still the orchestrator for this purpose, and the user is still the human in the gate prompt. The trailer still emits in all three shapes; do not suppress it on the standalone path — its presence is also useful as a self-check that the skill considered the routing question, and the imperative form is exactly as load-bearing standalone as it is when an orchestrating skill is reading the output.
 
 **Orchestrator self-tracking close-out (mandatory before yielding, standalone invocation).** When this skill is invoked standalone (not inline from `/quo-plan`, `/quo-write-prd`, or `/quo-write-sdd`), the orchestrator may have created ad-hoc TaskList tasks to break the review into discrete steps (e.g., "Resolve Doc children", "Fetch each Doc body", "Review per checklist", "Synthesize findings"). Before yielding the turn back to the user — either at end-of-flow after presenting the work-item list, or at any question-the-user pause that may follow — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding, the TaskList must show no `in_progress` entries left over from these synthesis steps. (When this skill is invoked inline from a parent skill, the parent skill owns its own TaskList close-out discipline per its own Section prose; this paragraph applies only to the standalone path.)
 
