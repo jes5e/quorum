@@ -36,22 +36,7 @@ Rationale: the workflow reads project-specific commands and doc paths from CLAUD
 
 Do not attempt to recover from a missing precondition by improvising commands or guessing paths — fail fast and direct the user to `/quo-setup` so the configuration is captured deliberately.
 
-**Verifying the subagents precondition.** Verification is a hybrid of two complementary mechanisms:
-
-- **Procedural gate (load-bearing primary).** If a dispatch later in the run hits an `Agent type '<name>' not found`-style error from the Agent tool for any of the seven required subagent types, the orchestrator STOPS, emits the hard-fail message above, and exits — no fallback to `general-purpose`, no skipping the dispatch, no substitute role. This gate is honest about Claude Code's session-load semantics (subagents are loaded at session start; mid-session installs require a restart or `/agents` hot-reload) and cannot be bypassed by token-budget pressure or model creativity, because it fires at the natural failure point.
-- **Upfront fast-fail (opportunistic, belt-and-braces).** Before any dispatch is attempted, run `claude agents` to enumerate registered subagents and verify each of the seven literal names (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`) is present. The command prints one line per agent in the form `  <name> · <model>` under a `User agents:` heading, exits cleanly without spawning an interactive UI, and is safe to invoke from inside a running Claude Code session. If any of the seven names is absent from the output, hard-fail per the message above. This catches the missing-restart case upfront and saves the user one wasted dispatch turn.
-
-```bash
-# POSIX (bash / zsh):
-claude agents
-```
-
-```powershell
-# Windows (PowerShell):
-claude agents
-```
-
-After running the command, scan its output for the seven required names; hard-fail if any are missing. If `claude agents` itself is unavailable (older Claude Code build, etc.), skip the upfront check — the procedural gate still catches the failure at first dispatch.
+**Verifying the subagents precondition.** Verification rides on the procedural gate at the first dispatch: if any dispatch in the run hits an `Agent type '<name>' not found`-style error from the Agent tool for any of the seven required subagent types (`engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`), the orchestrator STOPS, emits the hard-fail message above, and exits — no fallback to `general-purpose`, no skipping the dispatch, no substitute role. This gate is honest about Claude Code's session-load semantics (subagents are loaded at session start; mid-session installs require a restart or `/agents` hot-reload) and cannot be bypassed by token-budget pressure or model creativity, because it fires at the natural failure point.
 
 ### 1. Find Bee to work on and validate
 

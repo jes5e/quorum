@@ -2,10 +2,11 @@
 id: b.vh4
 type: bee
 title: /quo-fix-issue upfront 'claude agents' fast-fail check is dead code; misleads about the CLI
-status: open
-created_at: '2026-05-19T18:07:04.515553'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-19T18:07:04.515553'
+status: done
+schema_version: '0.1'
 guid: vh4cb93h6ofjdg1425jxx83gy9h5y1o1
 ---
 
@@ -97,4 +98,3 @@ The user surfaced two fix directions in the issue write-up (drop the check vs re
 ## Doc divergence noted
 
 The SDD at `docs/sdd.md:409` (the "Subagent-registry precondition bump" paragraph) describes the same broken upfront-fast-fail `claude agents` scan and inherits the same misleading characterization. The fix for this Issue should update the SDD paragraph in lockstep with the SKILL.md changes — either drop the mention of the upfront-fast-fail scan, or rewrite it to reflect whichever replacement mechanism is chosen.
-
