@@ -340,7 +340,7 @@ The framing prose around the quoted block MUST NOT loosen the role boundaries de
 
 The role boundaries are a structural property of the workflow — if the orchestrator finds itself tempted to carve an exception ("you may also propose this one cross-lane Subtask" / "you may also reason about this one out-of-lane file"), that is a signal the per-role division of labor needs orchestrator-level coordination (a follow-up Test Writer research dispatch, a re-scoping of the Task, etc.), NOT a softening clause in the dispatch prompt. Workers do not message each other; the only handoff is from worker to orchestrator (the diff in execution mode, the JSON return in research mode), never worker-to-worker. So a softening clause cannot be made safe by adding "coordinate with the other role's findings" or similar coordination prose — that channel does not exist.
 
-##### Procedural-gate fallback
+##### Procedural gate
 
 If the first research dispatch (or any later dispatch) returns an `Agent type '<name>' not found`-style error from the Agent tool for any of the four research roles (`engineer`, `test-writer`, `doc-writer`, `pm`), STOP at the procedural gate and emit the hard-fail message defined in this skill's `## Preconditions` section — do not fall back to `general-purpose`, do not skip the dispatch, do not improvise a substitute role. This is the sole verification mechanism for the subagents precondition: the procedural gate is what enforces the contract honestly against Claude Code's session-load semantics, firing at the natural failure point.
 
