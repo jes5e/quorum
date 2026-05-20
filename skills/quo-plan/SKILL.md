@@ -303,9 +303,42 @@ Step 5 (Plan Bee creation) consumes this directly: the Plan Bee's `reference_mat
 
 Create the Plan Bee inline in this session — do **not** delegate to `/quo-plan-from-specs`. That skill operates on PRD/SDD files on disk and serves the hand-authored cumulative-doc flow; this skill operates on the Spec Bee + `t1=Doc` children that Step 4 just created, and the Plan Bee's `reference_materials` points at the Spec Bee via the `bees` resolver. Inline creation here is the single supported path.
 
-#### 5a — Create the Plan Bee
+#### 5a — Detect or create the Plan Bee
 
-Author the Plan Bee body to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows). Create the `.quorum` subdir if absent (`mkdir -p /tmp/.quorum` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
+**Detection.** Re-running `/quo-plan` for the same feature — e.g., after Cancelling at the Step 5e plan-review gate to revise the Epic decomposition — must reuse an existing `drafted` Plan Bee under the current Spec Bee rather than create a duplicate. Query the Plans hive for `drafted` `bee`-tier tickets and inspect each for a `reference_materials` entry whose `bees`-resolver value points at the Spec Bee captured at the end of sub-step 4a:
+
+```bash
+# POSIX (bash / zsh):
+bees execute-freeform-query --query-yaml 'stages:
+  - [type=bee, hive=plans, status=drafted]
+report: [ticket_id, title, reference_materials]'
+```
+
+```powershell
+# Windows (PowerShell):
+bees execute-freeform-query --query-yaml 'stages:
+  - [type=bee, hive=plans, status=drafted]
+report: [ticket_id, title, reference_materials]'
+```
+
+For each returned bee, parse `reference_materials` as a JSON array of `{value, resolver}` objects and match against the current Spec Bee ID — a hit is any bee whose array contains an entry with `resolver == "bees"` and `value == <spec-bee-id>`. **Err toward reuse:** if the match is ambiguous (multiple candidate `drafted` Plan Bees under the same Spec Bee, which should be rare and indicates a prior inconsistent state), surface the candidates to the user with `AskUserQuestion` rather than guessing. A duplicate Plan Bee is cheap to fix manually after the fact; a missed reuse silently fragments the Epic set across two Plan Bees.
+
+**Match found — confirm with user.** When a candidate Plan Bee is found, fetch its child Epics via `bees show-ticket --ids <plan-bee-id>` (the `children` array enumerates the Epic ticket IDs), then present the situation via `AskUserQuestion` with these finite choices:
+
+- `Reuse existing Plan Bee and Epics` (Recommended when returning after a Cancel-at-5e) — capture the existing Plan Bee ID and the list of Epic IDs. The current run's Step 5b/5c/5d-i operate on this existing state idempotently (see "Reuse-mode downstream behavior" below). Skips the **No match — create** branch entirely.
+- `Create a new Plan Bee anyway` — fall through to the **No match — create** branch below. Use this when the user wants a fresh Plan Bee (e.g., the prior decomposition was for a superseded scope and they want to start clean). The orphan Plan Bee + its Epic children remain in `drafted` state for the user to clean up out-of-band via `bees delete-ticket --ids <id>`.
+- `Cancel` — abort the run.
+
+**Reuse-mode downstream behavior.** When the user picks `Reuse existing Plan Bee and Epics`, the orchestrator captures the existing Plan Bee ID and Epic-children list, then routes downstream sub-steps as follows:
+
+- **Skip** the `bees create-ticket --hive plans` call in the **No match — create** branch below — the Plan Bee already exists.
+- **Step 5b's "break the feature into Epics"** seeds from the existing Epic bodies (read each via `bees show-ticket --ids <epic-id>`), then iterates with the user as if proposing a fresh decomposition — the user MAY keep all Epics, modify some, add new ones, or drop existing ones. The Step 5b decomposition rules still apply against the resulting list.
+- **Step 5c's "present Epics for review"** gates on the resulting (possibly modified) Epic list. Surface the reuse-vs-new origin per Epic in the presentation so the user sees which ones carried over.
+- **Step 5d-i** routes as **update-or-create-or-delete** rather than blind create: for each Epic in the approved list that matches an existing child Epic by title (after the same normalization 4a uses for Spec Bee titles), `bees update-ticket --ids <epic-id> --body-file <path>` against the existing ticket; for each new Epic without a match, `bees create-ticket` as usual under the existing Plan Bee parent; for each existing child Epic that is NOT in the approved list, `bees delete-ticket --ids <epic-id>`. Dependency wiring runs against the final post-reconcile Epic set. The Plan Bee body itself stays as-is unless the user modified scope substantially enough to invalidate it — in which case re-author and `bees update-ticket --ids <plan-bee-id> --body-file <path>` it inline (same temp-file pattern as the create branch below).
+
+After the reuse-mode downstream sub-steps complete, control resumes at Step 5e (plan-review gate) exactly as in the create-branch flow.
+
+**No match — create.** Author the Plan Bee body to a temp file via the `Write` tool first, then pass `--body-file <path>` to bees. Do not inline a multi-paragraph body as a `--body "..."` argument: bodies containing a newline followed by a `#` heading trip Claude Code's command-injection guard and force a permission prompt, and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). A short path argument clears both. Use a path under the namespaced workflow scratch dir (`/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows). Create the `.quorum` subdir if absent (`mkdir -p /tmp/.quorum` on POSIX, `New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null` on Windows). Do **not** remove the temp file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so crashed runs leave debuggable artifacts in a known place; the OS / user reclaims them on their own cadence.
 
 **Plan Bee body shape.** Keep the body short — a brief 2-3 sentence summary of the feature and its high-level scope, plus an `## Anticipated doc impact` section. Substantive PRD/SDD content lives in the Spec Bee's `t1=Doc` children (created in Step 4), not in the Plan Bee body — downstream skills (`/quo-breakdown-epic`, `/quo-execute`'s PM role) read those via the `bees`-resolver entry in `reference_materials`. The `## Anticipated doc impact` section is a starting checklist for the post-implementation `doc-writer` pass, which appends/updates `### Feature:` subsections in the cumulative project PRD/SDD per the responsibility documented in `agents/doc-writer.md`: list which cumulative project docs the feature is expected to update once it lands. Reference the contract keys from the target repo's CLAUDE.md `## Documentation Locations` section (e.g., the `Project requirements doc (PRD)` entry, the `Internal architecture docs (SDD)` entry, the `Customer-facing docs` entry) rather than hardcoding paths like `docs/prd.md` — different projects route those keys to different files.
 **Reference materials — single shape via the `bees` resolver.** Set `--reference-materials` to a single-element JSON array pointing at the Spec Bee created in Step 4 via the `bees` resolver. The `<spec-bee-id>` placeholder is the Spec Bee ID captured at the end of Step 4a (and confirmed `ready` after Step 4c):
@@ -344,6 +377,8 @@ Mark the Plan Bee as `drafted` initially — its children (Epics) have not been 
 
 #### 5b — Break the feature into Epics
 
+**Reuse-mode note.** If 5a entered the reuse-mode branch (existing `drafted` Plan Bee found and the user picked `Reuse existing Plan Bee and Epics`), seed this step's decomposition from the existing Epic bodies (`bees show-ticket --ids <epic-id>` per captured child) rather than starting fresh. The user MAY keep all Epics, modify some, add new ones, or drop existing ones — the rules below still apply against the resulting list. Tracking which proposed Epic maps to which existing child (by title, after normalization) is what lets 5d-i route as `update-or-create-or-delete` later.
+
 Use the same Epic-decomposition rules as `/quo-plan-from-specs` Step 3:
 
 - **Every Epic must leave the codebase green.** All existing tests must still pass after the Epic is complete. Non-negotiable.
@@ -368,6 +403,8 @@ If the plan is small, one Epic is fine — don't pad the plan with more.
 
 #### 5c — Present Epics for review
 
+**Reuse-mode note.** If 5a entered reuse-mode, the "creating any Epic tickets" framing below also covers `bees update-ticket` and `bees delete-ticket` operations in 5d-i. Surface the reuse-vs-new origin per Epic in the presentation (e.g., tag each Epic as `(existing)`, `(modified)`, `(new)`, or call out dropped existing Epics that 5d-i will `bees delete-ticket`) so the user sees which ones carry over before they approve.
+
 Before creating any Epic tickets, present the full proposed Epic list to the user as markdown — title, description, dependencies for each. Use `AskUserQuestion` with options:
 
 - "Yes, create them"
@@ -381,6 +418,8 @@ Wait for approval. If the user picks "Modify the Epics", iterate in prose until 
 Epic creation and Plan Bee promotion are split across two sub-steps with the fresh-eyes plan-review gate (Step 5e) sandwiched between them. This sub-step (5d-i) creates the Epic tickets and wires their `up_dependencies` while the Plan Bee remains `drafted`; sibling sub-step 5d-ii transitions the Plan Bee from `drafted` to `ready`, and runs only after Step 5e has cleared. The split is load-bearing: the plan-review gate may surface findings whose Revise path re-authors Epic bodies or even re-wires dependencies, and routing the user through Revise after the Plan Bee has already promoted to `ready` would force a `ready → drafted` demotion of the Plan Bee — a transition the workflow has no clean precedent for. Splitting the promotion off into its own sub-step keeps the `drafted → ready` flip as the load-bearing "no more changes are expected" signal it already is across the rest of the workflow.
 
 Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body to `<tempdir>/.quorum/`, pass path; do not delete after). **Do not pass `--reference-materials` on Epics** — the bees CLI accepts `--reference-materials` only on top-level Bees (`bees create-ticket --help`: "Only supported on bee (top-level) tickets") and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's `reference_materials`, not the Epic's.
+
+**Reuse-mode routing.** If 5a entered reuse-mode, replace the blind-create flow with the `update-or-create-or-delete` reconcile described in 5a's "Reuse-mode downstream behavior" section: for each approved Epic that matches an existing child Epic by title (after the normalization 4a uses for Spec Bee titles), `bees update-ticket --ids <epic-id> --body-file <path>` against the existing ticket; for each approved Epic with no match, `bees create-ticket` as below; for each existing child Epic NOT in the approved list, `bees delete-ticket --ids <epic-id>`. Dependency wiring (further down this sub-step) runs against the final post-reconcile Epic set.
 
 ```bash
 # POSIX (bash / zsh):
@@ -553,7 +592,7 @@ After the preamble, surface the numbered findings list verbatim as prose, then c
 - **Approve & promote Plan Bee (acknowledge findings)** — user accepts the plan as-is, treating any `suggestion` / `nit` items as acknowledge-and-proceed-grade. The intended path for verdicts `approve` (no blockers) and `escalate-to-user` once the user has read the surfaced ambiguity and judged it acceptable. Capture acknowledged findings for the Step 5f end-of-skill report's **Acknowledged plan-review findings** bucket, then proceed to Step 5d-ii (Plan Bee promotion).
 - **Approve anyway & promote Plan Bee (override blockers)** — user takes explicit responsibility for promoting despite one or more `blocker` findings. Mirrors `/quo-spec-review`'s 4c "Proceed anyway (override blockers)" path. Capture the overridden blocker findings (full list) for the Step 5f end-of-skill report's **Overridden plan-review blockers** bucket, then proceed to Step 5d-ii. The override path exists because plan-level critique is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., the reviewer flagged a "missing alternative" the user has already considered and dismissed out-of-band).
 - **Revise** — route findings back through the affected writers / amendments per the routing branches below.
-- **Cancel** — exit cleanly. Plan Bee stays `drafted`, Epics stay `drafted`, run ends. Before re-invoking `/quo-plan` against the same Spec Bee, the user should manually delete the orphan `drafted` Plan Bee and its `drafted` Epic children (or revisit them out-of-band) — Step 5a does **not** currently detect or reuse an existing `drafted` Plan Bee under a Spec Bee, so a naive re-run will create a duplicate Plan Bee plus duplicate Epics alongside the existing ones. Step 4a's Spec-Bee reuse detection picks the existing Spec Bee back up cleanly; the gap is on the Plan-Bee side only.
+- **Cancel** — exit cleanly. Plan Bee stays `drafted`, Epics stay `drafted`, run ends. Re-invoking `/quo-plan` against the same Spec Bee picks the orphan state back up cleanly: Step 4a's Spec-Bee reuse detection finds the existing Spec Bee, and Step 5a's Plan-Bee reuse detection finds the existing `drafted` Plan Bee + its `drafted` Epic children — the user is prompted to either reuse them (and modify the Epic decomposition through Step 5b/5c/5d-i's idempotent reuse path) or create a fresh Plan Bee. No manual cleanup is required between Cancel and re-run.
 
 Mark the `plan-reviewer-<plan-bee-short-suffix>` TaskList task `completed` once the Agent's findings are surfaced (regardless of which branch the user picks); the dispatch is one-shot and its work is done at this point.
 
@@ -561,8 +600,8 @@ Mark the `plan-reviewer-<plan-bee-short-suffix>` TaskList task `completed` once 
 
 When the user picks **Revise**, route each finding by its `target:` tag:
 
-- **PRD-targeted findings** (`target: PRD`) — re-invoke `/quo-write-prd` via the `Skill` tool with the existing inline-invocation `args` payload extended with a `findings:` field. The writer skill's `findings:` field is documented (under its `## Inline invocation via the Skill tool` → `### Input shape` section) to carry severity-tagged numbered work items from `/quo-spec-review`, each with a PRD-section anchor. Plan-review findings have a similar severity-tagged shape, but in place of the PRD-section anchor they carry the `target:` tag this gate's dispatch prompt prescribes (e.g., `target: PRD`). Include the relevant subset of plan-review findings verbatim — preserve the severity tag (`blocker` / `suggestion` / `nit`), the `target:` tag, and the descriptive body. The writer's Revise pass is expected to absorb the differently-shaped items pragmatically (the severity tag and descriptive body carry the substance the writer needs; the missing PRD-section anchor degrades gracefully). The writer routes through its Step 5 Branch B (update existing PRD child).
-- **SDD-targeted findings** (`target: SDD`) — symmetric re-invocation of `/quo-write-sdd` with the SDD-tagged findings under the `findings:` field. Same shape-difference caveat as PRD-targeted findings above: plan-review findings carry the `target:` tag in place of the SDD-section anchor the writer's `findings:` field is documented to expect, and the writer's Revise pass absorbs the difference pragmatically. The writer routes through its Step 6 Branch B (update existing SDD child).
+- **PRD-targeted findings** (`target: PRD`) — re-invoke `/quo-write-prd` via the `Skill` tool with the existing inline-invocation `args` payload extended with a `findings:` field. The writer skill's `findings:` field accepts both spec-review-shaped items (square-bracketed severity tag + PRD-section anchor) and plan-review-shaped items (backticked severity tag + `target:` tag) — see `skills/quo-write-prd/SKILL.md`'s `## Inline invocation via the Skill tool` → `### Input shape` section. Include the relevant subset of plan-review findings verbatim, preserving the severity tag (`blocker` / `suggestion` / `nit`), the `target:` tag, and the descriptive body. The writer routes through its Step 5 Branch B (update existing PRD child).
+- **SDD-targeted findings** (`target: SDD`) — symmetric re-invocation of `/quo-write-sdd` with the SDD-tagged findings under the `findings:` field. `/quo-write-sdd`'s `findings:` field accepts the same two item shapes as `/quo-write-prd`'s. The writer routes through its Step 6 Branch B (update existing SDD child).
 - **Plan-Bee-body-targeted findings** (`target: Plan-Bee-body`) — re-author the Plan Bee body in the orchestrator turn (no Skill tool — the orchestrator owns the Plan Bee). Use the same temp-file pattern Step 5a uses (write body via the `Write` tool to `/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX or `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows; create the `.quorum` subdir first if absent). Then update via:
 
   ```bash
