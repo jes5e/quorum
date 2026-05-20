@@ -546,7 +546,7 @@ When the Agent returns, parse the verdict trailer line (`Plan-review verdict: <v
 
 - **`approve`** — "The fresh-eyes plan reviewer found the plan coherent and well-decomposed. Findings below are acknowledge-and-proceed-grade. Review follows:"
 - **`revise-recommended`** — "The fresh-eyes plan reviewer flagged one or more `blocker` findings against the plan. Read carefully before deciding how to proceed. Review follows:"
-- **`escalate-to-user`** — "⚠️ The fresh-eyes plan reviewer surfaced a substantive ambiguity that needs your input rather than a writer-skill revision pass. Review follows:"
+- **`escalate-to-user`** — "The fresh-eyes plan reviewer surfaced a substantive ambiguity that needs your input rather than a writer-skill revision pass. Review follows:"
 
 After the preamble, surface the numbered findings list verbatim as prose, then call `AskUserQuestion` per the routing trailer the Agent emitted. Finite choices (the trailer prescribes these literal options; the Recommended marker depends on the verdict per the dispatch-prompt Shape A/B/C trailers above):
 
