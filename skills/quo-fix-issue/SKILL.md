@@ -196,8 +196,8 @@ When the Analyst's completion notification fires, read the Analyst's return — 
 
 - **`recommend-as-stated`** — "The Analyst's codebase research agrees with the Issue body's framing. The Recommended approach reflects the body's approach. Proposal follows:"
 - **`recommend-with-refinements`** — "The Analyst's codebase research broadly agrees with the Issue body, but the Recommended approach refines the body's framing. The refinements are called out in Why / Alternatives considered. Proposal follows:"
-- **`recommend-different-approach`** — "The Analyst's codebase research **diverged** from the Issue body's framing. The Recommended approach is an option the body did NOT propose; the Why section explains the divergence explicitly. Read carefully before approving. Proposal follows:"
-- **`escalate-to-user`** — "The Analyst could **not converge** on a single recommendation and is escalating the open question(s) to you. The Why section frames the design ambiguity; the alternatives below are the choices that need your input. Proposal follows:"
+- **`recommend-different-approach`** — "⚠️ The Analyst's codebase research **diverged** from the Issue body's framing. The Recommended approach is an option the body did NOT propose; the Why section explains the divergence explicitly. Read carefully before approving. Proposal follows:"
+- **`escalate-to-user`** — "⚠️ The Analyst could **not converge** on a single recommendation and is escalating the open question(s) to you. The Why section frames the design ambiguity; the alternatives below are the choices that need your input. Proposal follows:"
 
 The preamble is the orchestrator's responsibility, not the Analyst's. The Analyst returns the verdict; the orchestrator turns the verdict into the user-facing framing. This split keeps the framing language consistent across runs while letting the Analyst stay focused on the design substance.
 
