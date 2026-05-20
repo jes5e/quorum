@@ -27,6 +27,16 @@ Add depth-aware finding routing and a session-scoped compromise tracker across t
 
 Substantive PRD/SDD content lives in this Plan Bee's referenced Spec Bee children (PRD `t1.tip.bo`, SDD `t1.tip.ux` under Spec Bee `b.tip`).
 
+## Phased landing
+
+The 10 Epics land in two phases with respect to the load-bearing `b.wii` dependency (orchestrator-adherence failure mode; see PRD / SDD `## Risk / Known Dependencies` for the full framing):
+
+**Phase 1 — Emission enrichment (Epics 1–6).** Per-skill emission extensions (`t1.ut9.9c`, `t1.ut9.jn`, `t1.ut9.q2`, `t1.ut9.29`, `t1.ut9.53`) plus reviewer-agent wrapper frontmatter alignment (`t1.ut9.2q`). All six Epics have empty `up_dependencies`. **Zero `b.wii` exposure** — no new user gates fire under Phase 1. Standalone value: severity tags become emitted for the first time across three implementer-side review skills; depth + fix-path enumeration land everywhere; reviewer-agent wrapper contracts get aligned with what the wrapped skills actually emit.
+
+**Phase 2 — Routing + tracker + post-completion reframe (Epics 7–10).** Orchestrator-discipline routing rules + anti-pattern callout + scope-bounding gate + backwards-compat shim (`t1.ut9.no`), session-scoped compromise tracker with four append triggers (`t1.ut9.po`), end-of-run "Accepted compromises" surface (`t1.ut9.od`), post-completion review reframe + SR-4.5 / SR-4.6 plausibility checks + SR-6.7 recovery gate (`t1.ut9.pw`). **Inherits the `b.wii` fragility** — the new user gates the routing table and recovery gate fire use the same prose-strengthening adherence mechanism `b.wii` documents as intermittently failing.
+
+**Recommended landing order:** Phase 1 first (b.wii-independent, standalone-valuable), then Phase 2 either (a) after `b.wii` resolves with a structural fix, or (b) with explicit user acknowledgement at the start of the Phase 2 `/quo-execute` run that the new gates may fail-as-prose intermittently. `/quo-execute b.ut9` will naturally land Phase 1 first (Epics 1–6 surface before Epic 7 in any topological ordering given the dependency wiring), so the phasing is enforced by existing dependency wiring without `/quo-execute` needing to learn a "phase" concept. The user controls the Phase 1 → Phase 2 boundary by either continuing the run after Phase 1 completes or pausing to wait on `b.wii`.
+
 ## Anticipated doc impact
 
 Per the SDD's `## Documentation` section, this feature will warrant new `### Feature:` subsections in the cumulative project docs once it lands:
@@ -39,3 +49,4 @@ Per the SDD's `## Documentation` section, this feature will warrant new `### Fea
 `CONTRIBUTING.md` (Engineering best practices) may receive a light update to mention the anti-pattern callout (contributors working on future review-loop modifications should know that scope-bounding directives inside dispatch prompts are forbidden). To be decided during the doc-writer pass.
 
 `docs/doc-writing-guide.md` (Doc writing guide) may receive a light update teaching the depth-dimension emission pattern for future review skills — the SDD's `## Documentation` section identifies this as a candidate. To be decided during the doc-writer pass.
+
