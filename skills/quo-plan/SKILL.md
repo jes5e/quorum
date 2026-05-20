@@ -259,7 +259,7 @@ Quick-reference summary of what the three trailer shapes prescribe (the trailer 
 
 Behavioral details (apply after gating per the trailer):
 
-- **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced `suggestion`/`nit` findings; promote anyway. Record the acknowledged findings in Step 5e's end-of-skill report so the choice is visible.
+- **Proceed (acknowledge findings)** — the user explicitly accepts the surfaced `suggestion`/`nit` findings; promote anyway. Record the acknowledged findings in Step 5f's end-of-skill report so the choice is visible.
 - **Revise** — loop back to the writer-skill re-invocation path described in step 4 above, then re-invoke `/quo-spec-review <spec-bee-id>` for a re-check.
 - **Proceed anyway (override blockers)** — the user takes explicit responsibility for promoting despite the blockers. Record the override (with the full list of overridden blocker findings) in the end-of-skill report so the choice is visible. The override path exists because spec quality is not a hard contract — there are legitimate cases where a `blocker`-tagged finding does not apply (e.g., greenfield work where a "Generic existing-behavior" flag is genuinely the right shape).
 
@@ -290,7 +290,7 @@ The `bees update-ticket` invocation is identical on both platforms here — ther
 - A Spec Bee in the Specs hive titled `<feature title>`, status `ready`.
 - A `t1=Doc` child of the Spec Bee titled `PRD`, status `ready`, with the PRD content the user approved during `/quo-write-prd`'s gate.
 - A `t1=Doc` child of the Spec Bee titled `SDD`, status `ready`, with the SDD content the user approved during `/quo-write-sdd`'s gate (and any `RESEARCH NEEDED:` tags surfaced for follow-up).
-- Any `/quo-spec-review` findings surfaced during the spec-review gate but not addressed before promotion — captured for inclusion in Step 5e's end-of-skill report. Specifically:
+- Any `/quo-spec-review` findings surfaced during the spec-review gate but not addressed before promotion — captured for inclusion in Step 5f's end-of-skill report. Specifically:
   - **Acknowledged findings** — `suggestion`/`nit` items the user explicitly accepted via "Proceed (acknowledge findings)".
   - **Overridden blockers** — `blocker` items the user explicitly overrode via "Proceed anyway (override blockers)".
   - **Deferred by time-budget short-circuit** — `suggestion`/`nit` items deferred when the ~10-item / ~3-turn budget triggered.
@@ -340,7 +340,7 @@ bees create-ticket `
   --reference-materials '[{"value":"<spec-bee-id>","resolver":"bees"}]'
 ```
 
-Mark the Plan Bee as `drafted` initially — its children (Epics) have not been written yet. Step 5d below promotes it to `ready` once Epics exist.
+Mark the Plan Bee as `drafted` initially — its children (Epics) have not been written yet. Step 5d-ii below promotes it to `ready` once Epics exist and the fresh-eyes plan-review gate (Step 5e) has cleared.
 
 #### 5b — Break the feature into Epics
 
@@ -378,6 +378,10 @@ Wait for approval. If the user picks "Modify the Epics", iterate in prose until 
 
 #### 5d — Create Epic tickets and wire dependencies
 
+Step 5d splits into two sub-steps. **5d-i** creates the Epic tickets and wires their `up_dependencies` while the Plan Bee remains `drafted`. **5d-ii** transitions the Plan Bee from `drafted` to `ready`, and runs only after the fresh-eyes plan-review gate (Step 5e) has cleared. The split is load-bearing: the plan-review gate may surface findings whose Revise path re-authors Epic bodies or even re-wires dependencies, and routing the user through Revise after the Plan Bee has already promoted to `ready` would force a `ready → drafted` demotion of the Plan Bee — a transition the workflow has no clean precedent for. Splitting the promotion off into its own sub-step keeps the `drafted → ready` flip as the load-bearing "no more changes are expected" signal it already is across the rest of the workflow.
+
+##### 5d-i — Create Epics and wire dependencies (Plan Bee stays `drafted`)
+
 Create each approved Epic as a `t1` child of the Plan Bee with status `drafted`. Use the same temp-file + `--body-file` pattern as in 5a (author body to `<tempdir>/.quorum/`, pass path; do not delete after). **Do not pass `--reference-materials` on Epics** — the bees CLI accepts `--reference-materials` only on top-level Bees (`bees create-ticket --help`: "Only supported on bee (top-level) tickets") and hard-errors on child tiers. Downstream skills trace Epics back to PRD/SDD via the parent Plan Bee's `reference_materials`, not the Epic's.
 
 ```bash
@@ -409,17 +413,217 @@ After all Epics exist, analyze blocking relationships and set `up_dependencies` 
 
 For each Epic, ask: "What must be completed before this Epic can be worked on?"
 
-Once dependencies are wired, promote the Plan Bee from `drafted` to `ready` (its children — Epics — are now written, even though the Epics' children — Tasks — are not). The Plan Bee's `ready` transition is gated on the Spec Bee referenced in `reference_materials` already being `ready` — Step 4c (sibling sub-step) ensures that gate by promoting the Spec Bee to `ready` only after both its PRD and SDD `t1=Doc` children pass the writer-skill approval gates, so by the time control reaches this promotion call the gate is already satisfied.
+Capture the comma-separated Epic ID list — Step 5e (the fresh-eyes plan-review gate) embeds it in the dispatch prompt. The Plan Bee stays `drafted` at the end of 5d-i; do **not** promote it to `ready` here. Promotion happens in 5d-ii after the plan-review gate clears.
 
-#### 5e — Report
+#### 5e — Fresh-eyes plan review
 
-Output a markdown summary listing the Plan Bee, each Epic (ID, title, status, dependencies), and any dependency relationships created. Also surface any spec-review findings that were captured at end-of-Step-4 but not addressed before the Spec Bee was promoted — split into the same three buckets named there:
+With Epics created and dependencies wired but the Plan Bee still `drafted`, run a fresh-eyes plan-review gate before promoting the Plan Bee. The spec-review gate at 4c is a checklist review of PRD/SDD prose quality (section completeness, criterion measurability, codebase grounding, cross-doc consistency); it does NOT critique the overall plan as a coherent solution to the problem. This gate fills that gap — a cold-start Agent reads PRD + SDD + Plan Bee body + Epics and returns substantive critique on problem framing, approach correctness, Epic decomposition sensibility, and missing risks / alternatives.
+
+**Anti-overlap rule.** This gate is explicitly NOT a re-run of `/quo-spec-review`. The dispatch prompt below names the prose-quality lane as out of scope so the reviewer does not re-litigate spec-review territory. If `/quo-spec-review` has already passed (which it has by construction — 4c is a precondition for reaching 5e), prose-quality findings should not appear here; if they do, they are out of scope and the orchestrator silently discards them when triaging.
+
+**Pre-commitment.** When the dispatched Agent's completion notification fires, your next tool use MUST be `AskUserQuestion` (per the routing trailer the dispatch prompt embeds in its structured output). A text-only response between the Agent return and that tool call is a defect — the same anti-narrate-instead-of-do discipline `/quo-spec-review`'s Step 4 trailer enforces applies here.
+
+##### Dispatch the plan reviewer
+
+Spawn a fresh generalist reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. No custom subagent under `agents/` — this gate is one-shot per `/quo-plan` run, read-only, and its instructions fit inline in the dispatch prompt. The reviewer sees only what the prompt embeds, so the prompt must be fully self-contained. Track the dispatch via a TaskList task named `plan-reviewer-<plan-bee-short-suffix>` (e.g., for Plan Bee `b.abc`, the task name is `plan-reviewer-abc`) with the usual `pending` → `in_progress` → `completed` lifecycle.
+
+Starting skeleton (substitute the placeholders with the IDs captured in earlier steps before sending):
+
+```
+You are an independent fresh-eyes plan reviewer for a /quo-plan run that just
+authored a Spec Bee (with PRD and SDD t1=Doc children), a Plan Bee, and a set
+of Epics under the Plan Bee.
+
+Read the following tickets via `bees show-ticket --ids <id>` (one call per ID):
+
+- Spec Bee: <spec-bee-id>
+- PRD child: <prd-ticket-id>
+- SDD child: <sdd-ticket-id>
+- Plan Bee: <plan-bee-id>
+- Epics (comma-separated, one t1 child per ID): <epic-id-list>
+
+Your lane is SUBSTANCE — critique the overall plan as a coherent solution to
+the problem:
+
+- Is the problem well understood and framed right?
+- Is the approach (as captured in PRD goals + SDD requirements + Epic
+  decomposition) sound?
+- Are the Epics decomposed sensibly — each one a vertical slice, single
+  coherent outcome, leaves the codebase green, testable / demo-able?
+- Are there missing risks, missing alternatives, or load-bearing assumptions
+  that haven't been examined?
+
+EXPLICITLY OUT OF SCOPE: prose-quality nits — section completeness,
+heading-level conventions, criterion measurability, codebase-grounding
+citation density, cross-document consistency mechanics. /quo-spec-review has
+already passed against the PRD and SDD children and covers that lane; do not
+re-litigate it here. If you find a prose-quality issue, drop it.
+
+Do NOT modify any tickets or files. You are a read-only reviewer.
+
+Return findings as a numbered list. For each item include:
+
+- A severity tag, exactly one of: `blocker`, `suggestion`, `nit`.
+- A `target:` tag, exactly one of: `PRD`, `SDD`, `Plan-Bee-body`, or
+  `Epic:<epic-id>` (the specific Epic ID, when an Epic-scoped finding).
+- A one-or-two-sentence description of the substance issue, naming the
+  concrete content the orchestrator and writer skills will need to address it.
+
+Example:
+
+  1. `blocker` target: SDD — Requirement SR-3 ("the routing layer caches by
+     request hash") contradicts PRD goal G2 ("requests must be idempotent
+     against retries with different request bodies"). Either narrow the
+     caching key in SR-3 or relax G2 to body-stable idempotency.
+  2. `suggestion` target: Epic:t1.abc.1 — Epic title "Wire UI" bundles three
+     unrelated user-visible capabilities (login form, settings panel, error
+     toasts). Split into three Epics so each leaves the codebase green and
+     stands alone as a vertical slice.
+  3. `nit` target: Plan-Bee-body — `## Anticipated doc impact` lists the SDD
+     entry but not the customer-facing README, which Epic:t1.abc.2 modifies.
+
+After the numbered findings, append exactly one verdict trailer line — pick
+exactly one value:
+
+  Plan-review verdict: <one of: approve | revise-recommended | escalate-to-user>
+
+Verdict semantics:
+
+- `approve` — the plan is coherent and well-decomposed; either no findings,
+  or only `suggestion` / `nit` items the user can reasonably acknowledge
+  and proceed past.
+- `revise-recommended` — one or more `blocker` findings the reviewer
+  believes should be addressed before downstream skills consume the plan.
+- `escalate-to-user` — the reviewer found a substantive ambiguity that
+  requires the user's input rather than a writer-skill revision pass (e.g.,
+  the PRD's stated approach and the SDD's chosen technical strategy point at
+  different problems and only the user can say which one is right).
+
+If the plan is clean and you have no findings, return:
+
+  No plan-review issues found.
+
+  Plan-review verdict: approve
+
+Then append a verdict-conditional routing trailer as the final block of your
+response. Pick the trailer shape matching the verdict you just emitted —
+emit exactly one shape, verbatim — so the Recommended marker tracks the
+verdict (mirroring `/quo-spec-review`'s verdict-conditional Recommended
+pattern in its Step 4 Shape 1 vs Shape 2 trailers):
+
+**Shape A — used when verdict is `approve`:**
+
+  **Your next tool call MUST be `AskUserQuestion`** with finite choices
+  `Approve & promote Plan Bee` (Recommended) / `Revise` /
+  `Cancel`. Do not produce a text response describing this gate — call the
+  tool directly. The Plan Bee's `drafted → ready` promotion is gated on the
+  user's answer.
+
+**Shape B — used when verdict is `revise-recommended`:**
+
+  **Your next tool call MUST be `AskUserQuestion`** with finite choices
+  `Approve & promote Plan Bee` / `Revise` (Recommended) /
+  `Cancel`. Do not produce a text response describing this gate — call the
+  tool directly. The Plan Bee's `drafted → ready` promotion is gated on the
+  user's answer.
+
+**Shape C — used when verdict is `escalate-to-user`:**
+
+  **Your next tool call MUST be `AskUserQuestion`** with finite choices
+  `Approve & promote Plan Bee` / `Revise` / `Cancel`. Do not produce a text
+  response describing this gate — call the tool directly. None of the
+  choices carries a Recommended marker — the user must judge which path
+  resolves the substantive ambiguity. The Plan Bee's `drafted → ready`
+  promotion is gated on the user's answer.
+```
+
+Wait for the Agent's completion notification before proceeding.
+
+##### Surface the findings and gate the user choice
+
+When the Agent returns, parse the verdict trailer line (`Plan-review verdict: <value>`) and use it to shape a one-or-two-sentence prose preamble before surfacing the findings, mirroring the preamble-by-verdict pattern in `/quo-fix-issue` Section 3:
+
+- **`approve`** — "The fresh-eyes plan reviewer found the plan coherent and well-decomposed. Findings below are acknowledge-and-proceed-grade. Review follows:"
+- **`revise-recommended`** — "The fresh-eyes plan reviewer flagged one or more `blocker` findings against the plan. Read carefully before deciding how to proceed. Review follows:"
+- **`escalate-to-user`** — "⚠️ The fresh-eyes plan reviewer surfaced a substantive ambiguity that needs your input rather than a writer-skill revision pass. Review follows:"
+
+After the preamble, surface the numbered findings list verbatim as prose, then call `AskUserQuestion` per the routing trailer the Agent emitted. Finite choices (the trailer prescribes these literal options):
+
+- **Approve & promote Plan Bee** (Recommended) — user accepts the plan as-is (including any `suggestion` / `nit` items the user reads as acknowledge-and-proceed-grade). Capture any acknowledged findings for the Step 5f end-of-skill report, then proceed to Step 5d-ii (Plan Bee promotion).
+- **Revise** — route findings back through the affected writers / amendments per the routing branches below.
+- **Cancel** — exit cleanly. Plan Bee stays `drafted`, Epics stay `drafted`, run ends. Before re-invoking `/quo-plan` against the same Spec Bee, the user should manually delete the orphan `drafted` Plan Bee and its `drafted` Epic children (or revisit them out-of-band) — Step 5a does **not** currently detect or reuse an existing `drafted` Plan Bee under a Spec Bee, so a naive re-run will create a duplicate Plan Bee plus duplicate Epics alongside the existing ones. Step 4a's Spec-Bee reuse detection picks the existing Spec Bee back up cleanly; the gap is on the Plan-Bee side only.
+
+Mark the `plan-reviewer-<plan-bee-short-suffix>` TaskList task `completed` once the Agent's findings are surfaced (regardless of which branch the user picks); the dispatch is one-shot and its work is done at this point.
+
+##### Revise routing
+
+When the user picks **Revise**, route each finding by its `target:` tag:
+
+- **PRD-targeted findings** (`target: PRD`) — re-invoke `/quo-write-prd` via the `Skill` tool with the existing inline-invocation `args` payload extended with a `findings:` field. Same payload shape `/quo-write-prd` already accepts under its `## Inline invocation via the Skill tool` section (and the same shape 4c's spec-review revise loop uses), with the relevant subset of plan-review findings included verbatim — preserve the severity tag (`blocker` / `suggestion` / `nit`) and the descriptive body. The writer routes through its Step 5 Branch B (update existing PRD child).
+- **SDD-targeted findings** (`target: SDD`) — symmetric re-invocation of `/quo-write-sdd` with the SDD-tagged findings under the `findings:` field. The writer routes through its Step 6 Branch B (update existing SDD child).
+- **Plan-Bee-body-targeted findings** (`target: Plan-Bee-body`) — re-author the Plan Bee body in the orchestrator turn (no Skill tool — the orchestrator owns the Plan Bee). Use the same temp-file pattern Step 5a uses (write body via the `Write` tool to `/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX or `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows; create the `.quorum` subdir first if absent). Then update via:
+
+  ```bash
+  # POSIX (bash / zsh):
+  mkdir -p /tmp/.quorum
+  # then write the revised body to /tmp/.quorum/bees-body-<short-suffix>.md via the Write tool
+  bees update-ticket --ids <plan-bee-id> --body-file <path>
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+  # then write the revised body to $env:TEMP\.quorum\bees-body-<short-suffix>.md via the Write tool
+  bees update-ticket --ids <plan-bee-id> --body-file <path>
+  ```
+
+- **Epic-targeted findings** (`target: Epic:<epic-id>`) — re-author the named Epic's body in the orchestrator turn using the same temp-file + `--body-file` pattern as 5d-i, then `bees update-ticket --ids <epic-id> --body-file <path>`. If a decomposition-level finding implies re-wiring `up_dependencies` (e.g., splitting an Epic, merging two Epics, changing the blocking order), adjust dependencies as part of the same Revise pass.
+
+**One-pass `/quo-spec-review` re-run cap on PRD/SDD revisions.** When the Revise branch re-invokes `/quo-write-prd` or `/quo-write-sdd` (PRD- or SDD-targeted findings), the writer skills change `ready` PRD/SDD children, so the existing 4c spec-review contract applies. Re-run `/quo-spec-review <spec-bee-id>` as a follow-up gate **once** before re-running the plan reviewer. Cap this re-run at one pass — if `/quo-spec-review` returns `blocker` findings on the post-Revise re-run, surface those to the user (do not auto-iterate the spec-review side and the plan-review side together). Surfacing means: read the spec-review findings to the user as prose, call `AskUserQuestion` with finite choices `Address spec-review blockers, then re-run plan reviewer` / `Skip remaining spec-review findings and re-run plan reviewer now` / `Cancel`. The cap exists to prevent a plan-review → writer → spec-review → writer → plan-review nesting that exceeds either gate's ~3-turn budget. When `/quo-spec-review` returns no blockers on the re-run (or only `suggestion` / `nit` items the user acknowledges through 4c's existing acknowledge gate), proceed to re-dispatch the plan reviewer.
+
+When the Plan-Bee-body- or Epic-targeted Revise branches fire WITHOUT any PRD/SDD revisions, skip the `/quo-spec-review` re-run entirely — no Doc-child content has changed, so the spec-review gate has nothing new to evaluate.
+
+##### Re-dispatch the plan reviewer after Revise
+
+After Revise routing completes (writer skills returned successfully, in-place updates landed, and the optional `/quo-spec-review` re-run cleared), re-dispatch the plan reviewer with the same prompt template. Use a TaskList task name `plan-reviewer-<plan-bee-short-suffix>-rev<n>` where `<n>` is the 1-based revision count (e.g., `plan-reviewer-abc-rev1` for the first revision). Mark each prior plan-reviewer task `completed` before issuing the new dispatch. Loop back to "Surface the findings and gate the user choice" above.
+
+##### Time-budget short-circuit
+
+Mirror the `/quo-spec-review` time-budget bounds. If a single plan-review dispatch returns more than ~10 items OR the review-fix-review loop runs more than ~3 turns, stop iterating. Triage the returned list down to `blocker`-severity items only, route those through the Revise branches above, and capture deferred `suggestion` / `nit` items for the Step 5f end-of-skill report's deferred bucket. These thresholds are guidance, not a hard contract — pick the firmer side when the loop is thrashing on subjective decomposition-shape preferences, the looser side when each finding is high-signal. The 3-turn bound is intentional and mirrors `/quo-spec-review`'s rationale: plan-level substance has a small surface area relative to a Task-sized code diff, so 3 turns of revision is usually enough; thrashing past 3 turns almost always means subjective churn rather than missing-substance correctness.
+
+#### 5d-ii — Promote the Plan Bee from `drafted` to `ready`
+
+When the fresh-eyes plan-review gate (Step 5e) returns control via the `Approve & promote Plan Bee` choice (or via the time-budget short-circuit after blocker triage), transition the Plan Bee:
+
+```bash
+# POSIX (bash / zsh):
+bees update-ticket --ids <plan-bee-id> --status ready
+```
+
+```powershell
+# Windows (PowerShell):
+bees update-ticket --ids <plan-bee-id> --status ready
+```
+
+The Plan Bee's `ready` transition is gated on the Spec Bee referenced in `reference_materials` already being `ready` — Step 4c (sibling sub-step) ensures that gate by promoting the Spec Bee to `ready` only after both its PRD and SDD `t1=Doc` children pass the writer-skill approval gates, so by the time control reaches this promotion call the gate is already satisfied. The Plan Bee's children — Epics — are now written, even though the Epics' children — Tasks — are not.
+
+#### 5f — Report
+
+Output a markdown summary listing the Plan Bee, each Epic (ID, title, status, dependencies), and any dependency relationships created. Also surface any spec-review **or** plan-review findings that were captured during the run but not addressed before the Plan Bee was promoted — split into the same three buckets for each gate:
+
+**Spec-review findings (from 4c's gate):**
 
 - **Acknowledged spec-review findings** — `suggestion`/`nit` items the user explicitly accepted via "Proceed (acknowledge findings)" during 4c's spec-review gate.
 - **Overridden spec-review blockers** — `blocker` items the user explicitly overrode via "Proceed anyway (override blockers)" during 4c's spec-review gate.
 - **Spec-review items deferred by the time-budget short-circuit** — `suggestion`/`nit` items that the ~10-item / ~3-turn budget set aside.
 
-If 4c's spec-review gate ran with no findings, omit these buckets entirely. The point of surfacing them here is to give the user a single end-of-skill view of what was *intentionally not addressed* in the spec content before the Spec Bee promoted, so they can decide whether to file follow-up Issues or revise the PRD/SDD before downstream skills consume them.
+**Plan-review findings (from 5e's gate):**
+
+- **Acknowledged plan-review findings** — `suggestion`/`nit` items the user explicitly accepted via "Approve & promote Plan Bee" during 5e's plan-review gate.
+- **Overridden plan-review blockers** — `blocker` items the user explicitly approved past via "Approve & promote Plan Bee" during 5e's plan-review gate (rare; the Recommended path on blockers is Revise, but the user retains override authority).
+- **Plan-review items deferred by the time-budget short-circuit** — `suggestion`/`nit` items that the ~10-item / ~3-turn budget set aside on 5e.
+
+If a given gate ran with no findings (or no surfaced-but-unaddressed findings), omit its bucket sub-section entirely. If both gates ran clean, omit both buckets — the report stays clean. The point of surfacing them in one end-of-skill view is to give the user a single coherent picture of what was *intentionally not addressed* across both gates before the Plan Bee promoted, so they can decide whether to file follow-up Issues or revise the artifacts before downstream skills consume them.
 
 ### 6. Offer Next Steps
 

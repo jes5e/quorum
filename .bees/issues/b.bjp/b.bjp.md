@@ -2,10 +2,11 @@
 id: b.bjp
 type: bee
 title: Add fresh-eyes plan-review gate to /quo-plan before Step 6 next-steps prompt
-status: open
-created_at: '2026-05-19T23:11:57.439274'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-19T23:11:57.439274'
+status: done
+schema_version: '0.1'
 guid: bjprbhf3y94cgwistwpvfzrwsa4n4m92
 ---
 
@@ -48,4 +49,3 @@ The dispatch prompt is embedded in the skill prose — no new file under `agents
 - **Extend /quo-spec-review to cover plan-level critique** — rejected. Two skills with distinct concerns (checklist content review vs holistic plan critique) are cleaner than one skill with two modes.
 - **Add a custom subagent under `agents/` (e.g., `agents/plan-reviewer.md`)** — rejected. Custom subagents earn their weight when (i) the role is invoked many times with a stable contract across orchestrators, (ii) tool allowlist needs to be tighter than `*`, or (iii) instructions are too long to embed inline. Plan-review is one-shot per /quo-plan run, read-only (general-purpose's `*` allowlist is fine), and its instructions fit inline in the dispatch prompt.
 - **Reuse `agents/analyst.md` (generalize it)** — rejected. analyst's description, structured-output contract, and verdict vocabulary are load-bearing for /quo-fix-issue's orchestrator routing. Generalizing them would muddy a currently-tight contract.
-
