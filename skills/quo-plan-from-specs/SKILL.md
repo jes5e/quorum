@@ -131,16 +131,16 @@ Every Epic must leave the codebase in a working state with all existing tests pa
 Break Epics into stories that deliver end-to-end behavior.
 
 Avoid technology layer stories:
-- Database Epic ❌
-- API Epic ❌
-- UI Epic ❌
-- Documentation Epic ❌
-- Testing Epic ❌
+- Database Epic
+- API Epic
+- UI Epic
+- Documentation Epic
+- Testing Epic
 
 Prefer capability slices:
-- Epic: User performs action and receives feedback ✅
-- Epic: System handles error and retry behavior ✅
-- Epic: Metrics and logging are emitted ✅
+- Epic: User performs action and receives feedback
+- Epic: System handles error and retry behavior
+- Epic: Metrics and logging are emitted
 
 Each Epic should be independently testable and demo-able.
 
