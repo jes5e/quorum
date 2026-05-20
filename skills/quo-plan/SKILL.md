@@ -681,45 +681,55 @@ Note above the options: each downstream skill re-reads the Plan Bee, Epics, and 
 
 ### 7. Commit
 
-Stage and commit any in-repo changes from this run. **Do not hardcode the `.bees/plans/` path.** `/quo-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked a sibling path. Likewise, **do not hardcode `docs/`** into the `add` list as a default — under this skill's current design, the doc paths configured via CLAUDE.md `## Documentation Locations` (PRD / SDD / customer-facing docs) are not modified during planning at all (Step 4 routes PRD/SDD authoring through ticketed Spec Bee children, not direct file writes), so the no-docs-changes case is the dominant path on every `/quo-plan` run.
+Stage and commit any in-repo changes from this run. **Do not hardcode the `.bees/plans/` or `.bees/specs/` paths.** `/quo-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else; the Plans hive and the Specs hive can be configured independently. A hardcoded `git add .bees/plans/ .bees/specs/` silently stages nothing for whichever hive lives at a sibling path. Likewise, **do not hardcode `docs/`** into the `add` list as a default — under this skill's current design, the doc paths configured via CLAUDE.md `## Documentation Locations` (PRD / SDD / customer-facing docs) are not modified during planning at all (Step 4 routes PRD/SDD authoring through ticketed Spec Bee children, not direct file writes), so the no-docs-changes case is the dominant path on every `/quo-plan` run.
 
 **Note:** the docs-changes branch below effectively never fires for `/quo-plan` after Step 4's redesign — it remains as a defensive fallback for the rare case where a future skill change reintroduces planning-time doc edits, or where the user happened to manually edit a doc file in the same session before invoking `/quo-plan`. The `/quo-plan-from-specs` skill has its own commit logic and is out of scope here.
 
 #### Dominant path — no docs changes
 
-On a normal `/quo-plan` run, the only artifact touched in the working tree is the Plan Bee ticket file (and its Epic children) under the Plans hive — and only when that hive lives inside the repo. Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and stage **only** that path when it does. If the Plans hive lives outside the repo, the `add` list is empty — skip `git add` entirely and skip the commit, then report to the user:
+On a normal `/quo-plan` run, the artifacts touched in the working tree are the Plan Bee ticket file (and its Epic children) under the **Plans hive**, plus the Spec Bee ticket file (and its PRD + SDD `t1=Doc` children created in Step 4) under the **Specs hive** — and only for whichever of those hives live inside the repo. Resolve both the Plans and Specs hive paths via `bees list-hives`, check each independently for in-repo-ness, and stage the in-repo paths (could be zero, one, or both). When neither hive lives in the repo, the `add` list is empty — skip `git add` entirely and skip the commit, then report to the user:
 
 > Plan stored in bees; no in-repo changes to commit.
 
-The bees CLI has already persisted the Plan Bee and its Epics to its own storage (which lives under the hive path the user picked); no git-tracked artifacts changed in the current repo, so there is genuinely nothing to commit from this skill.
+The bees CLI has already persisted the Spec Bee, the Plan Bee, and their respective children to its own storage (which lives under the hive paths the user picked); when both hives are sibling-to-repo, no git-tracked artifacts changed in the current repo, so there is genuinely nothing to commit from this skill. The two hives are checked independently because `/quo-setup` lets the user configure each hive's storage location separately — Plans in-repo and Specs sibling-to-repo (or vice versa) is a legitimate configuration that this commit step handles cleanly.
 
 ```bash
 # POSIX (bash / zsh):
 plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
+specs_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="specs"), None); print(p or "")')
 repo_root=$(git rev-parse --show-toplevel)
 git_add_args=""
 case "$plans_path" in
   "$repo_root"|"$repo_root"/*) git_add_args="$plans_path" ;;
 esac
+case "$specs_path" in
+  "$repo_root"|"$repo_root"/*) git_add_args="${git_add_args:+$git_add_args }$specs_path" ;;
+esac
 ```
 
 ```powershell
 # Windows (PowerShell):
-$plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+$hives = (bees list-hives | ConvertFrom-Json).hives
+$plansPath = $hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+$specsPath = $hives | Where-Object { $_.normalized_name -eq 'specs' } | Select-Object -ExpandProperty path
 $repoRoot = git rev-parse --show-toplevel
 # Normalize separators — git rev-parse returns forward slashes on Windows;
 # bees list-hives may return backslashes. Compare both sides on the same form.
 $plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
+$specsNorm = if ($specsPath) { $specsPath.Replace('\','/') } else { '' }
 $repoNorm = $repoRoot.Replace('\','/')
 $addArgs = @()
 if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
   $addArgs += $plansPath
 }
+if ($specsNorm -and ($specsNorm -eq $repoNorm -or $specsNorm.StartsWith("$repoNorm/"))) {
+  $addArgs += $specsPath
+}
 ```
 
 Then branch on the resulting `add` list:
 
-- **In-repo Plans hive** (`add` list non-empty) — stage that single path and commit:
+- **At least one hive in-repo** (`add` list non-empty) — stage all in-repo hive paths and commit:
 
   ```bash
   # POSIX (bash / zsh):
@@ -741,7 +751,7 @@ Then branch on the resulting `add` list:
   git commit -m "Plan feature: <title>"
   ```
 
-- **Out-of-repo Plans hive** (`add` list empty) — **do not** invoke `git add` with no arguments. `git add` with no positional arguments is rejected outright in modern git versions, but on older configurations or if the empty-list expansion ever resolved to a wildcard, it could stage the entire working tree by accident. PowerShell's `git add @addArgs` splats an empty array into a no-arg invocation, which carries the same risk. Skip the `git add` call entirely, skip the `git commit`, and surface the user-facing message above. The Plan Bee ticket is already persisted by the bees CLI under the user's configured Plans hive path; nothing else needs git tracking.
+- **Both hives out-of-repo** (`add` list empty) — **do not** invoke `git add` with no arguments. `git add` with no positional arguments is rejected outright in modern git versions, but on older configurations or if the empty-list expansion ever resolved to a wildcard, it could stage the entire working tree by accident. PowerShell's `git add @addArgs` splats an empty array into a no-arg invocation, which carries the same risk. Skip the `git add` call entirely, skip the `git commit`, and surface the user-facing message above. The Spec Bee, Plan Bee, and their children are already persisted by the bees CLI under the user's configured hive paths; nothing else needs git tracking.
 
 #### Defensive fallback — docs were modified this session
 
@@ -757,7 +767,7 @@ git_add_args="docs/ $git_add_args"
 $addArgs = @('docs/') + $addArgs
 ```
 
-Then stage and commit using the same `git add` / `git commit` pair shown in the dominant-path branch above. If neither `docs/` was modified nor the Plans hive lives in the repo, fall back to the empty-`add`-list guard from the dominant path and skip both `git add` and `git commit`.
+Then stage and commit using the same `git add` / `git commit` pair shown in the dominant-path branch above. If neither `docs/` was modified nor either of the Plans / Specs hives lives in the repo, fall back to the empty-`add`-list guard from the dominant path and skip both `git add` and `git commit`.
 
 ### Important Notes
 
