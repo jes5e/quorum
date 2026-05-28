@@ -2,10 +2,11 @@
 id: b.17n
 type: bee
 title: Clarify multi-item routing UX under multi-choice AskUserQuestion in deferral-hygiene gates
-status: open
-created_at: '2026-05-28T19:41:56.089075'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-28T19:41:56.089075'
+status: done
+schema_version: '0.1'
 guid: 17nubmybpczmv1w67x98dr8c4go5dicw
 ---
 
@@ -38,4 +39,3 @@ Optionally — centralize the mechanism note in `docs/doc-writing-guide.md` `## 
 ## Background and rationale
 
 Caught by external reviewer in a fresh-eyes pass against the b.dgq deferral-hygiene gate. Filed as a follow-up rather than fixed inline because the multi-item routing UX is a property of every workflow `AskUserQuestion` gate (not just the deferral-hygiene one), so the right surface to update is the central contract in `docs/doc-writing-guide.md` plus the four gate references — discrete enough scope to merit a clean commit.
-
