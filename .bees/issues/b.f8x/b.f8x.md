@@ -2,10 +2,11 @@
 id: b.f8x
 type: bee
 title: Unify /quo-execute Section 5 reviewer-feedback annotation contract with /quo-fix-issue Section 5
-status: open
-created_at: '2026-05-28T19:41:55.111313'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-28T19:41:55.111313'
+status: done
+schema_version: '0.1'
 guid: f8xmhscpuiuogb3mk11q62i9vs2x94vt
 ---
 
@@ -52,4 +53,3 @@ The asymmetry was created in commit cb30bc5 when the orchestrator addressed Code
 
 - **Move both skills toward the softer `/quo-execute` Section 5 shape** (down-tighten `/quo-fix-issue`). Rejected — the b.dgq design directive's Layer 3 PM-contract change requires destinations to be named, and the strict shape matches that contract. The soft shape is the regression.
 - **Leave the asymmetry in place and document it as intentional.** Rejected — no design rationale supports the asymmetry; it's an artifact of partial post-completion remediation.
-
