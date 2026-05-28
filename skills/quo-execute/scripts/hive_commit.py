@@ -27,14 +27,14 @@ reason the helper exists.
 **Encode-commit mode (default-shaped subcommand `encode-commit`, also accepted
 bare for backward compatibility):**
 
-    encode_deferral_commit.py [encode-commit] --skill <slug> --count <N> [--doc-path <abs-path> ...]
+    hive_commit.py [encode-commit] --skill <slug> --count <N> [--doc-path <abs-path> ...]
 
 Stages and commits the on-disk changes a deferral-hygiene Encode branch
 produced — one follow-up commit per gate firing.
 
 **Resolve-hive-paths mode (NON-MUTATING query):**
 
-    encode_deferral_commit.py resolve-hive-paths [--hive <name> ...]
+    hive_commit.py resolve-hive-paths [--hive <name> ...]
 
 Pure query — performs NO `git add`, NO `git commit`, NO mutation whatsoever.
 Resolves the named hive(s) via the shared `bees list-hives` + repo-root

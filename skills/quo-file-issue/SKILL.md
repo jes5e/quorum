@@ -370,41 +370,33 @@ After the ticket is created, proceed to Step 4 (commit) and Step 5 (report back)
 
 Stage and commit the ticket file. **Do not hardcode the `.bees/issues/` path.** `/quo-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/issues/` silently stages nothing when the user picked a sibling path.
 
-Resolve the Issues hive path via `bees list-hives`, check whether it lives inside the current git repo, and only stage it if it does:
+To learn the in-repo Issues hive path, run the bundled helper's NON-MUTATING `resolve-hive-paths` mode. The helper emits the Issues hive's absolute path when it lives inside this repo, or nothing when it lives outside (in which case you stage no hive path here). Run it as a single literal Bash call:
 
 ```bash
 # POSIX (bash / zsh):
-issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
-repo_root=$(git rev-parse --show-toplevel)
-git_add_args=""
-case "$issues_path" in
-  "$repo_root"|"$repo_root"/*) git_add_args="$issues_path" ;;
-esac
-if [ -n "$git_add_args" ]; then
-  git add $git_add_args
-  git commit -m "File issue: <title>"
-fi
+python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive issues
 ```
 
 ```powershell
 # Windows (PowerShell):
-$issuesPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
-$repoRoot = git rev-parse --show-toplevel
-# Normalize separators — git rev-parse returns forward slashes on Windows;
-# bees list-hives may return backslashes. Compare both sides on the same form.
-$issuesNorm = if ($issuesPath) { $issuesPath.Replace('\','/') } else { '' }
-$repoNorm = $repoRoot.Replace('\','/')
-$addArgs = @()
-if ($issuesNorm -and ($issuesNorm -eq $repoNorm -or $issuesNorm.StartsWith("$repoNorm/"))) {
-  $addArgs += $issuesPath
-}
-if ($addArgs.Count -gt 0) {
-  git add @addArgs
-  git commit -m "File issue: <title>"
-}
+python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive issues
 ```
 
-If the Issues hive lives outside the repo, no git commit is needed here — the bees CLI has already persisted the ticket. Remind the user that the issue ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself).
+**Resolving the helper path (sibling-skill resolution).** `hive_commit.py` is shipped by `/quo-execute`; this skill consumes it as a *sibling* bundled script. Resolve its path at runtime from this skill's own base directory: `<this skill's base directory>/../quo-execute/scripts/hive_commit.py`. The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../quo-file-issue`). Use the `..` traversal pattern to reach the sibling skill — this matches the same sibling-resolution discipline used elsewhere in the skill set (e.g., `/quo-fix-issue`'s §7 commit step). On Windows, use backslash separators: `<this skill's base directory>\..\quo-execute\scripts\hive_commit.py`. The resolve mode does NOT validate a `--skill` slug (only the helper's encode-commit mode does), so this consumer needs no addition to the helper's set of recognized skills.
+
+When the helper emits an Issues hive path, `git add` it alongside the ticket body file you just authored, then commit. **Stage only files related to this filing** — the resolved Issues hive path's contents plus the scratch body file under `<tempdir>/.quorum/` (if it was tracked). **Do NOT `git add -A`** — other agents or processes may have in-flight changes in the working tree, and a blanket add would sweep them into this commit. The commit subject is `File issue: <title>`:
+
+```bash
+# POSIX (bash / zsh):
+git commit -m "File issue: <title>"
+```
+
+```powershell
+# Windows (PowerShell):
+git commit -m "File issue: <title>"
+```
+
+If the Issues hive lives outside the repo, the helper emits nothing — no git commit is needed here, the bees CLI has already persisted the ticket. Remind the user that the issue ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself).
 
 ### 5. Report back
 
