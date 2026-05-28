@@ -2,10 +2,11 @@
 id: b.r3x
 type: bee
 title: Multi-run Encode-branch writes stack identical '## Deferred from /<skill> run' headings in target ticket body
-status: open
-created_at: '2026-05-28T19:41:58.331113'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-28T19:41:58.331113'
+status: done
+schema_version: '0.1'
 guid: r3x6wbyxouctkdfyk46vhty91e2cgk2m
 ---
 
@@ -60,4 +61,3 @@ Caught by external reviewer in a fresh-eyes pass against b.dgq's Encode-branch. 
 
 - **Option (b) append-to-existing-section.** More elegant but requires the orchestrator to parse the existing body to find the existing heading — adds complexity. Option (a) sidesteps that.
 - **Option (c) accept stacking with documentation.** Acceptable but leaves the reader-clarity issue unresolved. Option (a) costs little more and fixes the underlying confusion.
-
