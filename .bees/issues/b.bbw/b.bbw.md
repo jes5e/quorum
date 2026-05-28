@@ -2,10 +2,11 @@
 id: b.bbw
 type: bee
 title: Children-cascade Keep-branch leaves dangling up_dependencies on kept Epic's child Tasks
-status: open
-created_at: '2026-05-28T19:41:57.096663'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-28T19:41:57.096663'
+status: done
+schema_version: '0.1'
 guid: bbw7wj8c1cpcszm6ahoz54fs1ibdurss
 ---
 
@@ -54,4 +55,3 @@ Caught by external reviewer in a fresh-eyes pass against b.9q3. Filed as a follo
 
 - **Surface a warning instead of pruning.** Rejected — the user already opted-in to the Keep via `AskUserQuestion`; surfacing another prompt for the pruning would be UX noise. Silent pruning matches the user's intent ("keep this Epic intact in the post-reconcile state").
 - **Skip Task-level pruning; only update Epic-level dependencies.** Rejected — Tasks are the unit that downstream skills query; leaving them dangling defeats the rest of the fix.
-
