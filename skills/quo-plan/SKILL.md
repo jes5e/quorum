@@ -147,6 +147,8 @@ Step 4 anchors the feature's PRD and SDD as ticketed artifacts in the Specs hive
 
 #### 4a — Detect or create the Spec Bee
 
+All `AskUserQuestion` gates in this sub-step (the ambiguous-heuristic candidate-confirmation gate, and the matched Spec-Bee reuse-or-create gate) fire through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (per Step 5g's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark each `gate-*` task `completed` the moment the user's answer is consumed.
+
 **Detection.** Re-running `/quo-plan` for the same feature must reuse an existing Spec Bee rather than create a duplicate. Query the Specs hive for `bee`-tier tickets and inspect the result for one whose title matches the feature title from Step 3:
 
 ```bash
@@ -233,7 +235,7 @@ With both writer skills returned successfully, run an automatic spec-review qual
 
 **Spec-review gate.** When the defensive status check passes, run `/quo-spec-review` as an automatic quality gate before promoting the Spec Bee. The writer skills' inline-invocation contracts explicitly skip their own per-writer spec-review steps (`/quo-write-prd`'s Step 6a and `/quo-write-sdd`'s Step 7a) when invoked inline — Site 1 here is the single end-to-end review pass for the PRD child, the SDD child, and cross-document consistency.
 
-**Pre-commitment.** When the Skill call returns, your next tool use MUST be either `AskUserQuestion` (findings present) or `bees update-ticket --status ready` (no findings). A text-only response between the Skill return and that tool use is a defect.
+**Pre-commitment.** When the Skill call returns, you MUST FIRST create a `gate-<kind>-<short-suffix>` TaskList task (per `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — `gate-askuserquestion-<short-suffix>` when findings are present, no gate-task needed for the no-findings `bees update-ticket --status ready` path because no user gate fires there), THEN call the prescribed tool (`AskUserQuestion` when findings are present, `bees update-ticket --status ready` when no findings) in the same turn. The dispatched skill's trailer will repeat this two-step obligation; treat the trailer as a confirmation, not a new instruction. A text-only response between the Skill return and that tool use is a defect.
 
 1. Invoke `/quo-spec-review <spec-bee-id>` via the Skill tool, with **no `--doc` flag** so both children are reviewed plus the cross-document consistency pass runs. The `<spec-bee-id>` placeholder is the Spec Bee ID captured at the end of 4a (and confirmed `ready` after Step 4c's defensive status check just above — the writer skills already promoted the children to `ready`; this gate is the last quality check before the parent itself promotes).
 2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.
@@ -304,6 +306,8 @@ Step 5 (Plan Bee creation) consumes this directly: the Plan Bee's `reference_mat
 Create the Plan Bee inline in this session — do **not** delegate to `/quo-plan-from-specs`. That skill operates on PRD/SDD files on disk and serves the hand-authored cumulative-doc flow; this skill operates on the Spec Bee + `t1=Doc` children that Step 4 just created, and the Plan Bee's `reference_materials` points at the Spec Bee via the `bees` resolver. Inline creation here is the single supported path.
 
 #### 5a — Detect or create the Plan Bee
+
+All `AskUserQuestion` gates in this sub-step (the ambiguous-match candidate-confirmation gate when multiple candidate Plan Bees are found, and the matched Plan-Bee reuse-or-create gate) fire through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (per Step 5g's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark each `gate-*` task `completed` the moment the user's answer is consumed.
 
 **Detection.** Re-running `/quo-plan` for the same feature — e.g., after Cancelling at the Step 5e plan-review gate to revise the Epic decomposition — must reuse an existing `drafted` Plan Bee under the current Spec Bee rather than create a duplicate. Query the Plans hive for `drafted` `bee`-tier tickets and inspect each for a `reference_materials` entry whose `bees`-resolver value points at the Spec Bee captured at the end of sub-step 4a:
 
@@ -403,6 +407,8 @@ If the plan is small, one Epic is fine — don't pad the plan with more.
 
 #### 5c — Present Epics for review
 
+The Epic-approval `AskUserQuestion` in this sub-step fires through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this Epic-approval gate (per Step 5g's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` the moment the user's answer is consumed.
+
 **Reuse-mode note.** If 5a entered reuse-mode, the "creating any Epic tickets" framing below also covers `bees update-ticket` and `bees delete-ticket` operations in 5d-i. Surface the reuse-vs-new origin per Epic in the presentation (e.g., tag each Epic as `(existing)`, `(modified)`, `(new)`, or call out dropped existing Epics that 5d-i will `bees delete-ticket`) so the user sees which ones carry over before they approve. For any dropped existing Epic whose `children` array (from the `bees show-ticket --ids <epic-id>` payload 5b already fetched per existing Epic) is non-empty, annotate it visibly — e.g., `(existing — to be deleted; has N child Task(s), cascade prompt will fire in 5d-i)` — so the user sees the cascade risk at this approval gate as well as at the 5d-i per-Epic prompt.
 
 Before creating any Epic tickets, present the full proposed Epic list to the user as markdown — title, description, dependencies for each. Use `AskUserQuestion` with options:
@@ -414,6 +420,8 @@ Before creating any Epic tickets, present the full proposed Epic list to the use
 Wait for approval. If the user picks "Modify the Epics", iterate in prose until they approve, then re-prompt with `AskUserQuestion`.
 
 #### 5d-i — Create Epics and wire dependencies (Plan Bee stays `drafted`)
+
+The children-cascade guard `AskUserQuestion` fired in reuse-mode when a dropped Epic has non-empty `children` (from `b.9q3`) fires through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this children-cascade gate (per Step 5g's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` the moment the user's answer is consumed and the delete / keep / cancel branch is entered. The guard fires zero times in the dominant reuse-mode path (no dropped Epic has children), so the per-Epic `gate-*` overhead is zero on that path.
 
 Epic creation and Plan Bee promotion are split across two sub-steps with the fresh-eyes plan-review gate (Step 5e) sandwiched between them. This sub-step (5d-i) creates the Epic tickets and wires their `up_dependencies` while the Plan Bee remains `drafted`; sibling sub-step 5d-ii transitions the Plan Bee from `drafted` to `ready`, and runs only after Step 5e has cleared. The split is load-bearing: the plan-review gate may surface findings whose Revise path re-authors Epic bodies or even re-wires dependencies, and routing the user through Revise after the Plan Bee has already promoted to `ready` would force a `ready → drafted` demotion of the Plan Bee — a transition the workflow has no clean precedent for. Splitting the promotion off into its own sub-step keeps the `drafted → ready` flip as the load-bearing "no more changes are expected" signal it already is across the rest of the workflow.
 
@@ -460,7 +468,7 @@ With Epics created and dependencies wired but the Plan Bee still `drafted`, run 
 
 **Anti-overlap rule.** This gate is explicitly NOT a re-run of `/quo-spec-review`. The dispatch prompt below names the prose-quality lane as out of scope so the reviewer does not re-litigate spec-review territory. If `/quo-spec-review` has already passed (which it has by construction — 4c is a precondition for reaching 5e), prose-quality findings should not appear here; if they do, they are out of scope and the orchestrator silently discards them when triaging.
 
-**Pre-commitment.** When the dispatched Agent's completion notification fires, your next tool use MUST be `AskUserQuestion` (per the routing trailer the dispatch prompt embeds in its structured output). A text-only response between the Agent return and that tool call is a defect — the same anti-narrate-instead-of-do discipline `/quo-spec-review`'s Step 4 trailer enforces applies here.
+**Pre-commitment.** When the dispatched Agent's completion notification fires, you MUST FIRST create a `gate-askuserquestion-<short-suffix>` TaskList task naming this plan-review user-approval gate (per `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`), THEN call `AskUserQuestion` (per the routing trailer the dispatch prompt embeds in its structured output, all three verdict-conditional shapes) in the same turn. The dispatched Agent's trailer will repeat this two-step obligation; treat the trailer as a confirmation, not a new instruction. A text-only response between the Agent return and that tool call is a defect — the same anti-narrate-instead-of-do discipline `/quo-spec-review`'s Step 4 trailer enforces applies here, with the structural two-step contract addressing the residual failure surface that prose-only counter-anchors did not close (see `b.wii`).
 
 ##### Dispatch the plan reviewer
 
@@ -552,31 +560,53 @@ pattern in its Step 4 Shape 1 vs Shape 2 trailers):
 
 **Shape A — used when verdict is `approve`:**
 
-  **Your next tool call MUST be `AskUserQuestion`** with finite choices
+  **Your next two tool calls MUST be (1) `TaskCreate` for a
+  `gate-askuserquestion-<short-suffix>` TaskList task naming this plan-review
+  gate, then (2) `AskUserQuestion`** with finite choices
   `Approve & promote Plan Bee (acknowledge findings)` (Recommended) /
   `Approve anyway & promote Plan Bee (override blockers)` / `Revise` /
-  `Cancel`. Do not produce a text response describing this gate — call the
-  tool directly. The Plan Bee's `drafted → ready` promotion is gated on the
-  user's answer.
+  `Cancel`. The two calls happen in the same turn — do not yield between
+  them. Do not produce a text response describing this gate — fire
+  `TaskCreate` and `AskUserQuestion` directly. The two-step contract is the
+  structural mitigation for the narrate-instead-of-do failure mode (see
+  `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool
+  contract`). Mark the `gate-*` task `completed` once `AskUserQuestion`
+  returns and the user's answer is consumed. The Plan Bee's `drafted →
+  ready` promotion is gated on the user's answer.
 
 **Shape B — used when verdict is `revise-recommended`:**
 
-  **Your next tool call MUST be `AskUserQuestion`** with finite choices
+  **Your next two tool calls MUST be (1) `TaskCreate` for a
+  `gate-askuserquestion-<short-suffix>` TaskList task naming this plan-review
+  gate, then (2) `AskUserQuestion`** with finite choices
   `Approve & promote Plan Bee (acknowledge findings)` /
   `Approve anyway & promote Plan Bee (override blockers)` /
-  `Revise` (Recommended) / `Cancel`. Do not produce a text response
-  describing this gate — call the tool directly. The Plan Bee's
-  `drafted → ready` promotion is gated on the user's answer.
+  `Revise` (Recommended) / `Cancel`. The two calls happen in the same turn
+  — do not yield between them. Do not produce a text response describing
+  this gate — fire `TaskCreate` and `AskUserQuestion` directly. The two-step
+  contract is the structural mitigation for the narrate-instead-of-do
+  failure mode (see `docs/doc-writing-guide.md` `## The two-step TaskCreate
+  → prescribed-tool contract`). Mark the `gate-*` task `completed` once
+  `AskUserQuestion` returns and the user's answer is consumed. The Plan
+  Bee's `drafted → ready` promotion is gated on the user's answer.
 
 **Shape C — used when verdict is `escalate-to-user`:**
 
-  **Your next tool call MUST be `AskUserQuestion`** with finite choices
+  **Your next two tool calls MUST be (1) `TaskCreate` for a
+  `gate-askuserquestion-<short-suffix>` TaskList task naming this plan-review
+  gate, then (2) `AskUserQuestion`** with finite choices
   `Approve & promote Plan Bee (acknowledge findings)` /
   `Approve anyway & promote Plan Bee (override blockers)` / `Revise` /
-  `Cancel`. Do not produce a text response describing this gate — call the
-  tool directly. None of the choices carries a Recommended marker — the user
-  must judge which path resolves the substantive ambiguity. The Plan Bee's
-  `drafted → ready` promotion is gated on the user's answer.
+  `Cancel`. The two calls happen in the same turn — do not yield between
+  them. Do not produce a text response describing this gate — fire
+  `TaskCreate` and `AskUserQuestion` directly. The two-step contract is the
+  structural mitigation for the narrate-instead-of-do failure mode (see
+  `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool
+  contract`). Mark the `gate-*` task `completed` once `AskUserQuestion`
+  returns and the user's answer is consumed. None of the choices carries a
+  Recommended marker — the user must judge which path resolves the
+  substantive ambiguity. The Plan Bee's `drafted → ready` promotion is
+  gated on the user's answer.
 ```
 
 Wait for the Agent's completion notification before proceeding.
@@ -670,15 +700,18 @@ If a given gate ran with no findings (or no surfaced-but-unaddressed findings), 
 
 ### 5g — Before handoff — deferral hygiene
 
-`/quo-plan` uses a per-skill TaskList convention scoped to the dispatches it makes during a run (e.g., `plan-reviewer-<plan-bee-short-suffix>` for the Step 5e fresh-eyes reviewer, the dispatched-skill conventions belonging to `/quo-write-prd` / `/quo-write-sdd` / `/quo-spec-review` invoked inline from Step 4). This gate introduces an additional **deferral-ledger task** convention used by Step 5g exclusively:
+Every `AskUserQuestion` firing in this gate (Step 2's initial Fix / File / Encode choice, plus any Step 3 re-fires when an earlier routing branch failed to close out a subset of the active `defer-*` set) goes through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming the deferral-hygiene gate (a distinct `<short-suffix>` per fire, so the Step 3 re-fires are not mistaken for the Step 2 first fire), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark each `gate-*` task `completed` the moment the corresponding `AskUserQuestion` returns and its result has been consumed.
+
+`/quo-plan` uses a per-skill TaskList convention scoped to the dispatches it makes during a run (e.g., `plan-reviewer-<plan-bee-short-suffix>` for the Step 5e fresh-eyes reviewer, the dispatched-skill conventions belonging to `/quo-write-prd` / `/quo-write-sdd` / `/quo-spec-review` invoked inline from Step 4). This gate introduces an additional **deferral-ledger task** convention used by Step 5g exclusively, alongside a **gate-task** convention used at every `AskUserQuestion` gate-firing site:
 
 - **Deferral-ledger tasks** — **Run scope**. Name: `defer-<short-suffix>` (e.g., `defer-1`, `defer-2`, or any collision-resistant suffix). Created when an inline-invoked writer/reviewer skill or the orchestrator itself surfaces an item with a destination annotation — `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` — that the orchestrator chose not to address inline this run, OR when Step 5f's three Step-4c spec-review buckets (acknowledged findings, overridden blockers, time-budget-deferred items) and three Step-5e plan-review buckets surface findings the user accepted at the gate without authoring an explicit destination. `metadata.activity` carries the deferral's one-line description so the gate prose below can surface the active set. Marked `completed` the moment the deferral is encoded in a durable carrier — an updated ticket body, a new Issue, or an explicit in-session resolution (in which case `metadata.activity` logs the resolution path). The pre-handoff gate below reads this ledger for active `defer-*` entries and refuses to yield control while any remain pending or in-progress.
+- **Gate-task tasks** — **Turn scope**. Name: `gate-<kind>-<short-suffix>` (today the dominant `<kind>` is `askuserquestion`, e.g. `gate-askuserquestion-1` for an `AskUserQuestion` gate fired during Step 4a's Spec-Bee reuse-or-create gate, Step 4c's spec-review user-approval gate, Step 5a's Plan-Bee reuse-or-create gate, Step 5c's Epic-approval gate, Step 5d-i's children-cascade guard, Step 5e's plan-review user-approval gate, Step 5g's deferral-hygiene gate, or Step 6's Offer-Next-Steps menu). Created by the orchestrator via `TaskCreate` immediately before firing the prescribed tool call (typically `AskUserQuestion`), per the two-step contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. The two-step contract applies at every gate this skill fires — both the trailer-driven gates surfaced by the dispatched skills (Step 4c's spec-review consumption per `/quo-spec-review`'s routing trailer, Step 5e's plan-reviewer Agent's routing trailer) and the trailer-less orchestrator-driven gates listed above. `metadata.activity` carries the gate's finite choices verbatim where applicable. Marked `completed` the moment the prescribed tool call returns and its result has been consumed (the user's answer routed, the next branch entered, etc.). Normally enters and exits within a single turn — the lifecycle is shorter than `defer-*` (which spans the whole run). The **yield-control discipline** mirrors `defer-*`: this skill MUST NOT yield control to the harness while any `gate-*` task is in `pending` or `in_progress` status. If a `gate-*` task is somehow left active when the orchestrator would yield, the next reconciliation tick walks the TaskList, surfaces the active `gate-*` task, and re-fires the prescribed tool call from the recorded `metadata.activity` choices. The `gate-*` namespace coexists without overlap with `defer-*` and `plan-reviewer-<plan-bee-short-suffix>` (and its `-rev<n>` discriminator form).
 
 **Retroactive ledger reconciliation against Step 5f's buckets.** Step 5f enumerates six categories of surfaced-but-unaddressed findings across the spec-review (4c) and plan-review (5e) gates. Before running the gate below, walk Step 5f's buckets and create a corresponding `defer-*` TaskList task for any item that does not already have one — these items were captured for the end-of-skill report but, prior to this gate, had no structural ledger to keep them from being silently dropped at session handoff. After the retroactive reconcile, every Step 5f bucket entry is represented in the active `defer-*` set and the gate below can enumerate the canonical view.
 
 **Step 1 — Enumerate the active deferral ledger.** Scan the TaskList for tasks whose name starts with `defer-` and whose status is `pending` or `in_progress`. If the active set is empty, emit a one-line console message — recommended string: `Deferral hygiene: no deferred items.` — and proceed to Step 6 (Offer Next Steps).
 
-**Step 2 — Surface the active set and gate the user choice.** When the active set is non-empty, surface the list to the user as numbered markdown (one bullet per `defer-*` task, the `metadata.activity` text as the bullet's body), then call `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage`. Finite choices:
+**Step 2 — Surface the active set and gate the user choice.** When the active set is non-empty, surface the list to the user as numbered markdown (one bullet per `defer-*` task, the `metadata.activity` text as the bullet's body), then fire the user gate through the two-step `TaskCreate` → `AskUserQuestion` contract per CLAUDE.md `## AskUserQuestion usage` and `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. **First** create a `gate-askuserquestion-<short-suffix>` TaskList task naming this deferral-hygiene gate (per Step 5g's TaskList naming convention's gate-task entry above), **then** call `AskUserQuestion` with the finite choices below in the same turn. Mark the `gate-*` task `completed` the moment the user's answer is consumed and the routing into Fix / File / Encode begins.
 
 - **Fix in this session** — Re-invoke the relevant writer skill (`/quo-write-prd` / `/quo-write-sdd`) via the Skill tool against the Spec Bee's PRD or SDD `t1=Doc` child carrying the finding, re-dispatch the plan reviewer per Step 5e's dispatch shape, or do the orchestrator-owned Plan Bee body or Epic body update inline per Step 5e's Revise-routing prose, to resolve each deferred item now. After each item is resolved, mark its `defer-*` TaskList task `completed` (with `metadata.activity` updated to log the resolution path).
 - **File as issue tickets** — For each item, invoke `/quo-file-issue` inline via the Skill tool with the deferral's description as the issue body (the precedent for inline-Skill-tool dispatch lives in Step 4b's `/quo-write-prd` / `/quo-write-sdd` dispatches). Mark each `defer-*` TaskList task `completed` once the `/quo-file-issue` dispatch returns successfully and the created Issue ID is captured.
@@ -709,6 +742,8 @@ The three options are mutually-non-exclusive at the active-set level — the use
 The fresh-session-per-phase recommendation at Step 6's menu is preserved verbatim — this gate sits before that handoff prose; it does not replace it.
 
 ### 6. Offer Next Steps
+
+The Offer-Next-Steps `AskUserQuestion` menu in this step fires through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this Offer-Next-Steps gate (per Step 5g's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` the moment the user's answer is consumed and the chosen branch is entered.
 
 Present the user with options.
 

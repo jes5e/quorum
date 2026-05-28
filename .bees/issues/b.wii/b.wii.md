@@ -2,10 +2,11 @@
 id: b.wii
 type: bee
 title: Narrate-instead-of-do failure mode persists after b.fpm's prose-strengthening fix
-status: open
-created_at: '2026-05-20T04:17:48.985945'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-20T04:17:48.985945'
+status: done
+schema_version: '0.1'
 guid: wiidq2sng1wr8y4ocek75ei752hb6ud3
 ---
 
@@ -66,4 +67,3 @@ The reason this Issue exists as a separate filing (rather than being absorbed in
 - **Bundle the structural fix into `b.tip`.** Rejected. `b.tip` does not have a settled design for the structural fix. Adding scope without a design path is over-promising; the appropriate move is to land `b.tip` cleanly with an explicit Risk callout pointing at this Issue, and resolve this Issue once a structural-fix design exists.
 - **Treat as a `b.tip` Open Question.** Rejected. An Open Question inside `b.tip` would dilute its scope and leave the structural problem without a discrete home for the design conversation. A separate Issue gives the conversation a place to live and lets `b.tip` ship without absorbing scope it can't honestly deliver on.
 - **Defer this filing until a fix design exists.** Rejected. The deferral would mean `b.tip` lands without the Risk callout (since there's no Issue ID to reference), and future readers would have to reconstruct the fragility from session logs. Filing the Issue now — even without a settled fix — anchors the dependency.
-

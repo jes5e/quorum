@@ -269,7 +269,7 @@ After the user approves the SDD body in 7's main `AskUserQuestion`, but **before
 
 On the solo path, run the gate.
 
-**Pre-commitment.** When the Skill call returns, your next tool use MUST be either `AskUserQuestion` (findings present) or `bees update-ticket --status ready` (no findings). A text-only response between the Skill return and that tool use is a defect.
+**Pre-commitment.** When the Skill call returns, you MUST FIRST create a `gate-<kind>-<short-suffix>` TaskList task (per `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — `gate-askuserquestion-<short-suffix>` when findings are present, no gate-task needed for the no-findings `bees update-ticket --status ready` path because no user gate fires there), THEN call the prescribed tool (`AskUserQuestion` when findings are present, `bees update-ticket --status ready` when no findings) in the same turn. The dispatched skill's trailer will repeat this two-step obligation; treat the trailer as a confirmation, not a new instruction. A text-only response between the Skill return and that tool use is a defect.
 
 1. Invoke `/quo-spec-review <spec-bee-id> --doc SDD` via the Skill tool. The `--doc SDD` flag scopes the review to the SDD child only — the PRD child may be at any state at this point (still `drafted`, already `ready`, or absent), and a standalone SDD revision should not block on or surface PRD-side findings.
 2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.

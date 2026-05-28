@@ -82,6 +82,38 @@ Specific past suggestions that were evaluated and deliberately not adopted. Writ
 
 When future tickets close with a "Skipped from external review" or "Considered and rejected" note, append a one-liner here so the record stays current.
 
+## Known limitations
+
+These are failure modes the workflow has identified but cannot fully close at the layer this repo controls. Document them so future maintainers don't re-litigate the design and don't ship further variants of a remediation path the evidence chain has already exhausted.
+
+### Narrate-instead-of-do failure mode (residual surface after b.wii)
+
+**The failure mode.** When an orchestrator skill is about to fire a tool call (most commonly `AskUserQuestion`), the model sometimes emits a text response describing the gate it should fire and yields control without actually firing the tool call. The user sees prose explaining what's about to happen instead of the prompt itself; the workflow stalls until the user notices and intervenes.
+
+**Where the mitigation lives today.** This repo has shipped three layers of remediation against this failure mode:
+
+1. **`b.sfy` (prose mitigation, first attempt)** — Added a `**Your next tool call MUST be …**` second-person imperative trailer to each review skill's output. Observed leakage of the failure mode after deployment.
+2. **`b.fpm` (prose mitigation, strengthened)** — Strengthened the trailer wording, added counter-anchor clauses (`Do not produce a text response describing this gate — call the tool directly.`), and added pre-commitment lines at each Skill-call site. Observed continued leakage of the failure mode after deployment — the prose-only counter-anchor demonstrably does not hold under load.
+3. **`b.wii` (structural mitigation, current state)** — Added a two-step `TaskCreate` → prescribed-tool contract at every gate-firing site (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). The orchestrator must first create a `gate-<kind>-<short-suffix>` TaskList task via `TaskCreate`, then fire the prescribed tool call (typically `AskUserQuestion`) in the same turn. The structural improvement is that `TaskCreate` is itself a tool call — the orchestrator cannot silently yield a `TaskCreate` invocation the way it can silently yield an `AskUserQuestion` invocation. A missed `gate-*` task is recoverable by next-turn TaskList processing; a silent prose yield of the trailer is only recoverable by the user noticing.
+
+**The residual failure surface b.wii does not close.** The two-step contract narrows but does not eliminate the failure surface — the model can still fail to fire the *first* tool call (`TaskCreate`) before yielding. The narrowing is real (the second step's prescribed tool call is now structurally hard to drop because the orchestrator has already begun the two-step sequence, and a half-fired sequence is more visible than a fully-narrated yield), but residual leakage is expected. Definitive closure requires harness-level enforcement that this repo cannot author:
+
+- **Anthropic API `tool_choice` mechanism** — forcing a specific tool to be called on a specific turn at the API layer would eliminate the model-adherence variance entirely. The mechanism exists today but is not exposed to skill prose in Claude Code's harness, so this repo cannot reach it.
+- **Claude Code harness change** — a harness-level rule that detects "skill prose says fire X, model yielded without firing X" and re-prompts the model to fire X would close the failure mode at the integration layer. Tracked outside this repo.
+
+The b.wii note exists so future readers don't see the residual failure surface and conclude "the structural fix didn't work, ship a fourth prose variant." The evidence chain `b.sfy` → `b.fpm` → `b.wii` is the documentation that prose-only remediations have been demonstrably exhausted.
+
+**Do not ship further prose-only variants.** Specifically, do NOT:
+
+- Add a more imperative form of the trailer prefix (e.g., `**YOU MUST ABSOLUTELY CALL THE TOOL NOW.**`).
+- Add additional counter-anchor clauses (e.g., layered `Do not narrate. Do not yield. Do not summarize.` chains).
+- Add additional pre-commitment lines on top of the existing ones at each Skill-call site.
+- Rewrite the trailer in third-person framing thinking the narrative drop is caused by second-person framing — the evidence is the opposite.
+
+Each of these has been considered and rejected (under the b.fpm → b.wii transition) on the grounds that the failure mode is a model-adherence phenomenon, not a prose-clarity phenomenon. The structural mitigation is the right shape; the residual surface is a harness-or-API problem.
+
+**Scope of the b.wii contract — user-facing gates only.** The two-step `TaskCreate` → prescribed-tool contract is scoped to **user-facing gate prescriptions** (today: `AskUserQuestion` invocations whose silent yield would stall the workflow on an invisible prompt). It deliberately does NOT cover non-user-facing state-mutation tool calls — concretely, `bees update-ticket --status ready` on `/quo-spec-review`'s no-findings Shape-3 trailer is the prescribed tool call but runs *without* a paired `gate-*` task because no user prompt fires. The b.wii Issue body and the Analyst proposal both framed the failure mode specifically around silent `AskUserQuestion` yields (the user has no way to surface the missing prompt manually); a `bees update-ticket` or similar state-mutation call that the orchestrator silently drops is recoverable via the normal next-turn TaskList / ticket-status reconciliation already present in every consuming skill. Extending the contract to cover those non-user-facing calls would add a `TaskCreate` round-trip at every workflow-internal tool call without addressing the model-adherence failure mode the contract exists to mitigate, so the scoping decision in b.wii is: contract applies when the prescription is `AskUserQuestion` or another user-facing gate; contract does NOT apply when the prescription is a non-user-facing state mutation. Future Issues that revisit this scoping should explicitly weigh the cost (a `TaskCreate` per workflow-internal tool call) against the coverage (which model-adherence failure mode does this address that the normal ticket / TaskList reconciliation does not?) before expanding, rather than silently broadening the contract.
+
 ## Status / type renames history
 
 These renames happened in this order with specific reasons. A future "simplification" that reverses any of them would re-introduce the issue it solved.
