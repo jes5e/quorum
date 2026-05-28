@@ -2,10 +2,11 @@
 id: b.5js
 type: bee
 title: Replace deferral-hygiene Encode follow-up commit shell snippets with bundled Python helper
-status: open
-created_at: '2026-05-28T19:41:53.553588'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-28T19:41:53.553588'
+status: done
+schema_version: '0.1'
 guid: 5jsn5dkq3i1f4fn6h1vwgtt9ebn1ibd3
 ---
 
@@ -62,4 +63,3 @@ Filed as a follow-up to commit cb30bc5's post-completion fix. An external review
 - **Keep the inline snippet + clarifying note (status quo).** Acceptable but inferior — multi-skill drift risk and ~30 lines of prose program text per skill.
 - **English prose instead of shell snippet.** Eliminates the misread-as-runnable risk but leaves the per-step orchestration entirely up to the orchestrator's load-state at runtime. The Python helper deterministically encodes the workflow.
 - **One helper per skill (no sharing).** Acceptable if the workflows diverge meaningfully — but they don't today; the three blocks are near-identical. Shared helper sibling-resolved matches the `scoped_marker_resolver.py` precedent.
-

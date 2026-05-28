@@ -553,47 +553,23 @@ Section 7's existing "show ignored feedback" prose at Bee close-out stays as the
 
   **Follow-up commit (after all Encode writes in this gate firing have landed).** This gate fires AFTER Section 4.1's per-Task commit step has already produced one commit per Task in this run — so the `bees update-ticket --body-file` writes above persist new on-disk changes to the relevant hive's per-ticket directory (or to the project PRD/SDD file path), but those changes are NOT swept into any prior per-Task commit and would otherwise leave the working tree dirty when the skill yields. Produce one follow-up commit per gate firing covering all Encode writes from this firing — not per Encode item — to keep commit churn proportional to the user's choice. Resolve the Plans, Specs, and Issues hive paths via `bees list-hives` (the same pattern Section 4.1's commit step uses for Plans), `git add` each hive path that lives inside this repo, additionally `git add` the project PRD/SDD file paths from CLAUDE.md `## Documentation Locations` when the user routed any Encode to those destinations, then commit only if `git diff --cached` shows staged changes (an out-of-repo hive plus no PRD/SDD encode routes would stage nothing — skip the commit in that case rather than producing an empty one). Commit subject contract: `Encode deferral: /quo-execute — <N> ticket(s) updated` where `<N>` is the count of `defer-*` items the user routed to Encode in this gate firing.
 
-  The two snippets below are **prose program text describing the orchestrator's intent**, not a single Bash tool call. When actually running them, decompose each into individual Bash tool calls per CLAUDE.md `## Bash etiquette in this repo` (one literal command per invocation; resolve hive paths and the repo root in separate calls; iterate via separate `git add` calls rather than a shell `for` loop; check `git diff --cached --quiet` exit status as the gate for the subsequent `git commit` call). The compound shapes (`for`, `case`, `$(...)`, `$VAR`) appear here only to convey the multi-step logic compactly; mirror the precedent set by Section 4.1's per-Task commit step.
+  This workflow (hive-path resolution via `bees list-hives`, in-repo scoping, conditional commit on staged state) is encapsulated in a bundled Python helper, `encode_deferral_commit.py`, so the orchestrator runs it as a single literal Bash tool call rather than decomposing a multi-step shell snippet at runtime. The helper resolves the Plans/Specs/Issues hive paths, `git add`s each hive path that lives inside this repo (out-of-repo hives have already had their bees update persisted by `bees update-ticket` and require no git action), `git add`s any project PRD/SDD paths passed via `--doc-path`, then commits only if there are staged changes — printing `skipped: nothing staged` and making no commit when nothing is staged. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree (same anti-pattern as Section 4.1's per-Task commit step); the helper stages only the resolved hive paths and the explicit `--doc-path` arguments, never `-A`.
+
+  **Resolving the helper path (own-skill resolution).** `encode_deferral_commit.py` is shipped by this skill (`/quo-execute`); resolve it against **this skill's own base directory**: `<this skill's base directory>/scripts/encode_deferral_commit.py` (no `..` hop). The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../quo-execute`). **This differs from `/quo-fix-issue` and `/quo-breakdown-epic`,** which resolve the same helper as a *sibling* of their own base directory because they consume it across skills; here, in `/quo-execute` itself, the helper lives inside this skill, so resolution drops the `..` hop.
+
+  Invoke it with `--skill quo-execute`, `--count <N>` (the count of `defer-*` items the user routed to Encode in this gate firing — matching the commit-subject contract above), and one `--doc-path <abs-path>` per project PRD/SDD file the user routed an Encode to (resolved from CLAUDE.md `## Documentation Locations`; omit entirely in the common case where no doc was routed):
 
   ```bash
   # POSIX (bash / zsh):
-  plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
-  specs_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="specs"), None); print(p or "")')
-  issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
-  repo_root=$(git rev-parse --show-toplevel)
-  for hive_path in "$plans_path" "$specs_path" "$issues_path"; do
-    case "$hive_path" in
-      "$repo_root"|"$repo_root"/*) git add "$hive_path" ;;
-    esac
-  done
-  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
-  # when the user routed any Encode to those destinations (always in-repo by definition).
-  # Then check staged state and commit only if non-empty:
-  git diff --cached --quiet
+  python3 "<resolved-helper-path>" --skill quo-execute --count <N> [--doc-path <abs-path> ...]
   ```
 
   ```powershell
   # Windows (PowerShell):
-  $hives = bees list-hives | ConvertFrom-Json
-  $plansPath = $hives.hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
-  $specsPath = $hives.hives | Where-Object { $_.normalized_name -eq 'specs' } | Select-Object -ExpandProperty path
-  $issuesPath = $hives.hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
-  $repoRoot = git rev-parse --show-toplevel
-  $repoNorm = $repoRoot.Replace('\','/')
-  foreach ($hivePath in @($plansPath, $specsPath, $issuesPath)) {
-    if (-not $hivePath) { continue }
-    $hiveNorm = $hivePath.Replace('\','/')
-    if ($hiveNorm -eq $repoNorm -or $hiveNorm.StartsWith("$repoNorm/")) {
-      git add $hivePath
-    }
-  }
-  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
-  # when the user routed any Encode to those destinations (always in-repo by definition).
-  # Then check staged state and commit only if non-empty:
-  git diff --cached --quiet
+  python "<resolved-helper-path>" --skill quo-execute --count <N> [--doc-path <abs-path> ...]
   ```
 
-  The `git diff --cached --quiet` exit status tells the orchestrator whether to commit (non-zero exit = staged changes present → commit; zero exit = nothing staged → skip). Use the bees-list-hives JSON to scope hive `git add` calls to in-repo hives only; out-of-repo hives have already had their bees update persisted by `bees update-ticket` and require no git action here. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree (same anti-pattern as Section 4.1's per-Task commit step). After the commit lands (or the skip path executes), proceed to Step 3 below.
+  After the helper lands the commit (or prints `skipped: nothing staged`), proceed to Step 3 below.
 
 The three options are mutually-non-exclusive at the active-set level — the user may pick one option overall, or the orchestrator may resolve different items via different options when the user's reply directs it that way (e.g., "fix items 1 and 2 now, file 3 as an Issue"). Whatever the routing, every `defer-*` task in the active set MUST be `completed` by the end of this gate. When the user wants to route different items to different options, they select `AskUserQuestion`'s auto-appended free-text slot (`Type something.` / `Chat about this`) and type the per-item routing in free-form; the orchestrator parses the reply and closes out each `defer-*` task accordingly, per `docs/doc-writing-guide.md` `## AskUserQuestion patterns`.
 
