@@ -2,10 +2,11 @@
 id: b.9q3
 type: bee
 title: /quo-plan reuse-mode Epic delete in 5d-i should guard against cascading deletes of Task children
-status: open
-created_at: '2026-05-19T22:37:10.619420'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-19T22:37:10.619420'
+status: done
+schema_version: '0.1'
 guid: 9q3qkfourahdy54wr4qegnbz5huq84u7
 ---
 
@@ -33,4 +34,3 @@ This emerged from the post-landing review of b.bjp's follow-up fix (commit f0abf
 - **Defer to user's manual cleanup** — rejected. The whole point of b.bjp's follow-up was to eliminate manual cleanup between Cancel and re-run. Re-introducing manual responsibility here (the user must remember "don't run /quo-breakdown-epic against an orphan Plan Bee before re-running /quo-plan") puts the foot-gun back, just on a different sequence.
 - **Block reuse-mode entirely when any Epic has children** — rejected as too heavy. The user may legitimately want to keep most existing Epics and just drop one childless one; blocking the whole reconcile on a single Epic having children would force them through Cancel + manual cleanup again.
 - **Cascade-delete Tasks without prompting but log the deletion to the Step 5f end-of-skill report** — rejected. Surfacing the deletion *after* it happened is not the same as letting the user opt in. The report bucket is a record-keeping affordance; the gate is a decision affordance.
-
