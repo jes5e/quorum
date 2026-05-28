@@ -190,7 +190,7 @@ The Analyst runs in the background like every other dispatched Agent in this ski
 
 #### Surface the proposal to the user
 
-When the Analyst's completion notification fires, read the Analyst's return — the structured Design Proposal per the contract in `agents/analyst.md` `## Structured-output contract`. The proposal is **free-form analysis** (Problem / Root cause / Recommended approach / Why / Alternatives considered / Options the body did not consider / Upstream-fetch status / verdict trailer); surface it to the user as prose, NOT as an `AskUserQuestion` body — `AskUserQuestion` is for finite-multi-choice gates, not free-text design recommendations (per CLAUDE.md `## AskUserQuestion usage`).
+When the Analyst's completion notification fires, read the Analyst's return — the structured Design Proposal per the contract in `agents/analyst.md` `## Structured-output contract`. The proposal is **free-form analysis** (Problem / Root cause / Recommended approach / Why / Alternatives considered / Options the body did not consider / Upstream-fetch status / verdict trailer); surface it to the user as prose, NOT as an `AskUserQuestion` body — `AskUserQuestion` is for finite-multi-choice gates, not free-text design recommendations (per CLAUDE.md `## AskUserQuestion usage`). The Analyst's `### Deferred refinements` block (per `agents/analyst.md`'s structured-return shape) is **consumed by the orchestrator and NOT surfaced to the user** — it is orchestrator plumbing for Section 7.5's deferral-hygiene gate, not user-facing design content. The consumption paragraph below ("Consume the Analyst's `### Deferred refinements` block") is the load-bearing site for that consumption; strip the `### Deferred refinements` block from the surfaced proposal before rendering the user-visible prose.
 
 **Extract the verdict and frame the preamble.** Before surfacing the proposal body, read the `Analyst verdict: <…>` trailer line from the Analyst's return and use it to shape the one- or two-sentence prose preamble that precedes the proposal. The verdict is a load-bearing framing signal — when the Analyst found divergence, the user should encounter the proposal already knowing that, not discover it by reading carefully. Preamble shapes per verdict (adjust phrasing to fit context; the structural rule is "divergent verdicts surface divergence prominently"):
 
@@ -224,6 +224,16 @@ After the preamble is rendered and the proposal body is surfaced, present the us
   When the user's feedback is light enough to incorporate without a fresh codebase pass (a wording tweak, a clarification on terminology, a "yes please proceed with refinement X you mentioned in Alternatives"), the orchestrator may carry the user's clarification directly into the Approve branch without re-dispatching — capture both the original Recommended approach and the user's clarification in the design directive that flows to Section 4.
 
 - **Cancel** — Mark the `analyst-<issue-id>` TaskList task `completed` (the Analyst's work is done, even if its proposal was not accepted), clear any in-flight TaskList entries scoped to this Issue, and exit this Issue cleanly. **NO commit is made; the Issue stays `open`.** In single-issue mode the run ends here; in list / `all` mode proceed to the next Issue in the batch (back to Section 2 for that next Issue).
+
+#### Consume the Analyst's `### Deferred refinements` block
+
+Independently of the Approve / Revise / Cancel routing above, the Analyst's structured return carries a `### Deferred refinements` block (per `agents/analyst.md`'s return-shape contract — on verdicts `recommend-as-stated` and `escalate-to-user` the block is structurally `None`; on `recommend-with-refinements` and `recommend-different-approach` it carries a bulleted list of refinements the Analyst proposes the orchestrator handle outside the immediate fix pass). This block is the load-bearing inter-session carrier for refinements the Analyst surfaces but the Engineer will not implement during this Issue's fix.
+
+**At the moment of user approval — i.e., when the user picks Approve on the original proposal, OR when the user picks Approve after a Revise iteration (re-dispatched Analyst's return) — walk the latest Analyst return's `### Deferred refinements` block and create one `defer-<short-suffix>` TaskList task per non-`None` bullet whose destination annotation is `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue`.** The `metadata.activity` string carries the bullet's one-line description. Bullets annotated `addressed-now-in-this-Issue` are NOT added to the `defer-*` ledger — those refinements are rolled into the `### Recommended approach` flowing into Section 4's Engineer dispatch and need no inter-session carrier. Bullets emitted without a destination annotation are a contract violation per `agents/analyst.md`'s return-shape contract; surface that back to the user as a malformed return rather than guessing a destination.
+
+On Revise iterations, the orchestrator only consumes the **latest** re-dispatched Analyst's `### Deferred refinements` block at the moment of Approve — prior iterations' deferred-refinements blocks are superseded by the iteration the user actually approved, and any `defer-*` tasks the orchestrator created from a prior superseded iteration MUST be cleared from the active set (mark `completed` with `metadata.activity` annotated as superseded) before consuming the approved iteration's block. On Cancel, no `defer-*` tasks are created from the Analyst's `### Deferred refinements` block — the Issue stays `open` and the deferrals travel with the next Analyst pass when the user re-runs `/quo-fix-issue` on the Issue.
+
+This consumption paragraph is the load-bearing source for the Analyst-lane portion of Section 7.5's deferral-hygiene gate; without it, the gate would fire empty for Analyst-surfaced refinements, defeating the gate's purpose for that lane.
 
 #### Authoritative design directive (carried into Section 4)
 
@@ -371,6 +381,7 @@ Naming is **issue-scoped** for every per-issue role — there is no Subtask brea
 - **Reviewer Agents** (Code Reviewer, Test Reviewer, Doc Reviewer — see Section 5) — Name: `<reviewer>-<issue-id>` (e.g., `code-reviewer-veq`, `test-reviewer-veq`, `doc-reviewer-veq`).
 - **PM Agents** (dispatched per Issue in Section 5 alongside the reviewers) — Name: `pm-<issue-id>` (e.g., `pm-veq`).
 - **URL-resolution Skill-tool dispatches** (per Section 1's URL-resolution sub-step) — Name: `file-from-url-<n>`, where `<n>` is the 1-based index of the URL token in the user-supplied positional-argument list (e.g., `file-from-url-1`, `file-from-url-2` for two URL tokens). The 1-based positional index is what makes the entry deterministic and unambiguous — not the URL itself, which may be long, may repeat after dedupe, or may contain reserved characters that would collide with the naming convention. Each entry is created `pending` when the orchestrator decides to dispatch `/quo-file-issue` for the corresponding URL token, set `in_progress` the moment the Skill-tool dispatch lands, and set `completed` when the resolved `issue_ticket_id` is captured from the structured return (whether the underlying `action` is `created` for a freshly-filed Issue or `reused-existing` on the dedupe `Use existing` path). The URL-resolution sub-step's soft-fail / user-cancel path also closes out the entry — mark the failed entry `completed` (with the failure reason recorded via `metadata.activity` per the per-Agent activity convention above if useful) and clear it from the active set so the cumulative failure check at the upfront `bees show-ticket --ids` validation pass operates on a clean active set.
+- **Deferral-ledger tasks** — **Run scope**. Name: `defer-<short-suffix>` (e.g., `defer-1`, `defer-2`, or any collision-resistant suffix). Created when an agent's structured return (per `agents/pm.md`'s Final report contract or `agents/analyst.md`'s `### Deferred refinements` block) names a destination the orchestrator chose not to address inline this Issue — `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue`. `metadata.activity` carries the deferral's one-line description so the gate prose (Section 7.5 below) can surface the active set. Marked `completed` the moment the deferral is encoded in a durable carrier — an updated ticket body, a new Issue, or an explicit in-session resolution (in which case `metadata.activity` logs the resolution path). The pre-handoff Section 7.5 gate reads this ledger for active `defer-*` entries and refuses to yield control while any remain pending or in-progress. The existing post-completion-scoped names (`<role>-postcomp-<n>` / `file-issue-postcomp-<n>` per Section 8 step 6) and the deferral-ledger names coexist without overlap — they track different lifecycles (Agent dispatch vs. carrier-encoding reconciliation).
 
 #### Scoped-marker PM dispatch wiring
 
@@ -426,6 +437,7 @@ Role contracts (responsibilities, model assignment, gating, instructions) live i
     - If the feedback was minor enough, you may choose to **NOT** re-dispatch the Product Manager on this iteration
   - If not, move on but you MUST include the ignored feedback in the summary
   - Note: This could create an infinite loop so you may ignore feedback so long as you present it in the summary
+  - **Record each ignored item as a `defer-N` TaskList task at the moment of the ignore decision.** Whenever the Director chooses to ignore reviewer or PM feedback rather than re-dispatch implementers to address it, create a `defer-<short-suffix>` TaskList task (named per Section 4's "TaskList naming convention") with the feedback's one-line description as the `metadata.activity` string, status `pending`. The PM Agent's Final report contract (`agents/pm.md`) requires the PM to annotate each deferred item with a destination — `addressed-now-in-this-Task` (read here as "addressed-now-in-this-Issue" per the generic-naming note in `agents/pm.md`), `defer-to-existing-ticket-body: <ticket-id>`, or `defer-to-new-Issue` — that the orchestrator records in the same `metadata.activity` string. For reviewer-feedback items the destination is the Director's judgement call captured at ignore time. This upstream record-creating step is the load-bearing source for Section 7.5's deferral-hygiene gate; without it, the gate would fire empty even when items were ignored at this site, defeating the gate's purpose.
 
 ### 6. Verify docs are still accurate
 
@@ -483,11 +495,103 @@ Once the issue is fixed:
 **Ignored Review Feedback**: [list items that were flagged but not addressed, or "None"]
 ```
 
-5. In batch mode (`all` or list mode): proceed to the next issue in the batch (go back to step 2). In single mode: continue to step 8.
+5. In batch mode (`all` or list mode): continue to Section 7.5 (per-Issue deferral hygiene) first, then proceed to the next issue in the batch (go back to step 2). In single mode: continue to Section 7.5, then Section 8.
+
+### 7.5 Before handoff — deferral hygiene
+
+Throughout the per-Issue lifecycle (Section 3's Analyst pass, Section 4's implementer dispatch, Section 5's reviewer + PM review loop, Section 6's doc-verify confirmation), agents may have flagged items as "address later", "defer to next phase", "pick up during a follow-up Issue", or similar inter-session deferrals. Per `agents/pm.md`'s Final report contract and `agents/analyst.md`'s `### Deferred refinements` block, each such item arrives with a destination annotation; the orchestrator records the items it chose not to address inline as `defer-<short-suffix>` TaskList tasks per Section 4's TaskList naming convention (at the Section 3 Analyst-Approve / Analyst-Revise consumption sites — see Section 3's `### Deferred refinements` consumption paragraph — and at the Section 5 may-ignore-feedback site). This gate is the pre-handoff reconciliation step that closes them out into durable inter-session carriers before the run yields control (single-issue mode), advances to the next Issue (batch mode), or reaches Section 8's post-completion review.
+
+**Step 0 — Retroactive ledger reconciliation (safety net).** The Section 3 Analyst-Approve / Analyst-Revise consumption paragraph and the Section 5 may-ignore-feedback site each instruct the Director to create a `defer-<short-suffix>` TaskList task at the moment the deferral is recorded. Before running Step 1's enumeration, walk three additional surfaces and **create a corresponding `defer-*` TaskList task for any item that does not already have one**:
+
+1. **Section 5's per-Issue `**Ignored Review Feedback**` summary field** (the line in Section 7's per-Issue summary listing items flagged but not addressed). Each non-`None` bullet maps to a `defer-*` task.
+2. **PM Agent's Final report deferred items** (per `agents/pm.md`'s Final report contract — every item with a `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` destination annotation maps to a `defer-*` task; items annotated `addressed-now-in-this-Task` are skipped because they were addressed inline).
+3. **Analyst's `### Deferred refinements` block** (per `agents/analyst.md`'s structured-return shape — every non-`None` bullet with a `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` destination annotation maps to a `defer-*` task; bullets annotated `addressed-now-in-this-Issue` are skipped). The Section 3 Approve / Revise consumption paragraph is the load-bearing source for these items; this retroactive sweep is the defense-in-depth safety net.
+
+The upstream record-creating instructions at the Section 3 consumption paragraph and at the Section 5 may-ignore site are the load-bearing source; this retroactive sweep is the defense-in-depth safety net for orchestrators that miss the instruction. After the retroactive reconcile, every deferred item from these three surfaces is represented in the active `defer-*` set and Step 1's enumeration sees the canonical view.
+
+**Per-Issue firing.** This gate fires at the end of every Issue — between Section 7's mark-done-and-commit step and the per-Issue advance to the next Issue (batch mode) or to Section 8 (single mode). The per-Issue firing scopes the active deferral set to **deferrals surfaced during this Issue only**; deferrals from prior Issues in a batch run were already closed out at the end of their own per-Issue gate. Scoping per-Issue rather than per-batch is load-bearing — accumulating deferrals across a multi-Issue batch would surprise the user with a long list at session end and defeat the per-Issue close-out discipline this skill already enforces.
+
+**Batch end-of-run firing.** In batch / `all` mode, this gate fires again at the end of the whole batch, between the last Issue's Section 7.5 per-Issue close-out and Section 8 (post-completion review). The end-of-batch firing catches any deferrals the orchestrator surfaced *between* Issues — at the inter-Issue advance boundary, during batch-level reconciliation, etc. — that did not belong to any single Issue's per-Issue gate. The active set at the end-of-batch firing should typically be empty (per-Issue gates already closed out per-Issue deferrals); the end-of-batch firing exists as a defensive sweep, not as a routine surface, so a one-line `Deferral hygiene (batch close): no deferred items.` is the expected output.
+
+**Step 1 — Enumerate the active deferral ledger.** Scan the TaskList for tasks whose name starts with `defer-` and whose status is `pending` or `in_progress`. If the active set is empty, emit a one-line console message — recommended string: `Deferral hygiene: no deferred items.` (per-Issue firing) or `Deferral hygiene (batch close): no deferred items.` (end-of-batch firing) — and advance per the firing-mode rules above.
+
+**Step 2 — Surface the active set and gate the user choice.** When the active set is non-empty, surface the list to the user as numbered markdown (one bullet per `defer-*` task, the `metadata.activity` text as the bullet's body), then call `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage`. Finite choices:
+
+- **Fix in this session** — Re-dispatch the appropriate implementer / reviewer Agents per Section 4's dispatch shape, or do the orchestrator-owned ticket-body update inline per the Encode branch below, to resolve each deferred item now. After each item is resolved, mark its `defer-*` TaskList task `completed` (with `metadata.activity` updated to log the resolution path).
+- **File as issue tickets** — For each item, invoke `/quo-file-issue` inline via the Skill tool with the deferral's description as the issue body (the precedent for inline-Skill-tool dispatch lives in Section 1's URL-resolution sub-step). Mark each `defer-*` TaskList task `completed` once the `/quo-file-issue` dispatch returns successfully and the created Issue ID is captured.
+- **Encode in an existing ticket body** — For each item the user maps to an existing ticket (a Plan Bee, Epic, Task, Subtask, Spec Bee `t1=Doc` child, or the project PRD/SDD via a doc-writer pass), append a `## Deferred from /quo-fix-issue run` section to the named ticket's body and run `bees update-ticket --ids <ticket-id> --body-file <path>` to land the update. Author the revised body to a temp file via the `Write` tool under the namespaced workflow scratch dir per CLAUDE.md `## Scratch-file convention`. **Filename**: re-use the suffix of the `defer-N` TaskList task that triggered the encode — e.g., for the encode triggered by `defer-3`, the scratch file is `bees-body-defer-3.md`. Reusing the triggering task's suffix is deterministic, debuggable, collision-resistant under this run's active `defer-*` set, and ties the scratch file directly back to its TaskList progenitor:
+
+  ```bash
+  # POSIX (bash / zsh):
+  mkdir -p /tmp/.quorum
+  # then write the revised body to /tmp/.quorum/bees-body-<defer-N>.md via the Write tool
+  # (e.g., /tmp/.quorum/bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+  # then write the revised body to $env:TEMP\.quorum\bees-body-<defer-N>.md via the Write tool
+  # (e.g., $env:TEMP\.quorum\bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  Do NOT remove the temp file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. Mark each `defer-*` TaskList task `completed` once the update succeeds.
+
+  **Follow-up commit (after all Encode writes in this gate firing have landed).** This gate fires AFTER Section 7 step 2's per-Issue commit step has already produced one commit per Issue in this run — so the `bees update-ticket --body-file` writes above persist new on-disk changes to the relevant hive's per-ticket directory (or to the project PRD/SDD file path), but those changes are NOT swept into any prior per-Issue commit and would otherwise leave the working tree dirty when the skill yields (per-Issue firing) or advances (end-of-batch firing). Produce one follow-up commit per gate firing covering all Encode writes from this firing — not per Encode item — to keep commit churn proportional to the user's choice. Resolve the Plans, Specs, and Issues hive paths via `bees list-hives` (the same pattern Section 7 step 2's commit step uses for Issues), `git add` each hive path that lives inside this repo, additionally `git add` the project PRD/SDD file paths from CLAUDE.md `## Documentation Locations` when the user routed any Encode to those destinations, then commit only if `git diff --cached` shows staged changes (an out-of-repo hive plus no PRD/SDD encode routes would stage nothing — skip the commit in that case rather than producing an empty one). Commit subject contract: `Encode deferral: /quo-fix-issue — <N> ticket(s) updated` where `<N>` is the count of `defer-*` items the user routed to Encode in this gate firing:
+
+  ```bash
+  # POSIX (bash / zsh):
+  plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
+  specs_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="specs"), None); print(p or "")')
+  issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
+  repo_root=$(git rev-parse --show-toplevel)
+  for hive_path in "$plans_path" "$specs_path" "$issues_path"; do
+    case "$hive_path" in
+      "$repo_root"|"$repo_root"/*) git add "$hive_path" ;;
+    esac
+  done
+  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
+  # when the user routed any Encode to those destinations (always in-repo by definition).
+  # Then check staged state and commit only if non-empty:
+  git diff --cached --quiet
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  $hives = bees list-hives | ConvertFrom-Json
+  $plansPath = $hives.hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+  $specsPath = $hives.hives | Where-Object { $_.normalized_name -eq 'specs' } | Select-Object -ExpandProperty path
+  $issuesPath = $hives.hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
+  $repoRoot = git rev-parse --show-toplevel
+  $repoNorm = $repoRoot.Replace('\','/')
+  foreach ($hivePath in @($plansPath, $specsPath, $issuesPath)) {
+    if (-not $hivePath) { continue }
+    $hiveNorm = $hivePath.Replace('\','/')
+    if ($hiveNorm -eq $repoNorm -or $hiveNorm.StartsWith("$repoNorm/")) {
+      git add $hivePath
+    }
+  }
+  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
+  # when the user routed any Encode to those destinations (always in-repo by definition).
+  # Then check staged state and commit only if non-empty:
+  git diff --cached --quiet
+  ```
+
+  The `git diff --cached --quiet` exit status tells the orchestrator whether to commit (non-zero exit = staged changes present → commit; zero exit = nothing staged → skip). Use the bees-list-hives JSON to scope hive `git add` calls to in-repo hives only; out-of-repo hives have already had their bees update persisted by `bees update-ticket` and require no git action here. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree (same anti-pattern as Section 7 step 2's per-Issue commit step). After the commit lands (or the skip path executes), proceed to Step 3 below.
+
+The three options are mutually-non-exclusive at the active-set level — the user may pick one option overall, or the orchestrator may resolve different items via different options when the user's reply directs it that way (e.g., "fix items 1 and 2 now, file 3 as an Issue"). Whatever the routing, every `defer-*` task in the active set MUST be `completed` by the end of this gate.
+
+**Step 3 — Hard-stop on a non-empty active set.** Until every `defer-*` task is `completed`, the skill cannot advance past this gate. On per-Issue firing, the next Issue (batch mode) or Section 8 (single mode) is blocked until the active set is empty; on end-of-batch firing, Section 8 is blocked. This is the structural enforcement: a deferral that was important enough to surface during the run is important enough to encode in a durable carrier before the run ends. If the user picks options that fail to close out a subset (e.g., `/quo-file-issue` cancelled at one of its gates, or a `bees update-ticket` invocation errors), surface the still-active `defer-*` tasks back to the user with `AskUserQuestion` and re-run the gate until the active set is empty.
+
+The fresh-session-per-phase recommendation at run close-out is preserved verbatim — this gate sits before that handoff prose; it does not replace it.
 
 ### 8. Post-Completion Review
 
 After all issues are fixed (in batch mode: after the final issue in the batch; in single mode: after the one issue), run a final fresh-context generalist sweep across all changes made during this quo-fix-issue session.
+
+**End-of-batch deferral-hygiene firing.** In batch / `all` mode, before this section's fresh-context sweep, re-fire Section 7.5's deferral-hygiene gate as the **end-of-batch firing** documented there. **When re-firing here, treat the invocation as the end-of-batch firing per Section 7.5's batch-firing semantics** — emit the `Deferral hygiene (batch close): no deferred items.` console message on an empty active set (not the per-Issue variant), and apply the end-of-batch active-set scope (deferrals surfaced *between* Issues at the inter-Issue advance boundary or during batch-level reconciliation, which did not belong to any single Issue's per-Issue gate). In single mode, the per-Issue firing at the end of the one Issue already covered the active set and the end-of-batch firing is skipped — Section 7.5's batch-firing prose is a no-op on the single-issue path. The active set at the end-of-batch firing should typically be empty (per-Issue gates already closed out per-Issue deferrals); the end-of-batch firing exists as a defensive sweep against deferrals surfaced at the inter-Issue advance boundary or during batch-level reconciliation. Until the active set is empty, this section cannot proceed to the fresh-context sweep below.
 
 **Anti-pattern callout — read before acting.** Do NOT invoke `/quo-engineer-review`, `/quo-doc-writer-review`, or `/quo-test-writer-review` at this stage. Those skills are designed as parallel lanes of an in-flight review; they each have lane-specific scope rules that make them wrong for a final generalist sweep (e.g. `/quo-engineer-review` is scoped to source code, `/quo-doc-writer-review` to user-facing docs, `/quo-test-writer-review` to test files — none of them runs the cross-lane sweep this step needs). Spawn a fresh general-purpose agent with a self-contained prompt instead.
 

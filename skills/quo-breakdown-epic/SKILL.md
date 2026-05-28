@@ -364,6 +364,8 @@ The Epic's spec source can take three shapes, depending on what the parent Plan 
 
 Defer to `agents/pm.md` `### Resolving reference_materials entries` as the **authoritative spec for the resolution logic** — the PM Agent's own contract handles the per-entry resolver dispatch (file-path read vs. two-hop Spec Bee + `t1=Doc` children walk vs. body-as-spec fallback). Do NOT duplicate the title-match recipe or the children-enumeration walk in the dispatch prompt; the PM Agent already carries that logic and re-deriving it here risks divergence between the dispatch prompt and the agent contract.
 
+**Record each PM-deferred item as a `defer-N` TaskList task at the moment of the PM verdict.** When the per-Task PM research Agent returns, walk its Final report deferred items (per `agents/pm.md`'s Final report contract). For every item the PM annotated with a destination of `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` (i.e., NOT `addressed-now-in-this-Task`, which the orchestrator handles inline by dispatching a gap-fill research Agent), create a `defer-<short-suffix>` TaskList task (named per Section 4's "TaskList naming convention") with the deferral's one-line description as the `metadata.activity` string, status `pending`. Items annotated `addressed-now-in-this-Task` are NOT added to the `defer-*` ledger — they are addressed by the orchestrator dispatching a gap-fill Agent in the next reconciliation tick. This upstream record-creating step is the load-bearing source for Section 6.5's deferral-hygiene gate; without it, the gate would fire empty even when the PM surfaced deferrable items, defeating the gate's purpose.
+
 #### Authoring Subtask bodies
 
 Subtask bodies follow the mandatory template below (Context / What Needs to Change / Key Files / Acceptance Criteria) — they are multi-section markdown that trips Claude Code's command-injection guard if inlined as a `--body "..."` argument (any newline-followed-by-`#`-heading triggers the validator and forces a permission prompt), and inlined markdown is fragile to shell quoting (backticks, dollar signs, quotes). For every `bees create-ticket` you run for a Task or Subtask, **author the body to a temp file via the `Write` tool and pass `--body-file <path>`** to `bees create-ticket`. Pick a temp path under the namespaced workflow scratch dir (`/tmp/.quorum/bees-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-body-<short-suffix>.md` on Windows), creating the `.quorum` subdir if absent:
@@ -396,6 +398,7 @@ The naming convention is the **canonical cross-reference** for downstream Tasks 
 
 - **Implementer research Agents** (Engineer, Test Writer, Doc Writer) — **Task scope**. Name: `<role>-research-<task-id>` — concretely, `engineer-research-<task-id>`, `test-writer-research-<task-id>`, `doc-writer-research-<task-id>` (e.g., `engineer-research-t2.abc.def`, `test-writer-research-t2.abc.def`, `doc-writer-research-t2.abc.def`). Each Task gets its own implementer research Agent per applicable role; the `task-id` suffix makes the name unique even when sibling Tasks of the same Epic are processed back-to-back.
 - **PM research Agents** — **Epic scope**. Name: `pm-research-<epic-id>` (e.g., `pm-research-t1.abc`). The PM reviews each proposed Subtask set within the context of the whole Epic, so its scope suffix is the parent Epic id; the orchestrator creates a new PM research Agent per Task-level review boundary, but the TaskList name disambiguates by Epic.
+- **Deferral-ledger tasks** — **Run scope**. Name: `defer-<short-suffix>` (e.g., `defer-1`, `defer-2`, or any collision-resistant suffix). Created when an agent's structured return (per `agents/pm.md`'s Final report contract — applied here to the PM research Agent's traceability-review output — or when the orchestrator surfaces an item it chose not to address inline this run) names a destination — `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue`. `metadata.activity` carries the deferral's one-line description so the gate prose (Section 6.5 below) can surface the active set. Marked `completed` the moment the deferral is encoded in a durable carrier — an updated ticket body, a new Issue, or an explicit in-session resolution (in which case `metadata.activity` logs the resolution path). The pre-handoff Section 6.5 gate reads this ledger for active `defer-*` entries and refuses to yield control while any remain pending or in-progress.
 
 The `-research-` infix distinguishes these dispatches from the implementation-time dispatches in `/quo-execute` (which use `<role>-<subtask-id>` and `pm-<task-id>` per `quo-execute` Section 3's `##### TaskList naming convention`). A reader scanning a mixed TaskList can tell at a glance whether a given entry is breakdown-time research or execute-time implementation.
 
@@ -507,6 +510,8 @@ When the PM Agent returns its JSON findings, the orchestrator consumes the trace
 
 The loop terminates when the PM returns a traceability table with every row at `OK`. Do **not** short-circuit the loop by trusting the orchestrator's own read of the table — the PM is the authority on sign-off.
 
+**Record each Epic-wide PM-deferred item as a `defer-N` TaskList task at the moment of the PM sign-off.** When the Epic-wide PM research Agent returns its final all-`OK` table, also walk its Final report deferred items (per `agents/pm.md`'s Final report contract — applied here to the Spec Traceability Review output). For every item the PM annotated with a destination of `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue`, create a `defer-<short-suffix>` TaskList task (named per Section 4's "TaskList naming convention") with the deferral's one-line description as the `metadata.activity` string, status `pending`. Items annotated `addressed-now-in-this-Task` are NOT added to the `defer-*` ledger — they were addressed during the gap-fill iteration above. This upstream record-creating step is the load-bearing source for Section 6.5's deferral-hygiene gate; without it, the gate would fire empty even when the Epic-wide PM surfaced deferrable items, defeating the gate's purpose.
+
 ##### Step 5 — Create gap-fill tickets, then transition to `ready`
 
 Only after PM sign-off (all rows `OK`):
@@ -571,6 +576,86 @@ if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNo
 Substitute the actual Epic ID and title into the commit message. Single literal `git commit` command, no compound chains.
 
 If the Plans hive lives **outside** the repo, skip the git commands and remember to surface a one-line note in Step 7 so the user knows the new tickets are persisted by the bees CLI but not git-tracked here.
+
+### 6.5 Before handoff — deferral hygiene
+
+Throughout the Epic-breakdown loop (Section 4's per-Task implementer research dispatch and Section 5's Spec Traceability Review with its gap-fill iteration), the PM research Agent and the implementer research Agents may have flagged items as "address during /quo-execute", "defer to implementation", "pick up during a follow-up Issue", or similar inter-session deferrals. Per `agents/pm.md`'s Final report contract, each such item arrives with a destination annotation; the orchestrator records the items it chose not to address inline as `defer-<short-suffix>` TaskList tasks per Section 4's TaskList naming convention (at the per-Task PM dispatch site and at the Section 5 Spec Traceability Review sign-off site). This gate is the pre-handoff reconciliation step that closes them out into durable inter-session carriers before Section 7's next-Steps menu — which explicitly recommends a fresh Claude Code session for `/quo-execute` — yields control.
+
+**Step 0 — Retroactive ledger reconciliation (safety net).** The per-Task PM dispatch site in Section 4 and the Section 5 Spec Traceability Review sign-off site each instruct the Director to create a `defer-<short-suffix>` TaskList task per PM-deferred item at the moment of the verdict. Before running Step 1's enumeration, walk every PM research Agent's Final report deferred items captured during the run (per-Task PM dispatches in Section 4 and the Epic-wide Spec Traceability Review PM dispatch in Section 5) and **create a corresponding `defer-*` TaskList task for any item that does not already have one**. Items annotated `addressed-now-in-this-Task` are skipped — they were addressed inline by a gap-fill dispatch. The upstream record-creating instructions at the per-Task PM site and the Section 5 sign-off site are the load-bearing source; this retroactive sweep is the defense-in-depth safety net for orchestrators that miss the instruction. After the retroactive reconcile, every deferred item is represented in the active `defer-*` set and Step 1's enumeration sees the canonical view.
+
+**Step 1 — Enumerate the active deferral ledger.** Scan the TaskList for tasks whose name starts with `defer-` and whose status is `pending` or `in_progress`. If the active set is empty, emit a one-line console message — recommended string: `Deferral hygiene: no deferred items.` — and proceed to Section 7 (Offer Next Steps).
+
+**Step 2 — Surface the active set and gate the user choice.** When the active set is non-empty, surface the list to the user as numbered markdown (one bullet per `defer-*` task, the `metadata.activity` text as the bullet's body), then call `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage`. Finite choices:
+
+- **Fix in this session** — Re-dispatch the appropriate implementer / PM research Agents per Section 4's dispatch shape, or do the orchestrator-owned ticket-body update inline per the Encode branch below, to resolve each deferred item now. After each item is resolved, mark its `defer-*` TaskList task `completed` (with `metadata.activity` updated to log the resolution path).
+- **File as issue tickets** — For each item, invoke `/quo-file-issue` inline via the Skill tool with the deferral's description as the issue body (the precedent for inline-Skill-tool dispatch lives in `/quo-fix-issue` Section 1's URL-resolution sub-step and `/quo-plan` Step 4b). Mark each `defer-*` TaskList task `completed` once the `/quo-file-issue` dispatch returns successfully and the created Issue ID is captured.
+- **Encode in an existing ticket body** — For each item the user maps to an existing ticket (a Plan Bee, Epic, Task, Subtask, Spec Bee `t1=Doc` child, or the project PRD/SDD via a doc-writer pass), append a `## Deferred from /quo-breakdown-epic run` section to the named ticket's body and run `bees update-ticket --ids <ticket-id> --body-file <path>` to land the update. Author the revised body to a temp file via the `Write` tool under the namespaced workflow scratch dir per CLAUDE.md `## Scratch-file convention`. **Filename**: re-use the suffix of the `defer-N` TaskList task that triggered the encode — e.g., for the encode triggered by `defer-3`, the scratch file is `bees-body-defer-3.md`. Reusing the triggering task's suffix is deterministic, debuggable, collision-resistant under this run's active `defer-*` set, and ties the scratch file directly back to its TaskList progenitor:
+
+  ```bash
+  # POSIX (bash / zsh):
+  mkdir -p /tmp/.quorum
+  # then write the revised body to /tmp/.quorum/bees-body-<defer-N>.md via the Write tool
+  # (e.g., /tmp/.quorum/bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+  # then write the revised body to $env:TEMP\.quorum\bees-body-<defer-N>.md via the Write tool
+  # (e.g., $env:TEMP\.quorum\bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  Do NOT remove the temp file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. Mark each `defer-*` TaskList task `completed` once the update succeeds.
+
+  **Follow-up commit (after all Encode writes in this gate firing have landed).** This gate fires AFTER Section 6's commit step has already committed the Tasks and Subtasks this run created — so the `bees update-ticket --body-file` writes above persist new on-disk changes to the relevant hive's per-ticket directory (or to the project PRD/SDD file path), but those changes are NOT swept into Section 6's commit and would otherwise leave the working tree dirty when the skill yields to Section 7's next-Steps menu (which explicitly recommends a fresh Claude Code session for `/quo-execute` — a dirty working tree at that boundary forces the user to reconcile manually). Produce one follow-up commit per gate firing covering all Encode writes from this firing — not per Encode item — to keep commit churn proportional to the user's choice. Resolve the Plans, Specs, and Issues hive paths via `bees list-hives` (the same pattern Section 6 uses for Plans), `git add` each hive path that lives inside this repo, additionally `git add` the project PRD/SDD file paths from CLAUDE.md `## Documentation Locations` when the user routed any Encode to those destinations, then commit only if `git diff --cached` shows staged changes (an out-of-repo hive plus no PRD/SDD encode routes would stage nothing — skip the commit in that case rather than producing an empty one). Commit subject contract: `Encode deferral: /quo-breakdown-epic — <N> ticket(s) updated` where `<N>` is the count of `defer-*` items the user routed to Encode in this gate firing:
+
+  ```bash
+  # POSIX (bash / zsh):
+  plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
+  specs_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="specs"), None); print(p or "")')
+  issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
+  repo_root=$(git rev-parse --show-toplevel)
+  for hive_path in "$plans_path" "$specs_path" "$issues_path"; do
+    case "$hive_path" in
+      "$repo_root"|"$repo_root"/*) git add "$hive_path" ;;
+    esac
+  done
+  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
+  # when the user routed any Encode to those destinations (always in-repo by definition).
+  # Then check staged state and commit only if non-empty:
+  git diff --cached --quiet
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  $hives = bees list-hives | ConvertFrom-Json
+  $plansPath = $hives.hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+  $specsPath = $hives.hives | Where-Object { $_.normalized_name -eq 'specs' } | Select-Object -ExpandProperty path
+  $issuesPath = $hives.hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
+  $repoRoot = git rev-parse --show-toplevel
+  $repoNorm = $repoRoot.Replace('\','/')
+  foreach ($hivePath in @($plansPath, $specsPath, $issuesPath)) {
+    if (-not $hivePath) { continue }
+    $hiveNorm = $hivePath.Replace('\','/')
+    if ($hiveNorm -eq $repoNorm -or $hiveNorm.StartsWith("$repoNorm/")) {
+      git add $hivePath
+    }
+  }
+  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
+  # when the user routed any Encode to those destinations (always in-repo by definition).
+  # Then check staged state and commit only if non-empty:
+  git diff --cached --quiet
+  ```
+
+  The `git diff --cached --quiet` exit status tells the orchestrator whether to commit (non-zero exit = staged changes present → commit; zero exit = nothing staged → skip). Use the bees-list-hives JSON to scope hive `git add` calls to in-repo hives only; out-of-repo hives have already had their bees update persisted by `bees update-ticket` and require no git action here. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree (same anti-pattern as Section 6's commit step). After the commit lands (or the skip path executes), proceed to Step 3 below.
+
+The three options are mutually-non-exclusive at the active-set level — the user may pick one option overall, or the orchestrator may resolve different items via different options when the user's reply directs it that way (e.g., "fix items 1 and 2 now, file 3 as an Issue"). Whatever the routing, every `defer-*` task in the active set MUST be `completed` by the end of this gate.
+
+**Step 3 — Hard-stop on a non-empty active set.** Until every `defer-*` task is `completed`, the skill cannot proceed to Section 7 (Offer Next Steps). This is the structural enforcement: a deferral that was important enough to surface during the breakdown is important enough to encode in a durable carrier before the run ends — `/quo-execute` reads bees tickets, CLAUDE.md, and source code in its fresh session and has zero visibility into this session's conversation. If the user picks options that fail to close out a subset (e.g., `/quo-file-issue` cancelled at one of its gates, or a `bees update-ticket` invocation errors), surface the still-active `defer-*` tasks back to the user with `AskUserQuestion` and re-run the gate until the active set is empty.
+
+The fresh-session-per-phase recommendation at Section 7's menu is preserved verbatim — this gate sits before that handoff prose; it does not replace it.
 
 ### 7. Offer Next Steps
 

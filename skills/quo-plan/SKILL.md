@@ -668,6 +668,46 @@ Output a markdown summary listing the Plan Bee, each Epic (ID, title, status, de
 
 If a given gate ran with no findings (or no surfaced-but-unaddressed findings), omit its bucket sub-section entirely. If both gates ran clean, omit both buckets — the report stays clean. The point of surfacing them in one end-of-skill view is to give the user a single coherent picture of what was *intentionally not addressed* across both gates before the Plan Bee promoted, so they can decide whether to file follow-up Issues or revise the artifacts before downstream skills consume them.
 
+### 5g — Before handoff — deferral hygiene
+
+`/quo-plan` uses a per-skill TaskList convention scoped to the dispatches it makes during a run (e.g., `plan-reviewer-<plan-bee-short-suffix>` for the Step 5e fresh-eyes reviewer, the dispatched-skill conventions belonging to `/quo-write-prd` / `/quo-write-sdd` / `/quo-spec-review` invoked inline from Step 4). This gate introduces an additional **deferral-ledger task** convention used by Step 5g exclusively:
+
+- **Deferral-ledger tasks** — **Run scope**. Name: `defer-<short-suffix>` (e.g., `defer-1`, `defer-2`, or any collision-resistant suffix). Created when an inline-invoked writer/reviewer skill or the orchestrator itself surfaces an item with a destination annotation — `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` — that the orchestrator chose not to address inline this run, OR when Step 5f's three Step-4c spec-review buckets (acknowledged findings, overridden blockers, time-budget-deferred items) and three Step-5e plan-review buckets surface findings the user accepted at the gate without authoring an explicit destination. `metadata.activity` carries the deferral's one-line description so the gate prose below can surface the active set. Marked `completed` the moment the deferral is encoded in a durable carrier — an updated ticket body, a new Issue, or an explicit in-session resolution (in which case `metadata.activity` logs the resolution path). The pre-handoff gate below reads this ledger for active `defer-*` entries and refuses to yield control while any remain pending or in-progress.
+
+**Retroactive ledger reconciliation against Step 5f's buckets.** Step 5f enumerates six categories of surfaced-but-unaddressed findings across the spec-review (4c) and plan-review (5e) gates. Before running the gate below, walk Step 5f's buckets and create a corresponding `defer-*` TaskList task for any item that does not already have one — these items were captured for the end-of-skill report but, prior to this gate, had no structural ledger to keep them from being silently dropped at session handoff. After the retroactive reconcile, every Step 5f bucket entry is represented in the active `defer-*` set and the gate below can enumerate the canonical view.
+
+**Step 1 — Enumerate the active deferral ledger.** Scan the TaskList for tasks whose name starts with `defer-` and whose status is `pending` or `in_progress`. If the active set is empty, emit a one-line console message — recommended string: `Deferral hygiene: no deferred items.` — and proceed to Step 6 (Offer Next Steps).
+
+**Step 2 — Surface the active set and gate the user choice.** When the active set is non-empty, surface the list to the user as numbered markdown (one bullet per `defer-*` task, the `metadata.activity` text as the bullet's body), then call `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage`. Finite choices:
+
+- **Fix in this session** — Re-invoke the relevant writer skill (`/quo-write-prd` / `/quo-write-sdd`) via the Skill tool against the Spec Bee's PRD or SDD `t1=Doc` child carrying the finding, re-dispatch the plan reviewer per Step 5e's dispatch shape, or do the orchestrator-owned Plan Bee body or Epic body update inline per Step 5e's Revise-routing prose, to resolve each deferred item now. After each item is resolved, mark its `defer-*` TaskList task `completed` (with `metadata.activity` updated to log the resolution path).
+- **File as issue tickets** — For each item, invoke `/quo-file-issue` inline via the Skill tool with the deferral's description as the issue body (the precedent for inline-Skill-tool dispatch lives in Step 4b's `/quo-write-prd` / `/quo-write-sdd` dispatches). Mark each `defer-*` TaskList task `completed` once the `/quo-file-issue` dispatch returns successfully and the created Issue ID is captured.
+- **Encode in an existing ticket body** — For each item the user maps to an existing ticket (the Plan Bee just promoted in Step 5d-ii, one of its Epics, the Spec Bee or one of its `t1=Doc` PRD/SDD children, or the project PRD/SDD via a doc-writer pass), append a `## Deferred from /quo-plan run` section to the named ticket's body and run `bees update-ticket --ids <ticket-id> --body-file <path>` to land the update. Author the revised body to a temp file via the `Write` tool under the namespaced workflow scratch dir per CLAUDE.md `## Scratch-file convention`. **Filename**: re-use the suffix of the `defer-N` TaskList task that triggered the encode — e.g., for the encode triggered by `defer-3`, the scratch file is `bees-body-defer-3.md`. Reusing the triggering task's suffix is deterministic, debuggable, collision-resistant under this run's active `defer-*` set, and ties the scratch file directly back to its TaskList progenitor:
+
+  ```bash
+  # POSIX (bash / zsh):
+  mkdir -p /tmp/.quorum
+  # then write the revised body to /tmp/.quorum/bees-body-<defer-N>.md via the Write tool
+  # (e.g., /tmp/.quorum/bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+  # then write the revised body to $env:TEMP\.quorum\bees-body-<defer-N>.md via the Write tool
+  # (e.g., $env:TEMP\.quorum\bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  Do NOT remove the temp file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. Mark each `defer-*` TaskList task `completed` once the update succeeds.
+
+The three options are mutually-non-exclusive at the active-set level — the user may pick one option overall, or the orchestrator may resolve different items via different options when the user's reply directs it that way (e.g., "fix items 1 and 2 now, file 3 as an Issue"). Whatever the routing, every `defer-*` task in the active set MUST be `completed` by the end of this gate.
+
+**Step 3 — Hard-stop on a non-empty active set.** Until every `defer-*` task is `completed`, the skill cannot proceed to Step 6 (Offer Next Steps). This is the structural enforcement: a deferral that was important enough to surface during planning is important enough to encode in a durable carrier before the run ends — `/quo-breakdown-epic` and `/quo-execute` read bees tickets, CLAUDE.md, and source code in their fresh sessions and have zero visibility into this session's conversation. If the user picks options that fail to close out a subset (e.g., `/quo-file-issue` cancelled at one of its gates, or a `bees update-ticket` invocation errors), surface the still-active `defer-*` tasks back to the user with `AskUserQuestion` and re-run the gate until the active set is empty.
+
+The fresh-session-per-phase recommendation at Step 6's menu is preserved verbatim — this gate sits before that handoff prose; it does not replace it.
+
 ### 6. Offer Next Steps
 
 Present the user with options.

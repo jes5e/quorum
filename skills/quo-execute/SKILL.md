@@ -277,6 +277,7 @@ The naming convention is the **canonical cross-reference** for downstream Tasks 
 - **Implementer Agents** (Engineer, Test Writer, Doc Writer) — **Subtask scope**. Name: `<role>-<subtask-id>` (e.g., `engineer-t3.abc.def.gh`, `test-writer-t3.abc.def.ij`, `doc-writer-t3.abc.def.kl`). Each Subtask gets its own implementer Agent and its own TaskList task; subtask-id makes the name unique even when sibling Subtasks of the same Task run concurrently.
 - **PM Agents** — **Task scope**. Name: `pm-<task-id>` (e.g., `pm-t2.abc.def.gh`). The PM reviews the whole Task at once, so its scope suffix is the parent Task's id.
 - **Reviewer Agents** (Code Reviewer, Test Reviewer, Doc Reviewer — see Section 5) — **Bee scope**. Name: `<reviewer>-<bee-id>` (e.g., `code-reviewer-b.abc`, `test-reviewer-b.abc`, `doc-reviewer-b.abc`). Reviewers run once per Bee at the final Bee-level review, so the scope suffix is the Bee id.
+- **Deferral-ledger tasks** — **Run scope**. Name: `defer-<short-suffix>` (e.g., `defer-1`, `defer-2`, or any collision-resistant suffix). Created when an agent's structured return (per `agents/pm.md`'s Final report contract or `agents/analyst.md`'s `### Deferred refinements` block) names a destination the orchestrator chose not to address inline this run — `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue`. `metadata.activity` carries the deferral's one-line description so the gate prose (Section 6.5 below) can surface the active set. Marked `completed` the moment the deferral is encoded in a durable carrier — an updated ticket body, a new Issue, or an explicit in-session resolution (in which case `metadata.activity` logs the resolution path). The pre-handoff Section 6.5 gate reads this ledger for active `defer-*` entries and refuses to yield control while any remain pending or in-progress.
 
 #### Scoped-marker PM dispatch wiring
 
@@ -368,6 +369,10 @@ One of:
 - Final Task, moving on to Final Reviews 
 ```
 
+**Record each ignored-feedback item as a `defer-N` TaskList task at the moment of decision.** Whenever the Director chooses to ignore a review-feedback item rather than fix it now, create a `defer-<short-suffix>` TaskList task (named per Section 3's "TaskList naming convention") with the feedback's one-line description as the `metadata.activity` string, status `pending`. The PM Agent's Final report contract (`agents/pm.md`) requires the PM to annotate each deferred item with a destination — `addressed-now-in-this-Task` (no carrier needed), `defer-to-existing-ticket-body: <ticket-id>`, or `defer-to-new-Issue` — that the orchestrator records in the same `metadata.activity` string. This upstream record-creating step is the load-bearing source for Section 6.5's deferral-hygiene gate; without it, the gate would fire empty even when items were ignored, defeating the gate's purpose. Items the Director addressed inline this Task (no ignored feedback surfaced) do **not** get a `defer-*` task — the `defer-*` ledger only tracks items not addressed now.
+
+**Record each PM-deferred item as a `defer-N` TaskList task at the moment of the PM verdict.** When the per-Task PM Agent returns, walk its Final report deferred items (per `agents/pm.md`'s Final report contract). For every item the PM annotated with a destination of `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` (i.e., NOT `addressed-now-in-this-Task`, which is the PM's signal that the Director already addressed the item inline this Task and no inter-session carrier is needed), create a `defer-<short-suffix>` TaskList task (named per Section 3's "TaskList naming convention") with the deferral's one-line description as the `metadata.activity` string, status `pending`. Items annotated `addressed-now-in-this-Task` are NOT added to the `defer-*` ledger — they were addressed inline. This upstream record-creating step is the load-bearing source (paired with the ignored-feedback instruction above) for Section 6.5's deferral-hygiene gate; without it, PM-surfaced deferrals would only reach the active `defer-*` set via Section 6.5's Step 0 retroactive sweep, leaving the gate single-layered for PM-Final-report items where the peer skill `/quo-breakdown-epic` (per its per-Task PM dispatch site) is two-layered. Walking the PM Final report's deferred items here mirrors `/quo-breakdown-epic`'s per-Task PM-dispatch site and keeps the two-layer pattern (upstream + Step 0 sweep) symmetric across the two execution-skill peers.
+
 #### 4.2 Find next Epic or move to Final Review
 
 Before moving on from the just-completed Epic, perform an **inter-Epic interaction checkpoint**. This is a lightweight check deliberately positioned here (not at the final Bee-level review) so that issues introduced by this Epic's code interacting with *prior* Epics' landed code are caught while the context is fresh, before the next Epic compounds the problem.
@@ -432,6 +437,7 @@ Reviewer role contracts (responsibilities, model assignment, gating, instruction
     - If the feedback was minor enough, you may choose to **NOT** spawn the Product Manager on this iteration
   - If not, move on to Final Review but you MUST share the ignored feedback for review
   - Note: This could create an infinite loop so you may ignore feedback so long as you present it in Final Review
+  - **Record each ignored item as a `defer-N` TaskList task at the moment of the ignore decision.** Whenever the Director chooses to ignore Bee-level reviewer feedback rather than re-dispatch implementers to address it, create a `defer-<short-suffix>` TaskList task (named per Section 3's "TaskList naming convention") with the feedback's one-line description as the `metadata.activity` string, status `pending`. Where the reviewer's framing suggests a destination (e.g., "file follow-up Issue", "update <ticket-id> body"), record the destination annotation alongside the description in `metadata.activity`; otherwise, mark it as pending-destination so Section 6.5's gate will surface the bullet for the user to map. This upstream record-creating step is the load-bearing source for Section 6.5's deferral-hygiene gate; without it, the gate would fire empty even when items were ignored at this site, defeating the gate's purpose.
 
 
 ### 6. Post-Completion Review
@@ -498,9 +504,91 @@ After the review loop in step 5 is done and all fixable issues have been address
      - **Skip** — acknowledge and move on without action
 
 6. Execute the user's choice:
-   - **Fix in this session**: Reform the implementation team and delegate the fixes. Stay in delegate mode. After fixes are done, commit and continue to Final Output.
-   - **File as issue tickets**: For each issue, invoke `/quo-file-issue` with the issue description. Report the created ticket IDs to the user.
-   - **Skip**: Continue to Final Output.
+   - **Fix in this session**: Reform the implementation team and delegate the fixes. Stay in delegate mode. After fixes are done, commit and continue to Section 6.5 (deferral hygiene).
+   - **File as issue tickets**: For each issue, invoke `/quo-file-issue` with the issue description. Report the created ticket IDs to the user. Continue to Section 6.5.
+   - **Skip**: Continue to Section 6.5.
+
+### 6.5 Before handoff — deferral hygiene
+
+Section 6's Fix / File / Skip gate handles only the fresh-eyes generalist sweep's findings. Throughout the Epic loop (Sections 3–4) and the in-flight reviewer loops (Section 5), the PM Agent's per-Task reports and any earlier orchestrator-side judgement calls may have flagged additional items as "address later", "defer to next phase", "pick up during a follow-up Issue", or similar inter-session deferrals. Each such item that the orchestrator chose not to address inline MUST have been recorded as a `defer-<short-suffix>` TaskList task per Section 3's TaskList naming convention (at the per-Task site in Section 4.1 and at the may-ignore-feedback site in Section 5); this gate is the pre-handoff reconciliation step that closes them out into durable inter-session carriers.
+
+Section 7's existing "show ignored feedback" prose at Bee close-out stays as the display layer — it surfaces the now-closed-out deferrals to the user one last time. This gate is the structural step that ensures the active set is empty before that display fires.
+
+**Step 0 — Retroactive ledger reconciliation (safety net).** Section 4.1's `**Ignored Review Feedback**` summary field on each per-Task report and Section 5's may-ignore-feedback site each instruct the Director to create a `defer-<short-suffix>` TaskList task at the moment the item is ignored. Before running Step 1's enumeration, walk every per-Task summary the orchestrator produced during this run, every PM Final report's deferred items (per `agents/pm.md`'s Final report contract — every item with a `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` destination annotation maps to a `defer-*` task; items annotated `addressed-now-in-this-Task` are skipped because they were addressed inline), and any orchestrator-side ignored item that did not flow through those two surfaces, and **create a corresponding `defer-*` TaskList task for any item that does not already have one**. The upstream record-creating instructions at Section 4.1 and Section 5 are the load-bearing source; this retroactive sweep is the defense-in-depth safety net for orchestrators that miss the instruction (or for runs where an item was ignored outside the documented sites). After the retroactive reconcile, every ignored item is represented in the active `defer-*` set and Step 1's enumeration sees the canonical view.
+
+**Step 1 — Enumerate the active deferral ledger.** Scan the TaskList for tasks whose name starts with `defer-` and whose status is `pending` or `in_progress`. If the active set is empty, emit a one-line console message — recommended string: `Deferral hygiene: no deferred items.` — and proceed to Section 7 (Final Output).
+
+**Step 2 — Surface the active set and gate the user choice.** When the active set is non-empty, surface the list to the user as numbered markdown (one bullet per `defer-*` task, the `metadata.activity` text as the bullet's body), then call `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage`. Finite choices:
+
+- **Fix in this session** — Re-dispatch the appropriate implementer / reviewer Agents per Section 3's dispatch shape, or do the orchestrator-owned ticket-body update inline per the Encode branch below, to resolve each deferred item now. After each item is resolved, mark its `defer-*` TaskList task `completed` (with `metadata.activity` updated to log the resolution path).
+- **File as issue tickets** — For each item, invoke `/quo-file-issue` inline via the Skill tool with the deferral's description as the issue body (the precedent for inline-Skill-tool dispatch lives in `/quo-fix-issue` Section 1's URL-resolution sub-step and `/quo-plan` Step 4b). Mark each `defer-*` TaskList task `completed` once the `/quo-file-issue` dispatch returns successfully and the created Issue ID is captured.
+- **Encode in an existing ticket body** — For each item the user maps to an existing ticket (a Plan Bee, Epic, Task, Subtask, Spec Bee `t1=Doc` child, or the project PRD/SDD via a doc-writer pass), append a `## Deferred from /quo-execute run` section to the named ticket's body and run `bees update-ticket --ids <ticket-id> --body-file <path>` to land the update. Author the revised body to a temp file via the `Write` tool under the namespaced workflow scratch dir per CLAUDE.md `## Scratch-file convention`. **Filename**: re-use the suffix of the `defer-N` TaskList task that triggered the encode — e.g., for the encode triggered by `defer-3`, the scratch file is `bees-body-defer-3.md`. Reusing the triggering task's suffix is deterministic, debuggable, collision-resistant under this run's active `defer-*` set, and ties the scratch file directly back to its TaskList progenitor:
+
+  ```bash
+  # POSIX (bash / zsh):
+  mkdir -p /tmp/.quorum
+  # then write the revised body to /tmp/.quorum/bees-body-<defer-N>.md via the Write tool
+  # (e.g., /tmp/.quorum/bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+  # then write the revised body to $env:TEMP\.quorum\bees-body-<defer-N>.md via the Write tool
+  # (e.g., $env:TEMP\.quorum\bees-body-defer-3.md for the encode triggered by defer-3)
+  bees update-ticket --ids <ticket-id> --body-file <path>
+  ```
+
+  Do NOT remove the temp file after the bees command exits — files under `<tempdir>/.quorum/` accumulate intentionally so a crashed run leaves debuggable artifacts in a known place. Mark each `defer-*` TaskList task `completed` once the update succeeds.
+
+  **Follow-up commit (after all Encode writes in this gate firing have landed).** This gate fires AFTER Section 4.1's per-Task commit step has already produced one commit per Task in this run — so the `bees update-ticket --body-file` writes above persist new on-disk changes to the relevant hive's per-ticket directory (or to the project PRD/SDD file path), but those changes are NOT swept into any prior per-Task commit and would otherwise leave the working tree dirty when the skill yields. Produce one follow-up commit per gate firing covering all Encode writes from this firing — not per Encode item — to keep commit churn proportional to the user's choice. Resolve the Plans, Specs, and Issues hive paths via `bees list-hives` (the same pattern Section 4.1's commit step uses for Plans), `git add` each hive path that lives inside this repo, additionally `git add` the project PRD/SDD file paths from CLAUDE.md `## Documentation Locations` when the user routed any Encode to those destinations, then commit only if `git diff --cached` shows staged changes (an out-of-repo hive plus no PRD/SDD encode routes would stage nothing — skip the commit in that case rather than producing an empty one). Commit subject contract: `Encode deferral: /quo-execute — <N> ticket(s) updated` where `<N>` is the count of `defer-*` items the user routed to Encode in this gate firing:
+
+  ```bash
+  # POSIX (bash / zsh):
+  plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
+  specs_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="specs"), None); print(p or "")')
+  issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
+  repo_root=$(git rev-parse --show-toplevel)
+  for hive_path in "$plans_path" "$specs_path" "$issues_path"; do
+    case "$hive_path" in
+      "$repo_root"|"$repo_root"/*) git add "$hive_path" ;;
+    esac
+  done
+  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
+  # when the user routed any Encode to those destinations (always in-repo by definition).
+  # Then check staged state and commit only if non-empty:
+  git diff --cached --quiet
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  $hives = bees list-hives | ConvertFrom-Json
+  $plansPath = $hives.hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
+  $specsPath = $hives.hives | Where-Object { $_.normalized_name -eq 'specs' } | Select-Object -ExpandProperty path
+  $issuesPath = $hives.hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
+  $repoRoot = git rev-parse --show-toplevel
+  $repoNorm = $repoRoot.Replace('\','/')
+  foreach ($hivePath in @($plansPath, $specsPath, $issuesPath)) {
+    if (-not $hivePath) { continue }
+    $hiveNorm = $hivePath.Replace('\','/')
+    if ($hiveNorm -eq $repoNorm -or $hiveNorm.StartsWith("$repoNorm/")) {
+      git add $hivePath
+    }
+  }
+  # Additionally stage project PRD/SDD file paths from CLAUDE.md "## Documentation Locations"
+  # when the user routed any Encode to those destinations (always in-repo by definition).
+  # Then check staged state and commit only if non-empty:
+  git diff --cached --quiet
+  ```
+
+  The `git diff --cached --quiet` exit status tells the orchestrator whether to commit (non-zero exit = staged changes present → commit; zero exit = nothing staged → skip). Use the bees-list-hives JSON to scope hive `git add` calls to in-repo hives only; out-of-repo hives have already had their bees update persisted by `bees update-ticket` and require no git action here. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree (same anti-pattern as Section 4.1's per-Task commit step). After the commit lands (or the skip path executes), proceed to Step 3 below.
+
+The three options are mutually-non-exclusive at the active-set level — the user may pick one option overall, or the orchestrator may resolve different items via different options when the user's reply directs it that way (e.g., "fix items 1 and 2 now, file 3 as an Issue"). Whatever the routing, every `defer-*` task in the active set MUST be `completed` by the end of this gate.
+
+**Step 3 — Hard-stop on a non-empty active set.** Until every `defer-*` task is `completed`, the skill cannot proceed to Section 7 (Final Output) and cannot mark the Bee `done`. This is the structural enforcement: a deferral that was important enough to surface during the run is important enough to encode in a durable carrier before the run ends. If the user picks options that fail to close out a subset (e.g., `/quo-file-issue` cancelled at one of its gates, or a `bees update-ticket` invocation errors), surface the still-active `defer-*` tasks back to the user with `AskUserQuestion` and re-run the gate until the active set is empty.
+
+The fresh-session-per-phase recommendation at Bee close-out (Section 7 / Section 10) is preserved verbatim — this gate sits before that handoff prose; it does not replace it.
 
 ### 7. Final Output
 

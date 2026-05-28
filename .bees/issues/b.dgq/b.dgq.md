@@ -2,10 +2,11 @@
 id: b.dgq
 type: bee
 title: Phase skills silently drop "defer to next session" items at session handoff
-status: open
-created_at: '2026-05-20T14:25:06.166679'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-20T14:25:06.166679'
+status: done
+schema_version: '0.1'
 guid: dgq7h59ck39eedyi6rzfu283vwh482fw
 ---
 
@@ -73,4 +74,3 @@ The fix layers on top of these mechanisms rather than replacing any of them. The
 - **Rejected: only fix `/quo-plan` since that's where the user encountered it today.** The failure mode is cross-cutting — `/quo-execute`, `/quo-breakdown-epic`, and `/quo-fix-issue` all exhibit the same recommend-fresh-session pattern at their tail. Per-skill ad-hoc solutions would fragment the deferral-hygiene UX across the workflow.
 - **Rejected: a new dedicated "deferral tracker" skill or artifact.** The Issues hive already exists as the catch-all carrier; ticket-body updates handle in-scope deferrals. A new artifact would be redundant and would add a fifth tracking surface (alongside Plans, Issues, Specs, and the working diff) for users to monitor.
 - **Rejected: split into multiple smaller issues per file changed.** The fix is coherent: same root cause, same fix pattern, same review criteria across all the affected files. Per `/quo-file-issue`'s house style ("bundle related issues into fewer tickets"), one ticket is the right shape; the engineer treats it as a coordinated edit across files rather than separate per-file passes.
-
