@@ -459,29 +459,19 @@ Once the issue is fixed:
 2. Create one git commit for the Issue (including any doc updates). **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report).
    2. Run `git status` to see the full set of modified and untracked files.
-   3. Stage files related to this issue's actual code, test, and doc changes — agent-reported files plus formatting changes to files that were touched by this issue's agents — plus (only if the Issues hive lives inside this repo) the per-issue directory under the resolved Issues hive path, so the issue's `open → done` status flip and any body updates the orchestrator made via `bees update-ticket` land in the same per-issue commit as the fix itself. The Issues-hive scoping mirrors `quo-execute`'s Plans-hive scoping (see `quo-execute`'s After-Task commit step); use the same hive-path resolution as `/quo-plan` and `/quo-file-issue`:
+   3. Stage files related to this issue's actual code, test, and doc changes — agent-reported files plus formatting changes to files that were touched by this issue's agents — plus (only if the Issues hive lives inside this repo) the per-issue directory under the resolved Issues hive path, so the issue's `open → done` status flip and any body updates the orchestrator made via `bees update-ticket` land in the same per-issue commit as the fix itself. The Issues-hive scoping mirrors `quo-execute`'s Plans-hive scoping (see `quo-execute`'s After-Task commit step). To learn the in-repo Issues hive path, run the bundled helper's NON-MUTATING `resolve-hive-paths` mode (the same `encode_deferral_commit.py` helper this skill calls at its Section 7.5 Encode step — resolve its sibling path the same way). The helper emits the Issues hive's absolute path when it lives inside this repo, or nothing when it lives outside (in which case you stage no hive path here). Run it as a single literal Bash call:
 
       ```bash
       # POSIX (bash / zsh):
-      issues_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="issues"), None); print(p or "")')
-      repo_root=$(git rev-parse --show-toplevel)
-      case "$issues_path" in
-        "$repo_root"|"$repo_root"/*) git add "$issues_path/<issue-id>" ;;
-      esac
+      python3 "<this skill's base directory>/../quo-execute/scripts/encode_deferral_commit.py" resolve-hive-paths --hive issues
       ```
 
       ```powershell
       # Windows (PowerShell):
-      $issuesPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'issues' } | Select-Object -ExpandProperty path
-      $repoRoot = git rev-parse --show-toplevel
-      $issuesNorm = if ($issuesPath) { $issuesPath.Replace('\','/') } else { '' }
-      $repoNorm = $repoRoot.Replace('\','/')
-      if ($issuesNorm -and ($issuesNorm -eq $repoNorm -or $issuesNorm.StartsWith("$repoNorm/"))) {
-        git add "$issuesPath/<issue-id>"
-      }
+      python "<this skill's base directory>\..\quo-execute\scripts\encode_deferral_commit.py" resolve-hive-paths --hive issues
       ```
 
-      **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue. The per-issue scoping `<issue-id>` on the `git add` path also keeps drift in *other* issues' on-disk records out of this commit; if other issues have stale working-tree state, that gets caught by the next `/quo-fix-issue` run on those issues, not swept in here.
+      When the helper emits an Issues hive path, append `/<issue-id>` to it and `git add` that per-issue directory (e.g., `git add <emitted-issues-path>/<issue-id>`) alongside your judgement-selected source files. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this issue. The per-issue scoping `<issue-id>` on the `git add` path also keeps drift in *other* issues' on-disk records out of this commit; if other issues have stale working-tree state, that gets caught by the next `/quo-fix-issue` run on those issues, not swept in here.
    4. Commit with a descriptive message per system/project git guidance. The commit's subject line MUST follow the literal format `Fix issue: <title> (<issue-id>)` (e.g., `Fix issue: Tighten dispatch contract gap (b.abc)`) — Section 9's post-hoc SHA-derivation fallback `--grep`-filters the session log against the literal `(<issue-id>)` token in this subject, so the parenthesized-ID suffix is a load-bearing contract, not a stylistic preference.
 3. Mark the per-issue TaskList tasks (named per Section 4's issue-scoped naming convention — `engineer-<issue-id>`, `test-writer-<issue-id>`, `doc-writer-<issue-id>`, plus the Section 3 Analyst task `analyst-<issue-id>` if not already marked `completed` at the end of Section 3, plus the Section 5 tasks: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`, `pm-<issue-id>`) as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-issue cold dispatches established in Sections 3, 4, and 5 already complete-and-exit when each Agent returns.
 4. Output the summary:

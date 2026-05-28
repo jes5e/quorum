@@ -334,29 +334,19 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 2. Create one git commit for the Task. **NEVER push to remote — committing only.** Use this staging procedure:
    1. Run the **Format** command from CLAUDE.md `## Build Commands` (e.g. `cargo fmt`, `prettier --write`, `gofmt -w`) to normalize formatting (agents may have triggered reformatting in files they didn't report). Do NOT re-run the test suite here — the `.T` subtask already validated, and the PM confirmed. Re-running wastes minutes per Task.
    2. Run `git status` to see the full set of modified and untracked files.
-   3. Stage files that are related to this Task — include agent-reported files, formatting changes to files that were touched by this Task's agents, and (only if the Plans hive lives inside this repo) the resolved Plans hive path's contents. Use the same hive-path resolution as `/quo-plan` and `/quo-file-issue`:
+   3. Stage files that are related to this Task — include agent-reported files, formatting changes to files that were touched by this Task's agents, and (only if the Plans hive lives inside this repo) the resolved Plans hive path's contents. To learn the in-repo Plans hive path, run the bundled helper's NON-MUTATING `resolve-hive-paths` mode (the same `encode_deferral_commit.py` helper this skill calls at its Section 6.5 Encode step — resolve its path the same way). The helper emits the Plans hive's absolute path when it lives inside this repo, or nothing when it lives outside (in which case you stage no hive path here). Run it as a single literal Bash call:
 
       ```bash
       # POSIX (bash / zsh):
-      plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
-      repo_root=$(git rev-parse --show-toplevel)
-      case "$plans_path" in
-        "$repo_root"|"$repo_root"/*) git add "$plans_path" ;;
-      esac
+      python3 "<this skill's base directory>/scripts/encode_deferral_commit.py" resolve-hive-paths --hive plans
       ```
 
       ```powershell
       # Windows (PowerShell):
-      $plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
-      $repoRoot = git rev-parse --show-toplevel
-      $plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
-      $repoNorm = $repoRoot.Replace('\','/')
-      if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
-        git add $plansPath
-      }
+      python "<this skill's base directory>\scripts\encode_deferral_commit.py" resolve-hive-paths --hive plans
       ```
 
-      **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
+      `git add` the emitted Plans hive path (if any) alongside your judgement-selected source files. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
    4. Commit with a descriptive message per system/project git guidance.
 3. Mark the per-Task TaskList tasks (named per the convention established in Section 3 — see "TaskList naming convention") as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-Subtask cold dispatches established in Section 3 already complete-and-exit when each Agent returns.
 4. Output the summary below to the screen and advance to the next Task by dispatching fresh ephemeral implementer Agents per the dispatch shape in Section 3.

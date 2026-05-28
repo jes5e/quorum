@@ -19,7 +19,42 @@ bundled-helper precedent set by `detect_fast_path.py` and
 
 CLI contract
 ------------
-    encode_deferral_commit.py --skill <slug> --count <N> [--doc-path <abs-path> ...]
+This helper has two modes, selected by an argparse subcommand. Both reuse the
+same `bees list-hives` parsing, repo-root resolution, and in-repo membership
+test — that single implementation of the hive-scoping mechanics is the whole
+reason the helper exists.
+
+**Encode-commit mode (default-shaped subcommand `encode-commit`, also accepted
+bare for backward compatibility):**
+
+    encode_deferral_commit.py [encode-commit] --skill <slug> --count <N> [--doc-path <abs-path> ...]
+
+Stages and commits the on-disk changes a deferral-hygiene Encode branch
+produced — one follow-up commit per gate firing.
+
+**Resolve-hive-paths mode (NON-MUTATING query):**
+
+    encode_deferral_commit.py resolve-hive-paths [--hive <name> ...]
+
+Pure query — performs NO `git add`, NO `git commit`, NO mutation whatsoever.
+Resolves the named hive(s) via the shared `bees list-hives` + repo-root
+machinery, tests each for in-repo membership, and prints each IN-REPO hive's
+absolute path to stdout, one per line. The three per-ticket commit steps in
+`/quo-execute` (Section 4.1), `/quo-fix-issue` (Section 7), and
+`/quo-breakdown-epic` (Section 6) call this mode to learn which hive path to
+`git add` alongside their judgement-selected source files, replacing the
+forbidden inline `bees list-hives | python3 -c '...'` + `git rev-parse` + `case`
+compound-shell fragment with a single literal Bash call.
+
+- `--hive <name>` (OPTIONAL, repeatable): one of `plans`, `specs`, `issues`.
+  Default = all three when none given (matching the encode-commit mode's
+  resolve-all behavior). Filters the resolved hives to the named set.
+- Prints each named, in-repo hive's absolute path, one per line. Prints nothing
+  and exits 0 when no named hive is in-repo (out-of-repo case — the caller
+  stages nothing). Exits 2 with a one-line stderr message on `bees list-hives`
+  or `git rev-parse` failure (matching the encode-commit failure contract).
+
+encode-commit mode arguments:
 
 - `--skill <slug>` (REQUIRED): one of `quo-execute`, `quo-fix-issue`,
   `quo-breakdown-epic`. Used only to build the commit subject. An unknown slug
@@ -99,8 +134,14 @@ def resolve_repo_root():
     return Path(out).resolve() if out else None
 
 
-def resolve_hive_paths():
-    """Return a list of hive Paths via `bees list-hives`, or None on failure."""
+def resolve_hive_paths(names=None):
+    """Return a list of hive Paths via `bees list-hives`, or None on failure.
+
+    `names` is an optional collection of normalized hive names to filter to;
+    when None (the default), all hives in `HIVE_NAMES` are returned — preserving
+    the encode-commit mode's resolve-all behavior verbatim.
+    """
+    wanted = HIVE_NAMES if names is None else frozenset(names)
     try:
         result = subprocess.run(
             ["bees", "list-hives"],
@@ -122,41 +163,34 @@ def resolve_hive_paths():
     for hive in hives:
         if not isinstance(hive, dict):
             continue
-        if hive.get("normalized_name") in HIVE_NAMES:
+        if hive.get("normalized_name") in wanted:
             p = hive.get("path")
             if p:
                 paths.append(Path(p))
     return paths
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Stage and commit the on-disk changes a deferral-hygiene Encode branch produced.",
-        add_help=True,
-    )
-    parser.add_argument(
-        "--skill",
-        required=True,
-        help="one of quo-execute, quo-fix-issue, quo-breakdown-epic (commit subject only)",
-    )
-    parser.add_argument(
-        "--count",
-        required=True,
-        type=int,
-        help="count of defer-* items routed to Encode this gate firing (verbatim in subject)",
-    )
-    parser.add_argument(
-        "--doc-path",
-        action="append",
-        default=[],
-        dest="doc_paths",
-        help="a resolved project PRD/SDD path routed an Encode (repeatable)",
-    )
-    try:
-        args = parser.parse_args()
-    except SystemExit as e:
-        return e.code if isinstance(e.code, int) else 2
+def cmd_resolve_hive_paths(args) -> int:
+    """NON-MUTATING query: print each named in-repo hive's absolute path."""
+    repo_root = resolve_repo_root()
+    if repo_root is None:
+        return fail("could not resolve repo root via `git rev-parse --show-toplevel` (not a git repo?)")
 
+    names = args.hives if args.hives else None
+    hive_paths = resolve_hive_paths(names)
+    if hive_paths is None:
+        return fail("could not resolve hive paths via `bees list-hives`")
+
+    for hive_path in hive_paths:
+        resolved = hive_path.resolve()
+        if not resolved.is_relative_to(repo_root):
+            continue
+        print(str(resolved))
+    return 0
+
+
+def cmd_encode_commit(args) -> int:
+    """Stage and commit the on-disk changes a deferral-hygiene Encode branch produced."""
     if args.skill not in VALID_SKILLS:
         return fail(
             f"unknown --skill {args.skill!r}; expected one of: "
@@ -208,6 +242,66 @@ def main() -> int:
     short_sha = sha.stdout.strip() if sha.returncode == 0 else "unknown"
     print(f"Encode deferral committed: /{args.skill} — {args.count} ticket(s) updated ({short_sha})")
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Stage/commit a deferral-hygiene Encode branch, or resolve in-repo hive paths.",
+        add_help=True,
+    )
+    subparsers = parser.add_subparsers(dest="mode")
+
+    # Encode-commit mode (also accepted bare, with no subcommand, for backward
+    # compatibility with the existing --skill/--count invocation).
+    encode = subparsers.add_parser(
+        "encode-commit",
+        help="stage and commit the on-disk changes a deferral-hygiene Encode branch produced",
+    )
+    for p in (parser, encode):
+        p.add_argument(
+            "--skill",
+            help="one of quo-execute, quo-fix-issue, quo-breakdown-epic (commit subject only)",
+        )
+        p.add_argument(
+            "--count",
+            type=int,
+            help="count of defer-* items routed to Encode this gate firing (verbatim in subject)",
+        )
+        p.add_argument(
+            "--doc-path",
+            action="append",
+            default=[],
+            dest="doc_paths",
+            help="a resolved project PRD/SDD path routed an Encode (repeatable)",
+        )
+
+    # Resolve-hive-paths mode (NON-MUTATING query).
+    resolve = subparsers.add_parser(
+        "resolve-hive-paths",
+        help="print each named, in-repo hive's absolute path (one per line); no mutation",
+    )
+    resolve.add_argument(
+        "--hive",
+        action="append",
+        default=[],
+        dest="hives",
+        choices=sorted(HIVE_NAMES),
+        help="hive name to resolve (repeatable; default = all three when omitted)",
+    )
+
+    try:
+        args = parser.parse_args()
+    except SystemExit as e:
+        return e.code if isinstance(e.code, int) else 2
+
+    if args.mode == "resolve-hive-paths":
+        return cmd_resolve_hive_paths(args)
+
+    # Default / bare invocation and the explicit `encode-commit` subcommand both
+    # route to encode-commit mode. --skill/--count are required there.
+    if args.skill is None or args.count is None:
+        return fail("encode-commit mode requires --skill and --count")
+    return cmd_encode_commit(args)
 
 
 if __name__ == "__main__":

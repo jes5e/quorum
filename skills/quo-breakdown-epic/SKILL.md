@@ -549,42 +549,33 @@ Before rendering the next-steps menu, stage and commit the ticket files this ski
 
 **Do not hardcode the Plans-hive path.** `/quo-setup` lets users place hives in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/plans/` silently stages nothing when the user picked an out-of-repo location.
 
-Resolve the Plans hive path via `bees list-hives`, check whether it lives inside the current git repo, and only `git add` if so. Mirrors the "Commit the ticket" step's pattern in `quo-file-issue`.
+To learn the in-repo Plans hive path, run the bundled helper's NON-MUTATING `resolve-hive-paths` mode (the same `encode_deferral_commit.py` helper this skill calls at its Section 6.5 Encode step — resolve its sibling path the same way). The helper emits the Plans hive's absolute path when it lives inside this repo, or nothing when it lives outside. Run it as a single literal Bash call:
 
 ```bash
 # POSIX (bash / zsh):
-plans_path=$(bees list-hives | python3 -c 'import json,sys; data=json.load(sys.stdin); p=next((h["path"] for h in data["hives"] if h["normalized_name"]=="plans"), None); print(p or "")')
-repo_root=$(git rev-parse --show-toplevel)
-case "$plans_path" in
-  "$repo_root"|"$repo_root"/*)
-    git add "$plans_path"
-    git commit -m "Break down <epic-id>: <epic-title>"
-    ;;
-  *)
-    # Plans hive lives outside the repo — skip git; surface the note in Step 7.
-    ;;
-esac
+python3 "<this skill's base directory>/../quo-execute/scripts/encode_deferral_commit.py" resolve-hive-paths --hive plans
 ```
 
 ```powershell
 # Windows (PowerShell):
-$plansPath = (bees list-hives | ConvertFrom-Json).hives | Where-Object { $_.normalized_name -eq 'plans' } | Select-Object -ExpandProperty path
-$repoRoot = git rev-parse --show-toplevel
-# Normalize separators — git rev-parse returns forward slashes on Windows;
-# bees list-hives may return backslashes. Compare both sides on the same form.
-$plansNorm = if ($plansPath) { $plansPath.Replace('\','/') } else { '' }
-$repoNorm = $repoRoot.Replace('\','/')
-if ($plansNorm -and ($plansNorm -eq $repoNorm -or $plansNorm.StartsWith("$repoNorm/"))) {
-  git add "$plansPath"
-  git commit -m "Break down <epic-id>: <epic-title>"
-} else {
-  # Plans hive lives outside the repo — skip git; surface the note in Step 7.
-}
+python "<this skill's base directory>\..\quo-execute\scripts\encode_deferral_commit.py" resolve-hive-paths --hive plans
 ```
 
-Substitute the actual Epic ID and title into the commit message. Single literal `git commit` command, no compound chains.
+When the helper emits a Plans hive path, `git add` it, then commit with a single literal `git commit` command (substitute the actual Epic ID and title):
 
-If the Plans hive lives **outside** the repo, skip the git commands and remember to surface a one-line note in Step 7 so the user knows the new tickets are persisted by the bees CLI but not git-tracked here.
+```bash
+# POSIX (bash / zsh):
+git commit -m "Break down <epic-id>: <epic-title>"
+```
+
+```powershell
+# Windows (PowerShell):
+git commit -m "Break down <epic-id>: <epic-title>"
+```
+
+**Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Epic breakdown.
+
+If the helper emits nothing — the Plans hive lives **outside** the repo — skip the `git add` and `git commit` and remember to surface a one-line note in Step 7 so the user knows the new tickets are persisted by the bees CLI but not git-tracked here.
 
 ### 6.5 Before handoff — deferral hygiene
 
