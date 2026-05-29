@@ -513,21 +513,54 @@ Return findings as a numbered list. For each item include:
 - A severity tag, exactly one of: `blocker`, `suggestion`, `nit`.
 - A `target:` tag, exactly one of: `PRD`, `SDD`, `Plan-Bee-body`, or
   `Epic:<epic-id>` (the specific Epic ID, when an Epic-scoped finding).
+- One or more enumerated fix-path lines, each carrying its own depth tag. The
+  severity and `target:` tags describe the finding; the depth tag describes
+  *what fixing costs* (the size of the change a given fix path entails), and
+  is emitted per fix path because one finding can have several viable fixes
+  of different sizes. Severity and depth are orthogonal — a `blocker` can be
+  fixable by a `trivial-tweak`, and a `nit` may only be addressable by a
+  `re-architect`.
 - A one-or-two-sentence description of the substance issue, naming the
   concrete content the orchestrator and writer skills will need to address it.
+
+Emit each finding exactly in this shape:
+
+- finding line: `` <n>. `<severity>` target: <PRD|SDD|Plan-Bee-body|Epic:<epic-id>> — <description> ``
+  followed by one or more fix-path lines.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>`
+  — lettered `(a)`, `(b)`, … and indented under the finding. A finding with a
+  single fix path emits exactly one `(a)` line and is fully valid; a finding
+  with multiple viable fix paths emits one lettered line per path. The shape
+  is uniform whether the finding has 1 or N fix paths.
+
+Calibrate the per-fix-path depth tag against these buckets:
+
+- `trivial-tweak` — a localized wording or value edit confined to one spot
+  (e.g., rephrase a single PRD goal sentence, fix one Epic title, correct a
+  cross-reference).
+- `refactor-locally` — a contained restructuring within one doc or one Epic
+  (e.g., re-split an Epic's subtasks, reorganize one SDD requirement's
+  sub-clauses, rework a single Epic's acceptance criteria).
+- `re-architect` — a cross-cutting change touching multiple Epics or the
+  PRD/SDD's core approach (e.g., re-decompose the Epic set, change the SDD's
+  chosen technical strategy, reframe the PRD's problem statement).
 
 Example:
 
   1. `blocker` target: SDD — Requirement SR-3 ("the routing layer caches by
      request hash") contradicts PRD goal G2 ("requests must be idempotent
-     against retries with different request bodies"). Either narrow the
-     caching key in SR-3 or relax G2 to body-stable idempotency.
+     against retries with different request bodies").
+     (a) [depth:trivial-tweak] Narrow the caching key in SR-3 to body-stable.
+     (b) [depth:re-architect] Drop the cache layer and rework the SDD's
+         routing strategy so idempotency holds without caching.
   2. `suggestion` target: Epic:t1.abc.1 — Epic title "Wire UI" bundles three
      unrelated user-visible capabilities (login form, settings panel, error
-     toasts). Split into three Epics so each leaves the codebase green and
-     stands alone as a vertical slice.
+     toasts).
+     (a) [depth:refactor-locally] Split into three Epics so each leaves the
+         codebase green and stands alone as a vertical slice.
   3. `nit` target: Plan-Bee-body — `## Anticipated doc impact` lists the SDD
      entry but not the customer-facing README, which Epic:t1.abc.2 modifies.
+     (a) [depth:trivial-tweak] Add the README to the doc-impact list.
 
 After the numbered findings, append exactly one verdict trailer line — pick
 exactly one value:
