@@ -408,6 +408,53 @@ The dispatch prompt's context selects **Path B** of `agents/pm.md`'s Scoped-mark
 
 The orchestrator's responsibility ends at passing the resolved path placeholder, the Issue ID, the Issue body verbatim, and the Issue's `up_dependencies` to the PM. The orchestrator does **not** inline the Scoped-marker grammar, the temp-file recipe for staging the spec body, or the helper invocation itself — `agents/pm.md` owns those, and owns the Path A vs Path B selection logic. That separation lets `agents/pm.md` evolve the marker contract and the path-selection rules without dragging this SKILL.md along.
 
+### Orchestrator discipline: routing review findings
+
+This section governs how the orchestrator routes the depth-tagged findings the in-flow review skills emit. Each reviewer finding the review skills surface carries a severity tag (`blocker` / `suggestion` / `nit`) and a depth tag (`trivial-tweak` / `refactor-locally` / `re-architect`) on each fix path it proposes, plus the count of fix paths it surfaced. The orchestrator's job here is to turn the reviewer-emitted `(num-paths, max-depth-across-paths)` tuple into exactly one routing decision — deterministically, without inventing its own classification.
+
+**(a) Deterministic routing table.** The orchestrator reads the reviewer's emitted tags and consults the table below; it does NOT invent its own classification. The table maps the `(num-paths, max-depth-across-paths)` tuple to exactly one routing decision — no tuple maps to two decisions:
+
+```
+| Number of fix paths | Maximum depth across paths | Orchestrator routing                         |
+|---------------------|----------------------------|----------------------------------------------|
+| 1                   | trivial-tweak              | Auto-dispatch the implementer with the fix   |
+| 1                   | refactor-locally           | Auto-dispatch the implementer with the fix   |
+| 1                   | re-architect               | User gate before dispatching                 |
+| > 1                 | (any)                      | User gate before dispatching                 |
+```
+
+When the routing is "Auto-dispatch the implementer with the fix", the orchestrator dispatches a fresh ephemeral implementer Agent (Engineer / Test Writer / Doc Writer as the finding's lane dictates) per Section 4's dispatch shape with the reviewer's single low-depth fix, no user gate. When the routing is "User gate before dispatching", fire the routing-decision gate in part (d) before dispatching anything.
+
+**(b) ANTI-PATTERN — do not write this:** The orchestrator MUST NOT inline scope-bounding directives into the dispatch prompt of a re-dispatched implementer Agent (R2/R3 rounds). The following phrasings, and any close paraphrase, are forbidden inside a dispatch prompt: `"out of scope for this issue"`, `"out of scope for <id>"`, `"prefer option (a)"` / `"prefer (a)"`, `"Do NOT add X — out of scope"`. Inlining a scope-bound silently narrows the fix without the user ever seeing the decision. When the orchestrator would otherwise scope-bound a finding, it MUST surface that decision through the scope-bounding gate in part (c) instead of writing it into the dispatch prompt.
+
+**(c) Scope-bounding gate.** When the orchestrator would otherwise scope-bound a finding (the behavior that REPLACES the forbidden directives in part (b)), it fires an `AskUserQuestion` via the two-step `TaskCreate` → `AskUserQuestion` contract with exactly three finite choices:
+
+- **Fix properly now** — Re-dispatch the appropriate implementer Agent per Section 4's dispatch shape to address the finding fully, no scope-bound.
+- **Defer to follow-up Issue** — File a follow-up Issue via `/quo-file-issue` (inline via the Skill tool, per the precedent in Section 1's URL-resolution sub-step) carrying the finding's description, and proceed with the soft fix this round.
+- **Accept the limitation** — Record the limitation as an accepted compromise and proceed. (The compromise tracker that consumes this record is the sibling Epic `po`; this section only emits the gate — do not implement the tracker here.)
+
+The question text includes the finding verbatim plus a one-line context line stating why the gate is firing (i.e., that the orchestrator was about to scope-bound this finding). **There is no `Cancel` option at this gate** — scope-bounding is a per-finding decision and a `Cancel` here would be ambiguous; the user retains `Ctrl-C` for run-level abort.
+
+**(d) Routing-decision gate.** When the routing table in part (a) yields "User gate before dispatching" (single-path `re-architect`, or any multi-path finding), fire an `AskUserQuestion` via the two-step `TaskCreate` → `AskUserQuestion` contract whose choices are:
+
+- **One choice per reviewer-surfaced fix path** — each choice's description includes that path's depth tag (e.g., `re-architect`, `refactor-locally`). The `(Recommended)` marker goes on the path the reviewer flagged as preferred **when the reviewer surfaced a preference**; otherwise no path is marked Recommended.
+- **Defer to follow-up Issue** — File a follow-up Issue via `/quo-file-issue` (inline via the Skill tool) carrying the finding's description, rather than picking a path now.
+- **Cancel** — Aborts the **current Issue's fix run** (proceed to the next Issue in batch / `all` mode, or end cleanly if none remain). `Cancel` does NOT abort the whole run — that remains `Ctrl-C`.
+
+The question text includes the finding verbatim.
+
+**(e) Backwards-compatibility shim.** A finding emitted **without a depth tag** — a legacy reviewer emission during rollout, or a hand-authored finding from a future call site — MUST be treated by the routing table as if it carried `re-architect` depth, i.e., it routes to the user gate in part (d). The shim errs toward user input when uncertain: when the orchestrator cannot determine a finding's depth, it surfaces the decision to the user rather than auto-dispatching.
+
+**(f) Edge-case handling.**
+
+- **Malformed tags.** When a severity tag is not exactly `blocker` / `suggestion` / `nit`, or a depth tag is not exactly `trivial-tweak` / `refactor-locally` / `re-architect`, the orchestrator treats the finding as `re-architect` depth (per the shim in part (e)) AND surfaces the parse failure to the user so the reviewer emission can be corrected.
+- **Routing ambiguity.** If the routing table somehow returns more than one decision (impossible by construction), default to the user gate in part (d) and surface the ambiguity to the user.
+- **`/quo-file-issue` failure at the Defer gate.** When the user picks `Defer to follow-up Issue` (at either the scope-bounding gate in part (c) or the routing-decision gate in part (d)) but the inline `/quo-file-issue` dispatch fails or the user cancels at one of its gates, the orchestrator MUST NOT silently ship the soft fix (or no fix). Instead it surfaces the failure to the user and re-prompts with the same gate's choices, so the user can re-attempt the defer, pick `Accept the limitation` / a specific fix path explicitly, or (at the routing gate) Cancel.
+
+**Two-step gate mechanics (parts (c) and (d)).** Both gates above fire through the two-step `TaskCreate` → `AskUserQuestion` contract per `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. **First** create a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (per each file's Section 4 / Section 3 TaskList naming convention's gate-task entry, with a distinct per-fire `<short-suffix>` so concurrent or repeated fires do not collide), **then** call `AskUserQuestion` with the finite choices above in the same turn. Do not produce a text response describing the gate — fire `TaskCreate` and `AskUserQuestion` directly. Mark the `gate-*` task `completed` once the user's answer is consumed and the routing branch is entered. These gates are multi-choice only per CLAUDE.md `## AskUserQuestion usage` — do not add fake free-text options that duplicate `AskUserQuestion`'s auto-appended `Type something.` / `Chat about this` slot.
+
+These new gates inherit the `b.wii` prose-adherence fragility — that is an execution-time risk acknowledged at run time, not something this section fixes.
+
 ### 5. Review Loop
 
 Once the implementer Agents return, dispatch four concurrent ephemeral Agents per Section 4's dispatch shape — three reviewer roles plus the Product Manager: `Agent(subagent_type="code-reviewer", run_in_background=true)`, `Agent(subagent_type="test-reviewer", run_in_background=true)`, `Agent(subagent_type="doc-reviewer", run_in_background=true)`, `Agent(subagent_type="pm", run_in_background=true)`. Track each via a TaskList task per Section 4's issue-scoped naming convention: `code-reviewer-<issue-id>`, `test-reviewer-<issue-id>`, `doc-reviewer-<issue-id>`, `pm-<issue-id>`.
