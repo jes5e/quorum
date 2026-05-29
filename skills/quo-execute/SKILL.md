@@ -494,7 +494,7 @@ After the review loop in step 5 is done and all fixable issues have been address
 
 1. Compute the pre-Bee diff scope. Capture `<pre-bee-sha>` as the HEAD that existed when work began on this Bee (use the SHA recorded at the start of the run, or `HEAD~M` where `M` is the number of Tasks committed in Step 4 — one commit per Task; if you've lost count, walk `git log` back to the commit before the first Task commit landed in Step 4 as a backup). Collect the Bee ID `<bee-id>` and, secondarily, the IDs of the Epics/Tasks under it as `<epic-id-1> <task-id-1> ...` (the Bee body is the primary spec; Epic/Task bodies are secondary context the reviewer can consult when something in the diff is ambiguous).
 
-2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. The agent will not see anything else from this run, so the prompt must be self-contained. Starting skeleton (substitute `<pre-bee-sha>`, `<bee-id>`, and the Epic/Task IDs before sending):
+2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. The agent will not see anything else from this run, so the prompt must be self-contained. Pass the compromise-tracker file path (Section 6.5's `compromises-<YYYYMMDD-HHMM>-<short-suffix>.md`) as `<compromise-tracker-path>` — the path, NOT the inlined contents; the dispatched Agent reads the file itself via its own `Read` tool. Starting skeleton (substitute `<pre-bee-sha>`, `<compromise-tracker-path>`, `<bee-id>`, and the Epic/Task IDs before sending):
 
    ```
    You are an independent reviewer for a quorum Bee that was just shipped.
@@ -507,10 +507,56 @@ After the review loop in step 5 is done and all fixable issues have been address
    finished the work — your job is to give it a fresh-eyes review with no
    context of how the work was done.
 
-   Flag anything that looks wrong: code defects, prose problems, spec drift
-   between the change and the Bee, contract-key violations (do NOT allow
-   renames of keys in CLAUDE.md `## Documentation Locations` or `## Build
-   Commands`), cross-file inconsistencies, missing edits the Bee called for.
+   Perform these phases IN ORDER. Phases 1–5 lead with challenging the
+   compromises that were accepted during the run; the discrete-defect sweep is
+   the FINAL phase, not the first.
+
+   PHASE 1 — Consume the compromise tracker (passed as a FILE PATH).
+   The session-scoped compromise tracker records every compromise the run
+   accepted (deferred-to-Issue findings, accepted limitations, auto-routed
+   `(1, refactor-locally)` fixes, post-completion overrides). Its path is:
+   <compromise-tracker-path>
+   Read that file yourself via your Read tool — it is passed as a path, not
+   inlined. Each `## Compromise <n>` entry carries: Finding (verbatim), Fix
+   paths surfaced by reviewer (each with a `[depth:<...>]` tag), Decision,
+   Rationale, Follow-up Issue. If the tracker file is MISSING or unreadable,
+   do NOT abort — PROCEED with the remaining phases and flag the missing
+   tracker explicitly in your output (so the dropped hand-off is visible
+   rather than silent).
+
+   PHASE 2 — Challenge each tracked compromise on its merits. For every entry,
+   push back when the chosen path is not defensible; do not rubber-stamp a
+   compromise just because it was accepted. Include the deep-asked-but-cheap-
+   shipped check: the tracker records what the user asked for, the diff is what
+   actually shipped — flag any mismatch (e.g., the user picked a deep fix path
+   but the implementer's diff implemented the cheap path).
+
+   PHASE 3 — Depth-plausibility check. For each auto-routed
+   `(1, refactor-locally)` tracker entry (Decision `Auto-routed (a) per
+   single-path refactor-locally rule`), explicitly evaluate whether the routed
+   fix's depth was plausible. When you judge the depth was misjudged and the
+   true depth is `re-architect`, emit a `[compromise-challenge]` finding naming
+   the misclassification.
+
+   PHASE 4 — Fix-path-enumeration plausibility check. For EVERY finding the
+   in-flow reviewer surfaced (regardless of severity / depth / path-count),
+   evaluate whether the in-flow reviewer should have enumerated an additional
+   plausible fix path. When you judge under-enumeration (one path was surfaced
+   and auto-dispatched under the single-path branch, but a second plausible
+   path warranted a user gate), emit a `[compromise-challenge]` finding naming
+   the under-enumeration. These two checks are complementary: PHASE 3 catches
+   misjudged depth on a path that WAS surfaced; PHASE 4 catches a plausible
+   path that was NOT surfaced at all.
+
+   PHASE 5 — Holistic solution-quality judgment beyond the logged compromises:
+   is the shipped solution actually good, independent of any single tracked
+   decision?
+
+   PHASE 6 — Discrete-defect sweep (the final phase). Flag anything that looks
+   wrong: code defects, prose problems, spec drift between the change and the
+   Bee, contract-key violations (do NOT allow renames of keys in CLAUDE.md
+   `## Documentation Locations` or `## Build Commands`), cross-file
+   inconsistencies, missing edits the Bee called for.
    One generalist pass covers code AND docs AND tests — do not lane-scope.
 
    Note: in skill repos (where the diff includes `skills/<name>/SKILL.md` or
@@ -527,14 +573,23 @@ After the review loop in step 5 is done and all fixable issues have been address
    review; they each have lane-specific scope rules that make them wrong for a
    final generalist sweep.
 
-   Return findings as a numbered list. For each item: `file:line`, what's
-   wrong, severity (`blocker` / `suggestion` / `nit`). If clean, return
-   exactly "no issues found".
+   Return findings as a numbered list. Tag EVERY finding with exactly one of
+   `[compromise-challenge]` (a challenge to an accepted compromise, from
+   PHASE 2/3/4) / `[design]` (a solution-quality concern) / `[defect]` (a
+   discrete defect), PLUS the severity tag (`blocker` / `suggestion` / `nit`),
+   PLUS the per-fix-path depth tag and the enumerated fix paths from the
+   in-flight emission contract. The depth tag is informative here: this
+   post-completion sweep is the final pre-merge gate, so any finding it emits
+   is a gate candidate regardless of depth. Preserve the `file:line` +
+   severity shape — the new tags are additive to it. If clean, return exactly
+   "no issues found".
    ```
 
    Wait for the agent's report.
 
 3. Synthesize the findings before presenting. Compare the fresh reviewer's findings against the in-flight per-Task PM verdict and per-Task code/test/doc reviewer verdicts (which the team-lead still has in context) and flag any disagreements explicitly — e.g. "fresh reviewer flagged X but in-flight code reviewer judged X clean." Then present the synthesized findings (fresh reviewer's list plus your synthesis notes) to the user.
+
+   **Compromise-challenge preamble (rendered before presenting the findings).** When the post-completion reviewer returns one or more `[compromise-challenge]` findings, render a one-or-two-sentence prose preamble BEFORE the findings list that names this explicitly, so the user reads the section with the right framing. Mirror the verdict-keyed preamble pattern in `/quo-plan` Step 5e and `/quo-fix-issue` Section 3's Analyst-verdict preamble — a short prose lead with the `⚠️`-led divergent-framing convention used when a challenge is present, e.g. "⚠️ The post-completion reviewer **challenged** [N] compromise(s) accepted during this run — these are not new defects but pushback on decisions you already made; read them before the discrete findings below." When there are no `[compromise-challenge]` findings, no preamble is needed (present the findings directly).
 
    **Orchestrator self-tracking close-out (mandatory before yielding).** Independent of the per-Task TaskList tasks already closed in Section 4.1 step 3 and the Bee-scoped reviewer TaskList tasks (`code-reviewer-<bee-id>`, `test-reviewer-<bee-id>`, `doc-reviewer-<bee-id>`) dispatched in Section 5, the orchestrator typically creates additional ad-hoc TaskList tasks during this Section 6 pass to break the post-completion review into discrete steps (e.g., "Get diff scope", per-ticket "Verify <id>" entries, "Synthesize findings"). Before presenting the synthesized findings to the user — i.e., before yielding the turn at step 4 / step 5 below, whether to deliver "no issues found" or to ask the user how to handle flagged issues via `AskUserQuestion` — mark every such orchestrator self-tracking TaskList task `completed` and clear them from the active set. The yield is the close-out trigger: when the orchestrator stops responding (either at end-of-flow or to wait on the user's reply), the TaskList must show no `in_progress` entries left over from these synthesis steps. This discipline is the orchestrator-self-tracking analog of Section 7 step 6's per-finding follow-up close-out in `quo-fix-issue` (which scopes to dispatched `<role>-postcomp-<n>` Agents and `file-issue-postcomp-<n>` per-finding tracking entries); the two are complementary, not overlapping.
 
@@ -551,6 +606,19 @@ After the review loop in step 5 is done and all fixable issues have been address
    - **Fix in this session**: Reform the implementation team and delegate the fixes. Stay in delegate mode. After fixes are done, commit and continue to Section 6.5 (deferral hygiene).
    - **File as issue tickets**: For each issue, invoke `/quo-file-issue` with the issue description. Report the created ticket IDs to the user. Continue to Section 6.5.
    - **Skip**: Continue to Section 6.5.
+
+7. **Compromise-challenge recovery gates.** A `[compromise-challenge]` finding is not handled by step 6's generic Fix / File / Skip disposition alone — each such finding triggers its own recovery gate, fired **before or alongside** the step-6 disposition for that finding. Both gates below use the two-step `TaskCreate` → `AskUserQuestion` contract per `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` and CLAUDE.md `## AskUserQuestion usage`: **first** create a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (a distinct collision-resistant `<short-suffix>` per fire, per the per-fire-uniqueness rule), **then** call `AskUserQuestion` with the finite choices in the same turn. Do not produce a text response describing the gate — fire `TaskCreate` and `AskUserQuestion` directly. Mark the `gate-*` task `completed` once the user's answer is consumed and the routing branch is entered. These are multi-choice only — do not add fake free-text options. Each gate **fires per challenged finding** (once per such `[compromise-challenge]` finding — three such findings ⇒ three gate firings), NOT aggregated into one gate; the **firing order equals the reviewer's emission order** in its numbered list. These gates inherit the documented `b.wii` prose-adherence fragility — an execution-time risk narrowed (not closed) by the two-step contract; do not claim it is fixed. After the recovery gates resolve for every challenged finding, continue to Section 6.5.
+
+   - **SR-6.7 depth-misclassification recovery gate.** When a `[compromise-challenge]` finding flags an auto-routed `(1, refactor-locally)` decision as a misjudged depth (the reviewer's depth-plausibility check), fire a three-choice `AskUserQuestion`:
+     - `File follow-up Issue to revisit the depth decision` — dispatch `/quo-file-issue` via the Skill tool capturing the depth-mismatch finding plus the original compromise-tracker entry as context; the **original Trigger C tracker entry's `Follow-up Issue` field is updated in place** with the new Issue ID (NO new tracker entry — per Section 6.5's Trigger D `File`-branch note).
+     - `Accept the misjudgment and proceed` — fires Section 6.5's **Trigger D** append (a NEW tracker entry with `Decision: User overrode auto-route after post-completion challenge (depth misjudgment)` and the reviewer's challenge text as Rationale). This step FIRES Trigger D's write — it does not author it; the write mechanism is owned by Section 6.5's Trigger D.
+     - `Pause to discuss` — stop the post-completion flow at this gate and surface a prose discussion; the user can re-issue any of the three choices afterward. No tracker write fires on this branch until a subsequent `Accept` / `File` pick (per Trigger D's `Pause` note).
+   - **SR-4.6 under-enumeration recovery gate.** When a `[compromise-challenge]` finding flags under-enumeration (the reviewer's fix-path-enumeration plausibility check), fire the **same three-choice gate shape** with relabeled choices:
+     - `File follow-up Issue to surface the missing path` — dispatch `/quo-file-issue` via the Skill tool capturing the under-enumeration finding as context; the tracker write follows Section 6.5's Trigger D `File`-branch under-enumeration note (append a new entry, or update an existing originating Trigger C entry's `Follow-up Issue` in place when one exists).
+     - `Accept the under-enumeration and proceed` — fires Section 6.5's **Trigger D** append (a NEW tracker entry with `Decision: User accepted under-enumeration after post-completion challenge` and the reviewer's under-enumeration challenge text as Rationale). This step FIRES Trigger D's write — it does not author it.
+     - `Pause to discuss` — stop the post-completion flow at this gate and surface a prose discussion; the user can re-issue any of the three choices afterward. No tracker write fires on this branch until a subsequent `Accept` / `File` pick.
+
+   The SR-4.6 gate's per-branch behavior shape mirrors the SR-6.7 gate exactly (file follow-up Issue / append explicit-override tracker entry via Section 6.5's Trigger D mechanism / pause-and-resume). Like the SR-6.7 gate, it fires per challenged finding (non-aggregated) in reviewer emission order.
 
 ### 6.5 Before handoff — deferral hygiene
 
