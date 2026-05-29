@@ -49,3 +49,10 @@ A second integration-time reconciliation item, surfaced as a PM-deferred item du
 - **Stale SDD-check count in the PRD spec source.** PRD child `t1.tip.bo` (under Spec Bee `b.tip`) states in its `## Non-Goals / Out of Scope` (and FR-1-area prose) that `/quo-spec-review` has **seven** SDD checks, but the SDD child `t1.tip.ux` and the live `skills/quo-spec-review/SKILL.md` carry **ten** SDD checks (Step 2 SDD checklist, items 1–10). The Epic/Task/Subtask correctly preserve the actual ten; the discrepancy is in the PRD child's wording only.
 - **Action during the integration cross-check:** reconcile the PRD `t1.tip.bo` figure from "seven SDD checks" to "ten SDD checks" so the spec source matches reality. This is a one-line spec-doc correction to the Spec Bee PRD child body (via `bees update-ticket`), not a skill-prose change. Low priority; bundled here to avoid a standalone micro-ticket per `/quo-file-issue` house style.
 
+## Deferred from /quo-execute run (2026-05-29)
+
+A third integration-time reconciliation item, surfaced as a PM-deferred item during `/quo-execute` of Plan Bee `b.ut9` (per-Task PM review of `t2.ut9.q2.5c`, severity `nit`; re-confirmed by the post-completion review), is bundled into this Issue's scope:
+
+- **Explanatory-tail prose divergence across the four review skills' fix-path-line docs.** `quo-doc-writer-review` and `quo-test-writer-review` carry the trailing sentence "The shape is uniform whether 1 or N paths are enumerated." after the fix-path-line grammar; `quo-engineer-review` and `quo-spec-review` omit it. This is human-facing prose only — the parser-relevant `(<letter>) [depth:...]` token is byte-identical across all four (already covered by this Issue's primary cross-check), so it is non-blocking.
+- **Action during the integration cross-check:** align all four either way — add the trailing sentence to `quo-engineer-review` and `quo-spec-review` for uniformity, or remove it from the other two. Low priority; bundled here under the same integration-cross-check scope.
+
