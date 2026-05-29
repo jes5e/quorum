@@ -531,7 +531,23 @@ Once the issue is fixed:
 **Reviews**: [Code review: X issues found/None needed | Docs review: Y issues found/None needed]
 **Doc Sync**: [Docs verified accurate / Updated <doc path> §X — describe what changed (use the actual path from CLAUDE.md "Documentation Locations", not literal "SDD"/"PRD")]
 **Ignored Review Feedback**: [list items that were flagged but not addressed, or "None"]
+[**Accepted compromises** — rendered per the "Accepted compromises" logic below, or OMITTED ENTIRELY when the tracker is empty or absent]
 ```
+
+**Accepted compromises (rendered into the summary block above).** The session-scoped compromise tracker (defined in Section 7.5 `#### Session-scoped compromise tracker`) accumulates one entry per accepted compromise across the whole run/batch, so this surface reflects the tracker file's current contents at the moment the summary renders. Render it as follows:
+
+1. **Read the run's tracker file via the `Read` tool** at the path generated once at the start of this run per Section 7.5's path convention — `<tempdir>/.quorum/compromises-YYYYMMDD-HHMM-<short-suffix>.md` (`/tmp/.quorum/...` on POSIX, `%TEMP%\.quorum\...` on Windows). The path is already known from run start; no shell is needed to locate or test it — just `Read` it.
+2. **Omit the section entirely when there is nothing to show.** If the `Read` reports the file does not exist (the expected common-case state — most runs accept zero compromises), OR the file exists but contains no `## Compromise <n>` entries, do NOT render the `**Accepted compromises**` line at all — no empty heading, no `N/A`, no "no compromises" placeholder. Treat "file absent" and "file present but empty" identically: omit.
+3. **When entries exist, render one bullet per `## Compromise <n>` entry**, surfacing exactly these four user-facing fields from the entry:
+   - the **finding** — the entry's `Finding (verbatim)`,
+   - the **chosen path** — the entry's `Decision`,
+   - the **rationale** — the entry's `Rationale`,
+   - the **follow-up Issue ID** — the entry's `Follow-up Issue` (a ticket ID, or `none`).
+
+   Do NOT surface the fifth entry field (`Fix paths surfaced by reviewer`) — this surface shows the path that was chosen, not the full menu of paths the reviewer offered.
+4. **Volume (>10 entries).** When the tracker has accumulated more than ~10 entries, surface them ALL in full — do NOT truncate, summarize away, or elide any entry; the tracker exists precisely to preserve this signal. Precede the bullets with a short prologue noting the volume (e.g., "N compromises were accepted during this run:").
+
+This surface only **reads** the tracker — it never writes, appends to, or deletes it (the write side is owned by Section 7.5's append triggers).
 
 5. In batch mode (`all` or list mode): continue to Section 7.5 (per-Issue deferral hygiene) first, then proceed to the next issue in the batch (go back to step 2). In single mode: continue to Section 7.5, then Section 8.
 

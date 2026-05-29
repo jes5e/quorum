@@ -677,6 +677,8 @@ The fresh-session-per-phase recommendation at Bee close-out (Section 7 / Section
 When **all** Epics in the Bee are done, you must show the User the full list of all Reviewer feedback you chose to ignore.
 - Use the AskUserQuestion tool to ask the User if they want you to act on any of these, or just continue.
 
+The session-scoped compromise tracker's accepted-compromise entries are surfaced separately, in Section 9's `## Bee Execution Complete:` summary block via that section's "Accepted compromises" logic — they sit alongside the other rendered run-end summary fields there rather than in this ignored-feedback display.
+
 Every `AskUserQuestion` invocation in this section MUST go through the two-step `TaskCreate` → `AskUserQuestion` contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. For each gate (the ignored-feedback action gate, the per-Acceptance-Criteria sign-off gate, the final Bee-done gate below), **first** create a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (per Section 3's TaskList naming convention's gate-task entry — distinct suffix per distinct gate), **then** call `AskUserQuestion` in the same turn. Mark each `gate-*` task `completed` the moment the user's answer is consumed.
 
 For each Acceptance Criteria, either demonstrate it directly (via test or script) or instruct the user how to validate it manually. Then use `AskUserQuestion` to get official sign-off on the Acceptance Criteria.
@@ -719,9 +721,25 @@ bees update-ticket --ids <bee-id> --status done
 **Epics Completed**: [count]
 **Tasks Completed**: [count]
 **Bee Status**: Finished
+[**Accepted compromises** — rendered per the "Accepted compromises" logic below, or OMITTED ENTIRELY when the tracker is empty or absent]
 
 All work has been synced to git.
 ```
+
+**Accepted compromises (rendered into the summary block above).** The session-scoped compromise tracker (defined in Section 6.5 `#### Session-scoped compromise tracker`) accumulates one entry per accepted compromise across the whole run, so this surface reflects the tracker file's current contents at the moment the summary renders. Render it as follows:
+
+1. **Read the run's tracker file via the `Read` tool** at the path generated once at the start of this run per Section 6.5's path convention — `<tempdir>/.quorum/compromises-YYYYMMDD-HHMM-<short-suffix>.md` (`/tmp/.quorum/...` on POSIX, `%TEMP%\.quorum\...` on Windows). The path is already known from run start; no shell is needed to locate or test it — just `Read` it.
+2. **Omit the section entirely when there is nothing to show.** If the `Read` reports the file does not exist (the expected common-case state — most runs accept zero compromises), OR the file exists but contains no `## Compromise <n>` entries, do NOT render the `**Accepted compromises**` line at all — no empty heading, no `N/A`, no "no compromises" placeholder. Treat "file absent" and "file present but empty" identically: omit.
+3. **When entries exist, render one bullet per `## Compromise <n>` entry**, surfacing exactly these four user-facing fields from the entry:
+   - the **finding** — the entry's `Finding (verbatim)`,
+   - the **chosen path** — the entry's `Decision`,
+   - the **rationale** — the entry's `Rationale`,
+   - the **follow-up Issue ID** — the entry's `Follow-up Issue` (a ticket ID, or `none`).
+
+   Do NOT surface the fifth entry field (`Fix paths surfaced by reviewer`) — this surface shows the path that was chosen, not the full menu of paths the reviewer offered.
+4. **Volume (>10 entries).** When the tracker has accumulated more than ~10 entries, surface them ALL in full — do NOT truncate, summarize away, or elide any entry; the tracker exists precisely to preserve this signal. Precede the bullets with a short prologue noting the volume (e.g., "N compromises were accepted during this run:").
+
+This surface only **reads** the tracker — it never writes, appends to, or deletes it (the write side is owned by Section 6.5's append triggers).
 
 ### 10. Further testing and merging
 
