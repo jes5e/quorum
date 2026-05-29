@@ -5,7 +5,7 @@ title: Cross-check finding-emission shape across the four review skills after b.
 parent: null
 reference_materials: null
 created_at: '2026-05-29T01:37:57.908467'
-status: open
+status: done
 schema_version: '0.1'
 guid: 11zh6w5tm8ysb6z51qf29vk2grwa5tft
 ---
@@ -55,4 +55,3 @@ A third integration-time reconciliation item, surfaced as a PM-deferred item dur
 
 - **Explanatory-tail prose divergence across the four review skills' fix-path-line docs.** `quo-doc-writer-review` and `quo-test-writer-review` carry the trailing sentence "The shape is uniform whether 1 or N paths are enumerated." after the fix-path-line grammar; `quo-engineer-review` and `quo-spec-review` omit it. This is human-facing prose only — the parser-relevant `(<letter>) [depth:...]` token is byte-identical across all four (already covered by this Issue's primary cross-check), so it is non-blocking.
 - **Action during the integration cross-check:** align all four either way — add the trailing sentence to `quo-engineer-review` and `quo-spec-review` for uniformity, or remove it from the other two. Low priority; bundled here under the same integration-cross-check scope.
-

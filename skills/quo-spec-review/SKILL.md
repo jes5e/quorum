@@ -217,7 +217,7 @@ The two dimensions are orthogonal: a `[blocker]` might be fixable by a `trivial-
 Line shapes — emit findings exactly in this form:
 
 - finding line: `<n>. [<severity>] <doc + section anchor> <one or more fix-path lines> — <description>` — `[<severity>]` is the bracket-form severity tag; the `<n>.` is the work-item number; the `<doc + section anchor>` cites `PRD` or `SDD` and the section heading; the fix-path line(s) sit between the anchor and the ` — <description>`.
-- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether the reviewer enumerated 1 path or 4, which simplifies the orchestrator's parser.
 
 Worked examples covering every depth bucket, plus both single-path and multi-path emission (spec-review-flavored — PRD/SDD section gaps, measurability, cross-document consistency):
 
