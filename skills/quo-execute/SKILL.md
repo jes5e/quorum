@@ -556,6 +556,64 @@ After the review loop in step 5 is done and all fixable issues have been address
 
 Every `AskUserQuestion` firing in this gate (Step 2's initial Fix / File / Encode choice, plus any Step 3 re-fires when an earlier routing branch failed to close out a subset of the active `defer-*` set) goes through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming the deferral-hygiene gate (a distinct `<short-suffix>` per fire, so the Step 3 re-fires are not mistaken for the Step 2 first fire), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark each `gate-*` task `completed` the moment the corresponding `AskUserQuestion` returns and its result has been consumed.
 
+#### Session-scoped compromise tracker
+
+The orchestrator maintains a **session-scoped compromise tracker** — a single markdown file that accumulates one entry per accepted compromise across this run, so a legitimately-accepted compromise (a `Defer to follow-up Issue` choice, an `Accept the limitation` choice, a `(1, refactor-locally)` auto-route, or a post-completion override) stays visible and challengeable rather than being baked silently into the new baseline. The four append triggers (A/B/C/D) are defined under "Compromise-tracker append triggers" below; the post-completion review in Section 6 consumes the tracker as input. This subsection is the **canonical definition site** that those trigger write-instructions reference by name.
+
+**Tracker file path and naming.** The tracker is written under the project's standard scratch-file convention (CLAUDE.md `## Scratch-file convention`), in `<tempdir>/.quorum/` (`/tmp/.quorum/` on POSIX, `%TEMP%\.quorum` on Windows). Canonical filename: `compromises-YYYYMMDD-HHMM-<short-suffix>.md`, where `YYYYMMDD-HHMM` is a UTC timestamp (e.g., `20260520-1714`) generated **once at the start of the run** and `<short-suffix>` is a short collision-resistant random string. The timestamp prefix makes tracker files debuggably identifiable across multiple runs accumulated in `<tempdir>/.quorum/` over time — without it, the user has no easy way to map an old tracker file back to a specific session. Create the `.quorum` directory if it does not already exist, then author and append the tracker file itself via the `Write` tool (no shell redirect), consistent with the bash-etiquette and scratch-file conventions:
+
+```bash
+# POSIX (bash / zsh):
+mkdir -p /tmp/.quorum
+# then write / append the tracker to /tmp/.quorum/compromises-<YYYYMMDD-HHMM>-<short-suffix>.md via the Write tool
+```
+
+```powershell
+# Windows (PowerShell):
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+# then write / append the tracker to $env:TEMP\.quorum\compromises-<YYYYMMDD-HHMM>-<short-suffix>.md via the Write tool
+```
+
+**Entry shape.** Each accepted compromise appends one `## Compromise <n>` section, where `<n>` is a **1-based counter scoped to the current run's tracker file** (NOT a globally unique identifier). The canonical shape (reproduced from the SDD Data models `#### Compromise tracker entry shape`) is:
+
+```markdown
+## Compromise <n>
+
+- **Finding (verbatim):** <severity tag> <fix-path enumeration with depth tags> <description>
+- **Fix paths surfaced by reviewer:**
+  - (a) [depth:<depth>] <description>
+  - (b) [depth:<depth>] <description>
+  - ...
+- **Decision:** <one of: User picked path (a) | User picked path (b) | ... | User picked Defer to follow-up Issue | User picked Accept the limitation | Auto-routed (a) per single-path refactor-locally rule | User overrode auto-route after post-completion challenge (depth misjudgment) | User accepted under-enumeration after post-completion challenge>
+- **Rationale:** <user's stated reason if surfaced via AskUserQuestion, or the auto-route rule that fired>
+- **Follow-up Issue:** <ticket ID if filed via /quo-file-issue, else `none`>
+```
+
+The five fields are **Finding (verbatim)** (the severity tag + fix-path enumeration with depth tags + description), **Fix paths surfaced by reviewer** (the `(a)/(b)/...` lines, each carrying its `[depth:<...>]` tag), **Decision** (one of the enum values above), **Rationale** (the user's stated reason if surfaced via `AskUserQuestion`, or the auto-route rule that fired), and **Follow-up Issue** (a ticket ID, else `none`). The `Decision` enum carries **two** post-completion-override values — `User overrode auto-route after post-completion challenge (depth misjudgment)` (the SR-6.7 depth-misjudgment override) and `User accepted under-enumeration after post-completion challenge` (the SR-4.6 under-enumeration analog override) — because Trigger D (below) is the single owner of all post-completion-override writes regardless of which kind fired.
+
+**Persistence.** The tracker is a file-system artifact, so it persists across orchestrator-yield events within a single run inherently (a yield does not lose file state). A fresh `YYYYMMDD-HHMM` timestamp + `<short-suffix>` is generated at the **start of each run**, so previous-run tracker files remain visible in `<tempdir>/.quorum/` but are **NEVER appended to** — a new run always writes its own new file. Never delete the tracker file (scratch-file convention) — do NOT instruct any `rm` / `Remove-Item`.
+
+#### Compromise-tracker append triggers
+
+Four moments append an entry to the session-scoped compromise tracker defined above. The first three fire from the "Orchestrator discipline: routing review findings" section's gates / auto-dispatch; the fourth fires from Section 6's post-completion review. Each trigger anchors to its gate by name — those gates are owned by sibling Epics and may not all be present in this file yet; when a gate lands, its write fires from the branch named here.
+
+**Trigger A — `Defer to follow-up Issue` at the scope-bounding gate (SR-3.2).** At the scope-bounding gate (per SR-5.2, the three-choice `Fix properly now` / `Defer to follow-up Issue` / `Accept the limitation` gate in the "Orchestrator discipline: routing review findings" section), when the user picks `Defer to follow-up Issue`: append a tracker entry **IMMEDIATELY AFTER** `/quo-file-issue` returns successfully with the new Issue ticket ID, and **BEFORE** the orchestrator continues with the soft-fix dispatch this round. Capture the follow-up Issue ID in the entry's `Follow-up Issue` field; set `Decision: User picked Defer to follow-up Issue`. (This write fires from the SR-5.2 scope-bounding gate's `Defer` branch when that gate lands.)
+
+**Trigger B — `Accept the limitation` at the scope-bounding gate (SR-3.2).** At the same SR-5.2 scope-bounding gate's `Accept the limitation` branch, when the user picks `Accept the limitation`: append a tracker entry **IMMEDIATELY AFTER** the `AskUserQuestion` returns the user's choice, and **BEFORE** the orchestrator continues without a fix. Set `Decision: User picked Accept the limitation`; set `Follow-up Issue: none`.
+
+**Trigger C — auto-route single-path `(1, refactor-locally)` (SR-2.4 / SR-3.2).** This trigger has **no gate** — the write is wired into the auto-dispatch step itself. At the **MOMENT of implementer dispatch** for a single-path `(1, refactor-locally)` finding (the routing-table row per SR-2.4 that auto-dispatches the implementer), append a tracker entry in the **SAME LOGICAL BLOCK as the auto-dispatch** — not a separate post-gate block. Set `Decision: Auto-routed (a) per single-path refactor-locally rule`; set `Rationale:` to the routing-table rule wording that fired (the `(1, refactor-locally)` → auto-dispatch row); set `Follow-up Issue: none`.
+
+**Trigger D — post-completion override, covering BOTH override gates (SR-3.2 / SR-6.7 / SR-4.6).** Trigger D is the single owner of all post-completion-override tracker writes, fired from Section 6's post-completion review. It covers **both** post-completion-override gates — the SR-6.7 depth-misjudgment recovery gate AND the SR-4.6 under-enumeration analog recovery gate. The recovery gates themselves are owned by a sibling Epic and may not be present in Section 6 yet; the write logic here anchors to them by name, with choice labels byte-identical to the SDD so they line up when the gates land.
+
+- **SR-6.7 depth-misjudgment recovery gate:**
+  - `Accept the misjudgment and proceed` → append a **NEW** tracker entry **IMMEDIATELY AFTER** the user picks this choice, **BEFORE** the post-completion flow continues. Set `Decision: User overrode auto-route after post-completion challenge (depth misjudgment)`; set `Rationale:` to the post-completion reviewer's challenge text.
+  - `File follow-up Issue to revisit the depth decision` → **NO new entry is appended.** Instead, the **ORIGINAL Trigger C entry** (already written at auto-dispatch time for this `(1, refactor-locally)` finding) has its `Follow-up Issue` field **UPDATED in place** to the new Issue ID. (The depth misjudgment concerns a path the in-flow reviewer already surfaced and auto-routed, so an originating Trigger C entry always exists to amend.)
+  - `Pause to discuss` → **DEFER** any tracker write until the discussion resolves and the user picks again — no write fires on this branch until a subsequent `Accept` / `File` pick.
+- **SR-4.6 under-enumeration analog recovery gate (same Trigger D mechanism, under-enumeration variant):**
+  - `Accept the under-enumeration and proceed` → append a **NEW** tracker entry **IMMEDIATELY AFTER** the user picks this choice, **BEFORE** the post-completion flow continues. Set `Decision: User accepted under-enumeration after post-completion challenge`; set `Rationale:` to the post-completion reviewer's under-enumeration challenge text.
+  - `File follow-up Issue to surface the missing path` → file the follow-up Issue and capture its ID. This branch concerns a missing path the in-flow reviewer never surfaced, so there is generally **no original Trigger C entry to amend** — append a **new** entry with the under-enumeration `Decision` value and the new Issue ID in `Follow-up Issue`. If the under-enumeration relates to an existing auto-routed finding (an originating Trigger C entry does exist), mirror the SR-6.7 File-branch's behavior instead and **UPDATE that entry's `Follow-up Issue` in place**; append otherwise.
+  - `Pause to discuss` → **DEFER** any tracker write until the discussion resolves and the user picks again.
+
 Section 6's Fix / File / Skip gate handles only the fresh-eyes generalist sweep's findings. Throughout the Epic loop (Sections 3–4) and the in-flight reviewer loops (Section 5), the PM Agent's per-Task reports and any earlier orchestrator-side judgement calls may have flagged additional items as "address later", "defer to next phase", "pick up during a follow-up Issue", or similar inter-session deferrals. Each such item that the orchestrator chose not to address inline MUST have been recorded as a `defer-<short-suffix>` TaskList task per Section 3's TaskList naming convention (at the per-Task site in Section 4.1 and at the may-ignore-feedback site in Section 5); this gate is the pre-handoff reconciliation step that closes them out into durable inter-session carriers.
 
 Section 7's existing "show ignored feedback" prose at Bee close-out stays as the display layer — it surfaces the now-closed-out deferrals to the user one last time. This gate is the structural step that ensures the active set is empty before that display fires.
