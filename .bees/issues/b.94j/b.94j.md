@@ -2,10 +2,11 @@
 id: b.94j
 type: bee
 title: Define a reviewer preferred-fix-path emission contract consumed by the routing-decision gate
-status: open
-created_at: '2026-05-29T16:48:17.960632'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-05-29T16:48:17.960632'
+status: done
+schema_version: '0.1'
 guid: 94jp41ywfat8on7k43mkk2t6vdtgcjza
 ---
 
@@ -34,4 +35,3 @@ Add an optional preferred-path marker to the shared fix-path emission contract (
 Surfaced by the `/quo-execute` post-completion review of Bee `b.ut9` (finding #3, severity `suggestion`). The routing-decision gate (Epic `t1.ut9.no`) consumes a preference signal that the Phase-1 emission Epics (`t1.ut9.9c` / `t1.ut9.jn` / `t1.ut9.q2` / `t1.ut9.29` / `t1.ut9.53`) never defined.
 
 **Related — consider bundling.** This touches the same four-review-skill emission contract as open Issue `b.11z` ("Cross-check finding-emission shape across the four review skills after b.ut9 Phase-1 lands") and could share a single pass through those files. The two are distinct deliverables: `b.11z` verifies byte-consistency of the *existing* emission shape; this Issue adds a *new optional field* to it. Also slated for `b.11z` (per a `/quo-execute` PM deferral during the b.ut9 run): the explanatory-tail prose divergence where `quo-engineer-review` and `quo-spec-review` omit the "The shape is uniform whether 1 or N paths are enumerated" sentence that `quo-doc-writer-review` and `quo-test-writer-review` carry.
-

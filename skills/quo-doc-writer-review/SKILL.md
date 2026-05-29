@@ -121,7 +121,7 @@ The two dimensions are orthogonal: a `blocker` might be fixable by a `trivial-tw
 Line shapes — emit findings exactly in this form:
 
 - finding line: `` <n>. `<severity>` <one or more fix-path lines> — <description> `` — the severity tag is backticked; the `<n>.` is the work-item number; the fix-path line(s) sit between the severity tag and the ` — <description>`.
-- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether the reviewer enumerated 1 path or 4, which simplifies the orchestrator's parser.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether the reviewer enumerated 1 path or 4, which simplifies the orchestrator's parser. Optionally append the fixed keyword `[preferred]` immediately after the `[depth:<...>]` token (and before the path description) on **at most one** fix-path line per finding, when you hold a genuine preference among the enumerated paths — `(<letter>) [depth:<...>] [preferred] <description>`; emit it on no more than one path, and only when a preference is real. It is meaningful only for multi-path findings — a single-path finding has no preference to express, so marking it there is harmless but discouraged. When no path carries `[preferred]`, that is fully valid and the downstream "no path marked Recommended" behavior is unchanged.
 
 Worked examples covering every depth bucket, plus both single-path and multi-path emission:
 
@@ -129,7 +129,7 @@ Worked examples covering every depth bucket, plus both single-path and multi-pat
 1. `nit` (a) [depth:trivial-tweak] Remove the stale `--legacy-flag` mention from the README Commands table — single fix path, a one-line deletion.
 2. `suggestion` (a) [depth:refactor-locally] Consolidate the three near-duplicate "Getting Started" snippets in README.md into a single Quick Start section and link the others to it — confined to one doc.
 3. `blocker`
-   (a) [depth:trivial-tweak] Add the missing `new-command` usage line to the README Quick Start so the documented workflow is runnable.
+   (a) [depth:trivial-tweak] [preferred] Add the missing `new-command` usage line to the README Quick Start so the documented workflow is runnable.
    (b) [depth:re-architect] Reorganize the README around task-based workflows so command coverage is structurally guaranteed rather than maintained by hand. — multi-path finding: the cheap local fix and the durable structural fix are both viable; the orchestrator/user chooses.
 ```
 

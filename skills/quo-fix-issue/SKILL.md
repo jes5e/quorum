@@ -437,7 +437,7 @@ The question text includes the finding verbatim plus a one-line context line sta
 
 **(d) Routing-decision gate.** When the routing table in part (a) yields "User gate before dispatching" (single-path `re-architect`, or any multi-path finding), fire an `AskUserQuestion` via the two-step `TaskCreate` → `AskUserQuestion` contract whose choices are:
 
-- **One choice per reviewer-surfaced fix path** — each choice's description includes that path's depth tag (e.g., `re-architect`, `refactor-locally`). The `(Recommended)` marker goes on the path the reviewer flagged as preferred **when the reviewer surfaced a preference**; otherwise no path is marked Recommended.
+- **One choice per reviewer-surfaced fix path** — each choice's description includes that path's depth tag (e.g., `re-architect`, `refactor-locally`). The `(Recommended)` marker goes on the fix path whose fix-path line carries the `[preferred]` token (emitted on at most one path per finding); map that `[preferred]`-tagged path to the `(Recommended)` suffix on its `AskUserQuestion` choice. When no path carries `[preferred]`, no path is marked Recommended.
 - **Defer to follow-up Issue** — File a follow-up Issue via `/quo-file-issue` (inline via the Skill tool) carrying the finding's description, rather than picking a path now.
 - **Cancel** — Aborts the **current Issue's fix run** (proceed to the next Issue in batch / `all` mode, or end cleanly if none remain). `Cancel` does NOT abort the whole run — that remains `Ctrl-C`.
 

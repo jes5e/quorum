@@ -217,7 +217,7 @@ The two dimensions are orthogonal: a `[blocker]` might be fixable by a `trivial-
 Line shapes — emit findings exactly in this form:
 
 - finding line: `<n>. [<severity>] <doc + section anchor> <one or more fix-path lines> — <description>` — `[<severity>]` is the bracket-form severity tag; the `<n>.` is the work-item number; the `<doc + section anchor>` cites `PRD` or `SDD` and the section heading; the fix-path line(s) sit between the anchor and the ` — <description>`.
-- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether the reviewer enumerated 1 path or 4, which simplifies the orchestrator's parser.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether the reviewer enumerated 1 path or 4, which simplifies the orchestrator's parser. Optionally append the fixed keyword `[preferred]` immediately after the `[depth:<...>]` token (and before the path description) on **at most one** fix-path line per finding, when you hold a genuine preference among the enumerated paths — `(<letter>) [depth:<...>] [preferred] <description>`; emit it on no more than one path, and only when a preference is real. It is meaningful only for multi-path findings — a single-path finding has no preference to express, so marking it there is harmless but discouraged. When no path carries `[preferred]`, that is fully valid and the downstream "no path marked Recommended" behavior is unchanged.
 
 Worked examples covering every depth bucket, plus both single-path and multi-path emission (spec-review-flavored — PRD/SDD section gaps, measurability, cross-document consistency):
 
@@ -226,7 +226,7 @@ Worked examples covering every depth bucket, plus both single-path and multi-pat
 2. [suggestion] PRD `## Open Questions` (a) [depth:refactor-locally] Assign each of the three unowned entries a named owner — change confined to one section.
 3. [blocker] Cross-document — PRD goal G3 has no corresponding SDD `## Requirements` entry
    (a) [depth:refactor-locally] Add a single `SR-` requirement under the matching SDD domain heading to cover G3.
-   (b) [depth:re-architect] Re-derive the SDD requirements structure so every PRD goal traces to a numbered requirement and orphans are eliminated. — multi-path finding: the local patch and the durable structural fix are both viable; the user chooses.
+   (b) [depth:re-architect] [preferred] Re-derive the SDD requirements structure so every PRD goal traces to a numbered requirement and orphans are eliminated. — multi-path finding: the local patch and the durable structural fix are both viable; the user chooses.
 ```
 
 **Shape 1 — Blockers present** (one or more `[blocker]` items in the list):

@@ -531,7 +531,16 @@ Emit each finding exactly in this shape:
   — lettered `(a)`, `(b)`, … and indented under the finding. A finding with a
   single fix path emits exactly one `(a)` line and is fully valid; a finding
   with multiple viable fix paths emits one lettered line per path. The shape
-  is uniform whether the finding has 1 or N fix paths.
+  is uniform whether the finding has 1 or N fix paths. Optionally append the
+  fixed keyword `[preferred]` immediately after the `[depth:<...>]` token (and
+  before the path description) on **at most one** fix-path line per finding,
+  when you hold a genuine preference among the enumerated paths —
+  `(<letter>) [depth:<...>] [preferred] <description>`; emit it on no more than
+  one path, and only when a preference is real. It is meaningful only for
+  multi-path findings — a single-path finding has no preference to express, so
+  marking it there is harmless but discouraged. When no path carries
+  `[preferred]`, that is fully valid and the downstream "no path marked
+  Recommended" behavior is unchanged.
 
 Calibrate the per-fix-path depth tag against these buckets:
 
@@ -551,8 +560,8 @@ Example:
      request hash") contradicts PRD goal G2 ("requests must be idempotent
      against retries with different request bodies").
      (a) [depth:trivial-tweak] Narrow the caching key in SR-3 to body-stable.
-     (b) [depth:re-architect] Drop the cache layer and rework the SDD's
-         routing strategy so idempotency holds without caching.
+     (b) [depth:re-architect] [preferred] Drop the cache layer and rework the
+         SDD's routing strategy so idempotency holds without caching.
   2. `suggestion` target: Epic:t1.abc.1 — Epic title "Wire UI" bundles three
      unrelated user-visible capabilities (login form, settings panel, error
      toasts).
