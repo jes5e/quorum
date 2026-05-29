@@ -18,7 +18,7 @@ reference_materials:
 - value: b.tip
   resolver: bees
 created_at: '2026-05-20T03:38:28.661341'
-status: ready
+status: in_progress
 schema_version: '0.1'
 guid: ut99k9rd51jiqd3tor4tyujtvbsptmix
 ---
@@ -49,4 +49,3 @@ Per the SDD's `## Documentation` section, this feature will warrant new `### Fea
 `CONTRIBUTING.md` (Engineering best practices) may receive a light update to mention the anti-pattern callout (contributors working on future review-loop modifications should know that scope-bounding directives inside dispatch prompts are forbidden). To be decided during the doc-writer pass.
 
 `docs/doc-writing-guide.md` (Doc writing guide) may receive a light update teaching the depth-dimension emission pattern for future review skills — the SDD's `## Documentation` section identifies this as a candidate. To be decided during the doc-writer pass.
-

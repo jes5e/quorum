@@ -149,17 +149,39 @@ This is OK. Don't feel obliged to report things. Only report if there is somethi
 
 Output a simple numbered list directly in your response. **Always append a routing trailer in the second-person imperative form** — `**Your next tool use MUST address these findings now.**` (findings present) or `**Your next tool use MUST advance the workflow.**` (no findings) — that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.` — that explicitly forbids the narrate-instead-of-do failure mode. **When the orchestrator's judgment leads to firing an `AskUserQuestion` gate** (e.g., escalating a contested finding to the user, asking how to handle an ignored-feedback set), that gate MUST go through the two-step `TaskCreate` → `AskUserQuestion` contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn. When the orchestrator's judgment is to dispatch a fresh implementer Agent (no user gate fires), the two-step contract does not apply on this lane — Agent dispatch is itself a tool call and structurally hard to silently yield. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form and the counter-anchor clause are required components, not stylistic preferences (see `b.fpm` for the prose-only counter-anchor's failure to close the failure mode and `b.wii` for the structural two-step contract that narrows the residual failure surface); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed step. The orchestrator skills' review-loop sections defer to "follow the routing trailer in this skill's output literally."
 
-Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the trailer collapses to two shapes: findings-present (any items returned) versus clean (no items). Use these phrasings verbatim:
+Each finding here carries tags along two orthogonal dimensions (the trailer still collapses to two shapes: findings-present versus clean):
+
+- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *how important fixing-at-all is*.
+- A **depth** dimension carried *per fix path* — every finding enumerates one or more fix paths, and each fix path carries its own depth tag: `trivial-tweak` / `refactor-locally` / `re-architect`. Depth describes *what fixing costs* (the size of the change a given fix path entails).
+
+The two dimensions are orthogonal: a `blocker` might be fixable by a `trivial-tweak`, and a `nit` might only be addressable by a `re-architect` — knowing one tells you nothing about the other, which is why both are emitted. (The depth tags are emitted here for downstream consumers; no routing rule in this skill consumes them yet.)
+
+Line shapes — emit findings exactly in this form:
+
+- finding line: `` <n>. `<severity>` <one or more fix-path lines> — <description> `` — the severity tag is backticked; the `<n>.` is the work-item number; the fix-path line(s) sit between the severity tag and the ` — <description>`.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path.
+
+Worked examples covering every depth bucket, plus both single-path and multi-path emission:
+
+```markdown
+1. `nit` (a) [depth:trivial-tweak] Remove the commented-out code block — single fix path, trivially deletable.
+2. `suggestion` (a) [depth:refactor-locally] Extract the duplicated parsing logic into a private helper — refactor confined to one module.
+3. `blocker`
+   (a) [depth:trivial-tweak] Add a guard clause that rejects the null input at the call site.
+   (b) [depth:re-architect] Thread an explicit non-null type through the data-flow layer so the null can never reach here. — multi-path finding: the cheap local fix and the durable structural fix are both viable; the orchestrator/user chooses.
+```
 
 **Shape 1 — Findings present** (one or more items in the list):
 
 ```markdown
 ## Code Review Work items
 
-1. Fix SQL injection in transactions.py:85 - use parameterized queries instead of f-strings
-2. Add input validation to cache.py:45 endpoint - validate user input format
-3. Refactor process_transactions() in llm_categorizer.py:120 - function is 60 lines, extract helper functions
-4. Remove commented-out code in llm_categorizer.py:200-210
+1. `blocker` (a) [depth:trivial-tweak] Use parameterized queries instead of f-strings — Fix SQL injection in transactions.py:85.
+2. `blocker`
+   (a) [depth:trivial-tweak] Add an inline format check at the cache.py:45 endpoint.
+   (b) [depth:refactor-locally] Route the endpoint through the shared input-validation helper so the check is centralized. — Add input validation to cache.py:45 endpoint.
+3. `suggestion` (a) [depth:refactor-locally] Extract helper functions — Refactor process_transactions() in llm_categorizer.py:120; function is 60 lines.
+4. `nit` (a) [depth:trivial-tweak] Remove commented-out code in llm_categorizer.py:200-210.
 
 **Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Engineer Agent to address them and re-invoke this skill on the updated diff (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so the two-step gate-task contract does not apply on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the two-step `TaskCreate` → `AskUserQuestion` contract applies — first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
