@@ -18,7 +18,7 @@ reference_materials:
 - value: b.tip
   resolver: bees
 created_at: '2026-05-20T03:38:28.661341'
-status: in_progress
+status: done
 schema_version: '0.1'
 guid: ut99k9rd51jiqd3tor4tyujtvbsptmix
 ---
