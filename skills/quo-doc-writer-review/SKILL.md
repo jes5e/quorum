@@ -111,16 +111,40 @@ Look for docs that are now incorrect: outdated commands, deprecated features sti
 
 Return specific, actionable items as numbered list. **Always append a routing trailer in the second-person imperative form** — `**Your next tool use MUST address these findings now.**` (findings present) or `**Your next tool use MUST advance the workflow.**` (no findings) — that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.` — that explicitly forbids the narrate-instead-of-do failure mode. **When the orchestrator's judgment leads to firing an `AskUserQuestion` gate** (e.g., escalating a contested finding to the user, asking how to handle an ignored-feedback set), that gate MUST go through the two-step `TaskCreate` → `AskUserQuestion` contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn. When the orchestrator's judgment is to dispatch a fresh Doc Writer Agent (no user gate fires), the two-step contract does not apply on this lane — Agent dispatch is itself a tool call and structurally hard to silently yield. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form and the counter-anchor clause are required components, not stylistic preferences (see `b.fpm` for the prose-only counter-anchor's failure to close the failure mode and `b.wii` for the structural two-step contract that narrows the residual failure surface); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed step. The orchestrator skills' review-loop sections defer to "follow the routing trailer in this skill's output literally."
 
-Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the trailer collapses to two shapes: findings-present (any items returned) versus clean (no items). Use these phrasings verbatim:
+Each finding here carries tags along two orthogonal dimensions (the trailer still collapses to two shapes — findings-present versus clean — rather than `/quo-spec-review`'s three, because the trailer routing here keys off presence-of-findings, not off severity):
+
+- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *how important fixing-at-all is*.
+- A **depth** dimension carried *per fix path* — every finding enumerates one or more fix paths, and each fix path carries its own depth tag: `trivial-tweak` / `refactor-locally` / `re-architect`. Depth describes *what fixing costs* (the size of the change a given fix path entails).
+
+The two dimensions are orthogonal: a `blocker` might be fixable by a `trivial-tweak`, and a `nit` might only be addressable by a `re-architect` — knowing one tells you nothing about the other, which is why both are emitted. (The depth tags are emitted here for downstream consumers; no routing rule in this skill consumes them yet.)
+
+Line shapes — emit findings exactly in this form:
+
+- finding line: `` <n>. `<severity>` <one or more fix-path lines> — <description> `` — the severity tag is backticked; the `<n>.` is the work-item number; the fix-path line(s) sit between the severity tag and the ` — <description>`.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether 1 or N paths are enumerated.
+
+Worked examples covering every depth bucket, plus both single-path and multi-path emission:
+
+```markdown
+1. `nit` (a) [depth:trivial-tweak] Remove the stale `--legacy-flag` mention from the README Commands table — single fix path, a one-line deletion.
+2. `suggestion` (a) [depth:refactor-locally] Consolidate the three near-duplicate "Getting Started" snippets in README.md into a single Quick Start section and link the others to it — confined to one doc.
+3. `blocker`
+   (a) [depth:trivial-tweak] Add the missing `new-command` usage line to the README Quick Start so the documented workflow is runnable.
+   (b) [depth:re-architect] Reorganize the README around task-based workflows so command coverage is structurally guaranteed rather than maintained by hand. — multi-path finding: the cheap local fix and the durable structural fix are both viable; the orchestrator/user chooses.
+```
+
+Then use these trailer phrasings verbatim:
 
 **Shape 1 — Findings present** (one or more items in the list):
 
 ```markdown
 ## Documentation Review Work Items
 
-1. Update README.md Quick Start - add `new-command` usage
-2. Mark Component X as Implemented in architecture docs:289
-3. Remove deprecated `old-cmd` from README Commands section
+1. `blocker` (a) [depth:trivial-tweak] Add the `new-command` usage line to the README Quick Start — the documented workflow is currently not runnable as written.
+2. `suggestion`
+   (a) [depth:trivial-tweak] Flip Component X's status line to "Implemented" in the architecture docs:289.
+   (b) [depth:refactor-locally] Replace the hand-maintained status column with a generated table so the architecture doc can't drift from the code again. — multi-path finding: the cheap edit fixes today's staleness; the refactor prevents recurrence.
+3. `nit` (a) [depth:trivial-tweak] Remove the deprecated `old-cmd` row from the README Commands section.
 
 **Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Doc Writer Agent to address them and re-invoke this skill on the updated docs (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so the two-step gate-task contract does not apply on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the two-step `TaskCreate` → `AskUserQuestion` contract applies — first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
