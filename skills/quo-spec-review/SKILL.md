@@ -203,16 +203,42 @@ NOTE: It is expected that many times you will return no important issues. This i
 
 Output a simple numbered list directly in your response. **Always append a routing trailer in the second-person imperative form** — `**Your next tool call MUST be …**` (or `**Your next tool use MUST …**` where no single tool is named) — that names the precise routing the calling orchestrator (`/quo-plan`'s Step 4c, `/quo-write-prd`'s Step 6a, `/quo-write-sdd`'s Step 7a, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not produce a text response describing this gate — call the tool directly.` for `AskUserQuestion` shapes, or `… describing this transition …` for the `bees update-ticket --status ready` shape — that explicitly forbids the narrate-instead-of-do failure mode. **The trailer MUST instruct the orchestrator to perform the two-step `TaskCreate` → prescribed-tool contract** documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — first create a `gate-<kind>-<short-suffix>` TaskList task, then call the prescribed tool in the same turn — so the prescription is structurally robust against the narrate-instead-of-do failure mode (a missed `TaskCreate` is recoverable; a silent prose yield of the trailer is only recoverable by the user noticing). The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule three levels deep, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form, the counter-anchor clause, and the two-step gate-task instruction are required components, not stylistic preferences (see `b.fpm` for the prose-only counter-anchor's failure to close the failure mode, and `b.wii` for the structural two-step contract that narrows but does not close the residual failure surface); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed tool call. The orchestrator skills' Loop-back UX sections downgrade to "follow the routing trailer in this skill's output literally"; the exact phrasings live here.
 
-The trailer wording depends on which of the three output shapes applies. Use these phrasings verbatim (only the work-item content above the trailer varies):
+The trailer wording depends on which of the three output shapes applies. Use these phrasings verbatim (only the work-item content above the trailer varies).
+
+Each finding here carries tags along two orthogonal dimensions (the trailer still collapses to three shapes: blockers-present versus suggestions/nits-only versus no-findings):
+
+- A **severity** dimension — every finding carries exactly one severity tag, kept in this skill's pre-existing **bracket** form: `[blocker]` / `[suggestion]` / `[nit]`. Severity describes *how important fixing-at-all is* (the ladder defined in Step 3 above).
+- A **depth** dimension carried *per fix path* — every finding enumerates one or more fix paths, and each fix path carries its own depth tag: `trivial-tweak` / `refactor-locally` / `re-architect`. Depth describes *what fixing costs* (the size of the change a given fix path entails).
+
+The two dimensions are orthogonal: a `[blocker]` might be fixable by a `trivial-tweak`, and a `[nit]` might only be addressable by a `re-architect` — knowing one tells you nothing about the other, which is why both are emitted. (The depth tags are emitted here for downstream consumers; no routing rule in this skill consumes them yet.)
+
+**Severity-rendering asymmetry note.** This skill renders severity in `[blocker]` / `[suggestion]` / `[nit]` **bracket** form, whereas `/quo-engineer-review`, `/quo-doc-writer-review`, and `/quo-test-writer-review` render the same three severities in backtick form (`` `blocker` `` / `` `suggestion` `` / `` `nit` ``). This asymmetry is intentional and pre-existing — bracket severity was this skill's original shape — and is SDD-acknowledged. It is benign for the Phase-2 routing parser, which derives its `(num-paths, max-depth)` tuple from the `(<letter>) [depth:...]` fix-path lines (shared byte-for-byte across all four review skills), not from severity rendering. The fix-path enumeration and depth tags below match the shape used by `/quo-engineer-review`, `/quo-doc-writer-review`, and `/quo-test-writer-review` exactly; only the severity bracket-vs-backtick rendering differs.
+
+Line shapes — emit findings exactly in this form:
+
+- finding line: `<n>. [<severity>] <doc + section anchor> <one or more fix-path lines> — <description>` — `[<severity>]` is the bracket-form severity tag; the `<n>.` is the work-item number; the `<doc + section anchor>` cites `PRD` or `SDD` and the section heading; the fix-path line(s) sit between the anchor and the ` — <description>`.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path.
+
+Worked examples covering every depth bucket, plus both single-path and multi-path emission (spec-review-flavored — PRD/SDD section gaps, measurability, cross-document consistency):
+
+```markdown
+1. [nit] SDD `## Test Fixtures` (a) [depth:trivial-tweak] Drop the redundant "no fixtures apply" sentence that restates the `none — ...` placeholder — single fix path, trivially deletable.
+2. [suggestion] PRD `## Open Questions` (a) [depth:refactor-locally] Assign each of the three unowned entries a named owner — change confined to one section.
+3. [blocker] Cross-document — PRD goal G3 has no corresponding SDD `## Requirements` entry
+   (a) [depth:refactor-locally] Add a single `SR-` requirement under the matching SDD domain heading to cover G3.
+   (b) [depth:re-architect] Re-derive the SDD requirements structure so every PRD goal traces to a numbered requirement and orphans are eliminated. — multi-path finding: the local patch and the durable structural fix are both viable; the user chooses.
+```
 
 **Shape 1 — Blockers present** (one or more `[blocker]` items in the list):
 
 ```markdown
 ## Spec Review Work Items
 
-1. [blocker] PRD `## Acceptance Criteria` — criterion "smooth experience" is subjective; replace with a measurable threshold or move to `## Open Questions`.
-2. [blocker] SDD `## Codebase exploration findings` — generic "the routing layer" reference; cite the actual module path so the Engineer has a starting point.
-3. [suggestion] PRD `## Open Questions` — three entries with no named owner; assign each to a person or role.
+1. [blocker] PRD `## Acceptance Criteria` (a) [depth:trivial-tweak] Replace the subjective "smooth experience" criterion with a measurable threshold, or move it to `## Open Questions` — criterion is subjective and cannot gate Bee close-out.
+2. [blocker] SDD `## Codebase exploration findings`
+   (a) [depth:trivial-tweak] Replace the generic "the routing layer" phrase with the actual module path so the Engineer has a starting point.
+   (b) [depth:refactor-locally] Rework the section to cite real module/file/function names throughout, not just at this one spot. — generic-only findings defeat the section's purpose.
+3. [suggestion] PRD `## Open Questions` (a) [depth:refactor-locally] Assign each of the three unowned entries a named owner or role — change confined to one section.
 
 **Your next two tool calls MUST be (1) `TaskCreate` for a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate, then (2) `AskUserQuestion`** with finite choices `Revise` (recommended) / `Proceed anyway (override blockers)`. The two calls happen in the same turn — do not yield between them. Do not produce a text response describing this gate — fire `TaskCreate` and `AskUserQuestion` directly. The two-step contract is the structural mitigation for the narrate-instead-of-do failure mode (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` once `AskUserQuestion` returns and the user's answer is consumed. The Spec Bee's `drafted → ready` promotion is gated on the user's answer.
 ```
@@ -222,9 +248,11 @@ The trailer wording depends on which of the three output shapes applies. Use the
 ```markdown
 ## Spec Review Work Items
 
-1. [suggestion] PRD `## Open Questions` — three entries with no named owner; assign each to a person or role.
-2. [suggestion] Cross-document — PRD goal G3 has no corresponding SDD requirement under `## Requirements`; either add an SR entry or downgrade G3 to a non-goal.
-3. [nit] SDD `## Test Fixtures` — heading uses the prescribed `none — ...` placeholder but the surrounding text re-states "no fixtures apply"; redundant wording.
+1. [suggestion] PRD `## Open Questions` (a) [depth:refactor-locally] Assign each of the three unowned entries a named owner or role — change confined to one section.
+2. [suggestion] Cross-document — PRD goal G3 has no corresponding SDD requirement under `## Requirements`
+   (a) [depth:refactor-locally] Add a single `SR-` entry under the matching SDD domain heading to cover G3.
+   (b) [depth:trivial-tweak] Downgrade G3 to a non-goal in PRD `## Non-Goals / Out of Scope`. — either alignment resolves the mismatch; the user chooses.
+3. [nit] SDD `## Test Fixtures` (a) [depth:trivial-tweak] Drop the redundant "no fixtures apply" sentence that restates the prescribed `none — ...` placeholder.
 
 **Your next two tool calls MUST be (1) `TaskCreate` for a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate, then (2) `AskUserQuestion`** with finite choices `Proceed (acknowledge findings)` / `Revise`. The two calls happen in the same turn — do not yield between them. Do not produce a text response describing this gate — fire `TaskCreate` and `AskUserQuestion` directly. The two-step contract is the structural mitigation for the narrate-instead-of-do failure mode (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` once `AskUserQuestion` returns and the user's answer is consumed. The Spec Bee's `drafted → ready` promotion is gated on the user's answer.
 ```
