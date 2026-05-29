@@ -151,18 +151,39 @@ This is OK. Don't feel obliged to report things. Only report if there is somethi
 
 Output a simple numbered list directly in your response. **Always append a routing trailer in the second-person imperative form** — `**Your next tool use MUST address these findings now.**` (findings present) or `**Your next tool use MUST advance the workflow.**` (no findings) — that names the precise routing the calling orchestrator (`/quo-execute`'s Section 5 review loop, `/quo-fix-issue`'s Section 4 review loop, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.` — that explicitly forbids the narrate-instead-of-do failure mode. **When the orchestrator's judgment leads to firing an `AskUserQuestion` gate** (e.g., escalating a contested finding to the user, asking how to handle an ignored-feedback set), that gate MUST go through the two-step `TaskCreate` → `AskUserQuestion` contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn. When the orchestrator's judgment is to dispatch a fresh Test Writer Agent (no user gate fires), the two-step contract does not apply on this lane — Agent dispatch is itself a tool call and structurally hard to silently yield. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form and the counter-anchor clause are required components, not stylistic preferences (see `b.fpm` for the prose-only counter-anchor's failure to close the failure mode and `b.wii` for the structural two-step contract that narrows the residual failure surface); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed step. The orchestrator skills' review-loop sections defer to "follow the routing trailer in this skill's output literally."
 
-Findings here are not severity-tagged the way `/quo-spec-review`'s are, so the trailer collapses to two shapes: findings-present (any items returned) versus clean (no items). Use these phrasings verbatim:
+Each finding here carries tags along two orthogonal dimensions (the trailer still collapses to two shapes — findings-present versus clean — rather than `/quo-spec-review`'s three, because the trailer routing here keys off presence-of-findings, not off severity):
+
+- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *how important fixing-at-all is*.
+- A **depth** dimension carried *per fix path* — every finding enumerates one or more fix paths, and each fix path carries its own depth tag: `trivial-tweak` / `refactor-locally` / `re-architect`. Depth describes *what fixing costs* (the size of the change a given fix path entails).
+
+The two dimensions are orthogonal: a `blocker` might be fixable by a `trivial-tweak`, and a `nit` might only be addressable by a `re-architect` — knowing one tells you nothing about the other, which is why both are emitted. (The depth tags are emitted here for downstream consumers; no routing rule in this skill consumes them yet.)
+
+Line shapes — emit findings exactly in this form:
+
+- finding line: `` <n>. `<severity>` <one or more fix-path lines> — <description> `` — the severity tag is backticked; the `<n>.` is the work-item number; the fix-path line(s) sit between the severity tag and the ` — <description>`.
+- fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether 1 or N paths are enumerated.
+
+Worked examples covering every depth bucket, plus both single-path and multi-path emission:
+
+```markdown
+1. `nit` (a) [depth:trivial-tweak] Remove test_legacy_flow() in test_api.py:200 — tests a deleted endpoint and always passes vacuously; a one-line deletion.
+2. `suggestion` (a) [depth:refactor-locally] Parameterize test_validates_empty/test_validates_null/test_validates_whitespace in test_input.py:10-40 — identical logic, different inputs; refactor confined to one test module.
+3. `blocker`
+   (a) [depth:trivial-tweak] Mock the external HTTP call in test_fetcher.py:55 at the call site so the test stops making a real network request.
+   (b) [depth:re-architect] Introduce a shared HTTP-client fixture across the suite so no test can reach the network unmocked. — multi-path finding: the cheap local mock fixes this flake now; the durable fixture prevents the whole class of flakiness; the orchestrator/user chooses.
+```
+
+Then use these trailer phrasings verbatim:
 
 **Shape 1 — Findings present** (one or more items in the list):
 
 ```markdown
 ## Test Review Work Items
 
-1. Parameterize test_validates_empty/test_validates_null/test_validates_whitespace in test_input.py:10-40 - identical logic, different inputs
-2. Remove test_create_returns_data() in test_orders.py:88 - duplicate of test_create_order():55 which already asserts the same fields
-3. Fix incorrect assertion in test_cache.py:88 - expects 200 but endpoint returns 201 on create
-4. Remove test_legacy_flow() in test_api.py:200 - tests deleted endpoint, always passes vacuously
-5. Mock external HTTP call in test_fetcher.py:55 - test makes real network request, causes flakiness
+1. `blocker` (a) [depth:trivial-tweak] Fix incorrect assertion in test_cache.py:88 — expects 200 but endpoint returns 201 on create.
+2. `suggestion`
+   (a) [depth:trivial-tweak] Drop the duplicate test_create_returns_data() in test_orders.py:88 — test_create_order():55 already asserts the same fields.
+   (b) [depth:refactor-locally] Fold both into a single parameterized case covering the create path. — Remove the redundant coverage in test_orders.py.
 
 **Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Test Writer Agent to address them and re-invoke this skill on the updated tests (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so the two-step gate-task contract does not apply on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the two-step `TaskCreate` → `AskUserQuestion` contract applies — first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
