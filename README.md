@@ -1,5 +1,7 @@
 # <img src="assets/header.png" alt="" width="48" valign="middle"> quorum
 
+**Parallel, high-throughput autonomous software engineering.**
+
 **quorum** is a [Claude Code](https://claude.com/claude-code) skill set for running a multi-agent SDLC over a structured ticket system. It's built for shipping large features and full applications with LLMs. Plan, break down, execute, review, fix, repeat. Each step is picked up by a separate ephemeral agent — Engineer, Test Writer, Doc Writer, Product Manager, and three Reviewers — each running with role-isolated tools and handing off through ticket state, not chat history.
 
 ```
@@ -33,6 +35,7 @@ quorum's bet is that the way to ship agent-built features at production quality 
 
 A few design priorities fall out of this approach:
 
+- **Parallel by construction.** Within a single run the orchestrator fans work out concurrently — sibling Subtasks get their own implementer Agents, reviewers run as 3–4 simultaneous lanes, and well-scoped issues are fixed by multiple engineers at once. Throughput scales with how cleanly the work decomposes, not with one agent's serial pace.
 - **Language- and stack-agnostic.** Skills read build, lint, and test commands from the target repo's `CLAUDE.md` instead of hardcoding `cargo`, `npm`, `pytest`, etc. Works on Rust, Node, Python, Go, Java, polyglot repos, or unknown stacks.
 - **Cross-platform.** Native macOS, Linux, and Windows PowerShell (or WSL/Git Bash). Every shell snippet ships in both POSIX bash and PowerShell forms; bundled helpers are cross-platform Python.
 - **Idempotent.** Every state-mutating skill (`/quo-setup` especially) detects existing configuration and only prompts where something is missing. Re-runs are safe.
