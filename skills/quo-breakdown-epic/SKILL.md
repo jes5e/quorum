@@ -200,6 +200,19 @@ Fetch full Epic details using the bees CLI to understand scope of total work.
   - If a Task or Subtasks overlaps with a sibling Epic's scope, do NOT include it — that work belongs to the other Epic.
 
 
+### 2.5 Right-size the breakdown (autonomous triage)
+
+After analyzing the Epic in Section 2 but before drafting Tasks, decide how heavy a breakdown this Epic actually warrants. This is an **orchestrator judgment call** — the same caliber of in-skill judgment as Section 7's reshape-risk assessment, not a hardcoded rule and **not a user-facing gate**. Quorum exists to let agents build autonomously; do **not** fire an `AskUserQuestion` here. Classify, announce the chosen path in one line, and proceed.
+
+Two paths:
+
+- **Lightweight path** — for an Epic whose *entire* scope is operational, sequencing, manual-gate, or research work that implies **no source-code, test-code, or documentation changes**, and whose work is small (estimable as roughly one or two Tasks). Cues: the Epic body explicitly states there is no application code; every acceptance criterion is about triggering, observing, verifying, or wiring external state rather than changing files; no file in the repo would be edited to satisfy the Epic.
+- **Full path** — everything else: any Epic that will change source, tests, or docs, or that is large enough to benefit from per-role research and the full Spec Traceability gap-fill loop. This is the existing behavior.
+
+**Bias toward the Full path whenever the classification is uncertain.** This is the safety valve that makes an autonomous (un-gated) decision safe: the cost of an unnecessary Full breakdown is only wasted time, whereas the cost of under-planning a real code Epic is stale or missing Subtasks that surface downstream during `/quo-execute`. Take the Lightweight path **only** when the no-code, small-scope evidence is clear and affirmative; if you find yourself reasoning "this is *probably* ops-only," that doubt is itself the signal to use the Full path.
+
+When you select the Lightweight path, emit a one-line note naming the Epic and the reason, e.g.: `Right-sizing: <epic-id> is an operational gate with no code/test/doc changes — taking the lightweight breakdown path (no per-role research fan-out; single traceability pass).` Then carry the **lightweight-path** flag through the rest of this run; Sections 4 and 5 read it to skip the disproportionate machinery (see the Lightweight-path exceptions in those sections). Sections 6 (commit), 6.5 (deferral hygiene), and 7 (next steps) are unchanged on both paths.
+
 ### 3. Break Epic into Tasks
 
 #### Tasks
@@ -250,6 +263,17 @@ Your responsibilities are:
 - **Carry forward architectural decisions.** If the caller provides architectural decisions or constraints (e.g., "make parameter X optional with fallback Y"), explicitly reference them in every affected subtask description. Do not paraphrase or partially apply — use the caller's exact specification.
 
 **You do not author Subtasks yourself.** Subtask proposals come from the dispatched research Agents; the orchestrator's job is to invoke the right role at the right time, integrate the returned JSON findings, and create the actual bees tickets.
+
+#### Lightweight-path exception (Section 2.5)
+
+When Section 2.5 selected the **lightweight path**, this Epic has no source/test/doc work for the implementer roles to research, so the per-role fan-out and the per-Task PM review are disproportionate. On the lightweight path only:
+
+- **Skip the per-role implementer research dispatch** (Engineer / Test Writer / Doc Writer) — there is no code, test, or doc lane for them to own.
+- **The orchestrator authors the operational Subtask bodies directly**, following the mandatory Subtask Description Template below. This is the one place the "You do not author Subtasks yourself" rule above is lifted: with no implementer lane in play, there is no role to delegate authorship to, so the orchestrator writes the operational Subtasks itself.
+- **Skip the per-Task PM dispatch.** Spec coverage is checked once, at Epic scope, by the single traceability pass in Section 5's lightweight-path exception — not per Task.
+- With no implementer or per-Task PM dispatches, the event-driven reconciliation loop below has nothing to await on this path — author the Tasks and operational Subtasks directly, create the tickets via `bees create-ticket --body-file` (scratch-file convention unchanged), and advance to Section 5.
+
+Everything else in Section 4 (the mandatory template, `bees create-ticket --body-file` authoring via the scratch-file convention, the TaskList progress UI, cross-Task contract documentation) applies unchanged. On the **full path**, ignore this exception and run Section 4 exactly as written below.
 
 #### Reconciliation loop
 
@@ -441,6 +465,10 @@ When all Tasks have a per-Task PM-approved Subtask set from Section 4's reconcil
 Under research-only orchestration the Section 5 review is driven by a **fresh, ephemeral PM research Agent** — same dispatch shape as Section 4's `#### Per-Task PM dispatch`, scoped here to the whole Epic. The orchestrator (you) does not author the traceability table itself; the PM Agent returns it as JSON-structured findings, and the orchestrator consumes those findings to decide what to do next. If the PM flags GAP rows, the orchestrator dispatches additional research Agents to author the missing Subtask bodies, then re-dispatches the PM until all rows are OK. **Only after PM sign-off** does the orchestrator run `bees create-ticket` for any gap-fill Subtasks and transition Epic + Tasks + Subtasks to `ready`. Reviewing first and creating-or-amending tickets second avoids the delete-and-recreate churn that "create everything, then traceability-review, then patch" produces.
 
 You must defer to the Product Manager on whether the Epic's Subtask coverage is final and complete. The orchestrator's role is to dispatch, integrate findings, and act on them — not to substitute its own judgment for the PM's verdict.
+
+#### Lightweight-path exception (Section 2.5)
+
+When Section 2.5 selected the **lightweight path**, replace the iterative gap-fill loop below with a **single Epic-wide traceability pass**: dispatch exactly one PM research Agent (same dispatch shape, one `pm-research-<epic-id>` TaskList task) to check that every Epic scope / acceptance-criteria requirement is covered by a Subtask. If it returns all-`OK`, proceed straight to Step 5 (create any gap-fill tickets — none expected — and transition to `ready`). If it flags a GAP, the orchestrator fills it directly (authoring the operational Subtask per Section 4's lightweight-path exception) and re-dispatches the PM **once** to confirm; do **not** enter the multi-round loop. Keeping one PM dispatch preserves the PM's authority and the "nothing dropped from spec" guarantee at a fraction of the full path's cost (no per-Task PMs, no unbounded gap-fill iteration). On the **full path**, ignore this exception and run the full gap-fill loop as written below.
 
 #### Spec Traceability Review (PM dispatch, gap-fill loop)
 
