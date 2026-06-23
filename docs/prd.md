@@ -30,35 +30,6 @@ quorum exists as an alternative to [Apiary](https://github.com/gabemahoney/apiar
 
 ## Per-feature scope
 
-### Feature: Test strategy for the skills repo
-
-**Status: paused as of 2026-05-03.** This feature remains paused; the Ephemeral-Agent Orchestration rewrite (Plan Bee `b.5tm`) shipping on `main` does not auto-unpause it. `b.gar`'s Plan Bee body has now been refreshed to reflect the post-orchestration, bees-only architecture (the "Optional beads backend" feature `b.9xr` and its `ticket_backend.py` dispatcher seam were abandoned, not gating Test strategy any longer), and Layer 2.5 — the backend-equivalence harness — is explicitly deferred there. The acceptance criteria below still describe the originally-planned dual-backend test strategy and will be re-scoped against the refreshed `b.gar` body when this feature resumes.
-
-**What.** Add a layered test strategy for the quorum repo itself. Three layers — Layer 1 (pytest unit tests on every bundled Python helper), Layer 2 (a structural linter validating each `SKILL.md` against the project's design rules), and Layer 2.5 (a backend-equivalence harness running the same dispatcher operations through both bees and beads and asserting equivalent state). All three layers wire to a single `make test` entrypoint. Layer 3 (live Claude Code end-to-end smoke) is explicitly out of scope.
-
-**Why.** Today the only automated check is `python -m pyflakes` on helper scripts. Recent work (b.aic, b.ekz, b.c4z, b.veq) shows real regressions slipping in — design-rule drift in skill prose, helper bugs, contract changes nobody catches until a downstream skill fails. The dual-backend work in the previous feature substantially raises the cost of an undetected regression: divergence between the bees and beads adapter paths in `ticket_backend.py` would only surface end-to-end, far from the change site. A layered strategy is the cheapest way to catch the failure modes that actually bite (helper bugs, design-rule drift, backend divergence) without trying to fully test prose-driven LLM workflows.
-
-**Acceptance criteria.**
-
-- `pytest skills/` passes from a clean clone, exercising every bundled Python helper (5+ at execution time).
-- A linter walks all 11 `SKILL.md` files and asserts the project's design rules; exits 0 on the current repo, 1 on a deliberate violation.
-- A backend-equivalence harness runs the dispatcher's seven verbs through both bees and beads and asserts equivalent normalized state; skips cleanly if either backend CLI is unavailable.
-- A top-level `make test` target runs all three layers and exits non-zero on any failure. A `tools/run_tests.py` fallback covers Windows users without `make`.
-- CLAUDE.md gains a `## Test Commands` section (contributor-facing) documenting the entrypoints.
-- README's Contributing section gains a short paragraph naming the three layers and pointing at the entrypoint.
-- CI runs `make test` on every push and PR.
-
-**Sequencing.** This feature blocks on the "Optional beads backend" feature (Plan Bee `b.9xr`) reaching `done`. Layer 2.5 needs the dispatcher to exist; Layer 1's pytest coverage of `ticket_backend.py` needs the file in place; Layer 2's linter needs to know about backend-conditional blocks.
-
-**Out of scope.**
-
-- Layer 3 — live Claude Code end-to-end smoke harness. May ship later as a separate Plan Bee.
-- Testing LLM-generated content (PRD-bootstrap exploration, code-review judgment).
-- Testing `AskUserQuestion` interactive flows directly.
-- Snapshot testing of full skill output.
-- Migration of existing skill patterns beyond what's needed for the new layers.
-- A proxy / mock test harness — the equivalence harness uses real CLIs against temp directories.
-
 ### Feature: Side-effect-free /quo-plan and /quo-file-issue with preserved context
 
 **What.** Redesign `/quo-plan` and `/quo-file-issue` so that neither skill mutates the project's cumulative PRD, SDD, or README at plan time or filing time, and so that the rich context of pre-skill-invocation conversations is preserved end-to-end through downstream execution agents. Per-feature spec content is now authored as `t1=Doc` children (PRD and SDD, differentiated by exact title-match) of a new top-level Spec Bee in a new **Specs** hive; the Plan Bee's `reference_materials` field points at the Spec Bee via a new `bees` resolver of the form `[{"value":"<spec-bee-id>","resolver":"bees"}]`. Two new composable sub-skills — `/quo-write-prd` and `/quo-write-sdd` — author and revise the per-feature PRD/SDD ticket bodies; `/quo-plan` invokes them inline via the Skill tool when initial specs are being authored, and they remain solo-invokable for later revisions (`/quo-write-prd <spec-bee-id>`). The cumulative project-level PRD/SDD continue to exist but are appended to *after-the-fact* by the `doc-writer` agent during execution, reflecting what was actually built rather than forward intent. `/quo-file-issue` is mid-conversation aware (no re-asking discovery questions when context already exists) and supports optional `## Background and rationale` and `## Decisions and rejected alternatives` sections in the body template; doc-divergence observations are now captured in a `## Doc divergence noted` section in the Issue body for `/quo-fix-issue`'s doc-writer to act on, rather than mutating docs at filing time.
