@@ -135,7 +135,7 @@ These renames happened in this order with specific reasons. A future "simplifica
 
 ## Running the tests
 
-The repo's test suite (`tests/`) and lint check both depend on dev tools that are not installed in a fresh checkout. Bootstrap them with `pip install pytest` (for the `## Build Commands` `Narrow test` / `Full test` commands) and `pip install pyflakes` (for the `Lint` key, `python -m pyflakes skills/*/scripts/*.py`).
+The repo's test suite (`tests/`) and lint check both depend on dev tools that are not installed in a fresh checkout. Bootstrap them with `pip install pytest` (for the `## Build Commands` `Narrow test` / `Full test` commands) and `pip install pyflakes` (for the `Lint` key, `python -m pyflakes skills/*/scripts/*.py`). On an externally-managed environment (PEP 668; recent Debian/Ubuntu, Homebrew) where a bare `pip install` fails with `externally-managed-environment`, either install into a virtualenv or pass `--break-system-packages`.
 
 ## Reviewing changes
 
