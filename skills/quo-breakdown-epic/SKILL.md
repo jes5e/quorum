@@ -216,6 +216,7 @@ When you select the Lightweight path, emit a one-line note naming the Epic and t
 ### 3. Break Epic into Tasks
 
 #### Tasks
+- **Title each Task `Task N — <short title>`**, where `N` is its 1-based position among this Epic's Tasks. The ordinal-bearing title is the Task's human label everywhere downstream (commit subjects, per-Task progress summaries during `/quo-execute`), so a reader sees `Task 2 — <title>` rather than a bare ticket ID. See `docs/doc-writing-guide.md` `## Naming tickets in user-facing output and commits`.
 - Tasks should be discrete units of work - suitable for a single git commit.
 - Do not include code snippets or file numbers. Code is going to change as execution proceeds. Assume the LLM working on the code will be capable of finding the code.
 - Do not describe exactly how to implement the solution. The LLM working on the solution will be an expert. Just provide the scope of work and any requirements or acceptance criteria.
@@ -235,7 +236,7 @@ Where the contract spans sibling Tasks in the same Epic, call out the specific s
 
 Example task:
 ```
-Task 1: Implement CSV export functionality                                                                              
+Task 1 — Implement CSV export functionality                                                                              
                                                                                                                                          
   Context: Users need to export data to CSV format for analysis in spreadsheet applications. Currently, only JSON export is supported.
                                                                                                                                          
@@ -589,16 +590,16 @@ python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" re
 python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive plans
 ```
 
-When the helper emits a Plans hive path, `git add` it, then commit with a single literal `git commit` command (substitute the actual Epic ID and title):
+When the helper emits a Plans hive path, `git add` it, then commit with a single literal `git commit` command. Lead with the Epic's human label (its `<epic-title>`, which carries the `Epic N — ` ordinal) and append the bare Epic ID once in trailing parentheses, per `docs/doc-writing-guide.md` `## Naming tickets in user-facing output and commits` (substitute the actual title and ID — e.g. `Break down Epic 2 — Publish notification_common (t1.rwx.o4)`):
 
 ```bash
 # POSIX (bash / zsh):
-git commit -m "Break down <epic-id>: <epic-title>"
+git commit -m "Break down <epic-title> (<epic-id>)"
 ```
 
 ```powershell
 # Windows (PowerShell):
-git commit -m "Break down <epic-id>: <epic-title>"
+git commit -m "Break down <epic-title> (<epic-id>)"
 ```
 
 **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Epic breakdown.

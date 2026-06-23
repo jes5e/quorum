@@ -384,16 +384,16 @@ python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" res
 
 **Resolving the helper path (sibling-skill resolution).** `hive_commit.py` is shipped by `/quo-execute`; this skill consumes it as a *sibling* bundled script. Resolve its path at runtime from this skill's own base directory: `<this skill's base directory>/../quo-execute/scripts/hive_commit.py`. The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../quo-file-issue`). Use the `..` traversal pattern to reach the sibling skill — this matches the same sibling-resolution discipline used elsewhere in the skill set (e.g., `/quo-fix-issue`'s §7 commit step). On Windows, use backslash separators: `<this skill's base directory>\..\quo-execute\scripts\hive_commit.py`. The resolve mode does NOT validate a `--skill` slug (only the helper's encode-commit mode does), so this consumer needs no addition to the helper's set of recognized skills.
 
-When the helper emits an Issues hive path, `git add` it alongside the ticket body file you just authored, then commit. **Stage only files related to this filing** — the resolved Issues hive path's contents plus the scratch body file under `<tempdir>/.quorum/` (if it was tracked). **Do NOT `git add -A`** — other agents or processes may have in-flight changes in the working tree, and a blanket add would sweep them into this commit. The commit subject is `File issue: <title>`:
+When the helper emits an Issues hive path, `git add` it alongside the ticket body file you just authored, then commit. **Stage only files related to this filing** — the resolved Issues hive path's contents plus the scratch body file under `<tempdir>/.quorum/` (if it was tracked). **Do NOT `git add -A`** — other agents or processes may have in-flight changes in the working tree, and a blanket add would sweep them into this commit. The commit subject leads with the Issue title and appends the bare Issue ID once in trailing parentheses, per `docs/doc-writing-guide.md` `## Naming tickets in user-facing output and commits` — `File issue: <title> (<issue-id>)`:
 
 ```bash
 # POSIX (bash / zsh):
-git commit -m "File issue: <title>"
+git commit -m "File issue: <title> (<issue-id>)"
 ```
 
 ```powershell
 # Windows (PowerShell):
-git commit -m "File issue: <title>"
+git commit -m "File issue: <title> (<issue-id>)"
 ```
 
 If the Issues hive lives outside the repo, the helper emits nothing — no git commit is needed here, the bees CLI has already persisted the ticket. Remind the user that the issue ticket is stored separately (the bees CLI persists it; no git tracking needed for the ticket file itself).

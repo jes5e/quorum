@@ -347,7 +347,7 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
       ```
 
       `git add` the emitted Plans hive path (if any) alongside your judgement-selected source files. **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Task.
-   4. Commit with a descriptive message per system/project git guidance.
+   4. Commit with a descriptive message per system/project git guidance. Lead the subject with the Task's human label (its `Task N — <title>` title) and append the bare Task ID once in trailing parentheses — e.g. `Task 2 — Wire retry backoff (t2.abc.de)` — per `docs/doc-writing-guide.md` `## Naming tickets in user-facing output and commits`.
 3. Mark the per-Task TaskList tasks (named per the convention established in Section 3 — see "TaskList naming convention") as `completed` and clear them from the active set. There is no Agent shutdown to perform — the per-Subtask cold dispatches established in Section 3 already complete-and-exit when each Agent returns.
 4. Output the summary below to the screen and advance to the next Task by dispatching fresh ephemeral implementer Agents per the dispatch shape in Section 3.
 
@@ -360,7 +360,7 @@ When a Task and all its Subtasks are done (all reviewer feedback addressed or ig
 **Ignored Review Feedback**: [list items that were flagged by quo-engineer-review or quo-doc-writer-review but Director chose not to address, or "None"]
 **Follow-up Tasks Created**: [count, if any] [list task-ids if created]
 One of:
-- Proceeding to next Task <task-id>
+- Proceeding to next Task: [next-task-title]
 - Final Task, moving on to Final Reviews 
 ```
 

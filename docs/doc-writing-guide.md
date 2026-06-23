@@ -294,6 +294,21 @@ Use these terms consistently. Mixing synonyms forces readers (and Claude) to men
     - **Null/empty fallback** — `reference_materials` may be null/empty. When null on a Plan Bee or Issue, the **ticket body itself becomes the authoritative spec**. Neither the `bees` resolver nor the external-URL resolvers displace this fallback; they are additional source modes (path on disk / referenced Bee + children / external URL / own ticket body), not replacements for the body-as-spec case.
 - **Target repo** — the repo a user runs `/bees-*` commands against. Distinct from this repo (the skill set itself).
 
+## Naming tickets in user-facing output and commits
+
+Bees ticket IDs are random suffixes (`t1.rwx.o4`, `b.9xr`) — fine as machine handles, but noise to a human reading a status line or a commit log. Whenever a skill (or a dispatched agent) names a ticket in **output the user reads** or in a **commit subject**, lead with the ticket's human label, not the bare ID. `Epic 2 — Publish notification_common` beats `Epic t1.rwx.o4`.
+
+**Human label.**
+
+- **Epics and Tasks carry an ordinal in their title.** Epics are titled `Epic N — <short title>` (N = 1-based position among the parent Bee's Epics) and Tasks `Task N — <short title>` (N = position among the Epic's Tasks). The human label *is* that title, e.g. `Epic 2 — Publish notification_common`. `/quo-plan` and `/quo-plan-from-specs` author Epic titles this way; `/quo-breakdown-epic` authors Task titles this way.
+- **Bees, Subtasks, and Issues carry no ordinal.** Use their title text as the label.
+
+**In user-facing prose** (status reports, next-steps menus, progress notes, per-Task summaries): refer to a ticket by its human label. Show the bare ID only where the user must copy it into a command, and name the label alongside it — e.g. *"run `/quo-execute t1.rwx.o4` (Epic 2 — Publish notification_common)"*. Never emit `Epic <id>` (the word plus a bare ID) as the sole reference.
+
+**In commit subjects**: lead with the human label and append the bare ID once, in parentheses at the end, for grep/traceability — e.g. `Break down Epic 2 — Publish notification_common (t1.rwx.o4)`. That trailing `(<id>)` is the only place the raw ID belongs in the subject.
+
+This convention is downstream-facing — it governs what the skills emit when installed in any target repo, the same way the querying recipes and the Scoped-marker contract do.
+
 ## When you're updating an existing skill
 
 1. **Read the README's skill table first.** If your edit changes user-visible behavior (name, description, what the skill does), the table is part of the change.

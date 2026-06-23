@@ -451,6 +451,8 @@ bees create-ticket `
   --body-file <path>
 ```
 
+**Title each Epic `Epic N — <short title>`** (`<epic title>` above), where `N` is its 1-based position in the approved Epic list. This ordinal-bearing title is the Epic's human label everywhere downstream — see `docs/doc-writing-guide.md` `## Naming tickets in user-facing output and commits`. In reuse-mode, an Epic kept or modified from a prior run keeps its existing ordinal; renumber only if the user reorders the list.
+
 After all Epics exist, analyze blocking relationships and set `up_dependencies` between them. Common patterns:
 
 - Infrastructure blocks features (backend API must exist before features that use it).
@@ -862,12 +864,12 @@ Then branch on the resulting `add` list:
 
   ```bash
   # POSIX (bash / zsh):
-  git commit -m "Plan feature: <title>"
+  git commit -m "Plan feature: <title> (<plan-bee-id>)"
   ```
 
   ```powershell
   # Windows (PowerShell):
-  git commit -m "Plan feature: <title>"
+  git commit -m "Plan feature: <title> (<plan-bee-id>)"
   ```
 
 - **Both hives out-of-repo** (`add` list empty) — **do not** invoke `git add` with no arguments. `git add` with no positional arguments is rejected outright in modern git versions, but on older configurations or if the empty-list expansion ever resolved to a wildcard, it could stage the entire working tree by accident. PowerShell's `git add @addArgs` splats an empty array into a no-arg invocation, which carries the same risk. Skip the `git add` call entirely, skip the `git commit`, and surface the user-facing message above. The Spec Bee, Plan Bee, and their children are already persisted by the bees CLI under the user's configured hive paths; nothing else needs git tracking.
