@@ -133,6 +133,10 @@ These renames happened in this order with specific reasons. A future "simplifica
 - **Issues / bugs in this repo** — file in the issues hive of whichever project surfaced them, then reference them in PRs/commits here. The issues hive in `live_edit` was the first home for the validation reports that drove this workflow's design (b.622 and the b.sjz / b.dp2 / b.nyv / b.4xw / b.qw2 / b.ewe / b.bp5 / b.obn set that followed).
 - **Discussion** — GitHub issues on this repo are fine for "what should the skill do?" questions. Use issue tickets in quorum for "fix X in skill Y" findings — those become the agent-fixable input set.
 
+## Running the tests
+
+The repo's test suite (`tests/`) and lint check both depend on dev tools that are not installed in a fresh checkout. Bootstrap them with `pip install pytest` (for the `## Build Commands` `Narrow test` / `Full test` commands) and `pip install pyflakes` (for the `Lint` key, `python -m pyflakes skills/*/scripts/*.py`).
+
 ## Reviewing changes
 
 A change to skill prose touches behavior that may not surface until a downstream skill executes. Before merging a non-trivial change:

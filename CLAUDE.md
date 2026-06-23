@@ -148,8 +148,8 @@ Don't change these assignments without a concrete reason — they're load-bearin
 - **Compile/type-check**:
 - **Format**: echo 'no formatter configured for this repo'
 - **Lint**: python -m pyflakes skills/*/scripts/*.py
-- **Narrow test**: echo 'no test suite for this repo'
-- **Full test**: echo 'no test suite for this repo'
+- **Narrow test**: python -m pytest tests/
+- **Full test**: python -m pytest tests/
 
 ## When editing skills
 

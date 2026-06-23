@@ -2,10 +2,11 @@
 id: b.mnr
 type: bee
 title: Add pytest unit tests for the three helper scripts
-status: open
-created_at: '2026-06-23T20:58:59.774864'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-06-23T20:58:59.774864'
+status: done
+schema_version: '0.1'
 guid: mnr9fxbp2b94nbyeb6cy5iqqzihdpcqa
 ---
 
@@ -43,4 +44,3 @@ The three scripts' docstrings already enumerate the exact edge cases and invaria
 - **pytest over stdlib `unittest`** — chosen for fixture ergonomics (`tmp_path`, `monkeypatch`); accepted as the single new dev dependency.
 - **Top-level `tests/` over co-locating in `skills/<name>/`** — co-location would entangle test code with prose-neutral skill dirs.
 - **Excluded:** behavioral/eval testing of skill execution, LLM-as-judge evals, testing the `bees` CLI itself, and CI/Actions wiring (possible follow-up).
-
