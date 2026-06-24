@@ -305,7 +305,12 @@ Bees ticket IDs are random suffixes (`t1.rwx.o4`, `b.9xr`) — fine as machine h
 
 **In user-facing prose** (status reports, next-steps menus, progress notes, per-Task summaries): refer to a ticket by its human label. Show the bare ID only where the user must copy it into a command, and name the label alongside it — e.g. *"run `/quo-execute t1.rwx.o4` (Epic 2 — Publish notification_common)"*. Never emit `Epic <id>` (the word plus a bare ID) as the sole reference.
 
-**In commit subjects**: lead with the human label and append the bare ID once, in parentheses at the end, for grep/traceability — e.g. `Break down Epic 2 — Publish notification_common (t1.rwx.o4)`. That trailing `(<id>)` is the only place the raw ID belongs in the subject.
+**In commit subjects**: lead with the committed ticket's human label and append its bare ID once, in parentheses at the end, for grep/traceability. Additionally, **prefix the subject with the enclosing parent chain** so a reader scanning the log can place the commit in the plan without opening a ticket: name the enclosing **Plan Bee by its bare ID** (`Plan <bee-id>`) and, for a per-Task commit, the enclosing **Epic by its ordinal** (`Epic N`). The Plan Bee carries no ordinal, so it is referenced by ID — which is also its on-disk filename stem (`.bees/plans/<bee-id>/<bee-id>.md`), the stable handle back to the plan file. The two shapes:
+
+- **Per-Task commit** (`/quo-execute`): `Plan <bee-id>, Epic N, Task M — <task title> (<task-id>)` — e.g. `Plan b.bc7, Epic 1, Task 7 — Document the new auth config surface (t2.rwx.fy.qq)`.
+- **Epic-breakdown commit** (`/quo-breakdown-epic`): `Plan <bee-id>, Break down Epic N — <epic title> (<epic-id>)` — e.g. `Plan b.bc7, Break down Epic 2 — Publish notification_common (t1.rwx.o4)`.
+
+The `Epic N` and `Task M` ordinals come from the ticket titles (`Epic N — …` / `Task M — …`); the orchestrator obtains the enclosing Plan Bee ID by walking the committed ticket's parent chain (Task → Epic → Bee, or Epic → Bee) — context it already holds from the run's top-level invocation. When the enclosing Epic has no parent Plan Bee (a standalone Epic), omit the `Plan <bee-id>, ` prefix and lead with the Epic. The trailing `(<id>)` is the committed ticket's own ID and is the only place a random-suffix ID appears as a standalone parenthesized token; the leading `Plan <bee-id>` is the deliberate exception that anchors the commit to its plan file.
 
 This convention is downstream-facing — it governs what the skills emit when installed in any target repo, the same way the querying recipes and the Scoped-marker contract do.
 

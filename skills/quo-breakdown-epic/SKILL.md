@@ -590,16 +590,16 @@ python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" re
 python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive plans
 ```
 
-When the helper emits a Plans hive path, `git add` it, then commit with a single literal `git commit` command. Lead with the Epic's human label (its `<epic-title>`, which carries the `Epic N — ` ordinal) and append the bare Epic ID once in trailing parentheses, per `docs/doc-writing-guide.md` `## Naming tickets in user-facing output and commits` (substitute the actual title and ID — e.g. `Break down Epic 2 — Publish notification_common (t1.rwx.o4)`):
+When the helper emits a Plans hive path, `git add` it, then commit with a single literal `git commit` command. Prefix the subject with the enclosing Plan Bee by its bare ID, then `Break down ` and the Epic's human label (its `<epic-title>`, which carries the `Epic N — ` ordinal), and append the bare Epic ID once in trailing parentheses, per `docs/doc-writing-guide.md` `## Naming tickets in user-facing output and commits` (substitute the actual Plan Bee ID, Epic title, and Epic ID — e.g. `Plan b.bc7, Break down Epic 2 — Publish notification_common (t1.rwx.o4)`). You obtain the enclosing Plan Bee ID by walking the Epic's parent chain (Epic → Bee) — context you already hold from this run. If the Epic has no parent Plan Bee (a standalone Epic), omit the `Plan <bee-id>, ` prefix and lead with `Break down <epic-title> (<epic-id>)`:
 
 ```bash
 # POSIX (bash / zsh):
-git commit -m "Break down <epic-title> (<epic-id>)"
+git commit -m "Plan <bee-id>, Break down <epic-title> (<epic-id>)"
 ```
 
 ```powershell
 # Windows (PowerShell):
-git commit -m "Break down <epic-title> (<epic-id>)"
+git commit -m "Plan <bee-id>, Break down <epic-title> (<epic-id>)"
 ```
 
 **Do NOT blindly `git add -A`** — other agents or processes may have in-flight changes in the working tree. Review each modified file and only stage it if it's plausibly related to this Epic breakdown.
