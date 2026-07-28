@@ -158,6 +158,21 @@ These are dispatched automatically by the entry-point skills above. You don't ne
 
 The **Specs** hive (display name `Specs`, normalized name `specs`) holds Spec Bees, each containing per-feature spec docs as `t1=Doc` children. PRD and SDD are both `t1=Doc` children differentiated by ticket title (`PRD` vs `SDD`), not by tier. The hive's allowed resolver is `bees`, so a Plan Bee's `reference_materials` can point at a Spec Bee.
 
+## Recommended session settings
+
+**Subagent effort is pinned per role and is not affected by your session setting.** Every role quorum dispatches carries its own model and reasoning effort in the frontmatter of its `agents/<role>.md` file, and those pins override the session effort rather than inheriting from it — a role pinned at `high` runs at `high` whether you launched at `low` or at `xhigh`. Roles run at `high` minimum, with the two adversarial roles one tier higher. You don't need to think about it.
+
+What your session setting *does* govern is the skill you invoke and the orchestration it runs. Recommendations:
+
+| Surface | Recommended |
+|---|---|
+| Orchestrator (`/quo-execute`, `/quo-fix-issue`) | Opus / `medium` — it delegates all implementation rather than producing work, and its context is the longest in the run |
+| `/quo-plan`, `/quo-plan-from-specs`, `/quo-write-prd`, `/quo-write-sdd`, `/quo-spec-review`, `/quo-breakdown-epic` | Opus / `high` — tiny fan-out, maximal blast radius; errors here propagate into every Epic downstream |
+| `/quo-setup` | Opus / `high` — a one-time run, but it writes the CLAUDE.md contract keys every other skill reads; a wrong path or a missed key surfaces as a hard-fail much later |
+| `/quo-status`, `/quo-file-issue` | Opus / `medium` — read-only reporting and a short interactive capture; neither produces work that downstream skills build on, so there is nothing to gain from running hotter |
+
+These are recommendations the workflow cannot apply for you — quorum ships skills and agent files, and does not write to your Claude Code settings. Three skills check the recommendation for you and stay quiet unless you are below it: `/quo-execute` and `/quo-fix-issue` prompt once at run start if your session is below `medium`, and `/quo-breakdown-epic` if it is below `high`. Running hotter than the recommendation is never prompted on — it costs wall-clock, not quality. The rest of the second row — `/quo-plan`, `/quo-plan-from-specs`, `/quo-write-prd`, `/quo-write-sdd`, `/quo-spec-review` — carries no prompt at all, and neither do `/quo-setup`, `/quo-status`, or `/quo-file-issue`, so this table is the only place their recommendation is written down. To change the setting, run `/model` (or launch with `--effort <level>`); the effort ladder is `low` < `medium` < `high` < `xhigh` < `max`.
+
 ## Where docs live
 
 If you opt into doc creation (recommended — see [Why this exists](#why-this-exists) above), the workflow creates and maintains:

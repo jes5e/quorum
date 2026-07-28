@@ -5,7 +5,7 @@ title: Pin reasoning effort per role; drop the Sonnet downgrade prompt
 parent: null
 reference_materials: null
 created_at: '2026-07-28T01:26:10.606693'
-status: open
+status: done
 schema_version: '0.1'
 guid: ajkwd46tdphaq4wh62u4vih1kuzz3rh1
 ---
@@ -153,4 +153,3 @@ Note the division of labour that question surfaced: `agents/doc-writer.md` has `
 `CLAUDE.md` `## Repo layout` describes "Seven role contracts" and enumerates seven `agents/*.md` files, omitting `agents/analyst.md`. There are eight. `CLAUDE.md` `## Model assignment in execution skills` likewise omits the Analyst from its always-Opus list. `docs/sdd.md:333` has it right ("The eighth custom-subagent definition file").
 
 This is load-bearing for the present fix: the effort table must cover eight roles, and an engineer working from CLAUDE.md alone would miss the Analyst — which is one of the two `xhigh` rows. Correct both CLAUDE.md sections as part of this work.
-

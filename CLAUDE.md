@@ -12,7 +12,7 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 
 - `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user; the body is the instructions Claude follows when the skill is invoked.
 - `skills/<name>/scripts/` — optional cross-platform Python helpers. Two exist today: `quo-setup/scripts/detect_fast_path.py` (new-machine fast-path detection) and `quo-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `quo-execute` and `quo-fix-issue`).
-- `agents/<role>.md` — Claude Code custom-subagents directory. Seven role contracts (`engineer.md`, `test-writer.md`, `doc-writer.md`, `pm.md`, `code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md`) dispatched as ephemeral background Agents by `quo-execute`, `quo-fix-issue`, and `quo-breakdown-epic`. Each file carries YAML frontmatter (`name`, `description`, `model`, `tools`) plus the role's Instructions block.
+- `agents/<role>.md` — Claude Code custom-subagents directory. Eight role contracts (`engineer.md`, `test-writer.md`, `doc-writer.md`, `pm.md`, `code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md`, `analyst.md`) dispatched as ephemeral background Agents by `quo-execute`, `quo-fix-issue`, and `quo-breakdown-epic`. Each file carries YAML frontmatter (`name`, `description`, `model`, `effort`, `tools`) plus the role's Instructions block. (`analyst.md` is dispatched only by `quo-fix-issue`; `quo-breakdown-epic` dispatches the four implementer/PM roles; the three reviewer roles are dispatched by the two execution skills.)
 
 The full workflow chain — `quo-setup` → (`quo-plan` | `quo-plan-from-specs`) → `quo-breakdown-epic` → `quo-execute` → `quo-file-issue` / `quo-fix-issue` — is documented in the README; don't re-derive it from the skill files.
 
@@ -127,9 +127,26 @@ The bees CLI has no `ls`, `search`, `list-tickets`, or hive-scoped enumeration c
 
 ## Model assignment in execution skills
 
-Hardcoded in `quo-execute` and `quo-fix-issue`:
-- **Engineer, Test Writer, Code Reviewer, Test Reviewer**: always Opus. Not user-configurable.
-- **Doc Writer, Product Manager, Doc Reviewer**: user picks Opus or Sonnet at the start of the run.
+Pinned per role in `agents/<role>.md` frontmatter (`model` + `effort`) and honored by `quo-execute`, `quo-fix-issue`, and `quo-breakdown-epic` at dispatch. All eight roles are always Opus; none of this is user-configurable at run time.
+
+| Role | Model | Effort |
+|---|---|---|
+| Analyst (`agents/analyst.md`) | Opus (always) | `xhigh` |
+| Code Reviewer (`agents/code-reviewer.md`) | Opus (always) | `xhigh` |
+| Engineer (`agents/engineer.md`) | Opus (always) | `high` |
+| Product Manager (`agents/pm.md`) | Opus (always) | `high` |
+| Test Writer (`agents/test-writer.md`) | Opus (always) | `high` |
+| Test Reviewer (`agents/test-reviewer.md`) | Opus (always) | `high` |
+| Doc Writer (`agents/doc-writer.md`) | Opus (always) | `high` |
+| Doc Reviewer (`agents/doc-reviewer.md`) | Opus (always) | `high` |
+
+The tiering rule: every role that produces or reviews work runs at `high` minimum, and the two adversarial roles run at `xhigh` — the Analyst, which diagnoses root cause before any implementation, and the Code Reviewer, which hunts for what no test covers. `xhigh` everywhere was rejected on wall-clock; effort helps most on open-ended search and diagnosis and least on well-specified mechanical work.
+
+**Reviewer invariant: never pin a reviewer below the role it reviews.** A gate weaker than the work it inspects is not a gate. The invariant holds across the table today — Engineer `high` / Code Reviewer `xhigh`, Test Writer `high` / Test Reviewer `high`, Doc Writer `high` / Doc Reviewer `high` — and must be preserved by any future retune. Raising an implementer's tier without at least matching it on that implementer's reviewer is a defect, not a tuning choice.
+
+**"Always Opus" fixes the tier, not the version.** Frontmatter `model: opus` pins the model *tier*; the *version* tracks the operator's session — a session on Opus 4.8 dispatches workers on Opus 4.8, a session on Opus 5 dispatches Opus 5. Don't read "always Opus" as a claim that a specific Opus version is pinned anywhere in this repo.
+
+Subagent effort is an override of the session effort, not a cap on it, so these pins apply regardless of what the operator's session is set to. The operator's own session setting is advisory-only and unenforceable from the repo; `quo-execute` and `quo-fix-issue` (floor `medium`) and `quo-breakdown-epic` (floor `high`) read `CLAUDE_EFFORT` at run start and prompt **only** when the session is strictly below their floor, staying silent otherwise. The recommended session settings for every skill — including the planning and review skills that deliberately have no gate — live in the README, which is their only user-visible carrier.
 
 Don't change these assignments without a concrete reason — they're load-bearing for output quality and are referenced by users in their workflows.
 

@@ -40,7 +40,56 @@ Do not attempt to recover from a missing precondition by improvising commands or
 
 ### 1. Find Bee to work on and validate
 
-All `AskUserQuestion` gates in this section (the Bee pick, the agent model preference under `#### Choose agent model preference`, and the worktree / isolation-strategy gate under `#### Validate isolation strategy`) fire through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (per Section 3's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark each `gate-*` task `completed` the moment `AskUserQuestion` returns and the user's answer is consumed.
+All `AskUserQuestion` gates in this section (the conditional session-effort gate under `#### Check session reasoning effort`, the Bee pick under `#### Pick the Bee`, and the worktree / isolation-strategy gate under `#### Validate isolation strategy`, in that order) fire through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (per Section 3's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark each `gate-*` task `completed` the moment `AskUserQuestion` returns and the user's answer is consumed.
+
+The session-effort gate is **conditional** — it fires only when its precondition is met, and when it does not fire **no `TaskCreate` fires for it either**. See the sub-step immediately below for the load-bearing ordering rule.
+
+#### Check session reasoning effort
+
+Run this check **first in this section**, ahead of the Bee-pick and Epic-pick gates below. Its **Let me change it first** option exits the run, so firing it before any other gate means the user never re-answers a pick they already made.
+
+This skill is tuned for an orchestrator session running at **`medium`** reasoning effort or higher. Every subagent dispatched from a role file (`agents/*.md`) has its effort pinned in that file's frontmatter and is **not** affected by the orchestrator's session setting, so this check concerns the seat you are running in plus any dispatch that has no role file — notably Section 6's `general-purpose` post-completion review sweep, which inherits the session setting. The skill cannot change the session setting itself — the most it can do is name the recommendation and let the user apply it.
+
+**Ordering is load-bearing.** Read the environment variable **first**, evaluate it against the floor, and only *then* decide whether a gate fires. Do NOT create the gate task before the comparison: on the common path no gate fires at all, and a stranded `pending` `gate-*` task violates the yield-control discipline in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — whose recovery mechanism re-fires the prescribed tool from any leftover `gate-*` task, producing a phantom prompt on a later run.
+
+**Step 1 — read the session's current effort.** One literal command, no shell conditional (the comparison below is your own reasoning, not shell logic):
+
+```bash
+# POSIX (bash / zsh):
+printenv CLAUDE_EFFORT
+```
+
+```powershell
+# Windows (PowerShell):
+Write-Output $env:CLAUDE_EFFORT
+```
+
+`CLAUDE_EFFORT` reports the session's **current** effort level and tracks mid-session changes (e.g. via `/model`) rather than echoing a launch-time flag, so the floor comparison reflects the level the session is actually running at when you read it.
+
+If the output is empty, the command exits non-zero, or the value is not one of `low` / `medium` / `high` / `xhigh` / `max`, treat it as unset (an older CLI, a launch path that does not export it, or a token this skill does not know how to order): **skip this check entirely and continue to the next step, silently.** A spurious prompt on every run is worse than a missed advisory.
+
+**Step 2 — compare against this skill's floor, which is `medium`.** The ordering is `low` < `medium` < `high` < `xhigh` < `max`. Compare against the floor, never for equality — an operator running hotter than the recommendation costs wall-clock but not quality, and interrupting them is pure gate-fatigue noise.
+
+- **At or above `medium`** — say nothing at all. No gate, no prompt, no output, and **no `TaskCreate`**. Continue to the next step.
+- **Strictly below `medium`** — fire the gate in step 3.
+
+**Step 3 — fire the gate (this branch only).** Per the two-step `TaskCreate` → `AskUserQuestion` contract stated at the top of this Section 1 (and in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`), first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate, then call `AskUserQuestion` in the same turn. Substitute the value read in step 1 for `<current>`. Question text:
+
+```
+This session is running at effort=<current>, below the medium this skill
+is tuned for. This skill delegates implementation rather than producing work
+itself, but it still owns ticket state, dispatch ordering, gate handling and
+the review loop.
+
+Subagent effort is pinned per role and is NOT affected by this setting.
+```
+
+Present these options:
+
+1. **Proceed anyway** — Run at the current effort level. Mark the `gate-*` task `completed` and continue to the next step.
+2. **Let me change it first** — Exits without dispatching anything; the user runs `/model`, then re-invokes. Mark the `gate-*` task `completed`, then exit cleanly.
+
+#### Pick the Bee
 
 The user will either call without arguments, with a Bee id or with an Epic ID:
 
@@ -86,17 +135,6 @@ You will ultimately get the Bee ID you need to work on.
 Validate it is ready for work:
 - Must have a status of `ready` or `in_progress`
 - If it has `up_dependencies` they must be in `done` state (a dependency in `ready` state is fully planned but not yet worked — that's a pending blocker, not a satisfied one)
-
-#### Choose agent model preference
-
-Before starting work, ask the user which model to use for the support roles (Doc Writer, Product Manager, Doc Reviewer). Use `AskUserQuestion`:
-
-- Question: "Which model should support agents (Doc Writer, Product Manager, Doc Reviewer) use?"
-- Options:
-  - **Opus (Recommended)** — highest quality, slower, more expensive
-  - **Sonnet** — fast and cost-effective, good for straightforward tasks
-
-The core implementation roles (Engineer, Test Writer, Code Reviewer, Test Reviewer) always use **Opus** — this is not configurable. Store the user's choice and apply it when spawning agents throughout this Bee.
 
 #### Validate isolation strategy
 
@@ -253,8 +291,8 @@ The orchestrator dispatches the following four roles during a Task. The full rol
 
 - **Engineer** (`agents/engineer.md`) — implements source-code Subtasks. Model: Opus (always). Does not write tests or docs.
 - **Test Writer** (`agents/test-writer.md`) — implements test Subtasks and reviews the Engineer's diff for missing test coverage. Model: Opus (always).
-- **Doc Writer** (`agents/doc-writer.md`) — implements documentation Subtasks, reviews the Engineer's diff for documentation gaps, and after the Engineer's diff has landed appends or updates a `### Feature: <title>` subsection in the project's cumulative PRD and SDD per the categorization heuristic (pure-refactor / architecture-only / deployment-CI / user-facing) defined in `agents/doc-writer.md` `## Cumulative project doc updates`. The `<title>` is the verbatim title of the Plan Bee at the top of the Subtask → Task → Epic → Plan Bee chain; the orchestrator surfaces it to the subagent in the dispatch context. See `agents/doc-writer.md` for the authoritative spec — including the categorization table, the `<title>` resolution rule, the idempotency rule, and the CLAUDE.md `## Documentation Locations` lookup-key recipe used to resolve the PRD and SDD paths. Model: user's choice (Opus or Sonnet, selected at the start of the run).
-- **Product Manager** (`agents/pm.md`) — reviews the Task's work against the spec source resolved from the Bee's `reference_materials` (PRD/SDD files on disk via the `file-path` resolver, or the PRD/SDD `t1=Doc` children of a Spec Bee via the `bees` resolver), or the Bee body itself when `reference_materials` is null/empty; drives `quo-engineer-review` and `quo-doc-writer-review` per Task; and produces the per-Task summary report. See `agents/pm.md` `### Resolving reference_materials entries` for the authoritative resolver-branching logic — this dispatch prompt does not duplicate it. Model: user's choice (Opus or Sonnet, selected at the start of the run).
+- **Doc Writer** (`agents/doc-writer.md`) — implements documentation Subtasks, reviews the Engineer's diff for documentation gaps, and after the Engineer's diff has landed appends or updates a `### Feature: <title>` subsection in the project's cumulative PRD and SDD per the categorization heuristic (pure-refactor / architecture-only / deployment-CI / user-facing) defined in `agents/doc-writer.md` `## Cumulative project doc updates`. The `<title>` is the verbatim title of the Plan Bee at the top of the Subtask → Task → Epic → Plan Bee chain; the orchestrator surfaces it to the subagent in the dispatch context. See `agents/doc-writer.md` for the authoritative spec — including the categorization table, the `<title>` resolution rule, the idempotency rule, and the CLAUDE.md `## Documentation Locations` lookup-key recipe used to resolve the PRD and SDD paths. Model: Opus (always).
+- **Product Manager** (`agents/pm.md`) — reviews the Task's work against the spec source resolved from the Bee's `reference_materials` (PRD/SDD files on disk via the `file-path` resolver, or the PRD/SDD `t1=Doc` children of a Spec Bee via the `bees` resolver), or the Bee body itself when `reference_materials` is null/empty; drives `quo-engineer-review` and `quo-doc-writer-review` per Task; and produces the per-Task summary report. See `agents/pm.md` `### Resolving reference_materials entries` for the authoritative resolver-branching logic — this dispatch prompt does not duplicate it. Model: Opus (always).
 
 Reviewer roles (`agents/code-reviewer.md`, `agents/test-reviewer.md`, `agents/doc-reviewer.md`) are introduced in Section 5 (final Bee-level reviews).
 
@@ -282,7 +320,7 @@ The naming convention is the **canonical cross-reference** for downstream Tasks 
 - **PM Agents** — **Task scope**. Name: `pm-<task-id>` (e.g., `pm-t2.abc.def.gh`). The PM reviews the whole Task at once, so its scope suffix is the parent Task's id.
 - **Reviewer Agents** (Code Reviewer, Test Reviewer, Doc Reviewer — see Section 5) — **Bee scope**. Name: `<reviewer>-<bee-id>` (e.g., `code-reviewer-b.abc`, `test-reviewer-b.abc`, `doc-reviewer-b.abc`). Reviewers run once per Bee at the final Bee-level review, so the scope suffix is the Bee id.
 - **Deferral-ledger tasks** — **Run scope**. Name: `defer-<short-suffix>` (e.g., `defer-1`, `defer-2`, or any collision-resistant suffix). Created when an agent's structured return (per `agents/pm.md`'s Final report contract or `agents/analyst.md`'s `### Deferred refinements` block) names a destination the orchestrator chose not to address inline this run — `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue`. `metadata.activity` carries the deferral's one-line description so the gate prose (Section 6.5 below) can surface the active set. Marked `completed` the moment the deferral is encoded in a durable carrier — an updated ticket body, a new Issue, or an explicit in-session resolution (in which case `metadata.activity` logs the resolution path). The pre-handoff Section 6.5 gate reads this ledger for active `defer-*` entries and refuses to yield control while any remain pending or in-progress.
-- **Gate-task tasks** — **Turn scope**. Name: `gate-<kind>-<short-suffix>` (today the dominant `<kind>` is `askuserquestion`, e.g. `gate-askuserquestion-1` for an `AskUserQuestion` gate fired during Section 5's review loop, Section 6's post-completion findings gate, or Section 6.5's deferral-hygiene gate). Created by the orchestrator via `TaskCreate` immediately before firing the prescribed tool call (typically `AskUserQuestion`), per the two-step contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. The `<short-suffix>` MUST be unique per fire within the same run across every `gate-*` task regardless of `<kind>` — see the per-fire-uniqueness rule in that contract section for the two acceptable patterns (monotonic integers or gate-specific slugs encoding context). The two-step contract applies at every gate this skill fires — both the trailer-driven gates surfaced by the review skills (Section 5's review-loop's escalation gates when the orchestrator escalates a contested finding to the user) and the trailer-less orchestrator-driven gates (Section 4.2's continue-or-stop multi-Epic gate when Mode 1 is selected, Section 6's post-completion findings gate, Section 6.5's deferral-hygiene gate, Section 7's Acceptance-Criteria sign-off and Bee close-out gates). `metadata.activity` carries the gate's finite choices verbatim where applicable. Marked `completed` the moment the prescribed tool call returns and its result has been consumed (the user's answer routed, the next branch entered, etc.). Normally enters and exits within a single turn — the lifecycle is shorter than `defer-*` (which spans the whole run). The **yield-control discipline** mirrors `defer-*`: this skill MUST NOT yield control to the harness while any `gate-*` task is in `pending` or `in_progress` status. If a `gate-*` task is somehow left active when the orchestrator would yield (e.g., a bug fired the prescribed tool call without the paired `TaskCreate`, or the orchestrator hit an error between the two), the next reconciliation tick walks the TaskList, surfaces the active `gate-*` task, and re-fires the prescribed tool call from the recorded `metadata.activity` choices. The `gate-*` namespace coexists without overlap with `defer-*`, `<role>-<subtask-id>`, `pm-<task-id>`, and the Bee-scoped reviewer names (`code-reviewer-<bee-id>`, `test-reviewer-<bee-id>`, `doc-reviewer-<bee-id>`).
+- **Gate-task tasks** — **Turn scope**. Name: `gate-<kind>-<short-suffix>` (today the dominant `<kind>` is `askuserquestion`, e.g. `gate-askuserquestion-1` for an `AskUserQuestion` gate fired during Section 5's review loop, Section 6's post-completion findings gate, or Section 6.5's deferral-hygiene gate). Created by the orchestrator via `TaskCreate` immediately before firing the prescribed tool call (typically `AskUserQuestion`), per the two-step contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. The `<short-suffix>` MUST be unique per fire within the same run across every `gate-*` task regardless of `<kind>` — see the per-fire-uniqueness rule in that contract section for the two acceptable patterns (monotonic integers or gate-specific slugs encoding context). The two-step contract applies at every gate this skill fires — both the trailer-driven gates surfaced by the review skills (Section 5's review-loop's escalation gates when the orchestrator escalates a contested finding to the user) and the trailer-less orchestrator-driven gates (Section 1's conditional session-effort gate — fires only when the session is below the floor, see Section 1's `Check session reasoning effort` sub-step — Section 4.2's continue-or-stop multi-Epic gate when Mode 1 is selected, Section 6's post-completion findings gate, Section 6.5's deferral-hygiene gate, Section 7's Acceptance-Criteria sign-off and Bee close-out gates). `metadata.activity` carries the gate's finite choices verbatim where applicable. Marked `completed` the moment the prescribed tool call returns and its result has been consumed (the user's answer routed, the next branch entered, etc.). Normally enters and exits within a single turn — the lifecycle is shorter than `defer-*` (which spans the whole run). The **yield-control discipline** mirrors `defer-*`: this skill MUST NOT yield control to the harness while any `gate-*` task is in `pending` or `in_progress` status. If a `gate-*` task is somehow left active when the orchestrator would yield (e.g., a bug fired the prescribed tool call without the paired `TaskCreate`, or the orchestrator hit an error between the two), the next reconciliation tick walks the TaskList, surfaces the active `gate-*` task, and re-fires the prescribed tool call from the recorded `metadata.activity` choices. The `gate-*` namespace coexists without overlap with `defer-*`, `<role>-<subtask-id>`, `pm-<task-id>`, and the Bee-scoped reviewer names (`code-reviewer-<bee-id>`, `test-reviewer-<bee-id>`, `doc-reviewer-<bee-id>`).
 
 #### Scoped-marker PM dispatch wiring
 

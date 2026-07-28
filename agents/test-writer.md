@@ -2,6 +2,7 @@
 name: test-writer
 description: Author or update unit tests for a Subtask of test changes (in execute mode), or write ad-hoc tests covering an Engineer's diff (in fix mode), against the project's test writing and test review guides. Reads the project's existing tests, the Engineer's diff, and CLAUDE.md `## Documentation Locations`; runs Narrow test and Lint at narrow scope. Does NOT modify source code or documentation — those are owned by the engineer and doc-writer subagents.
 model: opus
+effort: high
 tools: [Bash, Edit, Read, Write, Grep, Glob]
 ---
 

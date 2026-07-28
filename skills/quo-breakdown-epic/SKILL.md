@@ -26,18 +26,49 @@ Do not attempt to recover from a missing precondition by improvising commands or
 
 ## Workflow
 
-### 0. Choose agent model preference
+### 0. Check session reasoning effort
 
-The model-preference `AskUserQuestion` in this section fires through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate (per Section 4's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` the moment the user's answer is consumed.
+The session-effort `AskUserQuestion` in this section is **conditional** — it fires only when the session is below this skill's effort floor. When it fires, it goes through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate (per Section 4's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` the moment the user's answer is consumed. When the gate does **not** fire, **no `TaskCreate` fires for it either**.
 
-Before starting work, ask the user which model to use for the support roles spawned during breakdown (research Agents, Product Manager when applicable). Use `AskUserQuestion`:
+This skill is tuned for an orchestrator session running at **`high`** reasoning effort or higher. Every dispatched subagent's effort is pinned per role in its own role-file frontmatter and is **not** affected by the orchestrator's session setting, so this check concerns only the seat you are running in. The skill cannot change the session setting itself — the most it can do is name the recommendation and let the user apply it.
 
-- Question: "Which model should support agents (research Agents, PM, Doc Writer-equivalent) use?"
-- Options:
-  - **Opus (Recommended)** — highest quality, slower, more expensive
-  - **Sonnet** — fast and cost-effective, good for straightforward tasks
+**Ordering is load-bearing.** Read the environment variable **first**, evaluate it against the floor, and only *then* decide whether a gate fires. Do NOT create the gate task before the comparison: on the common path no gate fires at all, and a stranded `pending` `gate-*` task violates the yield-control discipline in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — whose recovery mechanism re-fires the prescribed tool from any leftover `gate-*` task, producing a phantom prompt on a later run.
 
-The core implementation-shaping role (the orchestrator — you) always uses **Opus**. Store the user's choice and apply it when spawning research Agents throughout this breakdown.
+**Step 1 — read the session's current effort.** One literal command, no shell conditional (the comparison below is your own reasoning, not shell logic):
+
+```bash
+# POSIX (bash / zsh):
+printenv CLAUDE_EFFORT
+```
+
+```powershell
+# Windows (PowerShell):
+Write-Output $env:CLAUDE_EFFORT
+```
+
+`CLAUDE_EFFORT` reports the session's **current** effort level and tracks mid-session changes (e.g. via `/model`) rather than echoing a launch-time flag, so the floor comparison reflects the level the session is actually running at when you read it.
+
+If the output is empty, the command exits non-zero, or the value is not one of `low` / `medium` / `high` / `xhigh` / `max`, treat it as unset (an older CLI, a launch path that does not export it, or a token this skill does not know how to order): **skip this check entirely and continue to Section 1, silently.** A spurious prompt on every run is worse than a missed advisory.
+
+**Step 2 — compare against this skill's floor, which is `high`.** The ordering is `low` < `medium` < `high` < `xhigh` < `max`. Compare against the floor, never for equality — an operator running hotter than the recommendation costs wall-clock but not quality, and interrupting them is pure gate-fatigue noise.
+
+- **At or above `high`** — say nothing at all. No gate, no prompt, no output, and **no `TaskCreate`**. Continue to Section 1.
+- **Strictly below `high`** — fire the gate in step 3.
+
+**Step 3 — fire the gate (this branch only).** Substitute the value read in step 1 for `<current>`. Question text:
+
+```
+This session is running at effort=<current>, below the high this skill
+is tuned for. Decomposition quality here sets Subtask granularity for every
+downstream execution run.
+
+Subagent effort is pinned per role and is NOT affected by this setting.
+```
+
+Present these options:
+
+1. **Proceed anyway** — Run at the current effort level. Mark the `gate-*` task `completed` and continue to Section 1.
+2. **Let me change it first** — Exits without dispatching anything; the user runs `/model`, then re-invokes. Mark the `gate-*` task `completed`, then exit cleanly.
 
 ### 1. Determine Which Epic to Break Down
 
@@ -430,7 +461,7 @@ The naming convention is the **canonical cross-reference** for downstream Tasks 
 - **Implementer research Agents** (Engineer, Test Writer, Doc Writer) — **Task scope**. Name: `<role>-research-<task-id>` — concretely, `engineer-research-<task-id>`, `test-writer-research-<task-id>`, `doc-writer-research-<task-id>` (e.g., `engineer-research-t2.abc.def`, `test-writer-research-t2.abc.def`, `doc-writer-research-t2.abc.def`). Each Task gets its own implementer research Agent per applicable role; the `task-id` suffix makes the name unique even when sibling Tasks of the same Epic are processed back-to-back.
 - **PM research Agents** — **Epic scope**. Name: `pm-research-<epic-id>` (e.g., `pm-research-t1.abc`). The PM reviews each proposed Subtask set within the context of the whole Epic, so its scope suffix is the parent Epic id; the orchestrator creates a new PM research Agent per Task-level review boundary, but the TaskList name disambiguates by Epic.
 - **Deferral-ledger tasks** — **Run scope**. Name: `defer-<short-suffix>` (e.g., `defer-1`, `defer-2`, or any collision-resistant suffix). Created when an agent's structured return (per `agents/pm.md`'s Final report contract — applied here to the PM research Agent's traceability-review output — or when the orchestrator surfaces an item it chose not to address inline this run) names a destination — `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue`. `metadata.activity` carries the deferral's one-line description so the gate prose (Section 6.5 below) can surface the active set. Marked `completed` the moment the deferral is encoded in a durable carrier — an updated ticket body, a new Issue, or an explicit in-session resolution (in which case `metadata.activity` logs the resolution path). The pre-handoff Section 6.5 gate reads this ledger for active `defer-*` entries and refuses to yield control while any remain pending or in-progress.
-- **Gate-task tasks** — **Turn scope**. Name: `gate-<kind>-<short-suffix>` (today the dominant `<kind>` is `askuserquestion`, e.g. `gate-askuserquestion-1` for an `AskUserQuestion` gate fired during Section 0's model-preference gate, Section 1's Bee or Epic pick gate, Section 1.5's multi-Epic run-mode gate, Section 5's Spec-Traceability gap-fill divergence escalation, Section 6.5's deferral-hygiene gate, or Section 7's Offer-Next-Steps menu). Created by the orchestrator via `TaskCreate` immediately before firing the prescribed tool call (typically `AskUserQuestion`), per the two-step contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. The `<short-suffix>` MUST be unique per fire within the same run across every `gate-*` task regardless of `<kind>` — see the per-fire-uniqueness rule in that contract section for the two acceptable patterns (monotonic integers or gate-specific slugs encoding context). The two-step contract applies at every gate this skill fires (the gates above are all trailer-less orchestrator-driven gates — this skill does not dispatch a review skill that returns a routing trailer). `metadata.activity` carries the gate's finite choices verbatim where applicable. Marked `completed` the moment the prescribed tool call returns and its result has been consumed (the user's answer routed, the next branch entered, etc.). Normally enters and exits within a single turn — the lifecycle is shorter than `defer-*` (which spans the whole run). The **yield-control discipline** mirrors `defer-*`: this skill MUST NOT yield control to the harness while any `gate-*` task is in `pending` or `in_progress` status. If a `gate-*` task is somehow left active when the orchestrator would yield, the next reconciliation tick walks the TaskList, surfaces the active `gate-*` task, and re-fires the prescribed tool call from the recorded `metadata.activity` choices. The `gate-*` namespace coexists without overlap with `defer-*`, `<role>-research-<task-id>`, and `pm-research-<epic-id>`.
+- **Gate-task tasks** — **Turn scope**. Name: `gate-<kind>-<short-suffix>` (today the dominant `<kind>` is `askuserquestion`, e.g. `gate-askuserquestion-1` for an `AskUserQuestion` gate fired during Section 0's conditional session-effort gate (fires only when the session is below the floor — see Section 0), Section 1's Bee or Epic pick gate, Section 1.5's multi-Epic run-mode gate, Section 5's Spec-Traceability gap-fill divergence escalation, Section 6.5's deferral-hygiene gate, or Section 7's Offer-Next-Steps menu). Created by the orchestrator via `TaskCreate` immediately before firing the prescribed tool call (typically `AskUserQuestion`), per the two-step contract documented in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`. The `<short-suffix>` MUST be unique per fire within the same run across every `gate-*` task regardless of `<kind>` — see the per-fire-uniqueness rule in that contract section for the two acceptable patterns (monotonic integers or gate-specific slugs encoding context). The two-step contract applies at every gate this skill fires (the gates above are all trailer-less orchestrator-driven gates — this skill does not dispatch a review skill that returns a routing trailer). `metadata.activity` carries the gate's finite choices verbatim where applicable. Marked `completed` the moment the prescribed tool call returns and its result has been consumed (the user's answer routed, the next branch entered, etc.). Normally enters and exits within a single turn — the lifecycle is shorter than `defer-*` (which spans the whole run). The **yield-control discipline** mirrors `defer-*`: this skill MUST NOT yield control to the harness while any `gate-*` task is in `pending` or `in_progress` status. If a `gate-*` task is somehow left active when the orchestrator would yield, the next reconciliation tick walks the TaskList, surfaces the active `gate-*` task, and re-fires the prescribed tool call from the recorded `metadata.activity` choices. The `gate-*` namespace coexists without overlap with `defer-*`, `<role>-research-<task-id>`, and `pm-research-<epic-id>`.
 
 The `-research-` infix distinguishes these dispatches from the implementation-time dispatches in `/quo-execute` (which use `<role>-<subtask-id>` and `pm-<task-id>` per `quo-execute` Section 3's `##### TaskList naming convention`). A reader scanning a mixed TaskList can tell at a glance whether a given entry is breakdown-time research or execute-time implementation.
 

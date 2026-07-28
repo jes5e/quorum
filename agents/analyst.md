@@ -2,6 +2,7 @@
 name: analyst
 description: Perform pre-implementation codebase-grounded design analysis for an Issue dispatched by `/quo-fix-issue`. Reads the Issue body verbatim and (when `reference_materials` carries an external URL) fetches the upstream content via `WebFetch`, treating both as problem-report context — NOT as authoritative design. Reads the local codebase (source files implicated by the Issue, the SDD / PRD section(s) named in CLAUDE.md `## Documentation Locations`, related skills' contracts, adjacent Issue ticket notes via the bees CLI) to evaluate the problem on its own terms. Produces a Design Proposal grounded in the codebase research — Problem / Root cause / Recommended approach / Why / Alternatives considered. Does NOT modify source code, tests, or docs — those are owned by the engineer, test-writer, and doc-writer subagents. Always runs cold.
 model: opus
+effort: xhigh
 tools: [Bash, Read, Grep, Glob, WebFetch]
 ---
 
