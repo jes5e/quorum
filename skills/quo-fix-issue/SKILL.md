@@ -34,29 +34,9 @@ If any precondition is missing, stop with `Run /quo-setup first.` and direct the
 
 ### 1. Determine which issues to fix
 
-Parse the argument string. Split on any run of commas and/or whitespace; discard empty tokens. Each token is then classified by shape: a token starting with `http://` or `https://` is a **URL token**, anything else is treated as a **ticket-ID token** (validated downstream). URL tokens space-and-comma-delimit identically to ticket-ID tokens — the tokenization itself is unchanged. The resulting tokens determine the mode:
-
-- **Zero tokens** (no arguments): Query all open issues, present them, ask user to pick one. Fix that one issue and exit.
-- **Exactly one token equal to `all`**: `all` mode — query all open issues, sort by ticket_id, then execute the fix loop (step 2-7) for each sequentially.
-- **Exactly one token that is an issue ID**: single-issue mode — fix that one issue and exit.
-- **Exactly one token that is a URL** (matches `^https?://`): URL mode — file the URL as an Issue first via the URL-resolution sub-step below, then fix the resulting Issue. Example: `/quo-fix-issue https://github.com/example/repo/issues/123`.
-- **Two or more tokens** (list mode): treat as an explicit, user-provided list of tokens, each of which is either an issue ID or a URL (mixed lists are allowed — for example, `/quo-fix-issue b.cnb https://github.com/example/repo/issues/123 b.xet`). Execute the fix loop (step 2-7) for each issue **in the order given** (do NOT sort — the user's order is intentional; earlier issues may be prerequisites for later ones). Any URL tokens in the list are resolved by the URL-resolution sub-step below and substituted *in place* with the resulting Issue ticket ID before the fix loop runs. Do not query or fix issues outside the list. No user confirmation between issues.
-
-Notes for list mode:
-- `/quo-fix-issue b.cnb b.sgq b.xet`, `/quo-fix-issue b.cnb,b.sgq,b.xet`, and `/quo-fix-issue b.cnb, b.sgq  b.xet` all parse to the same three-ID list.
-- Up-front validation: after URL resolution (per the URL-resolution sub-step below) but before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full post-resolution list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). The failure check is cumulative across both gates — URL-resolution failures (per the URL-resolution sub-step's soft-fail handling) AND `bees show-ticket` validation failures both contribute to the dropped-token count. If *no* tokens remain valid after both gates, exit with an error.
-- Between issues, no inter-issue cleanup ceremony is needed — the per-issue cold dispatches established in Section 4 already complete-and-exit when each Agent returns, and Section 7 closes out the per-issue TaskList tasks at issue close-out.
-
-To query open issues (used only in no-args and `all` modes — list mode uses the user's explicit list instead):
-```bash
-bees execute-freeform-query --query-yaml 'stages:
-  - [type=bee, hive=issues, status=open]
-report: [title]'
-```
-
 #### Check session reasoning effort
 
-Run this check once at the start of the run — not per issue.
+Run this check **first in this section**, ahead of the issue-pick gate below (no-args mode) and the isolation-strategy gate that follows it. Its **Let me change it first** option exits the run, so firing it before any other gate means the user never re-answers a pick they already made. Run the check once at the start of the run — not per issue.
 
 This skill is tuned for an orchestrator session running at **`medium`** reasoning effort or higher. Every subagent dispatched from a role file (`agents/*.md`) has its effort pinned in that file's frontmatter and is **not** affected by the orchestrator's session setting, so this check concerns the seat you are running in plus any dispatch that has no role file — notably Section 8's `general-purpose` post-completion review sweep, which inherits the session setting. The skill cannot change the session setting itself — the most it can do is name the recommendation and let the user apply it.
 
@@ -76,28 +56,50 @@ Write-Output $env:CLAUDE_EFFORT
 
 `CLAUDE_EFFORT` reports the session's **current** effort level and tracks mid-session changes (e.g. via `/model`) rather than echoing a launch-time flag, so the floor comparison reflects the level the session is actually running at when you read it.
 
-If the output is empty, the command exits non-zero, or the value is not one of `low` / `medium` / `high` / `xhigh` / `max`, treat it as unset (an older CLI, a launch path that does not export it, or a token this skill does not know how to order): **skip this check entirely and continue to the next step, silently.** A spurious prompt on every run is worse than a missed advisory.
+If the output is empty, the command exits non-zero, or the value is not one of `low` / `medium` / `high` / `xhigh` / `max`, treat it as unset (an older CLI, a launch path that does not export it, or a token this skill does not know how to order): **skip this check entirely and continue to the next sub-step, silently.** A spurious prompt on every run is worse than a missed advisory.
 
 **Step 2 — compare against this skill's floor, which is `medium`.** The ordering is `low` < `medium` < `high` < `xhigh` < `max`. Compare against the floor, never for equality — an operator running hotter than the recommendation costs wall-clock but not quality, and interrupting them is pure gate-fatigue noise.
 
-- **At or above `medium`** — say nothing at all. No gate, no prompt, no output, and **no `TaskCreate`**. Continue to the next step.
+- **At or above `medium`** — say nothing at all. No gate, no prompt, no output, and **no `TaskCreate`**. Continue to the next sub-step.
 - **Strictly below `medium`** — fire the gate in step 3.
 
 **Step 3 — fire the gate (this branch only).** This gate honors the two-step `TaskCreate` → `AskUserQuestion` contract (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`): first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate (per Section 4's TaskList naming convention's gate-task entry), then call `AskUserQuestion` in the same turn. Substitute the value read in step 1 for `<current>`. Question text:
 
 ```
-This session is running at effort=<current>, below the medium this skill
-is tuned for. This skill delegates implementation rather than producing work
-itself, but it still owns ticket state, dispatch ordering, gate handling and
-the review loop.
+This session is running at `effort=<current>`, below the `medium` floor this
+skill is tuned for. This skill delegates implementation rather than producing
+work itself, but it still owns ticket state, dispatch ordering, gate handling
+and the review loop.
 
 Subagent effort is pinned per role and is NOT affected by this setting.
 ```
 
 Present these options:
 
-1. **Proceed anyway** — Run at the current effort level. Mark the `gate-*` task `completed` and continue to the next step.
+1. **Proceed anyway** — Run at the current effort level. Mark the `gate-*` task `completed` and continue to the next sub-step.
 2. **Let me change it first** — Exits without dispatching anything and without fixing any issue in the list; the user runs `/model`, then re-invokes. Mark the `gate-*` task `completed`, then exit cleanly.
+
+#### Parse the argument list and pick issues
+
+Parse the argument string. Split on any run of commas and/or whitespace; discard empty tokens. Each token is then classified by shape: a token starting with `http://` or `https://` is a **URL token**, anything else is treated as a **ticket-ID token** (validated downstream). URL tokens space-and-comma-delimit identically to ticket-ID tokens — the tokenization itself is unchanged. The resulting tokens determine the mode:
+
+- **Zero tokens** (no arguments): Query all open issues, present them, ask user to pick one. Fix that one issue and exit.
+- **Exactly one token equal to `all`**: `all` mode — query all open issues, sort by ticket_id, then execute the fix loop (step 2-7) for each sequentially.
+- **Exactly one token that is an issue ID**: single-issue mode — fix that one issue and exit.
+- **Exactly one token that is a URL** (matches `^https?://`): URL mode — file the URL as an Issue first via the URL-resolution sub-step below, then fix the resulting Issue. Example: `/quo-fix-issue https://github.com/example/repo/issues/123`.
+- **Two or more tokens** (list mode): treat as an explicit, user-provided list of tokens, each of which is either an issue ID or a URL (mixed lists are allowed — for example, `/quo-fix-issue b.cnb https://github.com/example/repo/issues/123 b.xet`). Execute the fix loop (step 2-7) for each issue **in the order given** (do NOT sort — the user's order is intentional; earlier issues may be prerequisites for later ones). Any URL tokens in the list are resolved by the URL-resolution sub-step below and substituted *in place* with the resulting Issue ticket ID before the fix loop runs. Do not query or fix issues outside the list. No user confirmation between issues.
+
+Notes for list mode:
+- `/quo-fix-issue b.cnb b.sgq b.xet`, `/quo-fix-issue b.cnb,b.sgq,b.xet`, and `/quo-fix-issue b.cnb, b.sgq  b.xet` all parse to the same three-ID list.
+- Up-front validation: after URL resolution (per the URL-resolution sub-step below) but before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full post-resolution list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). The failure check is cumulative across both gates — URL-resolution failures (per the URL-resolution sub-step's soft-fail handling) AND `bees show-ticket` validation failures both contribute to the dropped-token count. If *no* tokens remain valid after both gates, exit with an error.
+- Between issues, no inter-issue cleanup ceremony is needed — the per-issue cold dispatches established in Section 4 already complete-and-exit when each Agent returns, and Section 7 closes out the per-issue TaskList tasks at issue close-out.
+
+To query open issues (used only in no-args and `all` modes — list mode uses the user's explicit list instead):
+```bash
+bees execute-freeform-query --query-yaml 'stages:
+  - [type=bee, hive=issues, status=open]
+report: [title]'
+```
 
 #### Validate isolation strategy
 

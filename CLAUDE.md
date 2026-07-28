@@ -10,7 +10,7 @@ End-user docs (install, usage, the skill catalog, the workflow diagram) live in 
 
 ## Repo layout (only what isn't obvious)
 
-- `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user; the body is the instructions Claude follows when the skill is invoked.
+- `skills/<name>/SKILL.md` — the skill prose. The frontmatter `name` and `description` are what Claude Code shows the user (some skills also set `argument-hint`, and the loader honors further keys — see CONTRIBUTING.md `## Skill conventions`); the body is the instructions Claude follows when the skill is invoked.
 - `skills/<name>/scripts/` — optional cross-platform Python helpers. Two exist today: `quo-setup/scripts/detect_fast_path.py` (new-machine fast-path detection) and `quo-breakdown-epic/scripts/scoped_marker_resolver.py` (Scoped-marker parser/scoper, sibling-resolved by `quo-execute` and `quo-fix-issue`).
 - `agents/<role>.md` — Claude Code custom-subagents directory. Eight role contracts (`engineer.md`, `test-writer.md`, `doc-writer.md`, `pm.md`, `code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md`, `analyst.md`) dispatched as ephemeral background Agents by `quo-execute`, `quo-fix-issue`, and `quo-breakdown-epic`. Each file carries YAML frontmatter (`name`, `description`, `model`, `effort`, `tools`) plus the role's Instructions block. (`analyst.md` is dispatched only by `quo-fix-issue`; `quo-breakdown-epic` dispatches the four implementer/PM roles; the three reviewer roles are dispatched by the two execution skills.)
 
@@ -129,6 +129,8 @@ The bees CLI has no `ls`, `search`, `list-tickets`, or hive-scoped enumeration c
 
 Pinned per role in `agents/<role>.md` frontmatter (`model` + `effort`) and honored by `quo-execute`, `quo-fix-issue`, and `quo-breakdown-epic` at dispatch. All eight roles are always Opus; none of this is user-configurable at run time.
 
+**This section is the authoritative copy** of the table, the tiering rule, the reviewer invariant, and the "always Opus" clarification — it is what agents read at run time. `docs/sdd.md` points here rather than restating them, so a retune touches exactly two places: the eight `agents/<role>.md` frontmatter blocks and this section. The design rationale behind the tiers is in `docs/sdd.md` `### Feature: Pin reasoning effort per role; drop the Sonnet downgrade prompt`.
+
 | Role | Model | Effort |
 |---|---|---|
 | Analyst (`agents/analyst.md`) | Opus (always) | `xhigh` |
@@ -146,7 +148,7 @@ The tiering rule: every role that produces or reviews work runs at `high` minimu
 
 **"Always Opus" fixes the tier, not the version.** Frontmatter `model: opus` pins the model *tier*; the *version* tracks the operator's session — a session on Opus 4.8 dispatches workers on Opus 4.8, a session on Opus 5 dispatches Opus 5. Don't read "always Opus" as a claim that a specific Opus version is pinned anywhere in this repo.
 
-Subagent effort is an override of the session effort, not a cap on it, so these pins apply regardless of what the operator's session is set to. The operator's own session setting is advisory-only and unenforceable from the repo; `quo-execute` and `quo-fix-issue` (floor `medium`) and `quo-breakdown-epic` (floor `high`) read `CLAUDE_EFFORT` at run start and prompt **only** when the session is strictly below their floor, staying silent otherwise. The recommended session settings for every skill — including the planning and review skills that deliberately have no gate — live in the README, which is their only user-visible carrier.
+Subagent effort is an override of the session effort, not a cap on it, so these pins apply regardless of what the operator's session is set to. The operator's own session setting stays **advisory** — not because the repo has no lever (a skill's frontmatter can carry `effort`), but because that lever is an override rather than a floor: pinning `effort: medium` on a skill would force `medium` on an operator who deliberately launched at `xhigh`. What the recommendation needs is a floor, which frontmatter cannot express, so `quo-execute` and `quo-fix-issue` (floor `medium`) and `quo-breakdown-epic` (floor `high`) read `CLAUDE_EFFORT` at run start and prompt **only** when the session is strictly below their floor, staying silent otherwise. The recommended session settings for every *user-invoked* skill — including the planning and spec-review skills that deliberately have no gate — live in the README, which is their only user-visible carrier. The three orchestrator-only reviewers (`/quo-engineer-review`, `/quo-test-writer-review`, `/quo-doc-writer-review`) are deliberately absent from that table: they never run as the operator's own session, so a session recommendation has nothing to attach to.
 
 Don't change these assignments without a concrete reason — they're load-bearing for output quality and are referenced by users in their workflows.
 

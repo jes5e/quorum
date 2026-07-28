@@ -46,7 +46,7 @@ The session-effort gate is **conditional** — it fires only when its preconditi
 
 #### Check session reasoning effort
 
-Run this check **first in this section**, ahead of the Bee-pick and Epic-pick gates below. Its **Let me change it first** option exits the run, so firing it before any other gate means the user never re-answers a pick they already made.
+Run this check **first in this section**, ahead of the Bee-pick gate below and the Epic-pick gate in Section 2. Its **Let me change it first** option exits the run, so firing it before any other gate means the user never re-answers a pick they already made.
 
 This skill is tuned for an orchestrator session running at **`medium`** reasoning effort or higher. Every subagent dispatched from a role file (`agents/*.md`) has its effort pinned in that file's frontmatter and is **not** affected by the orchestrator's session setting, so this check concerns the seat you are running in plus any dispatch that has no role file — notably Section 6's `general-purpose` post-completion review sweep, which inherits the session setting. The skill cannot change the session setting itself — the most it can do is name the recommendation and let the user apply it.
 
@@ -76,10 +76,10 @@ If the output is empty, the command exits non-zero, or the value is not one of `
 **Step 3 — fire the gate (this branch only).** Per the two-step `TaskCreate` → `AskUserQuestion` contract stated at the top of this Section 1 (and in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`), first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate, then call `AskUserQuestion` in the same turn. Substitute the value read in step 1 for `<current>`. Question text:
 
 ```
-This session is running at effort=<current>, below the medium this skill
-is tuned for. This skill delegates implementation rather than producing work
-itself, but it still owns ticket state, dispatch ordering, gate handling and
-the review loop.
+This session is running at `effort=<current>`, below the `medium` floor this
+skill is tuned for. This skill delegates implementation rather than producing
+work itself, but it still owns ticket state, dispatch ordering, gate handling
+and the review loop.
 
 Subagent effort is pinned per role and is NOT affected by this setting.
 ```

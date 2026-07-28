@@ -55,12 +55,12 @@ If the output is empty, the command exits non-zero, or the value is not one of `
 - **At or above `high`** — say nothing at all. No gate, no prompt, no output, and **no `TaskCreate`**. Continue to Section 1.
 - **Strictly below `high`** — fire the gate in step 3.
 
-**Step 3 — fire the gate (this branch only).** Substitute the value read in step 1 for `<current>`. Question text:
+**Step 3 — fire the gate (this branch only).** This gate honors the two-step `TaskCreate` → `AskUserQuestion` contract stated at the top of this section (and in `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`): first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this gate (per Section 4's TaskList naming convention's gate-task entry), then call `AskUserQuestion` in the same turn. Substitute the value read in step 1 for `<current>`. Question text:
 
 ```
-This session is running at effort=<current>, below the high this skill
-is tuned for. Decomposition quality here sets Subtask granularity for every
-downstream execution run.
+This session is running at `effort=<current>`, below the `high` floor this
+skill is tuned for. Decomposition quality here sets Subtask granularity for
+every downstream execution run.
 
 Subagent effort is pinned per role and is NOT affected by this setting.
 ```
