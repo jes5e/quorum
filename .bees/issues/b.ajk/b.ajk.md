@@ -62,14 +62,14 @@ The "pick Opus or Sonnet for support roles" prompt is deleted and its slot reuse
 
 ## Suggested fix
 
-### Step 0 — verify before implementing
+### Verified before filing (Claude Code v2.1.220)
 
-This ticket asserts none of the following; confirm each against the installed Claude Code version first.
+Both capability questions this ticket depends on were resolved at filing time. No verification spike is needed.
 
-1. **Can reasoning effort be set in `.claude/agents/*.md` frontmatter, and under what key?** Change 1 depends entirely on this. If unsupported, change 1 has nothing to land and the ticket reduces to changes 2 and 3.
-2. **Can a skill read the session's current model and effort?** If yes, change 3's gate fires only on mismatch instead of on every run, which is strictly better.
+1. **Effort is settable in subagent frontmatter.** The key is `effort`. Values are `low`, `medium`, `high`, `xhigh`, `max` — available levels depend on the model, so confirm `xhigh` resolves on Opus at implementation time. Per the subagent documentation it **overrides the session effort level** rather than capping it; the default is inherit-from-session. Change 1 is viable exactly as specified.
+2. **The session's current effort is readable** from the `CLAUDE_EFFORT` environment variable. Change 3's gate therefore fires only on mismatch rather than on every run.
 
-Report findings before proceeding; a negative on (1) changes the ticket's shape and should come back for a scope decision rather than being worked around.
+**Consequence of override semantics — accepted deliberately.** Because frontmatter overrides rather than caps, an operator running the session above `high` (e.g. `claude --effort xhigh`) will see six of the eight roles *lowered* to `high` once this lands. Rebasing the table upward to avoid that was considered and rejected — see Decisions below. The two roles where reasoning depth pays off most are pinned above the default and are unaffected either way.
 
 ### Change 1 — pin effort per role
 
@@ -79,24 +79,24 @@ Add the effort key to all eight `agents/*.md` files per the table above. Leave `
 
 Remove it from `skills/quo-execute/SKILL.md:96-99`, `skills/quo-fix-issue/SKILL.md:63-66` and `skills/quo-breakdown-epic/SKILL.md:37-40`, along with the downstream prose that references the user's choice (`quo-execute` lines ~256-257, `quo-fix-issue` lines ~357, ~480, and the `## Model selection` paragraph at the top of `agents/doc-writer.md`, `agents/pm.md`, `agents/doc-reviewer.md`).
 
-### Change 3 — repurpose the prompt slot as a session-setting gate
+### Change 3 — repurpose the prompt slot as a conditional session-setting gate
 
-Same three skills. The gate must state that the skill cannot see the current setting, so a user who is already configured correctly understands why they are being asked. Shape:
+Same three skills. Read the session's current effort from `CLAUDE_EFFORT` and compare it against the skill's recommended orchestrator setting. **When they match, say nothing and proceed** — no gate, no prompt, no output. Fire the gate only on mismatch:
 
 ```
-I can't see what model or reasoning effort this session is set to — that's
-not visible to me, so I have to ask rather than check.
-
-This run is tuned for: Opus, medium effort.
-If you're already there, just proceed — nothing to change.
+This session is running at effort=<current>.
+This skill is tuned for medium at the orchestrator, which delegates all
+implementation rather than producing work itself.
 
 Subagent effort is pinned per role and is NOT affected by this setting.
 
-  -> Proceed
-  -> Let me check first   (exits; run /model, then re-invoke)
+  -> Proceed anyway
+  -> Let me change it first   (exits; run /model, then re-invoke)
 ```
 
-The `Let me check first` branch exits cleanly without dispatching anything; the skill cannot change the session setting itself.
+The `Let me change it first` branch exits cleanly without dispatching anything; the skill cannot change the session setting itself.
+
+Read the variable with a single literal Bash call per this repo's `## Bash etiquette` rules — do not compose a shell conditional. When `CLAUDE_EFFORT` is unset (an older CLI, or a launch path that does not export it), **skip the gate rather than firing it unconditionally**: a spurious prompt on every run is worse than a missed advisory.
 
 **Rule: repurpose existing run-start prompts, never add new ones.** The three skills above already have a prompt in that slot. `/quo-plan`, `/quo-status` and `/quo-file-issue` do not, and must not gain one — gating a short skill on a model advisory costs more than the problem it solves. Those stay documented in README only.
 
@@ -127,6 +127,7 @@ Note the division of labour that question surfaced: `agents/doc-writer.md` has `
 - **Rejected: keep the run-start prompt and add effort to it.** It asks a question the user cannot answer at time zero, before they know whether the Epic is trivial or gnarly, over a grouping ("support roles" = PM + Doc Writer + Doc Reviewer) that is not cognitively coherent. The PM is a gate; the Doc Writer is fan-out.
 - **Rejected: add a session-setting gate to every skill.** Gate fatigue is real and quorum already has many gates. Reusing the three existing run-start prompt slots keeps net gate count flat; the short skills stay README-documented.
 - **Rejected: have quorum pin session effort via `settings.json`.** An earlier draft proposed checking whether effort is settable in a user's `.claude/settings.json` so the advisory block could be made enforceable. It cannot be done and should not be attempted. Quorum's install surface is the skills and agent files it ships and owns; `settings.json` holds the user's permissions, env vars and hooks, and merging into it is a categorically more invasive act with no mechanism behind it. There is also direct precedent: an earlier revision wrote a `## Skill Paths` section of absolute paths into a tracked file and it was removed (b.963) because per-machine config in a shared file broke multi-engineer collaboration. Quorum writing harness config on the user's behalf is the same class of error. The most it can legitimately do is name the recommended setting and let the user apply it — which is what the advisory block and change 3's gate already do.
+- **Considered and rejected: rebase the table upward to use the `max` tier.** The `effort` vocabulary includes a `max` level above `xhigh`. Pinning the two adversarial roles to `max` and the remaining six to `xhigh` would preserve the current level for operators already running xhigh sessions and add headroom on top, so no role would be lowered by this ticket. Rejected on wall-clock: the tiering rationale in Background holds independently of what any individual operator's session happens to be set to, and a per-role table calibrated to one operator's launch flags is not a per-role table. Revisit if the two `xhigh` roles turn out to be the binding constraint on review quality.
 - **Deferred: escalate effort on review failure.** Re-dispatching the Engineer at `xhigh` after a Code Reviewer returns findings twice is sound in principle, but it is unproven, adds per-Subtask retry bookkeeping to the orchestrator, and depends on Step 0's question (3) about per-dispatch effort. Not in this ticket.
 - **Deferred: build a way to measure whether a quality change helped.** There is no eval harness in this repo, so every tier in the table above is reasoning about what roles do rather than evidence about what they produce. This is a real gap and arguably a more valuable ticket, but it is separate work.
 
