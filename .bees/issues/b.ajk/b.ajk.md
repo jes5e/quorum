@@ -49,6 +49,8 @@ Rule: every role that produces or reviews work runs at `high` minimum; the two a
 | Orchestrator (`/quo-execute`, `/quo-fix-issue`) | Opus / medium — it delegates all implementation rather than producing work, and its context is the longest in the run |
 | `/quo-plan`, `/quo-write-prd`, `/quo-write-sdd`, `/quo-spec-review`, `/quo-breakdown-epic` | Opus / high — tiny fan-out, maximal blast radius; errors here propagate into every Epic downstream |
 
+**These values are the floors change 3's gate compares against**, per skill. They are recommendations to the operator, not settings the repo can apply. Note that the three skills receiving the gate do not share a floor: `/quo-execute` and `/quo-fix-issue` take `medium` from the orchestrator row, while `/quo-breakdown-epic` takes `high` from the planning row.
+
 ### Run-start prompt replaced by a session-setting gate
 
 The "pick Opus or Sonnet for support roles" prompt is deleted and its slot reused for a gate that surfaces the recommended session setting. Net gate count is unchanged.
@@ -64,7 +66,7 @@ The "pick Opus or Sonnet for support roles" prompt is deleted and its slot reuse
 
 ### Verified before filing (Claude Code v2.1.220)
 
-Both capability questions this ticket depends on were resolved at filing time. No verification spike is needed.
+Both capability questions this ticket depends on have been resolved and the answers are recorded below. No verification spike is needed.
 
 1. **Effort is settable in subagent frontmatter.** The key is `effort`. Values are `low`, `medium`, `high`, `xhigh`, `max` — available levels depend on the model, so confirm `xhigh` resolves on Opus at implementation time. Per the subagent documentation it **overrides the session effort level** rather than capping it; the default is inherit-from-session. Change 1 is viable exactly as specified.
 2. **The session's current effort is readable, live, and exported on every launch path.** `printenv CLAUDE_EFFORT` returns the resolved session effort. Verified across three conditions:
@@ -82,17 +84,15 @@ Add the effort key to all eight `agents/*.md` files per the table above. Leave `
 
 ### Change 2 — delete the run-start Opus/Sonnet prompt
 
-Remove it from `skills/quo-execute/SKILL.md:96-99`, `skills/quo-fix-issue/SKILL.md:63-66` and `skills/quo-breakdown-epic/SKILL.md:37-40`, along with the downstream prose that references the user's choice (`quo-execute` lines ~256-257, `quo-fix-issue` lines ~357, ~480, and the `## Model selection` paragraph at the top of `agents/doc-writer.md`, `agents/pm.md`, `agents/doc-reviewer.md`).
+Remove it from `skills/quo-execute/SKILL.md:96-99`, `skills/quo-fix-issue/SKILL.md:63-66` and `skills/quo-breakdown-epic/SKILL.md:37-40`, along with the downstream prose that references the user's choice (`quo-execute` lines ~256-257, `quo-fix-issue` lines ~357, ~480, and the `## Model default and runtime override` section — line 10 in each — of `agents/doc-writer.md`, `agents/pm.md`, `agents/doc-reviewer.md`). That section describes the run-start override mechanism this change removes, so it goes entirely rather than being edited; the frontmatter `model: opus` it documents becomes unconditional.
 
 ### Change 3 — repurpose the prompt slot as a conditional session-setting gate
 
-Same three skills. Read the session's current effort from `CLAUDE_EFFORT` and compare it against the skill's recommended **floor** for the orchestrator. **Say nothing when the session is at or above the floor** — no gate, no prompt, no output. Fire the gate only when the session is below it:
+Same three skills. Read the session's current effort from `CLAUDE_EFFORT` and compare it against **that skill's own floor**, taken from the Advisory table above — `medium` for `/quo-execute` and `/quo-fix-issue`, `high` for `/quo-breakdown-epic`. **Say nothing when the session is at or above the floor** — no gate, no prompt, no output. Fire the gate only when the session is below it:
 
 ```
 This session is running at effort=<current>, below the <floor> this skill
-is tuned for. The orchestrator delegates implementation rather than
-producing work itself, but it still owns ticket state, dispatch ordering,
-gate handling and the review loop.
+is tuned for. <per-skill rationale line>
 
 Subagent effort is pinned per role and is NOT affected by this setting.
 
@@ -100,19 +100,28 @@ Subagent effort is pinned per role and is NOT affected by this setting.
   -> Let me change it first   (exits; run /model, then re-invoke)
 ```
 
+The `<per-skill rationale line>` differs by skill and must NOT be copied verbatim across all three — `/quo-breakdown-epic` dispatches no implementers and the orchestrator framing is wrong for it:
+
+- `/quo-execute`, `/quo-fix-issue` — "This skill delegates implementation rather than producing work itself, but it still owns ticket state, dispatch ordering, gate handling and the review loop."
+- `/quo-breakdown-epic` — "Decomposition quality here sets Subtask granularity for every downstream execution run."
+
 **Compare against a floor, not for equality.** An operator running hotter than the recommendation costs wall-clock but not quality, and prompting someone who deliberately chose a higher tier is pure noise — the exact gate fatigue this design is trying to avoid. Only a session *below* the floor is worth interrupting for. Ordering for the comparison is `low` < `medium` < `high` < `xhigh` < `max`.
 
 The `Let me change it first` branch exits cleanly without dispatching anything; the skill cannot change the session setting itself.
 
 Read the variable with a single literal Bash call per this repo's `## Bash etiquette` rules — do not compose a shell conditional. When `CLAUDE_EFFORT` is unset (an older CLI, or a launch path that does not export it), **skip the gate rather than firing it unconditionally**: a spurious prompt on every run is worse than a missed advisory.
 
-**Rule: repurpose existing run-start prompts, never add new ones.** The three skills above already have a prompt in that slot. `/quo-plan`, `/quo-status` and `/quo-file-issue` do not, and must not gain one — gating a short skill on a model advisory costs more than the problem it solves. Those stay documented in README only.
+**Rule: repurpose existing run-start prompts, never add new ones.** The three skills above already have a prompt in that slot. `/quo-plan`, `/quo-status` and `/quo-file-issue` do not, and must not gain one — gating a short skill on a model advisory costs more than the problem it solves.
+
+### Change 4 — document the advisory recommendations in README
+
+README currently contains no mention of models or effort at any casing, so there is nothing to amend — this is new content. Add a short section giving the Advisory table's recommended session settings and stating plainly that subagent effort is pinned per role and unaffected by the operator's session setting. This is the only carrier for the skills that deliberately do not get the gate, and without it the advisory block has no user-visible surface at all.
 
 This gate is orchestrator-fired and therefore inherits the two-step `TaskCreate` -> `AskUserQuestion` contract per CLAUDE.md `## AskUserQuestion usage`.
 
 ### Files
 
-`agents/*.md` (8 files), `skills/quo-execute/SKILL.md`, `skills/quo-fix-issue/SKILL.md`, `skills/quo-breakdown-epic/SKILL.md`, `CLAUDE.md` `## Model assignment in execution skills`, `docs/sdd.md` (the role table at ~44-51, the model-assignment block at ~84-85, and the analyst rationale at ~333), `README.md` if it surfaces the run-start prompt to users.
+`agents/*.md` (8 files), `skills/quo-execute/SKILL.md`, `skills/quo-fix-issue/SKILL.md`, `skills/quo-breakdown-epic/SKILL.md`, `CLAUDE.md` `## Model assignment in execution skills`, `docs/sdd.md` (the role table at ~44-51, the model-assignment block at ~84-85, and the analyst rationale at ~333), and `README.md` (new section per change 4 — it carries no model or effort content today).
 
 ## Background and rationale
 
