@@ -67,7 +67,7 @@ The "pick Opus or Sonnet for support roles" prompt is deleted and its slot reuse
 Both capability questions this ticket depends on were resolved at filing time. No verification spike is needed.
 
 1. **Effort is settable in subagent frontmatter.** The key is `effort`. Values are `low`, `medium`, `high`, `xhigh`, `max` — available levels depend on the model, so confirm `xhigh` resolves on Opus at implementation time. Per the subagent documentation it **overrides the session effort level** rather than capping it; the default is inherit-from-session. Change 1 is viable exactly as specified.
-2. **The session's current effort is readable** from the `CLAUDE_EFFORT` environment variable. Change 3's gate therefore fires only on mismatch rather than on every run.
+2. **The session's current effort is readable, and the value is live.** `printenv CLAUDE_EFFORT` returns the session's effort level. It reflects mid-session changes, not just the launch flag — verified by launching with `--effort xhigh`, changing the setting to `high` via `/model`, and re-reading, which returned `high`. Change 3's gate can therefore compare against the operator's actual current setting. Re-run that same launch/change/re-read check if the gate ever appears to misfire.
 
 **Consequence of override semantics — accepted deliberately.** Because frontmatter overrides rather than caps, an operator running the session above `high` (e.g. `claude --effort xhigh`) will see six of the eight roles *lowered* to `high` once this lands. Rebasing the table upward to avoid that was considered and rejected — see Decisions below. The two roles where reasoning depth pays off most are pinned above the default and are unaffected either way.
 
@@ -81,18 +81,21 @@ Remove it from `skills/quo-execute/SKILL.md:96-99`, `skills/quo-fix-issue/SKILL.
 
 ### Change 3 — repurpose the prompt slot as a conditional session-setting gate
 
-Same three skills. Read the session's current effort from `CLAUDE_EFFORT` and compare it against the skill's recommended orchestrator setting. **When they match, say nothing and proceed** — no gate, no prompt, no output. Fire the gate only on mismatch:
+Same three skills. Read the session's current effort from `CLAUDE_EFFORT` and compare it against the skill's recommended **floor** for the orchestrator. **Say nothing when the session is at or above the floor** — no gate, no prompt, no output. Fire the gate only when the session is below it:
 
 ```
-This session is running at effort=<current>.
-This skill is tuned for medium at the orchestrator, which delegates all
-implementation rather than producing work itself.
+This session is running at effort=<current>, below the <floor> this skill
+is tuned for. The orchestrator delegates implementation rather than
+producing work itself, but it still owns ticket state, dispatch ordering,
+gate handling and the review loop.
 
 Subagent effort is pinned per role and is NOT affected by this setting.
 
   -> Proceed anyway
   -> Let me change it first   (exits; run /model, then re-invoke)
 ```
+
+**Compare against a floor, not for equality.** An operator running hotter than the recommendation costs wall-clock but not quality, and prompting someone who deliberately chose a higher tier is pure noise — the exact gate fatigue this design is trying to avoid. Only a session *below* the floor is worth interrupting for. Ordering for the comparison is `low` < `medium` < `high` < `xhigh` < `max`.
 
 The `Let me change it first` branch exits cleanly without dispatching anything; the skill cannot change the session setting itself.
 
