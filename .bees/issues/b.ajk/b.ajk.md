@@ -2,10 +2,11 @@
 id: b.ajk
 type: bee
 title: Pin reasoning effort per role; drop the Sonnet downgrade prompt
-status: open
-created_at: '2026-07-28T01:26:10.606693'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-07-28T01:26:10.606693'
+status: open
+schema_version: '0.1'
 guid: ajkwd46tdphaq4wh62u4vih1kuzz3rh1
 ---
 
@@ -66,8 +67,7 @@ The "pick Opus or Sonnet for support roles" prompt is deleted and its slot reuse
 This ticket asserts none of the following; confirm each against the installed Claude Code version first.
 
 1. **Can reasoning effort be set in `.claude/agents/*.md` frontmatter, and under what key?** Change 1 depends entirely on this. If unsupported, change 1 has nothing to land and the ticket reduces to changes 2 and 3.
-2. **Can effort be pinned in project `settings.json`?** If yes, the advisory block becomes enforceable and change 3's gate becomes a fallback rather than the primary mechanism.
-3. **Can a skill read the session's current model and effort?** If yes, change 3's gate fires only on mismatch instead of on every run, which is strictly better.
+2. **Can a skill read the session's current model and effort?** If yes, change 3's gate fires only on mismatch instead of on every run, which is strictly better.
 
 Report findings before proceeding; a negative on (1) changes the ticket's shape and should come back for a scope decision rather than being worked around.
 
@@ -126,6 +126,7 @@ Note the division of labour that question surfaced: `agents/doc-writer.md` has `
 - **Rejected: Sonnet orchestrator, Opus workers.** Inverted twice over. Worker frontmatter pins `model: opus` explicitly, so a Sonnet session does not make workers cheaper — it only degrades the seat holding ticket state, dispatch ordering, gate handling and the review loop.
 - **Rejected: keep the run-start prompt and add effort to it.** It asks a question the user cannot answer at time zero, before they know whether the Epic is trivial or gnarly, over a grouping ("support roles" = PM + Doc Writer + Doc Reviewer) that is not cognitively coherent. The PM is a gate; the Doc Writer is fan-out.
 - **Rejected: add a session-setting gate to every skill.** Gate fatigue is real and quorum already has many gates. Reusing the three existing run-start prompt slots keeps net gate count flat; the short skills stay README-documented.
+- **Rejected: have quorum pin session effort via `settings.json`.** An earlier draft proposed checking whether effort is settable in a user's `.claude/settings.json` so the advisory block could be made enforceable. It cannot be done and should not be attempted. Quorum's install surface is the skills and agent files it ships and owns; `settings.json` holds the user's permissions, env vars and hooks, and merging into it is a categorically more invasive act with no mechanism behind it. There is also direct precedent: an earlier revision wrote a `## Skill Paths` section of absolute paths into a tracked file and it was removed (b.963) because per-machine config in a shared file broke multi-engineer collaboration. Quorum writing harness config on the user's behalf is the same class of error. The most it can legitimately do is name the recommended setting and let the user apply it — which is what the advisory block and change 3's gate already do.
 - **Deferred: escalate effort on review failure.** Re-dispatching the Engineer at `xhigh` after a Code Reviewer returns findings twice is sound in principle, but it is unproven, adds per-Subtask retry bookkeeping to the orchestrator, and depends on Step 0's question (3) about per-dispatch effort. Not in this ticket.
 - **Deferred: build a way to measure whether a quality change helped.** There is no eval harness in this repo, so every tier in the table above is reasoning about what roles do rather than evidence about what they produce. This is a real gap and arguably a more valuable ticket, but it is separate work.
 
