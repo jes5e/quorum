@@ -2,10 +2,11 @@
 id: b.ja9
 type: bee
 title: Epic-boundary context-clear discipline instructs an unexecutable action; rewrite as state-externalization + run-state manifest
-status: open
-created_at: '2026-08-15T18:08:57.557520'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-08-15T18:08:57.557520'
+status: done
+schema_version: '0.1'
 guid: ja9s7n9wyqpncg73srfc7j6yzh2i3ib3
 ---
 
@@ -58,4 +59,3 @@ Diagnosed in an investigation on 2026-08-14/15. The architecture is already comp
 
 - `docs/sdd.md` (Internal architecture docs (SDD), ~line 254) and `docs/prd.md` (PRD, ~line 190) both state that Mode 2 "pauses on" the Epic-boundary context-clear discipline, which does not match `quo-execute` Section 4.2 branch 2's auto-continue behavior.
 - `docs/sdd.md` (~line 75) documents the Epic-boundary context-clear discipline as the bound on flat-orchestration context growth, framed as an already-working mechanism. Both docs must be updated in step with the skill-prose rewrite so the SDD/PRD describe state-externalization + harness-owned compaction rather than a model-invoked context clear.
-

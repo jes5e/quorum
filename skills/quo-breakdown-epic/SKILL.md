@@ -145,6 +145,75 @@ Capture the user's choice once and store it as the **multi-Epic run mode** for t
 
 If only one drafted Epic remains under the Bee at the time this step runs, **skip the question entirely** — there is no sibling to chain to, and Section 7's menu still has the same six options for the user to pick from manually.
 
+#### Write the run-state manifest
+
+This is the **canonical definition site** for the run-state manifest; later sections refer to it by name. Write it as the last step of Section 1.5 — after the Epic is picked and the run mode is either captured or knowingly skipped — and before any breakdown work begins. Write it on **every** run, including single-Epic runs where the mode question was skipped.
+
+The manifest is a small markdown file holding the handful of run-scoped values that live **nowhere else on disk** — everything the orchestrator would otherwise have to remember. bees holds ticket state, git holds the committed ticket files, and the `defer-*` TaskList holds open deferrals; the manifest holds only what those three do not. It is what makes harness compaction survivable: after a compaction the orchestrator re-reads this file instead of trusting a summary.
+
+**Path and filename.** The manifest is written under the project's standard scratch-file convention (CLAUDE.md `## Scratch-file convention`), in `<tempdir>/.quorum/` (`/tmp/.quorum/` on POSIX, `%TEMP%\.quorum` on Windows). Canonical filename: `run-state-quo-breakdown-epic-<unit-id>.md` (e.g., `run-state-quo-breakdown-epic-b.abc.md`). `<unit-id>` is resolved in a fixed order so that a writer and a later reader always agree on the path:
+
+1. The **Bee ID** — the parent Bee of the Epic being broken down. This is the key on every normal invocation.
+2. The **Epic ID** — used only on an invocation where no parent Bee could be resolved at all.
+
+**A reader applies the same order.** When re-locating the manifest (e.g., a reconciliation tick after a compaction), resolve the parent Bee first and try `run-state-quo-breakdown-epic-<bee-id>.md`; only if no parent Bee resolves, or that file does not exist, fall back to `run-state-quo-breakdown-epic-<epic-id>.md`. Recording *which* key was used is unnecessary precisely because the order is deterministic — do not add a key-discriminator field to the manifest.
+
+Create the `.quorum` directory if it does not already exist, then author the manifest via the `Write` tool (no shell redirect):
+
+```bash
+# POSIX (bash / zsh):
+mkdir -p /tmp/.quorum
+# then write the manifest to /tmp/.quorum/run-state-quo-breakdown-epic-<unit-id>.md via the Write tool
+```
+
+```powershell
+# Windows (PowerShell):
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+# then write the manifest to $env:TEMP\.quorum\run-state-quo-breakdown-epic-<unit-id>.md via the Write tool
+```
+
+**The filename is deterministic — do NOT add a random suffix or timestamp.** The manifest's reader is the orchestrator itself, possibly after a compaction that dropped the path from the conversation. A random suffix would make the file unfindable exactly when it is needed most.
+
+**Why the key is this skill's name plus a ticket ID.** The ticket-ID half of the key has to satisfy two properties, and a Bee/Epic ID satisfies both. It is **re-derivable without the conversation**: the Epic being broken down is this run's argument, and its parent Bee is one `bees show-ticket` away, so an orchestrator that has lost the conversation recomputes the filename from the Plans hive rather than from memory. And it is **discriminating across projects**: ticket IDs are minted per bees workspace, so two runs against two different projects do not normally land on the same filename in the machine-wide `<tempdir>/.quorum/`.
+
+The **`quo-breakdown-epic` segment is what discriminates across sibling skills**, and it is not decorative: `/quo-execute` keys its own manifest on the *same* Bee ID, so without the skill-name segment a `/quo-execute` run started against this Bee would truncate this session's manifest out from under it — exactly the sequence Section 7's *"In a fresh session, execute this Epic first; defer downstream breakdown"* menu option invites, since that fresh `/quo-execute` session starts while this one is still live. Every skill in this set carries its own name in the filename for that reason, and differs only in the discriminator it appends: this skill and `/quo-execute` append the most re-derivable ticket ID their run has, while `/quo-fix-issue` — whose batch membership is only recoverable from inside the manifest itself — appends the repository directory basename instead. See each skill's own manifest section for its rationale.
+
+The remaining trade is against the scratch-file convention's collision-resistance guidance. What this key does **not** discriminate is two cases, both accepted knowingly rather than hidden:
+
+- **Two concurrent `/quo-breakdown-epic` runs against the same unit.** They share one manifest filename and the later run's truncating write wins. That matches the layer below — two such runs already collide destructively over ticket creation and commits, so it is not a case the workflow supports.
+- **Two concurrent runs breaking down *different* Epics under the same Bee.** Because the key is the Bee ID, these share one filename too — but unlike the case above they do *not* collide destructively anywhere else: each creates Tasks under its own Epic, and Section 7's *"In a fresh session, break down the next Epic"* menu option invites exactly this flow while the current run is still live. The later run's truncating write still wins, so a resumed earlier session reads its sibling's state (a different Epic under `Progress`, a different `Next unit`) — and two of the fields Section 7's Epic-boundary checkpoint reads back have **no re-derivation path from bees or git**: the **Multi-Epic run mode** (a user choice, per this section's closing note) and the **Pre-run SHA** (this manifest is the only place the run records it). The concrete consequence is a resumed session that inherits the sibling's mode — auto-continuing across Epics when the user asked to stop at each one, or the reverse — and the sibling's later Pre-run SHA, which under-scopes the checkpoint's commit-landed check. The trade is accepted rather than hidden, because the failure is detectable and each destroyed field has a real fallback: a manifest whose `Progress` names an Epic this session never broke down is the tell, and a reader that spots it recovers in three steps — (i) re-query bees for the Epic this run actually holds and rewrite the manifest from that; (ii) recover the run mode by **re-firing Section 1.5's `AskUserQuestion` mode gate above**, since asking the user again is the only honest source for a user choice — do not guess it from the manifest you just found to be a sibling's; (iii) accept a **weaker commit-landed check** in place of the lost Pre-run SHA, searching recent history for Section 6's commit-subject token with `git log --oneline -F --grep='(<epic-id>)'` and no lower bound. State that degradation plainly rather than papering over it: the unbounded form can match a same-`(<epic-id>)` commit from an earlier run against this Epic, so it is strictly weaker evidence than the ranged `<pre-run-sha>..HEAD` form — confirm the matched commit's ticket files are the Tasks this run created before treating the check as passed. Keying on the Epic ID instead would fix this case at the cost of the property the whole design rests on: a single run walks several Epics (Section 7's checkpoint rewrites the manifest at each Epic boundary and re-reads it at every next-Epic dispatch), so an Epic-keyed filename would change mid-run and stop being the one deterministic path a post-compaction reader can recompute.
+
+**Semantics: truncate at run start, rewrite at each boundary.** The manifest is a **live snapshot, not an accumulating log**. Write it fresh here (overwriting any manifest left by a previous run against the same unit) and rewrite it in full at each Epic boundary per Section 7's Epic-boundary state-externalization checkpoint. Never delete it — the scratch-file convention forbids cleanup, so do NOT instruct any `rm` / `Remove-Item`.
+
+**Contents — and an invariant that bounds them.** The manifest carries **only values that have no other durable home.** Do not add Epic bodies, proposed Subtask text, PM findings, or anything else already readable from bees, git, or the TaskList; duplicating them here would grow the manifest into a shadow ticket store that drifts. The fields are:
+
+```markdown
+# Run state — <unit-id>
+
+- **Skill:** quo-breakdown-epic
+- **Run started (UTC):** <YYYY-MM-DDTHH:MM:SSZ>
+- **Unit scope:** Bee <bee-id>; drafted Epics in scope: <epic-id-1>, <epic-id-2>, ...
+- **Multi-Epic run mode:** <Mode 1 (Stop after each Epic) | Mode 2 (Work through all Epics) | not captured (one drafted Epic remained)>
+- **Pre-run SHA:** <sha>
+- **Progress:**
+  - <epic-id>: broken down — Tasks created, status `ready`
+- **Next unit:** <next-epic-id | none>
+```
+
+Capture the **Pre-run SHA** here, at run start, with one literal command — it is the HEAD this run began from, and this is the **only** place the run records it. It has one concrete consumer: step 1 of Section 7's Epic-boundary state-externalization checkpoint reads it back from this file and runs `git log --oneline <pre-run-sha>..HEAD` to confirm Section 6's ticket-file commit actually landed. Without it, that verification has no lower bound to diff against once the conversation is gone.
+
+```bash
+# POSIX (bash / zsh):
+git rev-parse HEAD
+```
+
+```powershell
+# Windows (PowerShell):
+git rev-parse HEAD
+```
+
+The **multi-Epic run mode** is a user choice with no re-derivation path — if it is lost, the run cannot know whether to auto-continue — which is precisely why it belongs here.
+
 ### 2. Fetch and Analyze Epic
 
 Fetch full Epic details using the bees CLI to understand scope of total work.
@@ -311,10 +380,13 @@ Everything else in Section 4 (the mandatory template, `bees create-ticket --body
 
 The loop is **event-driven, not clock-driven**. Each tick has three phases:
 
-1. **Read state.** Pull the current truth from the relevant sources before deciding what to do:
+1. **Read state.** Pull the current truth from four sources before deciding what to do:
    - **bees** — the canonical ticket store. Use `bees show-ticket --ids <epic-id>` to get the Epic's `children` array (Task IDs); for each Task, fetch its full body. Identify the next Task that still has no Subtasks proposed (or whose proposed-Subtasks set is incomplete pending PM review). Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) for any focused state query.
    - **TaskList** — the orchestrator's progress UI (see "TaskList as progress UI" below). Each in-flight research Agent has a corresponding TaskList task whose `status` reflects whether the Agent is `pending` (queued), `in_progress` (running), or `completed` (Agent reported done with its JSON findings).
    - **Returned findings** — the JSON-structured text each completed research Agent returned. These are the load-bearing handoff: the orchestrator consumes the JSON to compose `bees create-ticket --body-file` invocations.
+   - **the run-state manifest** — the on-disk file defined in Section 1.5 `#### Write the run-state manifest`, holding the run-scoped values that have no other durable home (multi-Epic run mode, unit scope, pre-run SHA, per-Epic progress, next unit). `Read` it at `<tempdir>/.quorum/run-state-quo-breakdown-epic-<unit-id>.md`, resolving `<unit-id>` in Section 1.5's fixed order (parent Bee first, Epic ID only as fallback); the path is derived from this skill's name plus the unit ID, so it stays findable even when nothing about it survives in the conversation.
+
+   **Conversation memory is never a substitute for these four sources.** Whatever the orchestrator believes it remembers about which Tasks exist, which Subtasks were already created, or which run mode was captured, the four sources above are the truth and are re-read rather than recalled. This is unconditional — it holds on every tick, not only after something goes wrong. On top of it, one conditional rule for the observable case: **if a summarization marker is visible in the conversation** (the harness compacted mid-run), treat everything before it as non-authoritative and re-read all four sources in full before dispatching anything else. A returned-findings payload that was consumed before a compaction is recoverable the same way every other fact is — from the bees tickets the orchestrator created out of it, not from memory of the JSON.
 
 2. **Reconcile.** Compare current state to target state and act:
    - For the current Task, dispatch the relevant subset of research Agents (Engineer / Test Writer / Doc Writer) per the role-selection rules below. PM dispatch is reserved for the Task-level review boundary.
@@ -412,7 +484,9 @@ Workers do not message each other. The orchestrator is the hub; each dispatched 
 
 #### Recursive delegation: not supported
 
-Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents), "Subagents cannot spawn other subagents" — only the top-level orchestrator may dispatch Agents. The skill ships **flat orchestration**: every research Agent invocation originates from this skill's reconciliation loop, never from a worker. The bound on flat-orchestration context growth in this skill is the per-Epic scope of the loop itself — when this skill returns at Section 7, the orchestrator's working context is released back to the caller's session, so the loop's running set stays bounded by a single Epic's breakdown.
+Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents), "Subagents cannot spawn other subagents" — only the top-level orchestrator may dispatch Agents. The skill ships **flat orchestration**: every research Agent invocation originates from this skill's reconciliation loop, never from a worker.
+
+A skill loads **inline into the caller's session**, so returning at Section 7 releases nothing — the context this run accumulated stays in the session it ran in, and nothing in this skill reclaims those tokens (the harness owns compaction). What bounds the growth is the **per-Epic scope of the loop itself**: one Epic's breakdown is the whole working set, and Section 7's fresh-session recommendation is the lever that actually reclaims context between Epics. Whenever the run continues in the same session — Mode 2's auto-continue, or the user taking the menu's same-session next-Epic continuation — Section 7's **Epic-boundary state-externalization checkpoint** is what keeps the growth survivable. It runs unconditionally at the end of Section 7 on every path, and it verifies that every load-bearing fact is already in a durable carrier, so whenever the harness compacts, the run can be re-derived rather than recalled.
 
 #### Per-Task PM dispatch
 
@@ -744,7 +818,7 @@ Before rendering the menu in `#### Menu options` below, branch on the multi-Epic
 - **Mode 2 (Work through all Epics)**: branch on which case the `#### Pick the Recommended option` logic identified for this Epic boundary:
   - **No-drafted-siblings case** — planning is done. Render the full menu so the user can pick what to do next (typically *"In a fresh session, execute the whole Bee"*); there is no auto-continue target since no drafted Epics remain.
   - **Drafted-siblings-remain, reshape-risk case** — this is one of Mode 2's mandatory pause cases. Render the full menu with *"In a fresh session, execute this Epic first; defer downstream breakdown"* as the Recommended pick exactly as it would in Mode 1. Mode 2 does not auto-continue past a contract-stability concern; the user must resolve the reshape risk explicitly.
-  - **Drafted-siblings-remain, no-reshape-risk case** — auto-select *"In a fresh session, break down the next Epic"* (or the same-session continuation noted in that option's prose). Do not present the menu; proceed directly to break down the next drafted Epic in this same session against the same captured Mode 2 choice. Surface a one-line note to the user announcing the auto-continue and naming the next Epic ID being broken down so they can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to break down `<next-epic-id>` — `<title>`."*).
+  - **Drafted-siblings-remain, no-reshape-risk case** — auto-select *"In a fresh session, break down the next Epic"* (or the same-session continuation noted in that option's prose). Do not present the menu; surface a one-line note to the user announcing the auto-continue and naming the next Epic ID being broken down so they can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to break down `<next-epic-id>` — `<title>`."*), then fall through to the **Epic-boundary state-externalization checkpoint** at the end of this section — which runs on this path exactly as it does on the menu paths — and only then proceed to break down the next drafted Epic in this same session against the same captured Mode 2 choice.
 
 The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces: any final Bee-level reviewer finding flagged as a blocker, any genuine red flag the orchestrator surfaces during the next Epic's breakdown, and any precondition or contract violation. Mode 2 is *"skip discretionary continue-or-not prompts"*, not *"skip every interactive prompt"*.
 
@@ -768,3 +842,30 @@ Always include all six options below. The Recommended badge moves across three o
 - **Done for now** — plan is saved; user will come back later.
   - *Best when* the user is at a natural stopping point and will return in a later session.
 
+#### Epic-boundary state-externalization checkpoint
+
+**Run this checkpoint unconditionally, as the last thing Section 7 does — on every path, in every mode.** It runs after the menu answer has been consumed (Mode 1, and every Mode 2 case that renders the menu) or immediately after the Mode 2 auto-continue note is surfaced (the case that skips the menu), and before control either returns to Section 2 for the next Epic or leaves the skill. Do **not** condition it on the captured run mode, on which menu option the user picked, or on whether the next Epic will be broken down in this session or a fresh one. Several of these paths continue in the same session — Mode 2's auto-continue skips the menu entirely, and the menu's own *"In a fresh session, break down the next Epic"* option explicitly blesses same-session continuation — and making the checkpoint unconditional removes the need to work out which case is in play before deciding whether to run it.
+
+Its job is to verify that every load-bearing fact is already in a durable carrier and to refresh the ones this skill owns, so that whenever the harness compacts the conversation — at this boundary or partway through the next Epic — the run can be re-derived instead of reconstructed from memory. On the paths where the run ends here rather than continuing (*Done for now*, *Review first*, any fresh-session option), run it exactly the same way with `none` as the next unit: what it verifies and writes is precisely what has to outlive this session. This is the canonical anchor name; Section 4's `#### Recursive delegation: not supported` refers to it by name.
+
+The durable carriers for this skill are:
+
+- **the Tasks and Subtasks created in bees** for the just-broken-down Epic, and that Epic's own status transition to `ready`. Re-readable via `bees show-ticket` / `bees execute-freeform-query`.
+- **the Section 6 commit of the new ticket files** (when the Plans hive lives inside this repo). Re-readable via `git log` / `git diff`.
+- **the `defer-*` TaskList ledger** — already emptied by Section 6.5's hard-stop gate before control reaches Section 7. Re-readable by walking the TaskList.
+- **the run-state manifest** — the on-disk file defined in Section 1.5 `#### Write the run-state manifest`, which carries the run-scoped values (multi-Epic run mode, unit scope, pre-run SHA, per-Epic progress) that have no other durable home. Re-readable via the `Read` tool.
+
+This skill has **no compromise tracker** — that carrier belongs to the execution skills, not to breakdown. Do not look for one here.
+
+Run these three steps. Every step below is a tool call the orchestrator can actually make — run a bees query, run a git command, walk the TaskList, read a file, write a file:
+
+1. **Verify the carriers.** Do all three:
+   - Re-query the just-broken-down Epic's children in bees and confirm every Task has its PM-approved Subtask set and the expected non-`drafted` statuses.
+   - Confirm Section 6's ticket-file commit landed: `Read` the run-state manifest, take its **Pre-run SHA** field, and run `git log --oneline <pre-run-sha>..HEAD` to see the commits this run produced. (If the Plans hive lives outside this repo there is no commit to find, and an empty log is the correct result — re-run Section 6's non-mutating `resolve-hive-paths` helper call to confirm which case applies rather than recalling it.)
+   - Walk the TaskList and confirm every research-Agent, PM, and `gate-*` task from this Epic is `completed` and the `defer-*` active set is empty.
+
+   Fix any gap **now** rather than carrying it forward in conversation.
+2. **Rewrite the run-state manifest** per Section 1.5 `#### Write the run-state manifest`, recording the just-broken-down Epic's ID under progress and the next Epic's ID as the next unit (or `none` when the run is ending here).
+3. **Re-read, do not recall, at every dispatch in the next Epic.** Concretely: before each research-Agent or PM dispatch in the next Epic, `bees show-ticket` that Epic's body and its parent Bee (including `reference_materials`) and `Read` the run-state manifest for the run-scoped values (captured mode, unit scope, pre-run SHA) — rather than reusing a value quoted earlier in the conversation. Carry **no** value forward from the prior Epic: if a fact the next Epic needs is not readable from one of the carriers above, stop and write it into one before dispatching anything.
+
+**What this checkpoint does not do.** It does not clear, compact, or otherwise reclaim the orchestrator's context, and it must never be narrated as if it did. No model-invocable mechanism for self-clearing or self-compacting exists; token reclamation is owned by the harness, which compacts the conversation on its own once the window fills. The reclamation lever that does exist is the fresh-session recommendation already carried in this section's standing note and menu options — this checkpoint is what makes that lever, and any harness compaction whenever it fires, lossless.

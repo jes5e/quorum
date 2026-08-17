@@ -92,7 +92,7 @@ Parse the argument string. Split on any run of commas and/or whitespace; discard
 Notes for list mode:
 - `/quo-fix-issue b.cnb b.sgq b.xet`, `/quo-fix-issue b.cnb,b.sgq,b.xet`, and `/quo-fix-issue b.cnb, b.sgq  b.xet` all parse to the same three-ID list.
 - Up-front validation: after URL resolution (per the URL-resolution sub-step below) but before starting any fixes, `bees show-ticket --ids <id1> <id2> ...` on the full post-resolution list. If any ID does not exist, is not in the `issues` hive, or is not in `open` status, report the problem IDs to the user and continue with the subset that is valid and open (do not abort the whole run). The failure check is cumulative across both gates — URL-resolution failures (per the URL-resolution sub-step's soft-fail handling) AND `bees show-ticket` validation failures both contribute to the dropped-token count. If *no* tokens remain valid after both gates, exit with an error.
-- Between issues, no inter-issue cleanup ceremony is needed — the per-issue cold dispatches established in Section 4 already complete-and-exit when each Agent returns, and Section 7 closes out the per-issue TaskList tasks at issue close-out.
+- Between issues, there is no Agent-teardown ceremony to perform — the per-issue cold dispatches established in Section 4 already complete-and-exit when each Agent returns, and Section 7 closes out the per-issue TaskList tasks at issue close-out. The Issue boundary is not unmanaged, though: Section 7 step 5 runs the **Issue-boundary state-externalization checkpoint** after Section 7.5's deferral-hygiene gate and before the next issue starts. See Section 7 step 5 for the checkpoint; this bullet is an argument-parsing note and does not define it.
 
 To query open issues (used only in no-args and `all` modes — list mode uses the user's explicit list instead):
 ```bash
@@ -166,7 +166,82 @@ Post-resolution working list:
 
 The display is informational ONLY — NO `AskUserQuestion`, NO ability to re-order. Its purpose is to let the user confirm prerequisite ordering survived the in-place substitution; if the user is unhappy with the result they can `Ctrl-C` and re-run with corrected positional order. The display fires only when at least one URL token was present in the user-supplied input — on the all-IDs path (no URL tokens), suppress the display entirely (the working list at that point is identical to the user's input and adds no signal).
 
-**End of URL-resolution sub-step — continue Section 1 and then Step 2.** After every URL token in the working list has been resolved (or soft-failed) and the post-resolution working-list display has fired, the URL-resolution sub-step is complete. Continue Section 1 at the upfront `bees show-ticket --ids` validation pass (per the "Notes for list mode" block above), then proceed to Step 2 (Validate Issue), Step 3 (design analysis), Step 4 (per-issue Agent dispatch), Step 5 (review loop), Step 6 (doc verify), Step 7 (mark Issue done + commit), Step 8 (post-completion review), and Step 9 (upstream GitHub close commands) — the URL-resolution sub-step replaces nothing else in `/quo-fix-issue`'s flow. The structured return from each `/quo-file-issue` Skill-tool dispatch is a hand-off marker (per `skills/quo-file-issue/SKILL.md`'s `### Behavioral guarantees` "hand-off marker, not a workflow exit" guarantee), NOT a signal that the `/quo-fix-issue` run has terminated.
+**End of URL-resolution sub-step — continue Section 1 and then Step 2.** After every URL token in the working list has been resolved (or soft-failed) and the post-resolution working-list display has fired, the URL-resolution sub-step is complete. Continue Section 1 at the upfront `bees show-ticket --ids` validation pass (per the "Notes for list mode" block above) and then at the `#### Write the run-state manifest` sub-step below, then proceed to Step 2 (Validate Issue), Step 3 (design analysis), Step 4 (per-issue Agent dispatch), Step 5 (review loop), Step 6 (doc verify), Step 7 (mark Issue done + commit), Step 8 (post-completion review), and Step 9 (upstream GitHub close commands) — the URL-resolution sub-step replaces nothing else in `/quo-fix-issue`'s flow. The structured return from each `/quo-file-issue` Skill-tool dispatch is a hand-off marker (per `skills/quo-file-issue/SKILL.md`'s `### Behavioral guarantees` "hand-off marker, not a workflow exit" guarantee), NOT a signal that the `/quo-fix-issue` run has terminated.
+
+#### Write the run-state manifest
+
+This is the **canonical definition site** for the run-state manifest; later sections refer to it by name. Write it as the last step of Section 1 — after the working list is parsed, URL tokens are resolved, the upfront `bees show-ticket --ids` validation has run, and the isolation strategy is settled — and before validating or fixing any individual Issue.
+
+The manifest is a small markdown file holding the handful of run-scoped values that live **nowhere else on disk** — everything the orchestrator would otherwise have to remember. bees holds ticket state, git holds the diff, the compromise tracker holds accepted compromises, and the `defer-*` TaskList holds open deferrals; the manifest holds only what those four do not. It is what makes harness compaction survivable: after a compaction the orchestrator re-reads this file instead of trusting a summary.
+
+**Path and filename.** The manifest is written under the project's standard scratch-file convention (CLAUDE.md `## Scratch-file convention`), in `<tempdir>/.quorum/` (`/tmp/.quorum/` on POSIX, `%TEMP%\.quorum` on Windows). Canonical filename: `run-state-quo-fix-issue-<repo-dir-name>.md`, where `<repo-dir-name>` is the **basename of this run's repository working directory** — the last path segment of the working tree root (e.g., a run inside `/home/dev/projects/widget-api` writes `run-state-quo-fix-issue-widget-api.md`). Resolve the working tree root with one literal command, then take its last path segment:
+
+```bash
+# POSIX (bash / zsh):
+git rev-parse --show-toplevel
+```
+
+```powershell
+# Windows (PowerShell):
+git rev-parse --show-toplevel
+```
+
+Create the `.quorum` directory if it does not already exist, then author the manifest via the `Write` tool (no shell redirect):
+
+```bash
+# POSIX (bash / zsh):
+mkdir -p /tmp/.quorum
+# then write the manifest to /tmp/.quorum/run-state-quo-fix-issue-<repo-dir-name>.md via the Write tool
+```
+
+```powershell
+# Windows (PowerShell):
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+# then write the manifest to $env:TEMP\.quorum\run-state-quo-fix-issue-<repo-dir-name>.md via the Write tool
+```
+
+**The filename is deterministic — do NOT add a random suffix or timestamp.** This deliberately differs from the compromise tracker's `<short-suffix>` naming, and the difference is load-bearing: the tracker's reader is a dispatched Agent that is handed the path in its prompt, while the manifest's reader is the orchestrator itself, possibly after a compaction that dropped the path from the conversation. A random suffix would be unfindable exactly when the manifest is needed most.
+
+**Why the key is skill name plus repo directory — and not an Issue ID.** The key has to be recomputable by a reader that has lost the conversation, using only what the session still has: its working directory. `<repo-dir-name>` satisfies that — one `git rev-parse --show-toplevel` call recovers it at any point in the run, in any session, with no ticket lookup and no memory of how the run started. **An Issue ID does not.** In `all` / list mode the run works a batch, and the batch's membership and ordering are user-supplied and are recorded *inside this manifest* — bees stores no batch grouping — so keying the filename to (say) the first Issue of the batch would make the path depend on a value that is only recoverable by reading the very file the path points at. Nor is that ID recoverable from the run's commit subjects: those name whichever Issues have already been fixed, not which one started the batch, and by mid-run the first Issue is `done` and indistinguishable from any other closed Issue. The skill-name segment keeps this manifest from colliding with a sibling skill's manifest in the same repo; the repo-directory segment keeps two runs in two different projects from *normally* colliding in the machine-wide `<tempdir>/.quorum/`. (Sibling skills carry their own name in the same leading position and differ only in the discriminator they append — `/quo-execute` and `/quo-breakdown-epic` append the most re-derivable ticket ID their run has; see each skill's own manifest section.)
+
+What this key does **not** discriminate is two cases, both accepted knowingly rather than hidden:
+
+- **Two concurrent `/quo-fix-issue` runs in the same working directory.** They share one manifest filename and the later run's truncating write wins. That matches the layer below — two such runs already collide destructively over Issue statuses and commits, so it is not a case the workflow supports.
+- **Two different checkouts whose directories share a basename** (e.g., `~/work/widget-api` and `~/scratch/widget-api`). The basename is only *normally* discriminating across projects, not reliably so: same-named checkouts land on one file. When runs in both are live at once, the second run's truncating write replaces the first run's manifest, and the concrete consequence is the other checkout's **Pre-session SHA** — a SHA that need not even exist in this repository — reaching Section 8's post-completion review and scoping its diff wrongly. (Sequential runs are unaffected: each truncates at run start.) The trade is accepted rather than hidden, because the alternative keys are worse — an absolute path makes the filename unwieldy and leaks directory structure into `<tempdir>`, and an Issue ID is not recomputable at all (above) — and because the failure is detectable: a manifest whose Issue batch does not match the run in hand is the tell, and a reader that spots it recovers by ignoring the manifest and taking the same `HEAD~N` fallback Section 8 already defines for a missing one.
+
+**Semantics: truncate at run start, rewrite at each boundary.** The manifest is a **live snapshot, not an accumulating log**. Write it fresh here (overwriting any manifest left by a previous `/quo-fix-issue` run in this same repository directory) and rewrite it in full at each Issue boundary per Section 7 step 5's Issue-boundary state-externalization checkpoint. Never delete it — the scratch-file convention forbids cleanup, so do NOT instruct any `rm` / `Remove-Item`.
+
+**Contents — and an invariant that bounds them.** The manifest carries **only values that have no other durable home.** Do not add Issue bodies, design directives, or review findings; those are readable from bees, the tracker, or the diff, and duplicating them here would grow the manifest into a shadow ticket store that drifts. The fields are:
+
+```markdown
+# Run state — quo-fix-issue @ <repo-dir-name>
+
+- **Skill:** quo-fix-issue
+- **Run started (UTC):** <YYYY-MM-DDTHH:MM:SSZ>
+- **Unit scope:** ordered Issue batch: <issue-id-1>, <issue-id-2>, ...
+- **Isolation strategy:** <branch created: <name> | current branch: <name> | worktree: <path>>
+- **Pre-session SHA:** <pre-session-sha>
+- **Compromise tracker:** <tempdir>/.quorum/compromises-<YYYYMMDD-HHMM>-<short-suffix>.md
+- **Progress:**
+  - <issue-id>: done — commit <sha>
+- **Next unit:** <next-issue-id | none>
+```
+
+The **compromise tracker** field records the tracker's full path *including* its random `<short-suffix>`. Generate that filename here, at run start, per Section 7.5 `#### Session-scoped compromise tracker` (the timestamp and suffix are generated once per run), and record it in this field — the manifest is the only place a randomly-suffixed tracker path stays recoverable after a compaction. The tracker file itself is not created until its first append trigger fires; recording the path here does not create it.
+
+The **ordered Issue batch** is recorded verbatim in post-resolution order — that order is user-supplied and intentional (earlier issues may be prerequisites for later ones), and once the conversation is compacted there is no way to re-derive it from bees, which is exactly why it belongs here.
+
+Capture `<pre-session-sha>` here, at run start, with one literal command — this is the **only** place the run records it. Section 8 step 1 reads it back from this file, and Section 9 reuses the value Section 8 captured:
+
+```bash
+# POSIX (bash / zsh):
+git rev-parse HEAD
+```
+
+```powershell
+# Windows (PowerShell):
+git rev-parse HEAD
+```
 
 ### 2. Validate Issue
 
@@ -293,7 +368,7 @@ The orchestrator (you, the Director) drives each Issue's fix through a **reconci
 
 The loop is **event-driven, not clock-driven**. Each tick has three phases:
 
-1. **Read state.** Pull the current truth from three sources before deciding what to do:
+1. **Read state.** Pull the current truth from four sources before deciding what to do:
    - **bees** — the canonical ticket store. Use `bees show-ticket --ids <issue-id>` to get the Issue body and current `ticket_status`. Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) for any focused state query, e.g.:
 
      ```bash
@@ -303,6 +378,9 @@ The loop is **event-driven, not clock-driven**. Each tick has three phases:
      ```
    - **TaskList** — the orchestrator's progress UI (see "TaskList as progress UI" below). Each in-flight Agent has a corresponding TaskList task whose `status` reflects whether the Agent is `pending` (queued), `in_progress` (running), or `completed` (Agent reported done).
    - **git state** — the actual diff on disk. Workers communicate by editing files; the diff is the only authoritative record of what they actually did.
+   - **the run-state manifest** — the on-disk file defined in Section 1 `#### Write the run-state manifest`, holding the run-scoped values that have no other durable home (the ordered Issue batch, isolation strategy, `<pre-session-sha>`, compromise-tracker path, per-Issue progress, next unit). `Read` it at `<tempdir>/.quorum/run-state-quo-fix-issue-<repo-dir-name>.md`; the path is derived from this skill's name plus the basename of the working tree root (`git rev-parse --show-toplevel`), so it is recomputable from the session's own working directory even when nothing about the run survives in the conversation.
+
+   **Conversation memory is never a substitute for these four sources.** Whatever the orchestrator believes it remembers about Issue status, landed commits, the batch order, or the pre-session SHA, the four sources above are the truth and are re-read rather than recalled. This is unconditional — it holds on every tick, not only after something goes wrong. On top of it, one conditional rule for the observable case: **if a summarization marker is visible in the conversation** (the harness compacted mid-run), treat everything before it as non-authoritative and re-read all four sources in full before dispatching anything else — starting with re-reading the Issue body from bees rather than working from a summary of it. One value has no durable carrier by design: Section 3's authoritative design directive lives only in the Analyst's returned message until it is embedded in the Engineer dispatch prompt. If a compaction lands in that window, do **not** reconstruct the directive from a summary — re-dispatch the Analyst per Section 3 and re-run its approval gate.
 
    The Issue ticket type only supports two statuses — `open` and `done` — so there is no in-flight bees status to set while work is underway. The TaskList progress UI carries the in-flight signal (per-Agent `pending` / `in_progress` / `completed`), and the orchestrator flips the Issue from `open` to `done` only at issue close-out (per Section 7).
 
@@ -572,7 +650,7 @@ Once the issue is fixed:
 
 **Accepted compromises (rendered into the summary block above).** The session-scoped compromise tracker (defined in Section 7.5 `#### Session-scoped compromise tracker`) accumulates one entry per accepted compromise across the whole run/batch, so this surface reflects the tracker file's current contents at the moment the summary renders. Render it as follows:
 
-1. **Read the run's tracker file via the `Read` tool** at the path generated once at the start of this run per Section 7.5's path convention — `<tempdir>/.quorum/compromises-YYYYMMDD-HHMM-<short-suffix>.md` (`/tmp/.quorum/...` on POSIX, `%TEMP%\.quorum\...` on Windows). The path is already known from run start; no shell is needed to locate or test it — just `Read` it.
+1. **Read the run's tracker file via the `Read` tool** at the path generated once at the start of this run per Section 7.5's path convention — `<tempdir>/.quorum/compromises-YYYYMMDD-HHMM-<short-suffix>.md` (`/tmp/.quorum/...` on POSIX, `%TEMP%\.quorum\...` on Windows). The path is already known from run start, and if it is no longer in view it is recoverable from the run-state manifest's **Compromise tracker** field (Section 1 `#### Write the run-state manifest`); no shell is needed to locate or test it — just `Read` it.
 2. **Omit the section entirely when there is nothing to show.** If the `Read` reports the file does not exist (the expected common-case state — most runs accept zero compromises), OR the file exists but contains no `## Compromise <n>` entries, do NOT render the `**Accepted compromises**` line at all — no empty heading, no `N/A`, no "no compromises" placeholder. Treat "file absent" and "file present but empty" identically: omit.
 3. **When entries exist, render one bullet per `## Compromise <n>` entry**, surfacing exactly these four user-facing fields from the entry:
    - the **finding** — the entry's `Finding (verbatim)`,
@@ -585,7 +663,37 @@ Once the issue is fixed:
 
 This surface only **reads** the tracker — it never writes, appends to, or deletes it (the write side is owned by Section 7.5's append triggers).
 
-5. In batch mode (`all` or list mode): continue to Section 7.5 (per-Issue deferral hygiene) first, then proceed to the next issue in the batch (go back to step 2). In single mode: continue to Section 7.5, then Section 8.
+5. Continue to Section 7.5 (per-Issue deferral hygiene) first. Once that gate closes, run the **Issue-boundary state-externalization checkpoint** defined immediately below. Then, in batch mode (`all` or list mode), proceed to the next issue in the batch (go back to step 2); in single mode, proceed to Section 8.
+
+#### Issue-boundary state-externalization checkpoint
+
+This is the canonical anchor name; other sections refer to it by name. **It is a definition, not a step in Section 7's linear flow** — do not run it merely because reading reached this heading. Run it only where step 5 above calls for it, which is always *after* Section 7.5's deferral-hygiene gate has closed: step 1 below confirms the `defer-*` active set is empty, and that set is not drained until that gate runs.
+
+The Issue boundary is where the run is at its most re-derivable: the Issue is marked `done`, its commit is landed, and every fact the next Issue needs is already carried by something on disk rather than by the conversation. The checkpoint's job is to **verify that invariant and refresh the durable carriers**, so that whenever the harness compacts the conversation — at this boundary or partway through the next Issue — the run can be re-derived instead of reconstructed from memory.
+
+Most of the invariant is already structurally enforced here: Section 7.5 hard-stops the run at every Issue boundary until the `defer-*` ledger is empty, so by the time this checkpoint runs, the deferral carrier is closed by construction. What is left is a short verification pass plus the manifest write.
+
+The durable carriers are:
+
+- **the Issue's bees ticket** — flipped `open` → `done` at step 1 above. Re-readable via `bees show-ticket`.
+- **the per-issue git commit** — one commit per Issue per step 2 above, with the `(<issue-id>)` token in its subject. Re-readable via `git log` / `git diff`.
+- **the session-scoped compromise tracker** — the on-disk file defined in Section 7.5 `#### Session-scoped compromise tracker`. Re-readable via the `Read` tool.
+- **the `defer-*` TaskList ledger** — emptied by Section 7.5's hard-stop gate before this checkpoint runs. Re-readable by walking the TaskList.
+- **the run-state manifest** — the on-disk file defined in Section 1 `#### Write the run-state manifest`, which carries the run-scoped values (the ordered Issue batch, isolation strategy, `<pre-session-sha>`, compromise-tracker path, per-Issue progress) that have no other durable home. Re-readable via the `Read` tool.
+
+At the point step 5 calls for it — and not before — run these three steps, ahead of whatever step 5 does next (pick up the next Issue in the batch, or move to Section 8). Every step below is a tool call the orchestrator can actually make — run a bees query, run a git command, read a file, walk the TaskList, write a file:
+
+1. **Verify the carriers.** Do all four:
+   - Re-read the just-fixed Issue in bees and confirm it reads `done`.
+   - Confirm the per-issue commit landed with the `(<issue-id>)` subject token, using the subject-token search rather than a positional lookup: `git log --oneline -1 -F --grep='(<issue-id>)' <pre-session-sha>..HEAD` (the same `-F --grep` form scoped to the same `<pre-session-sha>..HEAD` window that Section 9 step 4's re-derive path uses; identical literal on POSIX and PowerShell). Resolve `<pre-session-sha>` by `Read`ing the run-state manifest and taking its **Pre-session SHA** field — the same manifest the tracker-path bullet below reads — not from a value quoted earlier in the conversation. The range is load-bearing in both directions: **do not use a bare `git log --oneline -1`** — this checkpoint runs *after* Section 7.5, whose Encode branch can land a follow-up `Encode deferral: ...` commit on top of the per-issue commit, so `-1` alone would inspect that follow-up commit, find no `(<issue-id>)` token, and report a gap against a commit that already landed — and **do not drop the `<pre-session-sha>..HEAD` bound** either, because an unscoped `--grep` searches all of history and can match a same-`(<issue-id>)` commit from an earlier run (a re-opened Issue, a reverted fix), reporting "no gap" when this run's commit never landed. An empty result from the ranged `--grep` form is a real gap; a non-empty result is this run's per-issue commit wherever it now sits.
+   - `Read` the compromise-tracker file at the path in the manifest's **Compromise tracker** field and confirm every compromise accepted on this Issue has an entry. **If the `Read` reports the file does not exist, that is the expected zero-compromise state, not a gap** — the tracker is not created until its first append trigger fires, and most Issues accept no compromises. Treat an absent tracker as "nothing to verify" and move on; only treat it as a gap if a compromise *was* accepted on this Issue and no entry (or no file) exists for it.
+   - Walk the TaskList and confirm every per-issue role task and `gate-*` task is `completed` and the `defer-*` active set is empty.
+
+   Fix any gap **now** rather than carrying it forward in conversation.
+2. **Rewrite the run-state manifest** per Section 1 `#### Write the run-state manifest`, recording the just-fixed Issue's ID and commit SHA under progress and the next Issue's ID as the next unit (or `none` in single mode, or when the batch is exhausted).
+3. **Re-read, do not recall, at every dispatch on the next Issue.** Concretely: before each Agent dispatch on the next Issue, `bees show-ticket` that Issue's body and status and `Read` the run-state manifest for the run-scoped values (ordered batch, isolation strategy, tracker path, `<pre-session-sha>`) — rather than reusing a value quoted earlier in the conversation. The next Issue's design directive comes from its own Section 3 Analyst pass, never from the previous Issue's. Carry **no** value forward from the prior Issue: if a fact the next Issue needs is not readable from one of the carriers above, stop and write it into one before dispatching anything.
+
+**What this checkpoint does not do.** It does not clear, compact, or otherwise reclaim the orchestrator's context, and it must never be narrated as if it did. No model-invocable mechanism for self-clearing or self-compacting exists; token reclamation is owned by the harness, which compacts the conversation on its own once the window fills. This checkpoint is what makes any such compaction — whenever it fires, including mid-Issue — lossless.
 
 ### 7.5 Before handoff — deferral hygiene
 
@@ -725,7 +833,7 @@ After all issues are fixed (in batch mode: after the final issue in the batch; i
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, and reviewer verdicts from the whole run; that context biases it toward "did the four phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the issue body and nothing else — that's the point.
 
-1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when quo-fix-issue began (use the SHA recorded at the start of the run, or `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Section 7 step 2.4). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
+1. Compute the pre-session diff scope. Capture `<pre-session-sha>` as the HEAD that existed when quo-fix-issue began (`Read` the run-state manifest at `<tempdir>/.quorum/run-state-quo-fix-issue-<repo-dir-name>.md` — the path is recomputed from the working tree root's basename per Section 1, not remembered — and take its **Pre-session SHA** field — that is where Section 1's run-start step recorded it; as a fallback if the manifest is missing, use `HEAD~N` where `N` is the number of issues actually fixed in this session — one commit per issue per Section 7 step 2.4). Collect the issue ID list as `<issue-id-1> <issue-id-2> ...` (one ID in single-issue mode; the full session list in batch mode).
 
 2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. The agent will not see anything else from this session, so the prompt must be self-contained. Pass the compromise-tracker file path (Section 7.5's `compromises-<YYYYMMDD-HHMM>-<short-suffix>.md`) as `<compromise-tracker-path>` — the path, NOT the inlined contents; the dispatched Agent reads the file itself via its own `Read` tool. Starting skeleton (substitute `<pre-session-sha>`, `<compromise-tracker-path>`, and the issue ID list before sending):
 

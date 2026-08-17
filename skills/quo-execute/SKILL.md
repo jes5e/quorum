@@ -153,6 +153,71 @@ In the question, always state:
 - The current branch name
 - That option 1 creates a local branch only (no remote push)
 
+#### Write the run-state manifest
+
+This is the **canonical definition site** for the run-state manifest; later sections refer to it by name. Write it as the last step of Section 1, once the Bee ID and the isolation strategy are both known and before any Epic work begins.
+
+The manifest is a small markdown file holding the handful of run-scoped values that live **nowhere else on disk** — everything the orchestrator would otherwise have to remember. bees holds ticket state, git holds the diff, the compromise tracker holds accepted compromises, and the `defer-*` TaskList holds open deferrals; the manifest holds only what those four do not. It is what makes harness compaction survivable: after a compaction the orchestrator re-reads this file instead of trusting a summary.
+
+**Path and filename.** The manifest is written under the project's standard scratch-file convention (CLAUDE.md `## Scratch-file convention`), in `<tempdir>/.quorum/` (`/tmp/.quorum/` on POSIX, `%TEMP%\.quorum` on Windows). Canonical filename: `run-state-quo-execute-<bee-id>.md`, where `<bee-id>` is the **Bee ID** for this run (e.g., `run-state-quo-execute-b.abc.md`). Create the `.quorum` directory if it does not already exist, then author the manifest via the `Write` tool (no shell redirect):
+
+```bash
+# POSIX (bash / zsh):
+mkdir -p /tmp/.quorum
+# then write the manifest to /tmp/.quorum/run-state-quo-execute-<bee-id>.md via the Write tool
+```
+
+```powershell
+# Windows (PowerShell):
+New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
+# then write the manifest to $env:TEMP\.quorum\run-state-quo-execute-<bee-id>.md via the Write tool
+```
+
+**The filename is deterministic — do NOT add a random suffix or timestamp.** This deliberately differs from the compromise tracker's `<short-suffix>` naming, and the difference is load-bearing: the tracker's reader is a dispatched Agent that is handed the path in its prompt, while the manifest's reader is the orchestrator itself, possibly after a compaction that dropped the path from the conversation. A random suffix would be unfindable exactly when the manifest is needed most.
+
+**Why the key is this skill's name plus the Bee ID.** The ticket-ID half of the key has to satisfy two properties, and the Bee ID satisfies both. It is **re-derivable without the conversation**: the Bee ID is this run's argument, and it is the `parent` of every Epic and the grandparent of every Task the run touches, so an orchestrator that has lost the conversation recovers it from any in-flight Plans-hive ticket with a single `bees show-ticket` / `bees execute-freeform-query` call. And it is **discriminating across projects**: ticket IDs are minted per bees workspace, so two runs against two different projects do not normally land on the same filename in the machine-wide `<tempdir>/.quorum/`.
+
+The **`quo-execute` segment is what discriminates across sibling skills**, and it is not decorative: `/quo-breakdown-epic` keys its own manifest on the *same* Bee ID (its Bee-ID-first resolution order), so without the skill-name segment a `/quo-execute` run started against a Bee that a `/quo-breakdown-epic` session is still working would truncate that session's manifest out from under it — exactly the sequence `/quo-breakdown-epic`'s *"In a fresh session, execute this Epic first; defer downstream breakdown"* menu option invites, since that fresh `/quo-execute` session starts while the breakdown session is still live. Every skill in this set carries its own name in the filename for that reason, and differs only in the discriminator it appends: this skill and `/quo-breakdown-epic` append the most re-derivable ticket ID their run has, while `/quo-fix-issue` — whose batch membership is only recoverable from inside the manifest itself — appends the repository directory basename instead. See each skill's own manifest section for its rationale.
+
+The remaining trade is against the scratch-file convention's collision-resistance guidance, and it is accepted knowingly: two concurrent `/quo-execute` runs against the same Bee already collide destructively over ticket statuses and commits, so that is not a case the workflow supports.
+
+**Semantics: truncate at run start, rewrite at each boundary.** The manifest is a **live snapshot, not an accumulating log**. Write it fresh at run start (overwriting any manifest left by a previous `/quo-execute` run against the same Bee) and rewrite it in full at each Epic boundary per Section 4.2's Epic-boundary state-externalization checkpoint. Never delete it — the scratch-file convention forbids cleanup, so do NOT instruct any `rm` / `Remove-Item`.
+
+**Contents — and an invariant that bounds them.** The manifest carries **only values that have no other durable home.** Do not add ticket titles, Subtask bodies, review findings, or anything else already readable from bees, git, the tracker, or the TaskList; those have carriers of their own and duplicating them here would grow the manifest into a shadow ticket store that drifts. The fields are:
+
+```markdown
+# Run state — <bee-id>
+
+- **Skill:** quo-execute
+- **Run started (UTC):** <YYYY-MM-DDTHH:MM:SSZ>
+- **Unit scope:** Bee <bee-id>; Epics in scope: <epic-id-1, epic-id-2, ... | pending Section 2 query>
+- **Multi-Epic run mode:** <Mode 1 (Stop after each Epic) | Mode 2 (Work through all Epics) | not captured (single Epic in scope) | not captured (all Epics already done) | not captured>
+- **Isolation strategy:** <branch created: <name> | current branch: <name> | worktree: <path>>
+- **Pre-Bee SHA:** <pre-bee-sha>
+- **Compromise tracker:** <tempdir>/.quorum/compromises-<YYYYMMDD-HHMM>-<short-suffix>.md
+- **Progress:**
+  - <epic-id>: done — last commit <sha>
+- **Next unit:** <next-epic-id | none>
+```
+
+Two of those enums carry a **first-write-only** value: the bare `not captured` for the run mode, and `pending Section 2 query` for the Epics-in-scope list. They are the literals the run-start write uses (see below) and the ones Section 2's unconditional rewrite replaces — they are listed here so that a first-write manifest contains only template-legal values. They must never survive past Section 2.
+
+Capture `<pre-bee-sha>` here, at run start, with one literal command — this is the **only** place the run records it, and Section 6's post-completion review reads it back from this file:
+
+```bash
+# POSIX (bash / zsh):
+git rev-parse HEAD
+```
+
+```powershell
+# Windows (PowerShell):
+git rev-parse HEAD
+```
+
+The **compromise tracker** field records the tracker's full path *including* its random `<short-suffix>`. Generate that filename here, at run start, per Section 6.5 `#### Session-scoped compromise tracker` (the timestamp and suffix are generated once per run), and record it in this field — the manifest is the only place a randomly-suffixed tracker path stays recoverable after a compaction. The tracker file itself is not created until its first append trigger fires; recording the path here does not create it.
+
+The **multi-Epic run mode** and the **Epics in scope** list are not known yet at this point (Section 2's Epic query and mode gate produce them), so write `not captured` and `pending Section 2 query` respectively on the first write. Section 2 resolves both placeholders in a single unconditional rewrite once its Epic query has returned — on **every** path through that section, including the ones where the mode gate never fires (see Section 2's `#### Resolve the manifest placeholders` step). The mode is a user choice with no re-derivation path — if it is lost, the run cannot know whether to auto-continue — which is precisely why it belongs here.
+
 ### 2. Find Epic to work on and validate
 
 The multi-Epic run-mode gate in this section (under `#### Pick a multi-Epic run mode (only when more than one Epic is in scope)`) fires through the two-step `TaskCreate` → `AskUserQuestion` contract — first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming the gate (per Section 3's TaskList naming convention's gate-task entry), then `AskUserQuestion` in the same turn (see `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract`). Mark the `gate-*` task `completed` the moment the user's answer is consumed.
@@ -185,11 +250,20 @@ Before starting work on the first Epic, count the Epics returned by the `[parent
 - Question: "How should this run handle multiple Epics? (You will not be asked again this run.)"
 - Options:
   - **Stop after each Epic** — pause at every Epic boundary so you can review and approve continuation. Today's per-Epic confirmation behavior — Section 4.2 branch 2 asks *"do you want to continue with the next logical Epic?"* between each Epic.
-  - **Work through all Epics** — auto-continue across Epics; only stop when proceeding without your input would risk concrete downstream cost. Specifically, Mode 2 still pauses on (a) Section 4.2 branch 1's drafted-or-blocked-on-drafted Epic stop (no auto-continue across un-broken-down Epics — the loop must exit so the user can run `/quo-breakdown-epic`), (b) the Epic-boundary context-clear discipline before the next Epic begins, and (c) any final reviewer-surfaced blocker the orchestrator escalates from Sections 5 and 6.
+  - **Work through all Epics** — auto-continue across Epics; only stop when proceeding without your input would risk concrete downstream cost. Specifically, Mode 2 still pauses on (a) Section 4.2 branch 1's drafted-or-blocked-on-drafted Epic stop (no auto-continue across un-broken-down Epics — the loop must exit so the user can run `/quo-breakdown-epic`) and (b) any final reviewer-surfaced blocker the orchestrator escalates from Sections 5 and 6. Mode 2 also still **performs** Section 4.2's **Epic-boundary state-externalization checkpoint** at every Epic boundary — the checkpoint is a set of verify-and-write steps the orchestrator runs itself, not a pause, so it never prompts the user and is not one of Mode 2's stops.
 
 Capture the user's choice once and store it as the **multi-Epic run mode** for the rest of this run. The choice persists across Epic boundaries — do not re-prompt at every Epic. Section 4.2's branch-2 logic branches on this captured value.
 
 If only one Epic exists under the Bee at the time this step runs, **skip the question entirely** — there is no Epic boundary to chain across.
+
+#### Resolve the manifest placeholders
+
+**Rewrite the run-state manifest** (Section 1 `#### Write the run-state manifest`) as soon as this section's Epic query has returned and the mode gate above has either fired or been skipped. **This rewrite is unconditional — it runs on all three paths through the gate**, not only the one where a mode was captured, because Section 1 wrote the literal placeholder `pending Section 2 query` into `Epics in scope` and that placeholder must not survive into any Epic's work. Write:
+
+- **Epics in scope** — the real Epic IDs returned by the `[parent=<bee-id>, type=t1]` query above, on every path.
+- **Multi-Epic run mode** — the captured choice when the gate fired; otherwise one of two skip literals, chosen by this precedence rule: write `not captured (all Epics already done)` whenever **every** Epic under the Bee reads `done`, and reserve `not captured (single Epic in scope)` for the remaining skip case — exactly one Epic under the Bee, and it is **not** yet `done`. The precedence matters because a Bee holding exactly one already-`done` Epic satisfies both descriptions; the all-done literal wins there, so the same Bee state always produces the same literal.
+
+The manifest is where this run reads the mode and the scope back after a compaction, not the conversation — a manifest still reading `pending Section 2 query` tells a post-compaction reader nothing about what this run is working on.
 
 #### Check if stale
 Be aware that the Epic was written before coding started. If the Epic has `up_dependencies` that have been completed then
@@ -211,7 +285,7 @@ The orchestrator (you, the Director) drives Tasks through a **reconciliation loo
 
 The loop is **event-driven, not clock-driven**. Each tick has three phases:
 
-1. **Read state.** Pull the current truth from three sources before deciding what to do:
+1. **Read state.** Pull the current truth from four sources before deciding what to do:
    - **bees** — the canonical ticket store. Use `bees show-ticket --ids <epic-id>` to get the Epic's `children` array (Task IDs); for each Task, fetch its full details including its own `children` array (Subtasks); read every Subtask body, since these carry the detailed instructions (Context, What Needs to Change, Key Files, Acceptance Criteria) the dispatched Agent will follow. Sort Tasks in dependency order (check each Task's `up_dependencies`). Verify at least one Task exists with at least one Subtask and all are non-drafted (`status!=drafted`). Use the canonical querying recipe (see `docs/doc-writing-guide.md` `## Querying tickets`) for any focused state query, e.g.:
 
      ```bash
@@ -221,6 +295,9 @@ The loop is **event-driven, not clock-driven**. Each tick has three phases:
      ```
    - **TaskList** — the orchestrator's progress UI (see "TaskList as progress UI" below). Each in-flight Agent has a corresponding TaskList task whose `status` reflects whether the Agent is `pending` (queued), `in_progress` (running), or `completed` (Agent reported done).
    - **git state** — the actual diff on disk. Workers communicate by editing files; the diff is the only authoritative record of what they actually did.
+   - **the run-state manifest** — the on-disk file defined in Section 1 `#### Write the run-state manifest`, holding the run-scoped values that have no other durable home (multi-Epic run mode, isolation strategy, `<pre-bee-sha>`, compromise-tracker path, per-Epic progress, next unit). `Read` it at `<tempdir>/.quorum/run-state-quo-execute-<bee-id>.md`; the path is derived from this skill's name plus the Bee ID, so it stays findable even when nothing about it survives in the conversation.
+
+   **Conversation memory is never a substitute for these four sources.** Whatever the orchestrator believes it remembers about ticket status, landed commits, the captured run mode, or the pre-run SHA, the four sources above are the truth and are re-read rather than recalled. This is unconditional — it holds on every tick, not only after something goes wrong. On top of it, one conditional rule for the observable case: **if a summarization marker is visible in the conversation** (the harness compacted mid-run), treat everything before it as non-authoritative and re-read all four sources in full before dispatching anything else.
 
    Mark the current Task `status=in_progress` and the Bee `status=in_progress` (if not already set) the first time a Task starts.
 
@@ -283,7 +360,9 @@ Workers do not message each other. The orchestrator is the hub; each dispatched 
 
 #### Recursive delegation: not supported
 
-Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents), "Subagents cannot spawn other subagents" — only the top-level orchestrator may dispatch Agents. The skill ships **flat orchestration**: every Agent invocation originates from this skill's reconciliation loop, never from a worker. The bound on flat-orchestration context growth is **Section 4.2's Epic-boundary context-clear discipline**, which clears the orchestrator's context window between Epics so the loop's working set stays bounded across long Bees.
+Per the [Claude Code sub-agents docs](https://docs.claude.com/en/docs/claude-code/sub-agents), "Subagents cannot spawn other subagents" — only the top-level orchestrator may dispatch Agents. The skill ships **flat orchestration**: every Agent invocation originates from this skill's reconciliation loop, never from a worker.
+
+Flat orchestration means the orchestrator's working context grows **monotonically within a session** — every Subtask dispatch, every PM review, and every reconciliation tick adds to the loop's running set — and **nothing in this skill reclaims those tokens.** Token reclamation is owned by the harness, which compacts the conversation on its own once the window fills; the skill has no model-invocable way to clear or compact its own context. What the skill does guarantee is that the growth is **survivable**: Section 4.2's **Epic-boundary state-externalization checkpoint** keeps every load-bearing fact in a durable carrier the orchestrator can re-read, so whenever the harness compacts — at an Epic boundary or in the middle of one — the run can be re-derived rather than reconstructed from memory. The actual reclamation lever is starting a **fresh session** at an Epic boundary, which Section 4.2 branch 1 recommends when the loop exits for breakdown work; the checkpoint is what makes that lever safe to pull at any point.
 
 #### Roles dispatched by the orchestrator
 
@@ -414,7 +493,7 @@ Before moving on from the just-completed Epic, perform an **inter-Epic interacti
 
 The Director (you) runs this check directly — no new team:
 
-1. Diff the Epic's landed commits against the previous Epic's end-state: `git log --oneline <previous-epic-last-commit>..HEAD`.
+1. Diff the Epic's landed commits against the previous Epic's end-state: `git log --oneline <previous-epic-last-commit>..HEAD`. Resolve `<previous-epic-last-commit>` from the run-state manifest per the rule spelled out in step 1 of the **Epic-boundary state-externalization checkpoint** below (the **Pre-Bee SHA** at the run's first Epic boundary; the previous Epic's `last commit <sha>` from **Progress** thereafter).
 2. For each file this Epic touched that a prior Epic also touched, scan for:
    - **Contract drift** between what this Epic's code assumes and what a prior Epic's code actually does (especially ordering contracts, docstring claims, and "this should never happen" comments).
    - **Resource compounding** across Epics: if this Epic adds acquires from a resource that a prior Epic already uses, model the aggregate.
@@ -425,8 +504,6 @@ The Director (you) runs this check directly — no new team:
 After the checkpoint passes (clean or fixed):
 
 Mark the just-completed Epic as `status=done`, then re-query *all* Epics under the Bee to classify the post-Epic state. Do not assume "no workable Epic remains" means "Bee is finished" — Epics in `status=drafted` (still need `/quo-breakdown-epic`) must not fall through to final review.
-
-**Epic-boundary context-clear discipline.** Because Section 3 ships flat orchestration (no recursive delegation), the orchestrator's working context grows monotonically across Epics — every Subtask dispatch, every PM review, and every reconciliation tick adds to the loop's running set. The Epic boundary is the natural reset point: at this point all child Tasks are complete, all per-Task commits are landed, and the only state worth carrying into the next Epic is the bees ticket store (which is on-disk and re-queryable). The discipline that bounds flat-orchestration context growth is therefore: **at each Epic boundary, before continuing to the next workable Epic, clear the orchestrator's working context**. This keeps the loop's running set bounded at roughly **~25-30% of the 1M context window per Epic**, which is the budget Section 3's "Recursive delegation: not supported" subsection refers to. The branch-2 "continue" path below explicitly invokes this discipline; treat it as the canonical pre-step-2 reset across all long Bees.
 
 ```bash
 bees execute-freeform-query --query-yaml 'stages:
@@ -442,14 +519,50 @@ Classify the result into exactly one of three branches (the status vocabulary `d
 
    > Epic `<just-completed-epic-id>` is complete, but Epics `<drafted-or-blocked-ids>` in this Bee are still `drafted` (or blocked on drafted dependencies) and need breakdown before this Bee can be closed. Run `/quo-breakdown-epic <bee-id>` (a fresh session is reasonable to keep context clean) to break down the remaining Epics, then re-run `/quo-execute <bee-id>`.
 
-   Then exit the skill.
+   Then run the **Epic-boundary state-externalization checkpoint** defined below (next unit: `none`) and exit the skill.
 
 2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Branch on the **multi-Epic run mode** captured in Section 2:
 
-   - **Mode 1 (Stop after each Epic), or Section 2's mode prompt was skipped** (only one Epic existed in scope at run start): ask the user if they want to continue with the next logical Epic. If they accept, clear your working context per the Epic-boundary context-clear discipline established above in this Section 4.2, then return to step 2. If they decline, move to final Bee review.
-   - **Mode 2 (Work through all Epics)**: auto-continue. Surface a one-line note announcing the auto-continue and naming the next Epic ID being picked up so the user can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to `<next-epic-id>` — `<title>`."*). Then clear your working context per the Epic-boundary context-clear discipline established above and return to step 2. The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces — branch 1's drafted-or-blocked-on-drafted Epic stop above takes precedence (the order-of-evaluation rule already requires evaluating branch 1 first), and any final reviewer-surfaced blocker from Sections 5 and 6 still halts the run.
+   - **Mode 1 (Stop after each Epic), or Section 2's mode prompt was skipped** (only one Epic existed in scope at run start): ask the user if they want to continue with the next logical Epic. If they accept, run the **Epic-boundary state-externalization checkpoint** defined below (next unit: the next Epic's ID), then return to step 2. If they decline, run that same checkpoint (next unit: `none`, since no further Epic is picked up in this run), then move to final Bee review.
+   - **Mode 2 (Work through all Epics)**: auto-continue. Surface a one-line note announcing the auto-continue and naming the next Epic ID being picked up so the user can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to `<next-epic-id>` — `<title>`."*). Then run the **Epic-boundary state-externalization checkpoint** defined below (next unit: the next Epic's ID) and return to step 2. The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces — branch 1's drafted-or-blocked-on-drafted Epic stop above takes precedence (the order-of-evaluation rule already requires evaluating branch 1 first), and any final reviewer-surfaced blocker from Sections 5 and 6 still halts the run.
 
-3. **All Epics under this Bee are `done`** — proceed to Step 5 final Bee review.
+3. **All Epics under this Bee are `done`** — run the **Epic-boundary state-externalization checkpoint** defined below (next unit: `none`), then proceed to Step 5 final Bee review.
+
+##### Epic-boundary state-externalization checkpoint
+
+This is the canonical anchor name; other sections refer to it as the *Epic-boundary state-externalization checkpoint*, and the three branches above invoke it by name on all five of their exit paths (enumerated in full at the end of this sub-section). **It is a definition, not a step in Section 4.2's linear flow** — do not run it merely because reading reached this heading. Run it only at the point an invoking branch calls for it, which is always *after* the branch classification above has resolved: step 2 below records the next unit, and that value is unknown until the classification is done.
+
+Because Section 3 ships flat orchestration (no recursive delegation), the orchestrator's working context grows monotonically across Epics — every Subtask dispatch, every PM review, and every reconciliation tick adds to the loop's running set — and nothing in this skill reclaims it. The Epic boundary is where the run is at its most re-derivable: all child Tasks are complete, all per-Task commits are landed, and every fact the next Epic needs is already carried by something on disk rather than by the conversation. This checkpoint's job is to **verify that invariant and refresh the durable carriers**, so that whenever the harness compacts the conversation — at this boundary or partway through the next Epic — the run can be re-derived instead of reconstructed from memory.
+
+The durable carriers are:
+
+- **bees ticket statuses** — the just-completed Epic, its Tasks, and their Subtasks in `done`; the Bee in `in_progress`. Re-readable at any time via `bees show-ticket` / `bees execute-freeform-query`.
+- **git commits** — one commit per Task per Section 4.1's after-Task commit step, plus any fix commits Section 4.2's inter-Epic interaction checkpoint landed. Re-readable via `git log` / `git diff`.
+- **the session-scoped compromise tracker** — the on-disk file defined in Section 6.5 `#### Session-scoped compromise tracker`. Re-readable via the `Read` tool.
+- **the `defer-*` TaskList ledger** — the active deferral set Section 6.5's gate reads. Re-readable by walking the TaskList.
+- **the run-state manifest** — the on-disk file defined in Section 1 `#### Write the run-state manifest`, which carries the run-scoped values (multi-Epic run mode, isolation strategy, `<pre-bee-sha>`, compromise-tracker path, per-Epic progress) that have no other durable home. Re-readable via the `Read` tool.
+
+At the point an invoking branch calls for it, run these three steps — before that branch does whatever it does next (return to step 2, move to final Bee review, or exit the skill). Every step below is a tool call the orchestrator can actually make — read a file, run a bees query, run a git command, walk the TaskList, write a file:
+
+1. **Verify the carriers.** Do all four:
+   - Re-query the just-completed Epic and its Task/Subtask children in bees and confirm every one reads `done`.
+   - Run `git log --oneline <previous-epic-last-commit>..HEAD` and confirm one commit exists per completed Task. **`<previous-epic-last-commit>` resolves from the run-state manifest**, not from memory: at the *first* Epic boundary of the run, use the manifest's **Pre-Bee SHA** (no prior Epic has landed yet, so the run's starting HEAD is the correct lower bound); at every later boundary, use the `last commit <sha>` recorded for the previous Epic under the manifest's **Progress** field. The same resolution rule applies to Section 4.2's inter-Epic interaction checkpoint step 1, which uses the same placeholder.
+   - `Read` the compromise-tracker file at the path in the manifest's **Compromise tracker** field and confirm every compromise accepted during this Epic has an entry. **If the `Read` reports the file does not exist, that is the expected zero-compromise state, not a gap** — the tracker is not created until its first append trigger fires, and most Epics accept no compromises. Treat an absent tracker as "nothing to verify" and move on; only treat it as a gap if a compromise *was* accepted during this Epic and no entry (or no file) exists for it.
+   - Walk the TaskList and confirm every per-Subtask, per-Task, and `gate-*` task from this Epic is `completed`.
+
+   Fix any gap **now** — flip the missed status, land the missed commit, append the missed tracker entry, close the stale TaskList task — rather than carrying it forward in conversation.
+2. **Rewrite the run-state manifest** per Section 1 `#### Write the run-state manifest`, recording the just-completed Epic's ID and last commit SHA under progress, and the next unit: the next Epic's ID on the paths that pick one up, or `none` on all three paths where this run picks up no further Epic (branch 1's exit for breakdown work, branch 2's Mode 1 decline, and branch 3's move to final Bee review).
+3. **Re-read, do not recall, at every dispatch in the next Epic.** Concretely: before each Agent dispatch in the next Epic, `bees show-ticket` the Epic / Task / Subtask body being dispatched against and `Read` the run-state manifest for the run-scoped values (mode, isolation strategy, tracker path, `<pre-bee-sha>`) — rather than reusing a value quoted earlier in the conversation. Carry **no** value forward from the prior Epic: if a fact the next Epic needs is not readable from one of the five carriers above, stop and write it into one before dispatching anything.
+
+**What this checkpoint does not do.** It does not clear, compact, or otherwise reclaim the orchestrator's context, and it must never be narrated as if it did. No model-invocable mechanism for self-clearing or self-compacting exists; token reclamation is owned by the harness, which compacts the conversation on its own once the window fills. A single Epic's working-set footprint is estimated at roughly **~25-30% of a 1M context window**. Treat that figure as an **unverified working estimate carried over from this discipline's original design note** — no measurement of it exists, and nothing in this skill produces one, so it must not be described as observed, measured, or benchmarked. It is recorded only to give downstream tooling a starting number to size against; it is **not** a budget this skill measures or enforces. The orchestrator cannot read its own token usage, so do not attempt to check remaining context, report a percentage, or gate any branch on one. The reclamation lever that does exist is starting a **fresh session** at an Epic boundary (Section 4.2 branch 1 recommends exactly that when the loop exits for breakdown work); this checkpoint is what makes that lever — and any harness compaction, whenever it fires — lossless.
+
+Every path out of Section 4.2's branches invokes this checkpoint by name — there is no way to leave that section without running it. Enumerated in full:
+
+- branch 2's Mode 1 **accept** path and branch 2's Mode 2 auto-continue path, each before returning to step 2 (next unit: the next Epic's ID);
+- branch 2's Mode 1 **decline** path, before moving to final Bee review (next unit: `none`);
+- branch 1 before the loop exits for breakdown work, and branch 3 before proceeding to final Bee review (next unit: `none` on both).
+
+The three `none` paths still run the checkpoint in full: the run is ending in this session either way, and the point of the checkpoint is that what it verifies and writes outlives the conversation.
 
 ### Orchestrator discipline: routing review findings
 
@@ -530,7 +643,7 @@ After the review loop in step 5 is done and all fixable issues have been address
 
 **Anti-pattern callout, second.** The team-lead must NOT do this review directly. By construction the team-lead has accumulated framing prompts, agent reports, PM verdict, and per-Task reviewer verdicts from the whole Bee run; that context biases it toward "did the phases get done correctly?" rather than "is this good?". The fresh agent gets the diff and the Bee body and nothing else — that's the point.
 
-1. Compute the pre-Bee diff scope. Capture `<pre-bee-sha>` as the HEAD that existed when work began on this Bee (use the SHA recorded at the start of the run, or `HEAD~M` where `M` is the number of Tasks committed in Step 4 — one commit per Task; if you've lost count, walk `git log` back to the commit before the first Task commit landed in Step 4 as a backup). Collect the Bee ID `<bee-id>` and, secondarily, the IDs of the Epics/Tasks under it as `<epic-id-1> <task-id-1> ...` (the Bee body is the primary spec; Epic/Task bodies are secondary context the reviewer can consult when something in the diff is ambiguous).
+1. Compute the pre-Bee diff scope. Capture `<pre-bee-sha>` as the HEAD that existed when work began on this Bee (`Read` the run-state manifest at `<tempdir>/.quorum/run-state-quo-execute-<bee-id>.md` and take its **Pre-Bee SHA** field — that is where Section 1's run-start step recorded it; as a fallback if the manifest is missing, use `HEAD~M` where `M` is the number of Tasks committed in Step 4 — one commit per Task; if you've lost count, walk `git log` back to the commit before the first Task commit landed in Step 4 as a backup). Collect the Bee ID `<bee-id>` and, secondarily, the IDs of the Epics/Tasks under it as `<epic-id-1> <task-id-1> ...` (the Bee body is the primary spec; Epic/Task bodies are secondary context the reviewer can consult when something in the diff is ambiguous).
 
 2. Spawn a fresh reviewer using the **Agent tool with `subagent_type=general-purpose` and `run_in_background=true`**. The agent will not see anything else from this run, so the prompt must be self-contained. Pass the compromise-tracker file path (Section 6.5's `compromises-<YYYYMMDD-HHMM>-<short-suffix>.md`) as `<compromise-tracker-path>` — the path, NOT the inlined contents; the dispatched Agent reads the file itself via its own `Read` tool. Starting skeleton (substitute `<pre-bee-sha>`, `<compromise-tracker-path>`, `<bee-id>`, and the Epic/Task IDs before sending):
 
@@ -834,7 +947,7 @@ All work has been synced to git.
 
 **Accepted compromises (rendered into the summary block above).** The session-scoped compromise tracker (defined in Section 6.5 `#### Session-scoped compromise tracker`) accumulates one entry per accepted compromise across the whole run, so this surface reflects the tracker file's current contents at the moment the summary renders. Render it as follows:
 
-1. **Read the run's tracker file via the `Read` tool** at the path generated once at the start of this run per Section 6.5's path convention — `<tempdir>/.quorum/compromises-YYYYMMDD-HHMM-<short-suffix>.md` (`/tmp/.quorum/...` on POSIX, `%TEMP%\.quorum\...` on Windows). The path is already known from run start; no shell is needed to locate or test it — just `Read` it.
+1. **Read the run's tracker file via the `Read` tool** at the path generated once at the start of this run per Section 6.5's path convention — `<tempdir>/.quorum/compromises-YYYYMMDD-HHMM-<short-suffix>.md` (`/tmp/.quorum/...` on POSIX, `%TEMP%\.quorum\...` on Windows). The path is already known from run start, and if it is no longer in view it is recoverable from the run-state manifest's **Compromise tracker** field (Section 1 `#### Write the run-state manifest`); no shell is needed to locate or test it — just `Read` it.
 2. **Omit the section entirely when there is nothing to show.** If the `Read` reports the file does not exist (the expected common-case state — most runs accept zero compromises), OR the file exists but contains no `## Compromise <n>` entries, do NOT render the `**Accepted compromises**` line at all — no empty heading, no `N/A`, no "no compromises" placeholder. Treat "file absent" and "file present but empty" identically: omit.
 3. **When entries exist, render one bullet per `## Compromise <n>` entry**, surfacing exactly these four user-facing fields from the entry:
    - the **finding** — the entry's `Finding (verbatim)`,

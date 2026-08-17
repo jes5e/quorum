@@ -195,7 +195,7 @@ Skills write transient scratch files (e.g., body files passed to `bees create-ti
 - POSIX (macOS, Linux, WSL): `/tmp/.quorum/`
 - Windows: `%TEMP%\.quorum\`
 
-The directory is safe to delete anytime — skills recreate it on demand. Skills do not clean up after themselves, by design: the footprint is small (KBs per run, low-MB after heavy use), and leaving artifacts in place gives you something to inspect when a run crashes. POSIX systems clean `/tmp` on a days-to-reboot cadence anyway; Windows users can clear `%TEMP%\.quorum\` whenever they want.
+The directory is safe to delete between runs — skills recreate it on demand. Avoid deleting it *during* a run: alongside the regenerable body files, the skills keep a small run-state manifest there holding values that have no other home (the multi-Epic run mode you picked at run start, and the ordered Issue batch you gave `/quo-fix-issue`), and those are not recreated on demand. Skills do not clean up after themselves, by design: the footprint is small (KBs per run, low-MB after heavy use), and leaving artifacts in place gives you something to inspect when a run crashes. POSIX systems clean `/tmp` on a days-to-reboot cadence anyway; Windows users can clear `%TEMP%\.quorum\` between runs.
 
 ## Coming soon: optional skills
 
