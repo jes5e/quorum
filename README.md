@@ -186,16 +186,53 @@ The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you 
 
 ### Where bundled helper scripts live
 
-A few skills ship Python helpers (e.g., `detect_fast_path.py`, `scoped_marker_resolver.py`) under `skills/<skill-name>/scripts/` inside the quorum install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your quorum checkout.
+A few skills ship Python helpers (e.g., `detect_fast_path.py`, `scoped_marker_resolver.py`, and `context_gauge.py` — the context-usage gauge producer/reader) under `skills/<skill-name>/scripts/` inside the quorum install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your quorum checkout.
 
 ### Scratch files
 
-Skills write transient scratch files (e.g., body files passed to `bees create-ticket --body-file` or `bees update-ticket --body-file`) under a single well-known directory:
+Skills write transient scratch files (e.g., body files passed to `bees create-ticket --body-file` or `bees update-ticket --body-file`) under a single well-known directory, which also holds the per-session [context-usage gauge file](#the-context-usage-gauge-file) when a producer is configured for your environment:
 
 - POSIX (macOS, Linux, WSL): `/tmp/.quorum/`
 - Windows: `%TEMP%\.quorum\`
 
-The directory is safe to delete between runs — skills recreate it on demand. Avoid deleting it *during* a run: alongside the regenerable body files, the skills keep a small run-state manifest there holding values that have no other home (the multi-Epic run mode you picked at run start, and the ordered Issue batch you gave `/quo-fix-issue`), and those are not recreated on demand. Skills do not clean up after themselves, by design: the footprint is small (KBs per run, low-MB after heavy use), and leaving artifacts in place gives you something to inspect when a run crashes. POSIX systems clean `/tmp` on a days-to-reboot cadence anyway; Windows users can clear `%TEMP%\.quorum\` between runs.
+The directory is safe to delete between runs — skills recreate it on demand. Avoid deleting it *during* a run: alongside the regenerable body files, the skills keep a small run-state manifest there holding values that have no other home (the multi-Epic run mode you picked at run start, and the ordered Issue batch you gave `/quo-fix-issue`), and those are not recreated on demand. The gauge file is the one resident that heals itself: nothing in the workflow recreates it either, but the status-line producer rewrites it on its next refresh, so deleting it leaves no reading published until that refresh restores one. Skills do not clean up after themselves, by design: the footprint is small (KBs per run, low-MB after heavy use), and leaving artifacts in place gives you something to inspect when a run crashes. POSIX systems clean `/tmp` on a days-to-reboot cadence anyway; Windows users can clear `%TEMP%\.quorum\` between runs.
+
+### The context-usage gauge file
+
+Claude Code reports how much of the model's context window is in use to your status-line command and nowhere else, so quorum republishes that reading to a small per-session file that the rest of a run can read back. The bundled helper `skills/quo-setup/scripts/context_gauge.py` writes it, and any environment can publish the same file from a producer of its own — the location, fields, and freshness semantics below are the whole contract.
+
+**Location.** One file per session, in the same `.quorum` namespace as the scratch files above, resolved through the same platform temporary directory:
+
+- POSIX (macOS, Linux, WSL): `/tmp/.quorum/context-usage-<session_id>.json`
+- Windows: `%TEMP%\.quorum\context-usage-<session_id>.json`
+
+`<session_id>` is the Claude Code session id.
+
+**Required fields.** A top-level `session_id` string and a `context_window` object:
+
+```json
+{"session_id": "<id>", "context_window": {"used_percentage": 37}}
+```
+
+`context_window.used_percentage` is the field consumers read. The whole `context_window` object is written as received from the status-line payload, so any extra keys it carries are preserved rather than filtered out.
+
+**Overwrite and freshness.** There is one file per session id, so concurrent quorum sessions never collide and never consume each other's reading. Every status-line refresh truncates and rewrites that file — it is a live gauge, not a log, so nothing appends and nothing rotates — and the workflow never deletes it. The file carries no timestamp field: freshness is judged from its modification time, so a producer that stops refreshing goes stale on its own. The bundled helper trusts a reading written within the last 120 seconds, so a producer you write yourself should refresh at least that often. The deeper contributor-facing contract lives in `docs/doc-writing-guide.md` under `## The context-gauge file contract`.
+
+**Restricted or pinned status-line environments.** In some setups a higher-precedence configuration source owns the status-line slot — a launcher that starts the session against an explicit `--settings` file, or a managed organization-level settings file that outranks user settings — so a status-line command written at the user level never takes effect. The contract above is published so those environments can satisfy it themselves. Any process that writes a conforming file keeps the mechanism working, with no change on the quorum side and nothing in the workflow needing to know which producer wrote it: the environment's own status-line command, a wrapper around it, or anything else that can see the session's context-usage payload. The obligations are: write to the published path above, keyed to the current session id; include the required fields above; always write `context_window` as an object — an empty one when the payload carries no reading, never `null`, since a present-but-non-object `context_window` is rejected as malformed rather than read as "no reading"; and refresh at least as often as the freshness window above.
+
+To confirm a producer conforms, read the file back with the bundled helper's reader. Resolve the helper's location in your own install per [Where bundled helper scripts live](#where-bundled-helper-scripts-live) (helpers live under `skills/<skill-name>/scripts/`), and substitute the current session's id for `<id>` — Claude Code exposes it in the `CLAUDE_CODE_SESSION_ID` environment variable:
+
+```bash
+# POSIX (bash / zsh):
+python3 <quorum-checkout>/skills/quo-setup/scripts/context_gauge.py read --session-id <id>
+```
+
+```powershell
+# Windows (PowerShell):
+python <quorum-checkout>\skills\quo-setup\scripts\context_gauge.py read --session-id <id>
+```
+
+It prints exactly one value: an integer percentage when a fresh reading is present, or `no-reading`, `stale`, or `missing` when there is no fresh number to report. A nonconforming file is the exception — rather than printing one of those four values, the reader exits non-zero and describes the malformation on stderr, which is how you tell a broken producer from a merely quiet one.
 
 ## Coming soon: optional skills
 
