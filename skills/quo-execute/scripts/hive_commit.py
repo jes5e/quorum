@@ -84,7 +84,7 @@ Behavior
 6. If nothing is staged: print `skipped: nothing staged` and exit 0. Do NOT
    create an empty commit.
 7. If something is staged: commit with subject
-   `Encode deferral: /<slug> — <N> ticket(s) updated`, print a one-line summary,
+   `Encode deferral: /<slug> — <N> deferral(s) encoded`, print a one-line summary,
    exit 0.
 
 Invariants (load-bearing)
@@ -233,14 +233,14 @@ def cmd_encode_commit(args) -> int:
         print("skipped: nothing staged")
         return 0
 
-    subject = f"Encode deferral: /{args.skill} — {args.count} ticket(s) updated"
+    subject = f"Encode deferral: /{args.skill} — {args.count} deferral(s) encoded"
     commit = run_git(["commit", "-m", subject], repo_root=repo_root)
     if commit.returncode != 0:
         return fail(f"`git commit` failed: {commit.stderr.strip() or commit.stdout.strip()}")
 
     sha = run_git(["rev-parse", "--short", "HEAD"], repo_root=repo_root)
     short_sha = sha.stdout.strip() if sha.returncode == 0 else "unknown"
-    print(f"Encode deferral committed: /{args.skill} — {args.count} ticket(s) updated ({short_sha})")
+    print(f"Encode deferral committed: /{args.skill} — {args.count} deferral(s) encoded ({short_sha})")
     return 0
 
 

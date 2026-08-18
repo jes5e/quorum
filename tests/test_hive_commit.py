@@ -161,7 +161,7 @@ def test_encode_commit_creates_commit_with_exact_subject(tmp_path):
     log = subprocess.run(
         ["git", "log", "-1", "--format=%s"], cwd=str(repo), capture_output=True, text=True
     )
-    expected = "Encode deferral: /quo-execute — 3 ticket(s) updated"
+    expected = "Encode deferral: /quo-execute — 3 deferral(s) encoded"
     assert log.stdout.strip() == expected
     # Sanity: the em-dash is present, not a hyphen.
     assert "—" in log.stdout
@@ -176,7 +176,7 @@ def test_encode_commit_bare_invocation_accepted(tmp_path):
     log = subprocess.run(
         ["git", "log", "-1", "--format=%s"], cwd=str(repo), capture_output=True, text=True
     )
-    assert log.stdout.strip() == "Encode deferral: /quo-fix-issue — 1 ticket(s) updated"
+    assert log.stdout.strip() == "Encode deferral: /quo-fix-issue — 1 deferral(s) encoded"
 
 
 def test_encode_commit_no_empty_commit_when_nothing_staged(tmp_path):
