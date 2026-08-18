@@ -105,7 +105,7 @@ Skip the discovery questions entirely — the prior conversation (or the distill
    - **`## Decisions and rejected alternatives`** — populate when the prior conversation weighed alternatives (alternative scopes, alternative goals, alternative success metrics, alternative non-goals). Capture each decision and the alternatives considered alongside the reasoning, so downstream agents (`/quo-execute`'s Engineer, PM, breakdown) don't re-litigate decisions the user has already made. Same as section 11: when the heuristic fires, this section should almost never be the explicit-`none` placeholder.
    - The other ten sections — populate from the prior context where it covers them; mark the remaining as `not applicable for this PRD` / `none at this time` per Step 4's empty-section rendering rules. Do not fabricate content for sections the prior conversation does not cover.
 
-3. Present the distilled draft to the user for review via `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage` (it's multi-choice only). Finite choices:
+3. Present the distilled draft to the user for review via `AskUserQuestion` (it's multi-choice only). Finite choices:
    - **Approve** — the distilled draft is good as-is. Proceed to Step 4 / Step 5 with the distilled body as the starting draft for the create-or-update branch.
    - **Revise** — iterate in prose with the user on what to change, then re-present the revised draft via `AskUserQuestion`.
    - **Cancel** — exit the skill cleanly without creating or updating the PRD ticket.
@@ -129,7 +129,7 @@ Discovery question shape (the exact list is the skill author's call at runtime; 
 - **What assumptions is this PRD making?** — prose. Captures `## Assumptions`.
 - **What questions are still open?** — prose. Captures `## Open Questions`. An empty answer is fine — render the section with `none at this time` rather than omitting it.
 
-Use `AskUserQuestion` only for genuinely finite choices (per CLAUDE.md `## AskUserQuestion usage`); use prose for free-text answers. Do not invent fake "Use my own answer" / "Pick Other" options on `AskUserQuestion` calls.
+Use `AskUserQuestion` only for genuinely finite choices; use prose for free-text answers. Do not invent fake "Use my own answer" / "Pick Other" options on `AskUserQuestion` calls.
 
 On the restart branch, sections 11 (`## Background and rationale`) and 12 (`## Decisions and rejected alternatives`) typically render with their explicit-`none` placeholders defined in Step 4 — there's no captured rationale or decision history when the heuristic does not fire. That's the correct shape; do not invent content to fill those sections.
 
@@ -249,7 +249,7 @@ After the user approves the PRD body in 6's main `AskUserQuestion`, but **before
 
 On the solo path, run the gate.
 
-**Pre-commitment.** When the Skill call returns, you MUST FIRST create a `gate-<kind>-<short-suffix>` TaskList task (per `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — `gate-askuserquestion-<short-suffix>` when findings are present, no gate-task needed for the no-findings `bees update-ticket --status ready` path because no user gate fires there), THEN call the prescribed tool (`AskUserQuestion` when findings are present, `bees update-ticket --status ready` when no findings) in the same turn. The dispatched skill's trailer will repeat this two-step obligation; treat the trailer as a confirmation, not a new instruction. A text-only response between the Skill return and that tool use is a defect.
+**Pre-commitment.** When the Skill call returns, you MUST FIRST create a `gate-<kind>-<short-suffix>` TaskList task (per the two-step contract: `gate-askuserquestion-<short-suffix>` when findings are present, no gate-task needed for the no-findings `bees update-ticket --status ready` path because no user gate fires there), THEN call the prescribed tool (`AskUserQuestion` when findings are present, `bees update-ticket --status ready` when no findings) in the same turn. The dispatched skill's trailer will repeat this two-step obligation; treat the trailer as a confirmation, not a new instruction. A text-only response between the Skill return and that tool use is a defect.
 
 1. Invoke `/quo-spec-review <spec-bee-id> --doc PRD` via the Skill tool. The `--doc PRD` flag scopes the review to the PRD child only — the SDD child may not exist yet at this point (the user may be authoring the PRD before the SDD), and even if it does exist, a standalone PRD revision should not block on or surface SDD-side findings.
 2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.

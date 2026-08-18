@@ -134,7 +134,7 @@ Skip the discovery questions entirely — the prior conversation (or the distill
    - **`## Existing Behavior`** — populate the high-level scope from the prior conversation's discussion of contracts that must NOT change (existing API shapes, persisted-data layouts, on-the-wire protocol fields, configuration knobs whose meaning external callers depend on). The Explore agent's findings from Step 3 ground the specific module names and file paths; the prior conversation grounds the high-level "must preserve" intent.
    - The remaining sections (`## Codebase exploration findings`, `## Test Fixtures`, `## Documentation`) — populate primarily from the Explore agent's findings (Step 3) and from CLAUDE.md `## Documentation Locations`. The prior conversation rarely contains real module names or test-fixture conventions; the Explore agent's output is the load-bearing source for those sections. Mark anything the prior context does not cover and the agent did not surface as `RESEARCH NEEDED: <question>` per Step 3's flag pattern, rather than fabricating content.
 
-3. Present the distilled draft to the user for review via `AskUserQuestion` per CLAUDE.md `## AskUserQuestion usage` (it's multi-choice only). Finite choices:
+3. Present the distilled draft to the user for review via `AskUserQuestion` (it's multi-choice only). Finite choices:
    - **Approve** — the distilled draft is good as-is. Proceed to Step 5 / Step 6 with the distilled body as the starting draft for the create-or-update branch.
    - **Revise** — iterate in prose with the user on what to change, then re-present the revised draft via `AskUserQuestion`.
    - **Cancel** — exit the skill cleanly without creating or updating the SDD ticket.
@@ -154,7 +154,7 @@ The exact question list is the skill author's call at runtime; below is a refere
 - **What background / rationale should be captured?** — prose. Captures `## Background and rationale`. Empty answer is fine — Step 5 renders the explicit-`none` placeholder when this is empty.
 - **What decisions and rejected alternatives should be captured?** — prose. Captures `## Decisions and rejected alternatives`. Empty answer is fine — same explicit-`none` treatment.
 
-Use `AskUserQuestion` only for genuinely finite-choice prompts (e.g., yes / no / partial questions); use prose questions for free-text answers, per CLAUDE.md `## AskUserQuestion usage`. Do not invent fake "Use my own answer" / "Pick Other" options on `AskUserQuestion` calls — the harness auto-appends `Type something.` and `Chat about this`, so finite-choice prompts must list only the meaningful alternatives.
+Use `AskUserQuestion` only for genuinely finite-choice prompts (e.g., yes / no / partial questions); use prose questions for free-text answers. Do not invent fake "Use my own answer" / "Pick Other" options on `AskUserQuestion` calls — the harness auto-appends `Type something.` and `Chat about this`, so finite-choice prompts must list only the meaningful alternatives.
 
 On the restart branch, sections `## Background and rationale` and `## Decisions and rejected alternatives` typically render with their explicit-`none` placeholders defined in Step 5 — there's no captured rationale or decision history when the heuristic does not fire. That's the correct shape; do not invent content to fill those sections.
 
@@ -269,7 +269,7 @@ After the user approves the SDD body in 7's main `AskUserQuestion`, but **before
 
 On the solo path, run the gate.
 
-**Pre-commitment.** When the Skill call returns, you MUST FIRST create a `gate-<kind>-<short-suffix>` TaskList task (per `docs/doc-writing-guide.md` `## The two-step TaskCreate → prescribed-tool contract` — `gate-askuserquestion-<short-suffix>` when findings are present, no gate-task needed for the no-findings `bees update-ticket --status ready` path because no user gate fires there), THEN call the prescribed tool (`AskUserQuestion` when findings are present, `bees update-ticket --status ready` when no findings) in the same turn. The dispatched skill's trailer will repeat this two-step obligation; treat the trailer as a confirmation, not a new instruction. A text-only response between the Skill return and that tool use is a defect.
+**Pre-commitment.** When the Skill call returns, you MUST FIRST create a `gate-<kind>-<short-suffix>` TaskList task (per the two-step contract: `gate-askuserquestion-<short-suffix>` when findings are present, no gate-task needed for the no-findings `bees update-ticket --status ready` path because no user gate fires there), THEN call the prescribed tool (`AskUserQuestion` when findings are present, `bees update-ticket --status ready` when no findings) in the same turn. The dispatched skill's trailer will repeat this two-step obligation; treat the trailer as a confirmation, not a new instruction. A text-only response between the Skill return and that tool use is a defect.
 
 1. Invoke `/quo-spec-review <spec-bee-id> --doc SDD` via the Skill tool. The `--doc SDD` flag scopes the review to the SDD child only — the PRD child may be at any state at this point (still `drafted`, already `ready`, or absent), and a standalone SDD revision should not block on or surface PRD-side findings.
 2. Read the returned work-item list and apply the loop-back UX described under "Loop-back UX" below.

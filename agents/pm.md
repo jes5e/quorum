@@ -38,7 +38,7 @@ The "spec-source ticket" in this section is the Grandparent Bee in execute mode 
 
   The `PRD` and `SDD` title strings are a cross-Epic contract established by sibling Epics covering the PRD title and SDD title; do not lower-case, normalize, or fuzzy-match.
 
-  Use the `bees show-ticket` recipe above (one call for the parent, one per child) — `show-ticket` returns `children` directly, so this is the simpler walk. The freeform-query route (`bees execute-freeform-query --query-yaml '<yaml>'`) is also acceptable and is preferable when you want title-filtered enumeration up-front; see `docs/doc-writing-guide.md` `## Querying tickets` for the recipe vocabulary.
+  Use the `bees show-ticket` recipe above (one call for the parent, one per child) — `show-ticket` returns `children` directly, so this is the simpler walk. The freeform-query route (`bees execute-freeform-query --query-yaml '<yaml>'`) is also acceptable and is preferable when you want title-filtered enumeration up-front.
 
   ```bash
   # POSIX (bash / zsh):
@@ -88,7 +88,7 @@ In fix mode the PM is always dispatched per Issue (the orchestrator does not pre
 
 **Skip-on-bees pre-branch.** If the spec source for this Task came from a `reference_materials` entry whose `resolver` was `bees` (the two-hop Spec Bee + `t1=Doc` children walk documented above), **skip Scoped-marker resolution entirely**: do not write a temp file, do not invoke the helper, do not parse exit codes. Spec Bees are already feature-scoped (one Spec Bee per feature), so marker-based subsection narrowing is irrelevant on that path — the `body` of the `PRD`/`SDD` child tickets is already the authoritative scoped spec content. The rest of this section (Path A, Path B, asymmetric error-handling, helper-resolution-path strategy) applies **only** to the file-resolver path and the body-as-spec fallback path; nothing in those subsections is relaxed, harmonized, or otherwise modified by this pre-branch.
 
-A spec source can be **scoped** to one feature inside a cumulative PRD/SDD via a Scoped-marker line in a Plan Bee body (emitted by `/quo-plan-from-specs --feature "<title>"`). When a marker is present, the resolved doc content for spec-compare logic must be restricted to the matching `### Feature: <title>` subsection in each named doc; otherwise the full doc applies. Marker grammar (prefix tolerance, backtick wrapping, single space after `### Feature:`, terminal period, subsection extraction rule, hard-fail rules) is documented in `docs/doc-writing-guide.md` `## The Scoped-marker contract` — that doc is the source of truth; do not re-derive the parsing rules here.
+A spec source can be **scoped** to one feature inside a cumulative PRD/SDD via a Scoped-marker line in a Plan Bee body (emitted by `/quo-plan-from-specs --feature "<title>"`). When a marker is present, the resolved doc content for spec-compare logic must be restricted to the matching `### Feature: <title>` subsection in each named doc; otherwise the full doc applies. Marker grammar (prefix tolerance, backtick wrapping, single space after `### Feature:`, terminal period, subsection extraction rule, hard-fail rules) is enforced by the Scoped-marker resolver helper the orchestrator runs — that helper is the source of truth; do not re-derive the parsing rules here.
 
 Two execution skills dispatch this PM subagent, with **different marker-handling semantics that must coexist** in this body:
 
@@ -156,7 +156,7 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `quo-brea
 
 After the orchestrator has validated dependency-blocker statuses upstream, iterate the Issue's `up_dependencies` array and, for each entry that resolves to a Bee in the `plans` hive, attempt to detect and apply a marker. Discovery is **best-effort** — a missing marker, a malformed marker, or a non-`plans`-hive entry is not a fatal error.
 
-1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. The bees CLI exposes hive-of-record via the freeform-query mechanism — see `docs/doc-writing-guide.md` `## Querying tickets` for the recipe vocabulary. A canonical recipe:
+1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. The bees CLI exposes hive-of-record via the freeform-query mechanism. A canonical recipe:
 
    ```bash
    bees execute-freeform-query --query-yaml 'stages:

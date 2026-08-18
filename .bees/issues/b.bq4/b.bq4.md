@@ -5,7 +5,7 @@ title: Installed skills reference docs that never ship; pick a reference archite
 parent: null
 reference_materials: null
 created_at: '2026-08-18T14:45:07.705619'
-status: open
+status: done
 schema_version: '0.1'
 guid: bq46xmk856ebaa136gaur5hrmrtpwjbe
 ---
@@ -78,4 +78,3 @@ All three bundled helper scripts (`detect_fast_path.py`, `scoped_marker_resolver
 ## Deferred from /quo-execute run (2026-08-18 21:18)
 
 From the b.55r Epic 1 review cycles: the reference architecture should carry an explicit **README carve-out** for the shipped-artifact doc-reference criterion. README.md is read on GitHub or in a checkout — installed users do not receive it via `cp -r skills/*`, and its readers DO have the repo's `docs/` directory alongside it — so a README→`docs/doc-writing-guide.md` cross-link is legitimate where the same reference inside `skills/*/SKILL.md`, `agents/*.md`, or a bundled helper script would dangle. Concrete instance judged acceptable during that review: the README `### The context-usage gauge file` section's pointer to `docs/doc-writing-guide.md` `## The context-gauge file contract`. Without the carve-out, the systemic fix (or the b.55r review criterion applied verbatim) would over-trigger on such links.
-
