@@ -2,10 +2,11 @@
 id: b.bq4
 type: bee
 title: Installed skills reference docs that never ship; pick a reference architecture
-status: open
-created_at: '2026-08-18T14:45:07.705619'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-08-18T14:45:07.705619'
+status: open
+schema_version: '0.1'
 guid: bq46xmk856ebaa136gaur5hrmrtpwjbe
 ---
 
@@ -42,4 +43,35 @@ Surfaced during the b.ja9 fix review (2026-08-17): the Analyst found defect 1's 
 
 - **Rejected: fixing these inline during the b.ja9 run.** The install-vs-setup-vs-inline choice is a real design decision deserving an Analyst pass, and ad-hoc edits would have churned prose the b.55r breakdown reads as its anchor.
 - **Rejected: filing separate Issues per defect.** Per the bundling house style, defects 1-3 share one design decision and largely the same files; defect 4 shares the sweep and the portability rule. Splitting would force the design decision to be made multiple times.
+
+## Quantified reference inventory (2026-08-18 sweep)
+
+A full grep of the shipped trees (`skills/`, `agents/`) during the t1.55r.ec breakdown run, so the fix run starts from data rather than rediscovery.
+
+**Repo-only doc references** (`docs/doc-writing-guide.md`, `docs/sdd.md`, `docs/prd.md`, `CONTRIBUTING.md`, `docs/test-writing-guide.md`) — 86 total, per file:
+
+| Shipped file | Count |
+|---|---|
+| skills/quo-plan/SKILL.md | 18 |
+| skills/quo-breakdown-epic/SKILL.md | 18 |
+| skills/quo-execute/SKILL.md | 15 |
+| skills/quo-fix-issue/SKILL.md | 11 |
+| skills/quo-setup/SKILL.md | 6 |
+| skills/quo-doc-writer-review/SKILL.md | 4 |
+| skills/quo-spec-review/SKILL.md | 4 |
+| skills/quo-engineer-review/SKILL.md | 2 |
+| skills/quo-test-writer-review/SKILL.md | 2 |
+| skills/quo-file-issue/SKILL.md | 1 |
+| skills/quo-write-prd/SKILL.md | 1 |
+| skills/quo-write-sdd/SKILL.md | 1 |
+| skills/quo-status/SKILL.md | 1 |
+| skills/quo-plan-from-specs/SKILL.md | 1 |
+| agents/pm.md | 3 |
+| agents/doc-writer.md | 1 |
+
+All three bundled helper scripts (`detect_fast_path.py`, `scoped_marker_resolver.py`, `hive_commit.py`) are clean, as are the other six agents files. The dominant reference targets are `docs/doc-writing-guide.md` sections that are genuinely load-bearing at run time — `## Querying tickets` (freeform-query recipes), `## The two-step TaskCreate → prescribed-tool contract`, `## The Scoped-marker contract`, `## Naming tickets in user-facing output and commits` — so the reference architecture must give these a home installed users actually receive (ship the guide alongside the skills, inline the load-bearing sections into the consuming SKILL.md files, or split the guide into a shipped runtime-contract half and a repo-only contributor half).
+
+**Ticket-ID-shaped references** (`b.xxx` / `t1.xxx...` patterns) — ~48 matches concentrated in quo-fix-issue (14), quo-breakdown-epic (10), quo-execute (7), quo-status (6), quo-plan (5), plus 1-per-file elsewhere including agents/pm.md and agents/analyst.md. These need case-by-case classification during the fix: some are harmless illustrative placeholders (`e.g. b.duy`), others are real this-repo ticket references that mean nothing in an installed context (e.g. the `b.6k2` / `b.aic` worker-prompt references CLAUDE.md's bash-etiquette section itself points at).
+
+**Forward-guard already in place:** Plan Bee b.55r's body carries a `## Review criterion — no shipped-artifact references to unshipped docs` section binding every review cycle of the context-window-guard feature, so the count above should not grow while this Issue waits.
 
