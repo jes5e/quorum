@@ -75,3 +75,7 @@ All three bundled helper scripts (`detect_fast_path.py`, `scoped_marker_resolver
 
 **Forward-guard already in place:** Plan Bee b.55r's body carries a `## Review criterion — no shipped-artifact references to unshipped docs` section binding every review cycle of the context-window-guard feature, so the count above should not grow while this Issue waits.
 
+## Deferred from /quo-execute run (2026-08-18 21:18)
+
+From the b.55r Epic 1 review cycles: the reference architecture should carry an explicit **README carve-out** for the shipped-artifact doc-reference criterion. README.md is read on GitHub or in a checkout — installed users do not receive it via `cp -r skills/*`, and its readers DO have the repo's `docs/` directory alongside it — so a README→`docs/doc-writing-guide.md` cross-link is legitimate where the same reference inside `skills/*/SKILL.md`, `agents/*.md`, or a bundled helper script would dangle. Concrete instance judged acceptable during that review: the README `### The context-usage gauge file` section's pointer to `docs/doc-writing-guide.md` `## The context-gauge file contract`. Without the carve-out, the systemic fix (or the b.55r review criterion applied verbatim) would over-trigger on such links.
+
