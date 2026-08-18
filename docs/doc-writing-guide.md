@@ -204,6 +204,50 @@ When the marker is present, the consuming skill must operate on the per-doc scop
 
 **`quo-fix-issue` consumer note.** Issues live in the `issues` hive and have no canonical parent-Plan-Bee field in the bees ticket schema. The `quo-fix-issue` PM discovers a scope-context Plan Bee opportunistically by iterating the Issue's `up_dependencies` array — a deliberate dual-use of that field (blocker AND optional scope-context source). For each `up_dependencies` entry that resolves to a Bee in the `plans` hive, the PM extracts the body, runs it through the bundled parser, and applies the resulting scoped per-doc content if a well-formed marker is found. Discovery is best-effort: a missing marker, a non-`plans`-hive `up_dependencies` entry, or a parser hard-fail (exit 2) is not fatal — the PM surfaces the helper's stderr (on hard-fail) and falls back to full-doc spec content. If multiple `up_dependencies` Plan Bees carry markers, the PM uses the FIRST one in `up_dependencies` iteration order. A Plan Bee in `up_dependencies` carrying a Scoped-marker means the Issue is being fixed in the scope of one feature within a cumulative spec, not the whole spec.
 
+## The context-gauge file contract
+
+Claude Code delivers a per-session JSON payload — including how much of the model's context window is in use — to the status-line process and nowhere else. The bundled helper `skills/quo-setup/scripts/context_gauge.py` bridges that gap: a `produce` run publishes the reading to a well-known file, and a `read` run reads it back. The two halves never talk to each other directly, so the path, the JSON field names, the subcommand names, and the flag names below are a contract rather than an implementation detail.
+
+**Gauge-file path.**
+
+```
+<tempdir>/.quorum/context-usage-<session_id>.json
+```
+
+`<tempdir>` is the platform temporary directory, resolved via Python's `tempfile.gettempdir()` so the path is correct on POSIX and Windows without per-OS branching. The directory is created if absent, matching the scratch-file convention in CLAUDE.md (which also records this deterministic filename as a documented exception to the collision-resistant-suffix rule). Keying the filename by `session_id` is what keeps concurrent sessions in one environment from colliding.
+
+**File shape.**
+
+```json
+{"session_id": "<id>", "context_window": {}}
+```
+
+`context_window` is the object from the status-line payload, carried through as-is; the field consumers read inside it is `context_window.used_percentage`. An environment owner who publishes the gauge themselves instead of using the helper must write `context_window` as an object — possibly empty — and never as `null`: an absent `context_window` key reads as `no-reading`, but a literal `"context_window": null` is a malformed file.
+
+**Write semantics.** Overwrite-per-refresh: truncate-and-write, never append. The gauge is a live reading, not a log, and the truncating rewrite is also what keeps the file's modification time current. Freshness is judged against that mtime — there is no embedded timestamp field — so an append-shaped or skipped write would silently break the freshness check.
+
+**The `produce` subcommand.** Reads the status-line JSON payload from stdin exactly once (stdin is a pipe and can only be drained once; the captured bytes are reused everywhere else they are needed). `--wrap-command <cmd>` is optional and is **wrap-don't-replace**: the same once-captured stdin bytes are re-fed to `<cmd>` and its stdout is re-emitted verbatim as the status-line display, so an operator's existing status line is preserved rather than clobbered. Omitting the flag prints a minimal default display. A payload carrying no usable `session_id` is a 0-exit no-op that writes nothing — there is nothing to key a gauge file on, and the display is still emitted. A stdin payload that is non-empty but unparseable (not JSON, or JSON that is not an object) is the one case that is *not* a no-op: `produce` exits `2` with a single human-readable line on stderr and emits no display at all, so the harness sees a non-zero exit and a blank status line. Environment owners publishing the gauge themselves, and anyone wiring `produce` as a `statusLine` command, should read that blank line as the visible symptom of a malformed payload rather than of a missing gauge.
+
+**The `read` subcommand.** `--session-id <id>` is required and selects the gauge file, so it must match the identifier the producer wrote under. `read` prints exactly one of four values on stdout:
+
+- an **integer percentage** — a fresh, measured reading of how much of the window is in use.
+- `no-reading` — the file exists and is fresh, but `used_percentage` is null or absent. Transient: the producer is live, the number just is not populated yet (early in a session, or right after a compaction).
+- `stale` — the file exists but was last written longer ago than the freshness window (strict `>`). The producer appears to have stopped updating.
+- `missing` — no gauge file exists for this session. Usually means no producer is configured in this environment.
+
+All four values exit `0` — they are ordinary states, not errors, and a consumer must be able to tell them apart from a crash. Exit `2` is reserved for genuine malformation (an unreadable or non-conforming gauge file, or an argparse usage error), reported as a single human-readable line on stderr. Staleness is classified before the file is parsed, so a gauge that is both aged and malformed classifies as `stale` (exit 0) rather than exiting 2.
+
+**Fail-safe rules a consumer MUST honor.**
+
+- Never treat an absent, null, or stale reading as `0`, and never treat it as evidence of available headroom. Those values mean "no trustworthy reading", not "plenty of room". The only path to a `0` output is a measured `used_percentage` that rounds to zero.
+- `stale` and `no-reading` are distinct and must not be collapsed into one value. A fresh-but-null reading means the gauge is live with no number yet; a stale reading means the gauge itself is not being updated, and because usage only grows within a session, a stale number biases low — toward the banned "looks like there is headroom" direction.
+
+**Named constants.** `STOP_THRESHOLD_PERCENT` (the stop point, as a percentage of the context window, for a consumer deciding whether to begin another unit of work) and `FRESHNESS_WINDOW_SECONDS` (how recently the gauge must have been written for its reading to be trusted) are single-definition-site tunables inside the helper, each carrying the arithmetic behind its value in a comment. `FRESHNESS_WINDOW_SECONDS` is live today — it is the window `read` compares the gauge file's mtime against when deciding between a fresh reading and `stale`. `STOP_THRESHOLD_PERCENT` is a reserved seam: no consumer reads it yet, because the boundary check that will act on it ships with a later feature. It is defined here so that when such a consumer arrives it reads the threshold from the helper rather than re-deriving or hardcoding it. Either way a retune touches one line.
+
+**Lockstep rule.** The gauge path, both subcommand names (`produce`, `read`), both flag names (`--wrap-command`, `--session-id`), and both JSON field names (`session_id`, `context_window.used_percentage`) are a string contract shared across the installer that wires up the producer, every consumer that reads the gauge, and any environment owner publishing the gauge by hand. Renaming any of them requires updating every consumer in the same change — the same warning `## The lookup-key pattern` carries for the CLAUDE.md contract keys, and the failure here is quieter: a reader that finds nothing reports `missing`, which looks like an unconfigured environment rather than a bug.
+
+**Interpreter floor.** This helper deliberately targets a lower Python floor than the rest of the repo's toolchain: no PEP 604 union annotations (`Optional[float]`, not `float | None`). The status line invokes it with whatever `python3` resolves on the operator's PATH, which can be an older system interpreter than the toolchain floor governs, and a PEP 604 union raises at definition time on Python 3.9 — breaking the annotated function at import. Contributors editing the helper must preserve that constraint; the repo's general toolchain floor does not govern this file.
+
 ## Hard-fail preconditions
 
 Execution skills (`quo-execute`, `quo-fix-issue`, `quo-breakdown-epic`) hard-fail with `Run /quo-setup first.` (with a trailing `— <reason>` clause naming the specific gap, e.g., `Run /quo-setup first. — Specs hive is not colonized for this repo.`) when the target CLAUDE.md is missing either of the two required sections (`Documentation Locations`, `Build Commands`) or any required key inside them, OR when any of the three required hives (Plans, Issues, Specs) is not colonized for the target repo. Preserve that precondition behavior in any edit to those skills.

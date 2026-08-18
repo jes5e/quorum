@@ -11,7 +11,7 @@ reference_materials:
 - value: b.8sh
   resolver: bees
 created_at: '2026-08-16T17:33:11.989013'
-status: ready
+status: in_progress
 schema_version: '0.1'
 guid: 55rjpn2y82za9a8qrkpqkfe8st5ds24r
 ---
@@ -31,4 +31,3 @@ Authoritative spec: the PRD and SDD `t1=Doc` children of Spec Bee **b.8sh** (ref
 Every review cycle of this Bee's work (code review, test review, doc review, and PM review, in every Epic) MUST additionally flag any reference in a **shipped artifact** — `skills/<name>/SKILL.md` prose, `agents/<role>.md` contract files, or bundled helper scripts under `skills/*/scripts/` — to a **repo-only document the installed user never receives**: `docs/doc-writing-guide.md`, `docs/sdd.md`, `docs/prd.md`, `CONTRIBUTING.md`, `tests/`, or this repo's ticket IDs. Installed users get the `skills/` and `agents/` trees copied into their Claude Code config; they do not get this repo's `docs/` directory, so a shipped artifact that says "see `docs/doc-writing-guide.md` `## The context-gauge file contract`" points its reader at a file that does not exist for them.
 
 Concrete watch-points for this feature: Epic 1's helper docstring must carry its own contract summary rather than deferring to the doc-writing guide; Epic 2's new quo-setup SKILL.md step and Epic 3's boundary-gate prose in the three execution SKILL.md files must cross-reference only shipped surfaces (the skill's own prose, the helper's docstring/`--help`, or the published README content) — never `docs/*` or `CONTRIBUTING.md`. Repo-internal docs referencing each other (SDD → doc-writing guide, etc.) is fine; the criterion bites only on shipped artifacts. The systemic fix (a reference architecture for installed-skill doc references) is tracked as Issue **b.bq4** — reviewers should flag new instances rather than wait on it.
-
