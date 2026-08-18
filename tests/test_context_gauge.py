@@ -1,0 +1,977 @@
+"""Unit + CLI-contract tests for context_gauge.py.
+
+Two layers, per docs/test-writing-guide.md `## The two-layer pattern`:
+
+1. **Unit layer** — the helper is loaded in-process with `conftest.load_script`
+   and its pure functions are called directly. The platform temp directory is
+   redirected with `monkeypatch.setattr(mod.tempfile, "gettempdir", ...)` — via
+   `monkeypatch` and never a bare assignment, because `mod.tempfile` IS the
+   shared stdlib module object and a leaked patch would be process-global.
+2. **CLI-contract layer** — the script is run as a subprocess and asserted on
+   `returncode` / `stdout` / `stderr`. This is the layer that pins the contract
+   the installer and the consuming skills branch on.
+
+Assumed equality between the two session-id sources (SDD SR-4.4)
+----------------------------------------------------------------
+Every test here injects a SYNTHETIC session identifier on BOTH sides of the
+gauge contract: on the produce side it is the `session_id` field of the JSON
+payload fed to `produce` on stdin, and on the read side it is the value handed
+to `read --session-id`. Because this suite supplies both values itself, it can
+only ever prove that the producer and the reader agree with EACH OTHER — it
+cannot detect an upstream divergence between the identifier the harness puts
+in the status-line payload's `session_id` field and the identifier the consumer
+reads out of the `CLAUDE_CODE_SESSION_ID` environment variable. Those two are
+different channels owned by the harness, and nothing in this file observes
+either one. Their equality was live-verified by hand when the feature was
+designed; re-probing it if the harness changes is tracked by upstream Issue
+**b.cj2**, not by any assertion below. Read a green run here as "the two halves
+of this helper agree", never as "the harness still supplies the same id twice".
+
+Isolation
+---------
+No test writes to the real temp directory. An autouse fixture enforces that by
+snapshotting the real `<tempdir>/.quorum` at setup and asserting on teardown
+that no entry under the pytest-reserved `quorum-pytest-` session-id prefix was
+added OR rewritten (the snapshot keys on stat metadata, so an overwrite of a
+name a previous run left behind still fails — see `_real_prefixed_entries`).
+Nothing in this module ever deletes anything under that directory
+(CLAUDE.md `## Scratch-file convention`).
+"""
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+import pytest
+
+from conftest import CONTEXT_GAUGE, load_script, script_path
+
+mod = load_script(CONTEXT_GAUGE)
+SCRIPT = script_path(CONTEXT_GAUGE)
+
+# Captured at IMPORT time, before any test can monkeypatch `tempfile.gettempdir`.
+# The safety fixture below keys on this so a test that leaks a patch cannot also
+# hide the leak by moving the directory the fixture inspects.
+REAL_TEMP_ROOT = Path(tempfile.gettempdir())
+
+# Spelled literally rather than read from `mod`, so a mutation of the helper's
+# own constant cannot relocate the directory the safety fixture watches.
+REAL_GAUGE_DIR = REAL_TEMP_ROOT / ".quorum"
+
+# Reserved token: every synthetic session id used by a test that WRITES a gauge
+# file starts with this. Pure-derivation calls (e.g. `gauge_path("abc-123")`,
+# which creates nothing) are exempt. Task 1's manual smoke-verify Subtask picks
+# its real-tempdir session id OUTSIDE this prefix, so its never-deleted artifact
+# cannot collide with the delta check below.
+TEST_SESSION_PREFIX = "quorum-pytest-"
+
+
+def _real_prefixed_entries():
+    """Identity tuples for REAL-gauge-dir files under this suite's reserved prefix.
+
+    Keyed on `(name, size, mtime_ns)` rather than name alone, because a name-only
+    snapshot is self-disarming: nothing here ever deletes a leaked artifact
+    (CLAUDE.md `## Scratch-file convention`), so a genuinely-leaking test would
+    fail on its first run, leave the file behind, and then OVERWRITE that same
+    name on every later run for an empty delta — the fixture would silently stop
+    detecting the leak it had just caught. Stat metadata re-arms it: an overwrite
+    moves `mtime_ns` (and usually `size`), so the delta fires again.
+
+    Scope limit, stated rather than papered over: on a filesystem with coarse
+    timestamp granularity (1-2s ticks are still real on some FAT/HFS+ and network
+    mounts) a same-size overwrite that lands in the SAME tick as the setup
+    snapshot leaves both key components unchanged and would not show in the
+    delta. That needs the re-leak to happen within one session AND within one
+    tick of the snapshot; the first leaking test already fails loudly, and
+    separate runs are seconds-to-minutes apart, so this narrows detection in a
+    corner rather than disarming it.
+    """
+    if not REAL_GAUGE_DIR.is_dir():
+        return set()
+    entries = set()
+    for p in REAL_GAUGE_DIR.glob(f"context-usage-{TEST_SESSION_PREFIX}*"):
+        try:
+            st = p.stat()
+        except OSError:
+            # Vanished between the glob yield and the stat — an OS tmp-reaper, or
+            # a user clearing <tempdir>/.quorum mid-run. Skip rather than let this
+            # safety net crash the test it is guarding. Detection power is
+            # unaffected: an entry absent at snapshot time is absent from BOTH
+            # sides of the delta unless a test recreates it, and a recreated name
+            # lands in `after` as a new stat tuple and still fires.
+            continue
+        entries.add((p.name, st.st_size, st.st_mtime_ns))
+    return entries
+
+
+@pytest.fixture(autouse=True)
+def no_real_tempdir_writes():
+    """Fail any test that leaks a gauge write into the real temp directory.
+
+    A delta assertion scoped to the reserved prefix, not an emptiness assertion:
+    it must stay collision-proof against artifacts that were already there (the
+    helper never deletes anything) and against genuinely-new NON-prefixed files
+    a live status-line producer may write on this machine mid-run. Detection
+    power survives the narrowing because every test that writes a gauge file is
+    required to use `TEST_SESSION_PREFIX` — so a test that forgets its
+    `monkeypatch` or its `env=` override still leaks under the reserved prefix
+    and is caught here. Because the delta is over `_real_prefixed_entries`'s
+    stat-keyed tuples, a leak that OVERWRITES a name left behind by an earlier
+    run is caught too, not just a brand-new name. Nothing is ever deleted.
+    """
+    before = _real_prefixed_entries()
+    yield
+    after = _real_prefixed_entries()
+    leaked = sorted({name for name, _size, _mtime in after - before})
+    assert not leaked, (
+        "test wrote a gauge file into the real temp directory "
+        f"{REAL_GAUGE_DIR}: {leaked}"
+    )
+
+
+# ===========================================================================
+# Layer 1 — unit (in-process, `mod.*` called directly)
+# ===========================================================================
+
+def _patch_tempdir(monkeypatch, tmp_path):
+    """Redirect the helper's temp-directory lookup at the module object it uses."""
+    monkeypatch.setattr(mod.tempfile, "gettempdir", lambda: str(tmp_path))
+
+
+def _seed(monkeypatch, tmp_path, session_id, text):
+    """Create a gauge file with exact raw `text` under the patched temp root."""
+    _patch_tempdir(monkeypatch, tmp_path)
+    mod.ensure_gauge_dir()
+    path = mod.gauge_path(session_id)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+# --- path derivation -------------------------------------------------------
+
+def test_gauge_path_shape(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    assert mod.gauge_path("abc-123") == tmp_path / ".quorum" / "context-usage-abc-123.json"
+
+
+def test_gauge_path_resolves_tempdir_at_call_time(monkeypatch, tmp_path):
+    # Pure derivation, creates nothing — exempt from the TEST_SESSION_PREFIX rule.
+    before = mod.gauge_path("abc-123")
+    _patch_tempdir(monkeypatch, tmp_path)
+    after = mod.gauge_path("abc-123")
+    # Same call, different roots: the tempdir is looked up per call, not
+    # captured at import time (which would make the redirection a no-op).
+    assert before != after
+    assert after.parent.parent == tmp_path
+
+
+def test_gauge_dir_is_pure(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    assert mod.gauge_dir() == tmp_path / ".quorum"
+    assert not (tmp_path / ".quorum").exists()
+
+
+# --- session-id validation -------------------------------------------------
+
+def test_is_valid_session_id_accepts_uuid_shape():
+    assert mod.is_valid_session_id("3f2a1b7c-9d4e-4f80-8a11-6b0c2d5e7f91") is True
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["", "../escape", "a/b", "a\\b", None, 123],
+    ids=["empty", "dotdot", "posix-sep", "windows-sep", "none", "int"],
+)
+def test_is_valid_session_id_rejects(bad):
+    assert mod.is_valid_session_id(bad) is False
+
+
+# --- directory creation ----------------------------------------------------
+
+def test_ensure_gauge_dir_creates_and_is_idempotent(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    target = tmp_path / ".quorum"
+    assert not target.exists()
+    first = mod.ensure_gauge_dir()
+    assert first == target and target.is_dir()
+    second = mod.ensure_gauge_dir()
+    assert second == target and target.is_dir()
+
+
+# --- tunable constants -----------------------------------------------------
+
+def test_tunable_constants():
+    # These two literals are the SINGLE definition sites of the guard's tunables:
+    # consumers read them from here rather than re-deriving them. A change to
+    # either is a deliberate re-calibration of the guard (and of the arithmetic
+    # documented beside them in the helper), never an incidental edit — so this
+    # test is meant to fail and force that decision to be made explicitly.
+    assert mod.STOP_THRESHOLD_PERCENT == 50
+    assert mod.FRESHNESS_WINDOW_SECONDS == 120
+
+
+# --- extract_gauge_record --------------------------------------------------
+
+def test_extract_gauge_record_carries_context_window_verbatim():
+    window = {"used_percentage": 42, "extra": {"nested": [1, 2]}, "tokens": 8123}
+    payload = {"session_id": "s-1", "context_window": window, "cwd": "/x/y"}
+    record = mod.extract_gauge_record(payload)
+    assert record == {"session_id": "s-1", "context_window": window}
+    # Every field of the window survives, and nothing beyond the two keys leaks in.
+    assert record["context_window"] == window
+    assert set(record) == {"session_id", "context_window"}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"session_id": "s-1"},
+        {"session_id": "s-1", "context_window": None},
+        {"session_id": "s-1", "context_window": 0},
+        {"session_id": "s-1", "context_window": []},
+        {"session_id": "s-1", "context_window": "37"},
+    ],
+    ids=["absent", "null", "zero", "list", "string"],
+)
+def test_extract_gauge_record_absent_or_non_dict_window_becomes_empty(payload):
+    record = mod.extract_gauge_record(payload)
+    # Empty object — never a fabricated percentage and never a `0`, either of
+    # which the reader would classify as abundant headroom.
+    assert record == {"session_id": "s-1", "context_window": {}}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"session_id": ""},
+        {"session_id": None},
+        {"session_id": 123},
+        {"session_id": ["s-1"]},
+        {"session_id": "../escape"},
+        {"session_id": "a/b"},
+    ],
+    ids=["absent", "empty", "none", "int", "list", "dotdot", "sep"],
+)
+def test_extract_gauge_record_returns_none_for_unusable_session_id(payload):
+    assert mod.extract_gauge_record(payload) is None
+
+
+# --- parse_payload ---------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "raw", [b"", b"   ", b"\n", b" \t\r\n "], ids=["empty", "spaces", "newline", "mixed"]
+)
+def test_parse_payload_empty_or_whitespace_is_none(raw):
+    assert mod.parse_payload(raw) is None
+
+
+def test_parse_payload_valid_object():
+    assert mod.parse_payload(b'{"session_id": "s-1"}') == {"session_id": "s-1"}
+
+
+def test_parse_payload_unparseable_is_distinguishable_from_empty():
+    # Task 1's body required only "a distinguishable condition" for this case
+    # and did not pin the mechanism; the shipped helper raises ValueError
+    # (json.JSONDecodeError subclasses it). Assert the mechanism that shipped.
+    with pytest.raises(ValueError):
+        mod.parse_payload(b"{not json")
+    # ...and assert positively that it is distinguishable from the empty-stdin
+    # `None`: the empty case returns, the malformed case raises.
+    assert mod.parse_payload(b"") is None
+
+
+@pytest.mark.parametrize(
+    "raw", [b"[1, 2]", b'"a string"', b"42", b"null", b"true"],
+    ids=["array", "string", "number", "null", "bool"],
+)
+def test_parse_payload_non_object_top_level_raises(raw):
+    with pytest.raises(ValueError):
+        mod.parse_payload(raw)
+
+
+# --- write_gauge -----------------------------------------------------------
+
+def test_write_gauge_writes_to_gauge_path(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    session_id = TEST_SESSION_PREFIX + "write"
+    record = {"session_id": session_id, "context_window": {"used_percentage": 12}}
+    path = mod.write_gauge(record)
+    assert path == mod.gauge_path(session_id)
+    assert json.loads(path.read_text(encoding="utf-8")) == record
+
+
+def test_write_gauge_second_write_truncates_rather_than_appends(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    session_id = TEST_SESSION_PREFIX + "overwrite"
+    big = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 42, "padding": "x" * 200},
+    }
+    small = {"session_id": session_id, "context_window": {"used_percentage": 7}}
+    first = mod.write_gauge(big)
+    first_size = first.stat().st_size
+    second = mod.write_gauge(small)
+    assert second == first
+    # Exactly one file for this id...
+    matches = sorted((tmp_path / ".quorum").glob(f"context-usage-{session_id}.json"))
+    assert len(matches) == 1
+    # ...holding exactly the SECOND record...
+    assert json.loads(second.read_text(encoding="utf-8")) == small
+    # ...and the byte length shrank, which append could not do.
+    assert second.stat().st_size < first_size
+
+
+def test_write_gauge_two_sessions_are_independent(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    id_a = TEST_SESSION_PREFIX + "par-a"
+    id_b = TEST_SESSION_PREFIX + "par-b"
+    rec_a = {"session_id": id_a, "context_window": {"used_percentage": 11}}
+    rec_b = {"session_id": id_b, "context_window": {"used_percentage": 88}}
+    path_a = mod.write_gauge(rec_a)
+    path_b = mod.write_gauge(rec_b)
+    assert path_a != path_b
+    assert json.loads(path_a.read_text(encoding="utf-8")) == rec_a
+    assert json.loads(path_b.read_text(encoding="utf-8")) == rec_b
+    assert len(sorted((tmp_path / ".quorum").glob("context-usage-*.json"))) == 2
+
+
+# --- default_display -------------------------------------------------------
+
+def test_default_display_prefers_workspace_current_dir():
+    payload = {"workspace": {"current_dir": "/home/dev/code/quorum"}, "cwd": "/other/place"}
+    assert mod.default_display(payload) == "quorum"
+
+
+def test_default_display_falls_back_to_cwd():
+    assert mod.default_display({"cwd": "/home/dev/code/other"}) == "other"
+    assert mod.default_display({"workspace": {}, "cwd": "/a/b"}) == "b"
+    assert mod.default_display({"workspace": {"current_dir": ""}, "cwd": "/a/b"}) == "b"
+
+
+def test_default_display_empty_when_neither_present():
+    assert mod.default_display({}) == ""
+    assert mod.default_display({"workspace": {}}) == ""
+
+
+@pytest.mark.parametrize(
+    "workspace", ["not-a-dict", 7, None, ["a"]], ids=["str", "int", "none", "list"]
+)
+def test_default_display_does_not_raise_on_non_dict_workspace(workspace):
+    assert mod.default_display({"workspace": workspace}) == ""
+    assert mod.default_display({"workspace": workspace, "cwd": "/a/b"}) == "b"
+
+
+def test_default_display_is_not_a_dict_payload():
+    assert mod.default_display("not a dict") == ""
+    assert mod.default_display(None) == ""
+
+
+def test_default_display_never_contains_a_percentage():
+    payload = {
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+        "context_window": {"used_percentage": 73},
+    }
+    display = mod.default_display(payload)
+    assert "%" not in display
+    assert "73" not in display
+
+
+# --- run_wrapped failure tolerance -----------------------------------------
+
+def test_run_wrapped_tolerates_timeout(monkeypatch):
+    # Done in-process rather than at the CLI layer so the suite never waits on
+    # the real WRAPPED_COMMAND_TIMEOUT_SECONDS (~10s) boundary.
+    def boom(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd="hang", timeout=1, output=b"partial")
+
+    monkeypatch.setattr(mod.subprocess, "run", boom)
+    out = mod.run_wrapped("hang", b"{}")
+    assert isinstance(out, str)
+    assert out == "partial"
+
+
+def test_run_wrapped_tolerates_missing_command(monkeypatch):
+    def boom(*args, **kwargs):
+        raise FileNotFoundError("no such command")
+
+    monkeypatch.setattr(mod.subprocess, "run", boom)
+    out = mod.run_wrapped("nope", b"{}")
+    assert isinstance(out, str)
+    assert out == ""
+
+
+# --- classify_reading: integer readings ------------------------------------
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [(37, "37"), (37.6, "38"), (0.4, "0"), (0, "0")],
+    ids=["int", "rounds-up", "rounds-to-zero", "exact-zero"],
+)
+def test_classify_reading_integer_percentages(monkeypatch, tmp_path, value, expected):
+    # A measured `used_percentage` that rounds to zero is the ONLY way `"0"` can
+    # be produced. Absent, null, and stale readings must never reach this value.
+    session_id = TEST_SESSION_PREFIX + "num"
+    path = _seed(
+        monkeypatch,
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": value}}),
+    )
+    assert mod.classify_reading(path, now=path.stat().st_mtime) == expected
+
+
+@pytest.mark.parametrize(
+    "window",
+    [{"used_percentage": None}, {}, {"other": 1}],
+    ids=["null", "empty-object", "no-such-key"],
+)
+def test_classify_reading_no_reading(monkeypatch, tmp_path, window):
+    session_id = TEST_SESSION_PREFIX + "nor"
+    path = _seed(
+        monkeypatch,
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": window}),
+    )
+    assert mod.classify_reading(path, now=path.stat().st_mtime) == mod.READING_NO_READING
+
+
+def test_classify_reading_absent_context_window_key_is_no_reading(monkeypatch, tmp_path):
+    session_id = TEST_SESSION_PREFIX + "nokey"
+    path = _seed(monkeypatch, tmp_path, session_id, json.dumps({"session_id": session_id}))
+    assert mod.classify_reading(path, now=path.stat().st_mtime) == mod.READING_NO_READING
+
+
+# --- classify_reading: staleness (the anti-collapse regression) -------------
+
+def test_classify_reading_stale_wins_over_a_valid_low_integer(monkeypatch, tmp_path):
+    """An aged gauge is `stale` even when it holds a perfectly valid number.
+
+    This is the anti-collapse test. Usage only grows within a session, so a
+    stale number biases LOW — i.e. toward "there is headroom", the banned
+    direction. Returning the integer here, or returning `no-reading` (which
+    routes a consumer to CONTINUE), both re-open that failure mode.
+    """
+    session_id = TEST_SESSION_PREFIX + "stale"
+    path = _seed(
+        monkeypatch,
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": 3}}),
+    )
+    mtime = path.stat().st_mtime
+    aged = mod.classify_reading(path, now=mtime + mod.FRESHNESS_WINDOW_SECONDS + 1)
+    assert aged == mod.READING_STALE
+    assert aged != "3"
+    assert aged != mod.READING_NO_READING
+
+
+def test_classify_reading_inside_freshness_window_returns_the_integer(monkeypatch, tmp_path):
+    session_id = TEST_SESSION_PREFIX + "fresh"
+    path = _seed(
+        monkeypatch,
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": 3}}),
+    )
+    mtime = path.stat().st_mtime
+    # Deliberately one second INSIDE the window. The exact-equality boundary
+    # (`now - mtime == window`) is not asserted anywhere: neither the SDD nor
+    # Task 1 pins whether that instant is fresh or stale.
+    assert mod.classify_reading(path, now=mtime + mod.FRESHNESS_WINDOW_SECONDS - 1) == "3"
+
+
+def test_classify_reading_aged_via_os_utime_is_stale(monkeypatch, tmp_path):
+    session_id = TEST_SESSION_PREFIX + "utime"
+    path = _seed(
+        monkeypatch,
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": 5}}),
+    )
+    aged = time.time() - 300
+    os.utime(path, (aged, aged))
+    assert mod.classify_reading(path, now=time.time()) == mod.READING_STALE
+
+
+# --- classify_reading: missing ---------------------------------------------
+
+def test_classify_reading_missing_and_creates_nothing(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    path = mod.gauge_path("absent-session")
+    assert mod.classify_reading(path, now=time.time()) == mod.READING_MISSING
+    # Reading is strictly read-only: the gauge directory must not spring into
+    # existence as a side effect of a `missing` classification.
+    assert not (tmp_path / ".quorum").exists()
+
+
+def test_classify_reading_missing_is_never_zero_or_empty(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    result = mod.classify_reading(mod.gauge_path("absent-session"), now=time.time())
+    assert result == mod.READING_MISSING
+    assert result != "0"
+    assert result != ""
+    assert result != 0
+
+
+# --- classify_reading: four-way distinctness -------------------------------
+
+def test_reading_values_are_four_way_distinct():
+    """Collapsing any pair of these changes consumer routing silently."""
+    values = [mod.READING_NO_READING, mod.READING_STALE, mod.READING_MISSING]
+    assert len(set(values)) == 3
+    for value in values:
+        assert isinstance(value, str)
+        assert value != "0"
+        assert value != ""
+        # And none of them is a decimal integer, so a consumer can tell a
+        # measured percentage from a non-reading by shape alone.
+        assert not value.isdigit()
+
+
+# --- classify_reading: malformation ----------------------------------------
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "{not json",
+        "[1, 2]",
+        "42",
+        '"a string"',
+        "null",
+        '{"session_id": "s", "context_window": null}',
+        '{"session_id": "s", "context_window": 7}',
+        '{"session_id": "s", "context_window": []}',
+        '{"session_id": "s", "context_window": "37"}',
+        '{"session_id": "s", "context_window": {"used_percentage": "37"}}',
+        '{"session_id": "s", "context_window": {"used_percentage": []}}',
+        '{"session_id": "s", "context_window": {"used_percentage": {"n": 1}}}',
+        '{"session_id": "s", "context_window": {"used_percentage": NaN}}',
+        '{"session_id": "s", "context_window": {"used_percentage": Infinity}}',
+    ],
+    ids=[
+        "invalid-json",
+        "array-top-level",
+        "number-top-level",
+        "string-top-level",
+        "null-top-level",
+        "window-null",
+        "window-number",
+        "window-array",
+        "window-string",
+        "percentage-string",
+        "percentage-array",
+        "percentage-object",
+        "percentage-nan",
+        "percentage-infinity",
+    ],
+)
+def test_classify_reading_malformed(monkeypatch, tmp_path, text):
+    path = _seed(monkeypatch, tmp_path, TEST_SESSION_PREFIX + "bad", text)
+    with pytest.raises(mod.MalformedGauge):
+        mod.classify_reading(path, now=path.stat().st_mtime)
+
+
+@pytest.mark.parametrize("value", ["true", "false"], ids=["true", "false"])
+def test_classify_reading_boolean_percentage_is_malformed(monkeypatch, tmp_path, value):
+    """`bool` is an `int` subclass — it MUST be rejected before the numeric check.
+
+    Without the guard, `true` silently classifies as `1`: a near-empty context
+    window, the most dangerous possible wrong answer. Its own named test
+    because dropping the `isinstance(value, bool)` line is a realistic edit
+    that every other numeric test would still pass.
+    """
+    session_id = TEST_SESSION_PREFIX + "bool"
+    path = _seed(
+        monkeypatch,
+        tmp_path,
+        session_id,
+        '{"session_id": "s", "context_window": {"used_percentage": ' + value + "}}",
+    )
+    with pytest.raises(mod.MalformedGauge):
+        mod.classify_reading(path, now=path.stat().st_mtime)
+
+
+# --- classify_reading: purity ----------------------------------------------
+
+def test_classify_reading_is_silent_across_the_four_normal_cases(
+    monkeypatch, tmp_path, capsys
+):
+    _patch_tempdir(monkeypatch, tmp_path)
+    mod.ensure_gauge_dir()
+
+    numeric = mod.gauge_path(TEST_SESSION_PREFIX + "silent-num")
+    numeric.write_text(
+        json.dumps({"session_id": "s", "context_window": {"used_percentage": 21}}),
+        encoding="utf-8",
+    )
+    nulled = mod.gauge_path(TEST_SESSION_PREFIX + "silent-null")
+    nulled.write_text(
+        json.dumps({"session_id": "s", "context_window": {"used_percentage": None}}),
+        encoding="utf-8",
+    )
+    absent = mod.gauge_path("silent-absent")
+
+    results = [
+        mod.classify_reading(numeric, now=numeric.stat().st_mtime),
+        mod.classify_reading(nulled, now=nulled.stat().st_mtime),
+        mod.classify_reading(
+            numeric, now=numeric.stat().st_mtime + mod.FRESHNESS_WINDOW_SECONDS + 1
+        ),
+        mod.classify_reading(absent, now=time.time()),
+    ]
+    assert results == ["21", mod.READING_NO_READING, mod.READING_STALE, mod.READING_MISSING]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+# ===========================================================================
+# Layer 2 — CLI contract (subprocess)
+# ===========================================================================
+
+def _env_with_tempdir(tmp_path):
+    """A copied environment whose temp directory is `tmp_path` on every platform.
+
+    All three of TMPDIR / TEMP / TMP are set because `tempfile.gettempdir()`
+    consults them differently across platforms. Each subprocess is fresh, so the
+    in-process `tempfile.tempdir` cache is not a concern here.
+    """
+    env = dict(os.environ)
+    env["TMPDIR"] = str(tmp_path)
+    env["TEMP"] = str(tmp_path)
+    env["TMP"] = str(tmp_path)
+    return env
+
+
+def _run(args, stdin=None, env=None):
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), *args],
+        input=stdin,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def _stub(tmp_path, name, source):
+    """Write a Python stub and return a shell-quotable command string for it.
+
+    `--wrap-command` is run under `shell=True` (`/bin/sh` on POSIX, `cmd.exe` on
+    Windows); double-quoted paths are accepted by both. Invoking a written stub
+    through `sys.executable` is the cross-platform analogue of
+    test_hive_commit.py's stub-`bees` technique — it avoids depending on a
+    system `echo` existing or behaving identically across OSes.
+    """
+    stub = tmp_path / name
+    stub.write_text(source, encoding="utf-8")
+    return f'"{sys.executable}" "{stub}"'
+
+
+def _cli_gauge_path(tmp_path, session_id):
+    return tmp_path / ".quorum" / f"context-usage-{session_id}.json"
+
+
+def _seed_cli_gauge(tmp_path, session_id, text):
+    path = _cli_gauge_path(tmp_path, session_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _gauge_files(tmp_path):
+    directory = tmp_path / ".quorum"
+    if not directory.is_dir():
+        return []
+    return sorted(p.name for p in directory.glob("context-usage-*.json"))
+
+
+# --- produce: writing the gauge --------------------------------------------
+
+def test_cli_produce_writes_gauge(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-write"
+    window = {"used_percentage": 44, "tokens": 91234, "nested": {"a": [1, 2]}}
+    payload = {
+        "session_id": session_id,
+        "context_window": window,
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+    }
+    res = _run(["produce"], stdin=json.dumps(payload), env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    path = _cli_gauge_path(tmp_path, session_id)
+    assert path.exists()
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "session_id": session_id,
+        "context_window": window,
+    }
+
+
+def test_cli_produce_twice_same_id_overwrites(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-overwrite"
+    big = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 44, "padding": "x" * 300},
+    }
+    small = {"session_id": session_id, "context_window": {"used_percentage": 9}}
+    env = _env_with_tempdir(tmp_path)
+    first = _run(["produce"], stdin=json.dumps(big), env=env)
+    assert first.returncode == 0, first.stderr
+    first_size = _cli_gauge_path(tmp_path, session_id).stat().st_size
+    second = _run(["produce"], stdin=json.dumps(small), env=env)
+    assert second.returncode == 0, second.stderr
+
+    assert _gauge_files(tmp_path) == [f"context-usage-{session_id}.json"]
+    path = _cli_gauge_path(tmp_path, session_id)
+    assert json.loads(path.read_text(encoding="utf-8")) == small
+    assert path.stat().st_size < first_size
+
+
+def test_cli_produce_two_sessions_are_isolated(tmp_path):
+    id_a = TEST_SESSION_PREFIX + "cli-par-a"
+    id_b = TEST_SESSION_PREFIX + "cli-par-b"
+    env = _env_with_tempdir(tmp_path)
+    payload_a = {"session_id": id_a, "context_window": {"used_percentage": 11}}
+    payload_b = {"session_id": id_b, "context_window": {"used_percentage": 88}}
+    assert _run(["produce"], stdin=json.dumps(payload_a), env=env).returncode == 0
+    assert _run(["produce"], stdin=json.dumps(payload_b), env=env).returncode == 0
+
+    assert _gauge_files(tmp_path) == sorted(
+        [f"context-usage-{id_a}.json", f"context-usage-{id_b}.json"]
+    )
+    assert json.loads(
+        _cli_gauge_path(tmp_path, id_a).read_text(encoding="utf-8")
+    ) == payload_a
+    assert json.loads(
+        _cli_gauge_path(tmp_path, id_b).read_text(encoding="utf-8")
+    ) == payload_b
+
+
+# --- produce: no-op session identities -------------------------------------
+
+@pytest.mark.parametrize(
+    "session_field",
+    [{}, {"session_id": ""}, {"session_id": None}, {"session_id": 123},
+     {"session_id": "../escape"}, {"session_id": "a/b"}],
+    ids=["absent", "empty", "null", "non-string", "dotdot", "separator"],
+)
+def test_cli_produce_unusable_session_id_writes_nothing_but_still_displays(
+    tmp_path, session_field
+):
+    payload = dict(session_field)
+    payload["context_window"] = {"used_percentage": 61}
+    payload["workspace"] = {"current_dir": "/home/dev/code/quorum"}
+    res = _run(["produce"], stdin=json.dumps(payload), env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    # No gauge file at all — not even one under a sanitized name.
+    assert _gauge_files(tmp_path) == []
+    # ...and the operator's status line does NOT go blank just because this
+    # refresh carried no usable session identity.
+    assert res.stdout == "quorum"
+
+
+# --- produce: stdin handling -----------------------------------------------
+
+def test_cli_produce_empty_stdin_is_a_silent_noop(tmp_path):
+    res = _run(["produce"], stdin="", env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0
+    assert res.stdout == ""
+    assert res.stderr == ""
+    assert _gauge_files(tmp_path) == []
+
+
+def test_cli_produce_unparseable_stdin_exits_2(tmp_path):
+    res = _run(["produce"], stdin="{not json", env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+    assert len(res.stderr.strip().splitlines()) == 1
+    assert _gauge_files(tmp_path) == []
+
+
+# --- produce: the display --------------------------------------------------
+
+def test_cli_produce_default_display_is_the_workspace_basename(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-display"
+    payload = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 5},
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+    }
+    res = _run(["produce"], stdin=json.dumps(payload), env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    # `sys.stdout.write`, not `print`: no trailing newline is added.
+    assert res.stdout == "quorum"
+
+
+def test_cli_produce_wrap_command_passthrough_is_byte_exact(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-wrap"
+    marker = "MARKER-no-trailing-newline"
+    command = _stub(
+        tmp_path,
+        "marker_stub.py",
+        "import sys\nsys.stdout.write(" + repr(marker) + ")\n",
+    )
+    payload = {"session_id": session_id, "context_window": {"used_percentage": 33}}
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin=json.dumps(payload),
+        env=_env_with_tempdir(tmp_path),
+    )
+    assert res.returncode == 0, res.stderr
+    # Byte for byte: the passthrough neither adds nor strips a newline.
+    assert res.stdout == marker
+    # ...and the gauge was still written.
+    assert json.loads(
+        _cli_gauge_path(tmp_path, session_id).read_text(encoding="utf-8")
+    ) == payload
+
+
+def test_cli_produce_wrap_command_receives_the_captured_stdin(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-stdin"
+    command = _stub(
+        tmp_path,
+        "echo_stdin_stub.py",
+        "import sys\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n",
+    )
+    payload = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 12},
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+    }
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin=json.dumps(payload),
+        env=_env_with_tempdir(tmp_path),
+    )
+    assert res.returncode == 0, res.stderr
+    # The stub saw the full payload, which proves the once-captured stdin was
+    # REPLAYED rather than re-read (a second read of the pipe returns nothing
+    # and would silently blank the operator's wrapped status line).
+    assert json.loads(res.stdout) == payload
+
+
+@pytest.mark.parametrize("kind", ["nonzero", "missing"])
+def test_cli_produce_broken_wrap_command_still_writes_the_gauge(tmp_path, kind):
+    session_id = TEST_SESSION_PREFIX + "cli-broken-" + kind
+    if kind == "nonzero":
+        command = _stub(tmp_path, "fail_stub.py", "import sys\nsys.exit(3)\n")
+    else:
+        command = '"' + str(tmp_path / "definitely-not-a-real-command") + '"'
+    payload = {"session_id": session_id, "context_window": {"used_percentage": 55}}
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin=json.dumps(payload),
+        env=_env_with_tempdir(tmp_path),
+    )
+    # A broken status line must never cost the guard its reading.
+    assert res.returncode == 0
+    assert json.loads(
+        _cli_gauge_path(tmp_path, session_id).read_text(encoding="utf-8")
+    ) == payload
+
+
+# --- read: the four classifications ----------------------------------------
+
+def test_cli_read_fresh_integer(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-read-num"
+    _seed_cli_gauge(
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": 37}}),
+    )
+    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "37\n"
+
+
+def test_cli_read_no_reading(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-read-null"
+    _seed_cli_gauge(
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": None}}),
+    )
+    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "no-reading\n"
+
+
+def test_cli_read_stale(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-read-stale"
+    path = _seed_cli_gauge(
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": 4}}),
+    )
+    aged = time.time() - 300
+    os.utime(path, (aged, aged))
+    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    # Aged, yet holding a valid low integer: `stale`, never the number.
+    assert res.stdout == "stale\n"
+
+
+def test_cli_read_missing(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-read-absent"
+    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "missing\n"
+
+
+def test_cli_read_creates_nothing_on_a_clean_temp_root(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-read-clean"
+    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert res.stdout == "missing\n"
+    assert not (tmp_path / ".quorum").exists()
+
+
+# --- read: error paths -----------------------------------------------------
+
+def test_cli_read_malformed_gauge_exits_2(tmp_path):
+    session_id = TEST_SESSION_PREFIX + "cli-read-bad"
+    _seed_cli_gauge(tmp_path, session_id, "{not json")
+    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+    assert res.stdout == ""
+    assert len(res.stderr.strip().splitlines()) == 1
+
+
+@pytest.mark.parametrize(
+    "bad", ["../escape", "", "a/b", "a b"], ids=["dotdot", "empty", "separator", "space"]
+)
+def test_cli_read_invalid_session_id_exits_2(tmp_path, bad):
+    res = _run(["read", "--session-id", bad], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+    # An invalid identifier is a caller bug, NOT one of the four reading states:
+    # a consumer would read `missing` as "no producer configured" and carry on.
+    for value in ("no-reading", "stale", "missing"):
+        assert value not in res.stdout
+    assert res.stdout.strip() == ""
+
+
+# --- argparse contract -----------------------------------------------------
+
+def test_cli_help_exits_0_and_names_both_subcommands(tmp_path):
+    res = _run(["--help"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert "produce" in res.stdout
+    assert "read" in res.stdout
+
+
+def test_cli_no_subcommand_exits_2(tmp_path):
+    res = _run([], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+
+
+def test_cli_unknown_subcommand_exits_2(tmp_path):
+    res = _run(["bogus"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+
+
+def test_cli_read_requires_session_id(tmp_path):
+    res = _run(["read"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
