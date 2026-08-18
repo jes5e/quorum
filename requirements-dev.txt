@@ -1,0 +1,8 @@
+# Dev-only toolchain for this repo's own tests and lint (there is no
+# application package to install). These back the CLAUDE.md `## Build
+# Commands` contract keys: `Narrow test` / `Full test` (pytest) and
+# `Lint` (pyflakes).
+#
+#   python -m pip install -r requirements-dev.txt
+pytest
+pyflakes

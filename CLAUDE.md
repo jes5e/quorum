@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A portable Claude Code **skill set** that runs an end-to-end SDLC on top of [bees](https://github.com/gabemahoney/bees) tickets. The artifacts here are skills (markdown + a few Python helpers) — there is no application to build, no test suite, and no lint config for this repo itself. Your job, when editing here, is almost always to modify a `SKILL.md` or one of the helper scripts.
+A portable Claude Code **skill set** that runs an end-to-end SDLC on top of [bees](https://github.com/gabemahoney/bees) tickets. The artifacts here are skills (markdown + a few Python helpers) — there is no application to build; the only code with its own tests and lint is the bundled helper scripts (`tests/` via pytest, pyflakes — see `## Build Commands`). Your job, when editing here, is almost always to modify a `SKILL.md` or one of the helper scripts.
 
 End-user docs (install, usage, the skill catalog, the workflow diagram) live in [README.md](README.md) — read it before changing user-facing behavior.
 
@@ -165,8 +165,8 @@ Don't change these assignments without a concrete reason — they're load-bearin
 - **Internal architecture docs (SDD)**: docs/sdd.md
 - **Customer-facing docs**: README.md
 - **Engineering best practices**: CONTRIBUTING.md
-- **Test writing guide**:
-- **Test review guide**:
+- **Test writing guide**: docs/test-writing-guide.md
+- **Test review guide**: docs/test-writing-guide.md
 - **Doc writing guide**: docs/doc-writing-guide.md
 
 ## Build Commands
