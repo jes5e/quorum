@@ -186,7 +186,7 @@ The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you 
 
 ### Where bundled helper scripts live
 
-A few skills ship Python helpers (e.g., `detect_fast_path.py`, `scoped_marker_resolver.py`, and `context_gauge.py` — the context-usage gauge producer/reader) under `skills/<skill-name>/scripts/` inside the quorum install. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `skills/<skill-name>/scripts/` in your quorum checkout.
+A few skills ship Python helpers (e.g., `detect_fast_path.py`, `scoped_marker_resolver.py`, and `context_gauge.py` — the context-usage gauge producer/reader) in a `scripts/` directory alongside each skill. Where that lands depends on how you got the skills: in a quorum checkout they sit under `skills/<skill-name>/scripts/`, and in an install they sit under `<skill-name>/scripts/` inside your skills directory (`~/.claude/skills/` for a global install, `<repo>/.claude/skills/` for a per-project one), because the install step copies the *contents* of `skills/` rather than the `skills/` directory itself. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `<skill-name>/scripts/` in your skills install directory, or under `skills/<skill-name>/scripts/` in a quorum checkout.
 
 ### Scratch files
 
@@ -216,23 +216,25 @@ Claude Code reports how much of the model's context window is in use to your sta
 
 `context_window.used_percentage` is the field consumers read. The whole `context_window` object is written as received from the status-line payload, so any extra keys it carries are preserved rather than filtered out.
 
-**Overwrite and freshness.** There is one file per session id, so concurrent quorum sessions never collide and never consume each other's reading. Every status-line refresh truncates and rewrites that file — it is a live gauge, not a log, so nothing appends and nothing rotates — and the workflow never deletes it. The file carries no timestamp field: freshness is judged from its modification time, so a producer that stops refreshing goes stale on its own. The bundled helper trusts a reading written within the last 120 seconds, so a producer you write yourself should refresh at least that often. The deeper contributor-facing contract lives in `docs/doc-writing-guide.md` under `## The context-gauge file contract`.
+**Overwrite and freshness.** There is one file per session id, so concurrent quorum sessions never collide and never consume each other's reading. Every status-line refresh truncates and rewrites that file — it is a live gauge, not a log, so nothing appends and nothing rotates — and the workflow never deletes it. The file carries no timestamp field: freshness is judged from its modification time, so a producer that stops refreshing goes stale on its own. The bundled helper trusts a reading written within the last 120 seconds, so a producer you write yourself should refresh at least that often.
 
 **Restricted or pinned status-line environments.** In some setups a higher-precedence configuration source owns the status-line slot — a launcher that starts the session against an explicit `--settings` file, or a managed organization-level settings file that outranks user settings — so a status-line command written at the user level never takes effect. The contract above is published so those environments can satisfy it themselves. Any process that writes a conforming file keeps the mechanism working, with no change on the quorum side and nothing in the workflow needing to know which producer wrote it: the environment's own status-line command, a wrapper around it, or anything else that can see the session's context-usage payload. The obligations are: write to the published path above, keyed to the current session id; include the required fields above; always write `context_window` as an object — an empty one when the payload carries no reading, never `null`, since a present-but-non-object `context_window` is rejected as malformed rather than read as "no reading"; and refresh at least as often as the freshness window above.
 
-To confirm a producer conforms, read the file back with the bundled helper's reader. Resolve the helper's location in your own install per [Where bundled helper scripts live](#where-bundled-helper-scripts-live) (helpers live under `skills/<skill-name>/scripts/`), and substitute the current session's id for `<id>` — Claude Code exposes it in the `CLAUDE_CODE_SESSION_ID` environment variable:
+To confirm a producer conforms, read the file back with the bundled helper's reader. Resolve the helper's location in your own install per [Where bundled helper scripts live](#where-bundled-helper-scripts-live), substituting for `<skills-dir>` below the directory that contains `quo-setup/` — your skills install directory (e.g. `~/.claude/skills`, or `<repo>/.claude/skills` for a per-project install) or the `skills/` directory of a quorum checkout — and substitute the current session's id for `<id>`, which Claude Code exposes in the `CLAUDE_CODE_SESSION_ID` environment variable:
 
 ```bash
 # POSIX (bash / zsh):
-python3 <quorum-checkout>/skills/quo-setup/scripts/context_gauge.py read --session-id <id>
+python3 <skills-dir>/quo-setup/scripts/context_gauge.py read --session-id <id>
 ```
 
 ```powershell
 # Windows (PowerShell):
-python <quorum-checkout>\skills\quo-setup\scripts\context_gauge.py read --session-id <id>
+python <skills-dir>\quo-setup\scripts\context_gauge.py read --session-id <id>
 ```
 
 It prints exactly one value: an integer percentage when a fresh reading is present, or `no-reading`, `stale`, or `missing` when there is no fresh number to report. A nonconforming file is the exception — rather than printing one of those four values, the reader exits non-zero and describes the malformation on stderr, which is how you tell a broken producer from a merely quiet one.
+
+Everything you need to publish and verify a conforming file is above. If you want the reasoning behind it, the deeper contract lives in [the contributor-facing contract section](docs/doc-writing-guide.md#the-context-gauge-file-contract) of the doc-writing guide — optional depth, aimed at contributors working on the mechanism itself.
 
 ## Coming soon: optional skills
 

@@ -34,8 +34,10 @@ snapshotting the real `<tempdir>/.quorum` at setup and asserting on teardown
 that no entry under the pytest-reserved `quorum-pytest-` session-id prefix was
 added OR rewritten (the snapshot keys on stat metadata, so an overwrite of a
 name a previous run left behind still fails — see `_real_prefixed_entries`).
-Nothing in this module ever deletes anything under that directory
-(CLAUDE.md `## Scratch-file convention`).
+That stat keying is itself regression-pinned by the two `test_snapshot_helper_*`
+tests, because a passing run leaves the fixture's delta empty and would not
+otherwise notice the keying being weakened. Nothing in this module ever deletes
+anything under that directory (CLAUDE.md `## Scratch-file convention`).
 """
 
 import json
@@ -70,7 +72,7 @@ REAL_GAUGE_DIR = REAL_TEMP_ROOT / ".quorum"
 TEST_SESSION_PREFIX = "quorum-pytest-"
 
 
-def _real_prefixed_entries():
+def _real_prefixed_entries(directory=None):
     """Identity tuples for REAL-gauge-dir files under this suite's reserved prefix.
 
     Keyed on `(name, size, mtime_ns)` rather than name alone, because a name-only
@@ -81,6 +83,15 @@ def _real_prefixed_entries():
     detecting the leak it had just caught. Stat metadata re-arms it: an overwrite
     moves `mtime_ns` (and usually `size`), so the delta fires again.
 
+    `directory` is a TEST-ONLY injection point, defaulting to `None` so the
+    production path stays un-indirected: the autouse fixture calls this with no
+    arguments and the module-level `REAL_GAUGE_DIR` constant is what gets
+    inspected, exactly as before. It exists so the two
+    `test_snapshot_helper_*` regression tests below can point this same code at
+    a `tmp_path` and prove the tuple keying still detects an overwrite — that
+    keying is the whole reason this helper is not a plain set of names, and
+    nothing else in the suite would fail if someone "simplified" it back.
+
     Scope limit, stated rather than papered over: on a filesystem with coarse
     timestamp granularity (1-2s ticks are still real on some FAT/HFS+ and network
     mounts) a same-size overwrite that lands in the SAME tick as the setup
@@ -90,10 +101,11 @@ def _real_prefixed_entries():
     separate runs are seconds-to-minutes apart, so this narrows detection in a
     corner rather than disarming it.
     """
-    if not REAL_GAUGE_DIR.is_dir():
+    root = REAL_GAUGE_DIR if directory is None else Path(directory)
+    if not root.is_dir():
         return set()
     entries = set()
-    for p in REAL_GAUGE_DIR.glob(f"context-usage-{TEST_SESSION_PREFIX}*"):
+    for p in root.glob(f"context-usage-{TEST_SESSION_PREFIX}*"):
         try:
             st = p.stat()
         except OSError:
@@ -131,6 +143,60 @@ def no_real_tempdir_writes():
         "test wrote a gauge file into the real temp directory "
         f"{REAL_GAUGE_DIR}: {leaked}"
     )
+
+
+# --- the safety fixture's own regression pins -------------------------------
+#
+# These two tests guard the guard. `_real_prefixed_entries` keys on
+# `(name, size, mtime_ns)` specifically so that an OVERWRITE of a name a leaking
+# earlier run already left behind still shows up in the delta — see its
+# docstring. Nothing else in this suite exercises that: the fixture's delta is
+# empty on every passing run, so collapsing the tuple back to a bare set of
+# names would leave the whole suite green while silently disarming the leak
+# detector. Both tests below point the helper at `tmp_path` via its test-only
+# `directory` argument and assert the delta fires for an overwrite whose NAME is
+# unchanged — the exact case a name-only snapshot misses.
+
+def test_snapshot_helper_detects_a_different_size_overwrite(tmp_path):
+    entry = tmp_path / f"context-usage-{TEST_SESSION_PREFIX}snap-resize.json"
+    entry.write_text("first", encoding="utf-8")
+    before = _real_prefixed_entries(tmp_path)
+    assert len(before) == 1
+
+    entry.write_text("a considerably longer second body", encoding="utf-8")
+    after = _real_prefixed_entries(tmp_path)
+
+    assert after - before, "an overwrite must show in the delta"
+    # The name did not change, so a name-keyed snapshot would have seen nothing.
+    assert {name for name, _size, _mtime in after} == {
+        name for name, _size, _mtime in before
+    }
+
+
+def test_snapshot_helper_detects_a_same_size_overwrite(tmp_path):
+    entry = tmp_path / f"context-usage-{TEST_SESSION_PREFIX}snap-same-size.json"
+    entry.write_text("AAAA", encoding="utf-8")
+    before = _real_prefixed_entries(tmp_path)
+    assert len(before) == 1
+
+    entry.write_text("BBBB", encoding="utf-8")
+    # Advance the mtime explicitly rather than sleeping: the write above may land
+    # in the same filesystem timestamp tick as the snapshot, which is the coarse
+    # granularity caveat the helper's docstring already scopes out. Forcing the
+    # tick keeps this test about the KEYING, not about clock resolution.
+    st = entry.stat()
+    os.utime(entry, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
+    after = _real_prefixed_entries(tmp_path)
+
+    # Same name AND same size — `mtime_ns` is the only component that moved, so
+    # this fails for any keying that drops it.
+    assert after - before, "a same-size overwrite must still show in the delta"
+    assert {name for name, _size, _mtime in after} == {
+        name for name, _size, _mtime in before
+    }
+    assert {size for _name, size, _mtime in after} == {
+        size for _name, size, _mtime in before
+    }
 
 
 # ===========================================================================
@@ -294,6 +360,79 @@ def test_parse_payload_non_object_top_level_raises(raw):
         mod.parse_payload(raw)
 
 
+# --- read_stdin_once: the defensive branches -------------------------------
+#
+# `read_stdin_once` is the single stdin drain, and the CLI layer only ever
+# exercises its happy path (a real pipe). Its two defensive branches are what
+# keep a status-line refresh from crashing when the harness hands the producer
+# no usable stdin at all — a status line that raises is worse than a blank one,
+# and the gauge write happens downstream of this call. Both are pinned here
+# in-process because there is no portable way to hand a subprocess a `sys.stdin`
+# with no `buffer`.
+#
+# `mod.sys` IS the shared stdlib module object, so these patches go through
+# `monkeypatch` (auto-undone) and never a bare assignment — a leaked patch would
+# be process-global and would break pytest's own capture.
+
+
+class _NoBufferStdin:
+    """A stdin-like object with no `buffer` attribute at all."""
+
+
+@pytest.mark.parametrize(
+    "stdin", [None, _NoBufferStdin()], ids=["none", "no-buffer-attr"]
+)
+def test_read_stdin_once_without_a_usable_buffer_returns_empty_bytes(
+    monkeypatch, stdin
+):
+    monkeypatch.setattr(mod.sys, "stdin", stdin)
+    result = mod.read_stdin_once()
+    # Exactly `b""` — not `None`, not `""`. `parse_payload` routes `b""` to the
+    # silent no-op; anything else would either crash or look like a payload.
+    assert result == b""
+    assert isinstance(result, bytes)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [OSError("stdin is closed"), ValueError("I/O operation on closed file")],
+    ids=["oserror", "valueerror"],
+)
+def test_read_stdin_once_swallows_a_failing_buffer_read(monkeypatch, error):
+    """The shipped helper catches `(OSError, ValueError)`, so both are asserted.
+
+    `ValueError` is not incidental: reading a closed file object raises
+    `ValueError`, not `OSError`, and that is a realistic shape for a status-line
+    process whose stdin has already been torn down.
+    """
+
+    class _FailingBuffer:
+        def read(self):
+            raise error
+
+    class _Stdin:
+        buffer = _FailingBuffer()
+
+    monkeypatch.setattr(mod.sys, "stdin", _Stdin())
+    result = mod.read_stdin_once()
+    assert result == b""
+    assert isinstance(result, bytes)
+
+
+def test_read_stdin_once_returns_the_buffer_bytes_verbatim(monkeypatch):
+    """Contrast case, so the two defensive tests above cannot pass vacuously."""
+
+    class _Buffer:
+        def read(self):
+            return b'{"session_id": "s-1"}'
+
+    class _Stdin:
+        buffer = _Buffer()
+
+    monkeypatch.setattr(mod.sys, "stdin", _Stdin())
+    assert mod.read_stdin_once() == b'{"session_id": "s-1"}'
+
+
 # --- write_gauge -----------------------------------------------------------
 
 def test_write_gauge_writes_to_gauge_path(monkeypatch, tmp_path):
@@ -324,6 +463,43 @@ def test_write_gauge_second_write_truncates_rather_than_appends(monkeypatch, tmp
     assert json.loads(second.read_text(encoding="utf-8")) == small
     # ...and the byte length shrank, which append could not do.
     assert second.stat().st_size < first_size
+
+
+def test_write_gauge_serialization_failure_does_not_truncate_the_previous_gauge(
+    monkeypatch, tmp_path
+):
+    """`json.dumps` runs BEFORE `open(path, "w")`, so a bad record cannot truncate.
+
+    The ordering inside `write_gauge` is load-bearing and commented as such in
+    the helper. Reversed — open first, serialize inside the `with` — a record
+    that fails to serialize would leave a zero-byte gauge behind. That file is
+    still FRESH (the truncation bumps its mtime), so the reader would classify
+    it as malformed and exit 2, turning a producer-side hiccup into a hard
+    failure for every consumer of the session. Keeping the good reading in place
+    means the next refresh simply overwrites it.
+
+    A `set` is the trigger because `json.dumps` rejects it with `TypeError`
+    while remaining a plausible thing to find in a carried-through
+    `context_window` (the helper copies that object verbatim, whatever it holds).
+    """
+    _patch_tempdir(monkeypatch, tmp_path)
+    session_id = TEST_SESSION_PREFIX + "serialize-fail"
+    good = {"session_id": session_id, "context_window": {"used_percentage": 42}}
+    path = mod.write_gauge(good)
+    before_bytes = path.read_bytes()
+    assert before_bytes  # non-empty, so the survival assertion below has teeth
+
+    doomed = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 42, "unserializable": {1, 2}},
+    }
+    with pytest.raises(TypeError):
+        mod.write_gauge(doomed)
+
+    # Byte-identical: not truncated, not partially rewritten, not deleted.
+    assert path.exists()
+    assert path.read_bytes() == before_bytes
+    assert json.loads(path.read_text(encoding="utf-8")) == good
 
 
 def test_write_gauge_two_sessions_are_independent(monkeypatch, tmp_path):
@@ -504,19 +680,18 @@ def test_classify_reading_aged_via_os_utime_is_stale(monkeypatch, tmp_path):
 def test_classify_reading_missing_and_creates_nothing(monkeypatch, tmp_path):
     _patch_tempdir(monkeypatch, tmp_path)
     path = mod.gauge_path("absent-session")
-    assert mod.classify_reading(path, now=time.time()) == mod.READING_MISSING
-    # Reading is strictly read-only: the gauge directory must not spring into
-    # existence as a side effect of a `missing` classification.
-    assert not (tmp_path / ".quorum").exists()
-
-
-def test_classify_reading_missing_is_never_zero_or_empty(monkeypatch, tmp_path):
-    _patch_tempdir(monkeypatch, tmp_path)
-    result = mod.classify_reading(mod.gauge_path("absent-session"), now=time.time())
+    result = mod.classify_reading(path, now=time.time())
     assert result == mod.READING_MISSING
+    # An absent gauge is NEVER `0` and never empty — either would read to a
+    # consumer as abundant headroom, the one banned direction. (The constants'
+    # own distinctness is covered by `test_reading_values_are_four_way_distinct`;
+    # these assertions pin what this call site actually returns.)
     assert result != "0"
     assert result != ""
     assert result != 0
+    # Reading is strictly read-only: the gauge directory must not spring into
+    # existence as a side effect of a `missing` classification.
+    assert not (tmp_path / ".quorum").exists()
 
 
 # --- classify_reading: four-way distinctness -------------------------------
@@ -575,6 +750,30 @@ def test_classify_reading_malformed(monkeypatch, tmp_path, text):
     path = _seed(monkeypatch, tmp_path, TEST_SESSION_PREFIX + "bad", text)
     with pytest.raises(mod.MalformedGauge):
         mod.classify_reading(path, now=path.stat().st_mtime)
+
+
+def test_classify_reading_non_utf8_gauge_is_malformed(monkeypatch, tmp_path):
+    """Undecodable bytes take the `UnicodeDecodeError` branch, not the JSON one.
+
+    Every other malformation case in this module is valid UTF-8 that fails
+    later, so this is the only test that reaches `read_text`'s decode guard.
+    Without that guard the exception escapes `classify_reading` uncaught and the
+    reader dies with a traceback instead of the contracted single stderr line —
+    and `UnicodeDecodeError` subclasses `ValueError`, not `OSError`, so neither
+    of the other two `except` clauses on that call would catch it.
+    """
+    _patch_tempdir(monkeypatch, tmp_path)
+    mod.ensure_gauge_dir()
+    session_id = TEST_SESSION_PREFIX + "non-utf8"
+    path = mod.gauge_path(session_id)
+    # `\xff` is not a legal UTF-8 lead byte in any position.
+    path.write_bytes(b"\xff\xfe{")
+
+    with pytest.raises(mod.MalformedGauge) as excinfo:
+        mod.classify_reading(path, now=path.stat().st_mtime)
+    # Assert the BRANCH, not just the exception type: a file that decoded and
+    # then failed the JSON parse would also raise MalformedGauge here.
+    assert "not valid UTF-8" in str(excinfo.value)
 
 
 @pytest.mark.parametrize("value", ["true", "false"], ids=["true", "false"])
@@ -681,6 +880,14 @@ def _seed_cli_gauge(tmp_path, session_id, text):
     path = _cli_gauge_path(tmp_path, session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _seed_cli_gauge_bytes(tmp_path, session_id, raw):
+    """Seed a gauge with exact raw bytes — for content no encoder would produce."""
+    path = _cli_gauge_path(tmp_path, session_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(raw)
     return path
 
 
@@ -914,18 +1121,19 @@ def test_cli_read_stale(tmp_path):
     assert res.stdout == "stale\n"
 
 
-def test_cli_read_missing(tmp_path):
-    session_id = TEST_SESSION_PREFIX + "cli-read-absent"
-    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
-    assert res.returncode == 0, res.stderr
-    assert res.stdout == "missing\n"
-
-
 def test_cli_read_creates_nothing_on_a_clean_temp_root(tmp_path):
+    """Also the `missing` classification's CLI pin — same setup, same assertions.
+
+    A separate `test_cli_read_missing` used to sit beside this one asserting the
+    identical returncode and stdout against the identical setup; it was strictly
+    subsumed and has been removed rather than left as a duplicate that would
+    have to be kept in step with this one.
+    """
     session_id = TEST_SESSION_PREFIX + "cli-read-clean"
     res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0, res.stderr
     assert res.stdout == "missing\n"
+    # ...and reading a session with no gauge brings nothing into existence.
     assert not (tmp_path / ".quorum").exists()
 
 
@@ -938,6 +1146,23 @@ def test_cli_read_malformed_gauge_exits_2(tmp_path):
     assert res.returncode == 2
     assert res.stdout == ""
     assert len(res.stderr.strip().splitlines()) == 1
+
+
+def test_cli_read_non_utf8_gauge_exits_2(tmp_path):
+    """Undecodable bytes reach the caller as the contracted exit-2 + one line.
+
+    The unit-layer twin pins the `MalformedGauge` branch; this pins that the CLI
+    turns it into the documented shape rather than a traceback on stderr.
+    """
+    session_id = TEST_SESSION_PREFIX + "cli-read-non-utf8"
+    _seed_cli_gauge_bytes(tmp_path, session_id, b"\xff\xfe{")
+    res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+    assert res.stdout == ""
+    assert len(res.stderr.strip().splitlines()) == 1
+    # Not one of the four reading values dressed up as an error line.
+    for value in ("no-reading", "stale", "missing"):
+        assert value not in res.stdout
 
 
 @pytest.mark.parametrize(
