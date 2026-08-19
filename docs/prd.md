@@ -359,3 +359,27 @@ The run-start prompt that offered to downgrade "support roles" (Doc Writer, PM, 
 - Downgrading any role to a cheaper model. Moving the fan-out roles to Sonnet was considered and cut: it is a cost optimization, and cost is not this workflow's objective — against a quality goal those moves are regression risks with no offsetting benefit.
 - Escalating a role's effort automatically when review fails. Re-dispatching an implementer at a higher tier after repeated reviewer findings is sound in principle but unproven, and depends on a capability not verified here (whether effort can be overridden per dispatch rather than only pinned in frontmatter).
 - Measuring whether the tiering helped. There is no eval harness in this repo, so every tier reflects reasoning about what roles do rather than evidence about what they produce. That gap is real and is separate work.
+
+### Feature: Context-window guard for long orchestrator runs
+
+**What.** The three long-running orchestrators — `/quo-execute`, `/quo-breakdown-epic`, and `/quo-fix-issue` — now stop themselves before context usage climbs high enough to trigger an ill-timed automatic compaction partway through a unit of work. At each Epic boundary (execute/breakdown) or Issue boundary (fix), the orchestrator checks how much of the context window is in use, and when that has climbed far enough that starting another unit would risk an auto-compaction mid-unit, it stops and recommends the operator begin a fresh session and re-invoke. Stopping cleanly at a boundary — where all work is committed and ticket state is externalized — is strictly better than a compaction landing in the middle of a unit.
+
+**Configure-now gate.** The usage reading is supplied by a per-session status-line gauge. When no reading is being published in the environment — the guard sees a `missing` state — the orchestrator fires a hard-stop gate offering to configure the producer inline via `/quo-setup --configure-gauge-producer`, so the operator can turn the guard on without abandoning the run.
+
+**Persistent opt-out.** An operator who wants to run without the missing-reading hard stop can write the persistent run-unguarded marker (via `/quo-setup`; its per-OS location and its delete-to-re-enable behavior are documented in the README rather than restated here). That opt-out is deliberately narrow: it suppresses ONLY the hard stop that fires when no reading is available. It never suppresses a genuine over-threshold stop — when a real reading is present and crosses the stop point, the orchestrator still stops regardless of the marker.
+
+**Silent carve-out.** When the session identifier is unavailable (`CLAUDE_CODE_SESSION_ID` unset), the guard is skipped silently — no gauge file can be keyed to a session without it, so there is nothing to check, and no gate and no diagnostic fire.
+
+**Why.** The harness compacts context automatically once the window fills, and a compaction that lands mid-unit is disruptive even though a companion change (see the b.ja9 feature) makes it lossless. The model cannot read its own context usage, so it cannot self-govern; the gauge bridges that gap by publishing a reading the orchestrator can consult at a natural stopping point and act on before the harness would.
+
+**Acceptance criteria.**
+
+- Each of the three orchestrators performs the boundary check at every Epic/Issue boundary and stops with a fresh-session recommendation when the reading is at or above the stop threshold.
+- A `missing` reading fires the configure-now gate offering `/quo-setup --configure-gauge-producer`, unless the persistent opt-out marker is present.
+- The opt-out marker suppresses the missing-reading hard stop only, never an over-threshold stop.
+- An unset session identifier skips the guard silently.
+
+**Out of scope.**
+
+- Reading context usage without the status-line gauge. The model has no native access to its own usage, so the producer/consumer gauge is the only available signal; there is no fallback measurement.
+- Auto-continuing in a fresh session on the operator's behalf. The guard stops and recommends; starting the new session stays a deliberate operator action.
