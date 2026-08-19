@@ -50,6 +50,20 @@ session.
 - `--session-id <id>` (REQUIRED): the session identifier to read. It selects
   the gauge file, so it must match the identifier the producer wrote under.
 
+**Threshold mode:**
+
+    context_gauge.py stop-threshold
+
+Prints the integer stop threshold percentage on stdout and exits `0`. Takes no
+arguments. Read-only: it reads nothing from stdin, writes no file, creates no
+directory, and emits nothing on stderr. It exists so a consumer (a boundary
+guard comparing a reading against the stop point) can obtain the threshold from
+the single-definition-site constant `STOP_THRESHOLD_PERCENT` rather than
+restating the number and creating a second definition site. This subcommand is
+purely additive: it does NOT touch `read`'s four-value output vocabulary
+(`integer` / `no-reading` / `stale` / `missing`) or the gauge-file
+path/field-name contract.
+
 **Inspection mode:**
 
     context_gauge.py inspect-statusline [--repo-root <path>]
@@ -265,6 +279,8 @@ The split is per subcommand.
   a malformed gauge file (unreadable or non-conforming), reported as a single
   human-readable line on stderr, with an invalid `--session-id` or an argparse
   usage error also exiting `2`.
+- `stop-threshold` returns `0`; its only non-zero exit is an argparse usage
+  error, which is raised before `cmd_stop_threshold` runs.
 
 Invariants (load-bearing)
 -------------------------
@@ -350,9 +366,17 @@ STOP_THRESHOLD_PERCENT = 50
 # How recently the gauge must have been written for its reading to be trusted.
 # Freshness is judged from the gauge file's modification time — there is no
 # embedded timestamp field — and the overwrite-per-refresh write semantics are
-# what keep that mtime current. A gauge older than this window signals a
-# stalled producer, not a healthy low reading.
-FRESHNESS_WINDOW_SECONDS = 120
+# what keep that mtime current. The window is deliberately turn-scale: the
+# status line does not refresh mid-turn (tool calls within a turn trigger no
+# refresh), so a healthy-but-quiet session's gauge can legitimately be many
+# minutes old by the time a boundary is reached — a sub-turn window would flag
+# such a gauge stale even with a healthy producer and a valid reading. A gauge
+# older than this window still signals a stalled producer, not a healthy low
+# reading, so `stale` still routes to a stop; the window just has to clear a
+# long turn's wall-clock before it does. This value is a post-first-use
+# recalibration input — the same RESEARCH-NEEDED owner recorded for the stop
+# threshold — so treat 1200 (20 minutes) as a first cut, not a measured floor.
+FRESHNESS_WINDOW_SECONDS = 1200
 
 # The gauge file contract, defined once so no other code path spells it out.
 GAUGE_DIR_NAME = ".quorum"
@@ -1335,6 +1359,15 @@ def cmd_write_opt_out(args) -> int:
     return 0
 
 
+def cmd_stop_threshold(args) -> int:
+    # Emit the single-definition-site constant directly so a consumer obtains the
+    # threshold from here rather than restating the literal. Read-only: writes no
+    # file, creates no directory, and prints nothing on stderr. `print` supplies
+    # exactly one decimal integer followed by a trailing newline.
+    print(STOP_THRESHOLD_PERCENT)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Publish or read a per-session context-window usage gauge.",
@@ -1402,6 +1435,11 @@ def main() -> int:
         help="write the persistent opt-out marker that suppresses the missing-reading stop",
     )
 
+    subparsers.add_parser(
+        "stop-threshold",
+        help="print the stop threshold percentage a consumer compares a reading against",
+    )
+
     try:
         args = parser.parse_args()
     except SystemExit as e:
@@ -1415,7 +1453,9 @@ def main() -> int:
         return cmd_inspect_statusline(args)
     if args.mode == "install-statusline":
         return cmd_install_statusline(args)
-    return cmd_write_opt_out(args)
+    if args.mode == "write-opt-out":
+        return cmd_write_opt_out(args)
+    return cmd_stop_threshold(args)
 
 
 if __name__ == "__main__":

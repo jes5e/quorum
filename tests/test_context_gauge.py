@@ -405,7 +405,10 @@ def test_tunable_constants():
     # documented beside them in the helper), never an incidental edit — so this
     # test is meant to fail and force that decision to be made explicitly.
     assert mod.STOP_THRESHOLD_PERCENT == 50
-    assert mod.FRESHNESS_WINDOW_SECONDS == 120
+    assert mod.FRESHNESS_WINDOW_SECONDS == 1200
+    # Turn-scale window (>= 15 min): an accidental revert to the old 120-second
+    # value fails loudly here, not just at the exact-equality pin above.
+    assert mod.FRESHNESS_WINDOW_SECONDS >= 900
 
 
 # --- extract_gauge_record --------------------------------------------------
@@ -944,6 +947,30 @@ def test_classify_reading_inside_freshness_window_returns_the_integer(monkeypatc
     assert mod.classify_reading(path, now=mtime + mod.FRESHNESS_WINDOW_SECONDS - 1) == "3"
 
 
+def test_classify_reading_past_old_window_but_inside_new_window_returns_the_integer(
+    monkeypatch, tmp_path
+):
+    """A reading aged well past the OLD 120s window still reads as the integer.
+
+    240s is a literal chosen to sit ABOVE the retired 120-second window and
+    comfortably BELOW the new turn-scale window (15-20 min). Classifying this as
+    the integer — not `stale` — proves the window actually grew past 120, which a
+    symbolic `mod.FRESHNESS_WINDOW_SECONDS - N` offset could not: that would pass
+    for any window value, including the old one, and so would not pin the
+    enlargement. Load-bearing that the literal stays strictly between 120 and the
+    new window.
+    """
+    session_id = TEST_SESSION_PREFIX + "grew"
+    path = _seed(
+        monkeypatch,
+        tmp_path,
+        session_id,
+        json.dumps({"session_id": session_id, "context_window": {"used_percentage": 3}}),
+    )
+    mtime = path.stat().st_mtime
+    assert mod.classify_reading(path, now=mtime + 240) == "3"
+
+
 def test_classify_reading_aged_via_os_utime_is_stale(monkeypatch, tmp_path):
     session_id = TEST_SESSION_PREFIX + "utime"
     path = _seed(
@@ -952,7 +979,9 @@ def test_classify_reading_aged_via_os_utime_is_stale(monkeypatch, tmp_path):
         session_id,
         json.dumps({"session_id": session_id, "context_window": {"used_percentage": 5}}),
     )
-    aged = time.time() - 300
+    # Reference the helper constant so this ages the gauge past the CURRENT
+    # window (with slack), not a hardcoded 300s that would sit inside it.
+    aged = time.time() - (mod.FRESHNESS_WINDOW_SECONDS + 60)
     os.utime(path, (aged, aged))
     assert mod.classify_reading(path, now=time.time()) == mod.READING_STALE
 
@@ -1910,7 +1939,9 @@ def test_cli_read_stale(tmp_path):
         session_id,
         json.dumps({"session_id": session_id, "context_window": {"used_percentage": 4}}),
     )
-    aged = time.time() - 300
+    # Reference the helper constant so this ages the gauge past the CURRENT
+    # window (with slack), not a hardcoded 300s that would sit inside it.
+    aged = time.time() - (mod.FRESHNESS_WINDOW_SECONDS + 60)
     os.utime(path, (aged, aged))
     res = _run(["read", "--session-id", session_id], env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0, res.stderr
@@ -2340,6 +2371,34 @@ def test_cli_unknown_subcommand_exits_2(tmp_path):
 
 def test_cli_read_requires_session_id(tmp_path):
     res = _run(["read"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+
+
+# --- stop-threshold CLI contract -------------------------------------------
+
+def test_cli_stop_threshold_emits_the_constant(tmp_path):
+    # One invocation yields the threshold integer on stdout, exit 0. The value is
+    # compared to `mod.STOP_THRESHOLD_PERCENT` symbolically — never a bare literal
+    # 50 — so the seam and the single-definition-site tunable stay pinned together:
+    # a future retune of the constant moves this assertion with it, and the
+    # value-is-50 pin lives once in `test_tunable_constants`.
+    res = _run(["stop-threshold"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    # Parse to an int rather than asserting a byte-exact string: the Task pins only
+    # that a consumer can obtain the threshold integer from one invocation.
+    assert int(res.stdout.strip()) == mod.STOP_THRESHOLD_PERCENT
+    # Success path is quiet on stderr.
+    assert res.stderr == ""
+
+
+def test_cli_help_names_the_stop_threshold_subcommand(tmp_path):
+    res = _run(["--help"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert "stop-threshold" in res.stdout
+
+
+def test_cli_stop_threshold_unknown_flag_exits_2(tmp_path):
+    res = _run(["stop-threshold", "--nope"], env=_env_with_tempdir(tmp_path))
     assert res.returncode == 2
 
 
