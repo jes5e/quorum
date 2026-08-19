@@ -38,10 +38,24 @@ That stat keying is itself regression-pinned by the two `test_snapshot_helper_*`
 tests, because a passing run leaves the fixture's delta empty and would not
 otherwise notice the keying being weakened. Nothing in this module ever deletes
 anything under that directory (CLAUDE.md `## Scratch-file convention`).
+
+No test reads or writes the operator's real Claude Code user settings either.
+This is the first module to touch that file at all, so a second autouse fixture,
+`no_real_user_settings_writes`, snapshots the stat metadata of the real
+`settings.json`, the real config directory's existence, and the reserved
+self-check gauge, and asserts all three unchanged on teardown. Every test that
+reaches a settings or marker path routes through an isolation helper that
+redirects `HOME` and `USERPROFILE` (so `Path.home()` resolves into a `tmp_path`
+sandbox on POSIX and Windows alike) and either sets or unsets `CLAUDE_CONFIG_DIR`
+— always via `monkeypatch` (unit layer) or a copied environment (CLI layer),
+never a bare `os.environ` assignment. Popping an inherited `CLAUDE_CONFIG_DIR`
+is load-bearing: a developer or CI runner who exports it would otherwise point
+every default-derivation test at their real configuration directory.
 """
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -71,6 +85,40 @@ REAL_GAUGE_DIR = REAL_TEMP_ROOT / ".quorum"
 # its real-tempdir session id OUTSIDE this prefix, so its never-deleted artifact
 # cannot collide with the delta check below.
 TEST_SESSION_PREFIX = "quorum-pytest-"
+
+# Real user-settings paths, captured at IMPORT time before any test can
+# monkeypatch HOME / USERPROFILE / CLAUDE_CONFIG_DIR. Spelled with literal
+# `".claude"` / `"settings.json"` / `"quo-setup-self-check"` rather than read
+# from `mod`, for the same reason REAL_GAUGE_DIR is: a test that mutates one of
+# the helper's own constants must not be able to relocate the path the safety
+# fixture watches.
+_config_override = os.environ.get("CLAUDE_CONFIG_DIR")
+REAL_CONFIG_DIR = Path(_config_override) if _config_override else Path.home() / ".claude"
+REAL_USER_SETTINGS = REAL_CONFIG_DIR / "settings.json"
+# The self-check session id is NOT under TEST_SESSION_PREFIX, so
+# `no_real_tempdir_writes` does not watch it; the sibling subtask spawns a
+# subprocess that writes a throwaway gauge under exactly this name, and a lost
+# `env=` override would land it in the real temp dir. Spelled literally and
+# pinned separately below.
+REAL_SELF_CHECK_GAUGE = REAL_GAUGE_DIR / "context-usage-quo-setup-self-check.json"
+
+
+def _stat_key(path):
+    """Return `None` if `path` is absent, else `(st_size, st_mtime_ns)`.
+
+    Stat-keyed rather than a mere existence check for the same reason
+    `_real_prefixed_entries` is: an overwrite of an existing settings file must
+    fire the delta even though the name is unchanged. Same coarse-granularity
+    scope note applies — a same-size overwrite that lands in the same filesystem
+    timestamp tick as the setup snapshot leaves both key components unchanged and
+    would not show; that narrows detection in a corner rather than disarming it.
+    Reads only stat metadata — never the file's contents.
+    """
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
 
 
 def _real_prefixed_entries(directory=None):
@@ -146,6 +194,46 @@ def no_real_tempdir_writes():
     )
 
 
+@pytest.fixture(autouse=True)
+def no_real_user_settings_writes():
+    """Fail any test that reads-into-existence or writes the real user settings.
+
+    A delta assertion over stat metadata, not an emptiness assertion: it must
+    fire on an OVERWRITE of an already-present settings file, not only on a
+    brand-new one, so it keys on `_stat_key`. Three things are snapshotted and
+    asserted unchanged: the real `settings.json`'s stat key, the real config
+    directory's existence, and the reserved self-check gauge's stat key. A test
+    that forgets a HOME / USERPROFILE / CLAUDE_CONFIG_DIR override, or a
+    subprocess self-check that loses its `env=` redirect, moves one of these and
+    is caught here.
+
+    This fixture reads stat metadata ONLY — it never opens the operator's
+    settings file to read its contents, never creates anything, and never
+    deletes anything (CLAUDE.md `## Scratch-file convention`).
+
+    One accepted false positive: a genuine `/quo-setup` install running
+    concurrently on this same machine would legitimately (re)write
+    `REAL_SELF_CHECK_GAUGE` and fire this delta. That collision is judged
+    acceptable — the test run and a live install racing on one machine is rare,
+    and a spurious failure is safer than a silent real-settings write.
+    """
+    before = (
+        _stat_key(REAL_USER_SETTINGS),
+        REAL_CONFIG_DIR.exists(),
+        _stat_key(REAL_SELF_CHECK_GAUGE),
+    )
+    yield
+    assert _stat_key(REAL_USER_SETTINGS) == before[0], (
+        f"test touched the real user settings file {REAL_USER_SETTINGS}"
+    )
+    assert REAL_CONFIG_DIR.exists() == before[1], (
+        f"test created or removed the real config directory {REAL_CONFIG_DIR}"
+    )
+    assert _stat_key(REAL_SELF_CHECK_GAUGE) == before[2], (
+        f"test touched the reserved self-check gauge {REAL_SELF_CHECK_GAUGE}"
+    )
+
+
 # --- the safety fixture's own regression pins -------------------------------
 #
 # These two tests guard the guard. `_real_prefixed_entries` keys on
@@ -216,6 +304,45 @@ def _seed(monkeypatch, tmp_path, session_id, text):
     path = mod.gauge_path(session_id)
     path.write_text(text, encoding="utf-8")
     return path
+
+
+def _isolate_settings_env(monkeypatch, tmp_path, config_dir=None):
+    """Sandbox every home/config lookup a unit-layer settings test can make.
+
+    Returns the fake home directory it points HOME/USERPROFILE at (created under
+    `tmp_path`, not created on disk — callers that need the dir make it).
+
+    - Redirects the tempdir via `_patch_tempdir` (the in-process module-object
+      patch, because `tempfile.gettempdir()` caches its result in-process).
+    - Sets BOTH `HOME` and `USERPROFILE` to `tmp_path/home`: `Path.home()` is
+      `os.path.expanduser("~")`, which reads `HOME` on POSIX and `USERPROFILE`
+      on Windows, so both are required for the helper's per-OS-branch-free
+      `Path.home()` claim to be exercised on either platform. `HOMEDRIVE` /
+      `HOMEPATH` are deleted so the Windows fallback chain cannot reach a real
+      profile.
+    - Also redirects `TMPDIR`/`TEMP`/`TMP` so any child process an in-process
+      call might spawn inherits the sandbox (the `mod.tempfile` patch does not
+      cross a process boundary).
+    - `config_dir=None` unsets `CLAUDE_CONFIG_DIR` (default `~/.claude`
+      derivation); otherwise sets it to the given path.
+
+    Every mutation goes through `monkeypatch` (auto-undone), never a bare
+    `os.environ[...] = ...`.
+    """
+    _patch_tempdir(monkeypatch, tmp_path)
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("HOMEDRIVE", raising=False)
+    monkeypatch.delenv("HOMEPATH", raising=False)
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    monkeypatch.setenv("TEMP", str(tmp_path))
+    monkeypatch.setenv("TMP", str(tmp_path))
+    if config_dir is None:
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    else:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config_dir))
+    return home
 
 
 # --- path derivation -------------------------------------------------------
@@ -986,6 +1113,317 @@ def test_classify_reading_is_silent_across_the_four_normal_cases(
 
 
 # ===========================================================================
+# Layer 1 — inspect-statusline: constants and path derivation
+# ===========================================================================
+
+def test_statusline_constants_are_the_published_contract():
+    """Exact-equality pins on the five inspection constants.
+
+    `OPT_OUT_MARKER_FILENAME` is a CROSS-SKILL string contract: the boundary
+    guard that suppresses its missing-reading hard-stop lives in a different
+    skill and reads exactly this filename under the gauge directory. A rename
+    here would degrade that guard to a silent no-op (it would look for a marker
+    nobody writes), so this test is meant to fail loudly rather than let the
+    contract drift. The other four name the user-settings location the installer
+    and the inspector must agree on byte-for-byte.
+    """
+    assert mod.OPT_OUT_MARKER_FILENAME == "context-guard-opt-out"
+    assert mod.CONFIG_DIR_ENV_VAR == "CLAUDE_CONFIG_DIR"
+    assert mod.DEFAULT_CONFIG_DIR_NAME == ".claude"
+    assert mod.SETTINGS_FILENAME == "settings.json"
+    assert mod.SELF_CHECK_SESSION_ID == "quo-setup-self-check"
+
+
+def test_self_check_session_id_is_filename_safe(monkeypatch, tmp_path):
+    # The installer's self-check writes a throwaway gauge under this id, so it
+    # MUST pass the charset guard or that self-check would be unfalsifiable
+    # (`gauge_path` would still compose a path, but `is_valid_session_id` is what
+    # the producer gates on).
+    assert mod.is_valid_session_id(mod.SELF_CHECK_SESSION_ID) is True
+    _patch_tempdir(monkeypatch, tmp_path)
+    path = mod.gauge_path(mod.SELF_CHECK_SESSION_ID)
+    assert path.parent == tmp_path / ".quorum"
+
+
+def test_opt_out_marker_path_shape(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    assert mod.opt_out_marker_path() == tmp_path / ".quorum" / "context-guard-opt-out"
+
+
+def test_opt_out_marker_path_resolves_tempdir_at_call_time(monkeypatch, tmp_path):
+    # Modeled on test_gauge_path_resolves_tempdir_at_call_time: the tempdir is
+    # looked up per call, not captured at import, so a redirect takes effect.
+    before = mod.opt_out_marker_path()
+    _patch_tempdir(monkeypatch, tmp_path)
+    after = mod.opt_out_marker_path()
+    assert before != after
+    assert after.parent.parent == tmp_path
+
+
+def test_opt_out_marker_path_is_pure(monkeypatch, tmp_path):
+    _patch_tempdir(monkeypatch, tmp_path)
+    mod.opt_out_marker_path()
+    assert not (tmp_path / ".quorum").exists()
+
+
+def test_config_dir_honors_the_env_var(monkeypatch, tmp_path):
+    override = tmp_path / "custom-config"
+    _isolate_settings_env(monkeypatch, tmp_path, config_dir=override)
+    assert mod.config_dir() == override
+
+
+def test_config_dir_falls_back_to_home(monkeypatch, tmp_path):
+    home = _isolate_settings_env(monkeypatch, tmp_path, config_dir=None)
+    assert mod.config_dir() == home / ".claude"
+
+
+def test_config_dir_ignores_an_empty_env_var(monkeypatch, tmp_path):
+    # An empty string is falsy, so `config_dir` falls back to `<home>/.claude`.
+    # A whitespace-only value's disposition is deliberately NOT asserted: the
+    # landed `config_dir` treats any truthy string as the override (a `"   "`
+    # would be used verbatim), and nothing in the helper pins whitespace as a
+    # special case, so encoding one here would invent an unstated contract.
+    home = _isolate_settings_env(monkeypatch, tmp_path, config_dir=None)
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "")
+    assert mod.config_dir() == home / ".claude"
+
+
+def test_user_settings_path_in_both_modes(monkeypatch, tmp_path):
+    override = tmp_path / "custom-config"
+    _isolate_settings_env(monkeypatch, tmp_path, config_dir=override)
+    assert mod.user_settings_path() == override / "settings.json"
+
+    home = _isolate_settings_env(monkeypatch, tmp_path, config_dir=None)
+    assert mod.user_settings_path() == home / ".claude" / "settings.json"
+
+
+# ===========================================================================
+# Layer 1 — the pure comparison and composition helpers
+# ===========================================================================
+
+def test_normalize_path_for_compare_folds_backslashes():
+    # The function that makes a Windows-installed command recognizable on re-run:
+    # the same path spelled with `\` and with `/` must compare equal on any OS.
+    assert mod.normalize_path_for_compare(r"a\b\c") == mod.normalize_path_for_compare("a/b/c")
+
+
+def test_normalize_path_for_compare_folds_redundant_segments():
+    assert mod.normalize_path_for_compare("/a/./b//c") == mod.normalize_path_for_compare("/a/b/c")
+    # Idempotence: normalizing an already-normalized token changes nothing.
+    x = "/a/./b//c"
+    assert mod.normalize_path_for_compare(mod.normalize_path_for_compare(x)) == mod.normalize_path_for_compare(x)
+    # NOTE: case-folding is intentionally NOT asserted. `os.path.normcase` is
+    # identity on POSIX, so any case assertion would be platform-dependent — a
+    # later reader should not "fix" this omission by adding one.
+
+
+def test_to_command_path_has_no_backslash(tmp_path):
+    p = tmp_path / "some" / "context_gauge.py"
+    out = mod.to_command_path(p)
+    assert "\\" not in out
+    # The forward-slashing must not be achieved by mangling the path: the output
+    # still normalizes equal to the input.
+    assert mod.normalize_path_for_compare(out) == mod.normalize_path_for_compare(str(p))
+
+
+def test_to_command_path_is_absolute(tmp_path):
+    out = mod.to_command_path(tmp_path / "x" / "y.py")
+    assert os.path.isabs(out)
+
+
+def test_status_line_shell_on_posix():
+    shell = mod.status_line_shell()
+    if os.name == "posix":
+        assert shell == "sh"
+    assert shell in {"sh", "git-bash", "powershell"}
+
+
+@pytest.mark.parametrize(
+    "which_result,expected",
+    [("/usr/bin/bash", "git-bash"), (None, "powershell")],
+    ids=["git-bash-present", "git-bash-absent"],
+)
+def test_status_line_shell_windows_branches(monkeypatch, which_result, expected):
+    # The landed function branches on `os.name == "nt"` then `shutil.which("bash")`.
+    # Patch both module-object references (auto-undone) to reach the Windows arms
+    # on any host without a real Windows box.
+    monkeypatch.setattr(mod.os, "name", "nt")
+    monkeypatch.setattr(mod.shutil, "which", lambda cmd: which_result)
+    assert mod.status_line_shell() == expected
+
+
+# ===========================================================================
+# Layer 1 — classify_status_line_command
+# ===========================================================================
+
+def _fake_script(tmp_path):
+    """A `tmp_path`-based fake script path (forward-slashed str)."""
+    return str(tmp_path / "context_gauge.py")
+
+
+@pytest.mark.parametrize(
+    "build,expected",
+    [
+        (lambda s: '"py" "{0}" produce'.format(s), ("direct", None)),
+        (
+            lambda s: '"py" "{0}" produce --wrap-command \'my status --flag\''.format(s),
+            ("wrapped", "my status --flag"),
+        ),
+        (
+            lambda s: '"py" "{0}" produce --wrap-command="my status --flag"'.format(s),
+            ("wrapped", "my status --flag"),
+        ),
+    ],
+    ids=["direct", "wrapped-space", "wrapped-equals"],
+)
+def test_classify_status_line_command_matrix(tmp_path, build, expected):
+    script = _fake_script(tmp_path)
+    assert mod.classify_status_line_command(build(script), script) == expected
+
+
+def test_classify_status_line_command_other_install(tmp_path):
+    script = _fake_script(tmp_path)
+    other = str(tmp_path / "elsewhere" / "context_gauge.py")
+    assert mod.classify_status_line_command(
+        '"py" "{0}" produce'.format(other), script
+    ) == ("other-install", None)
+    # An other-install carrying a wrap payload still surfaces that payload.
+    assert mod.classify_status_line_command(
+        '"py" "{0}" produce --wrap-command \'x\''.format(other), script
+    ) == ("other-install", "x")
+
+
+def test_classify_status_line_command_foreign(tmp_path):
+    script = _fake_script(tmp_path)
+    assert mod.classify_status_line_command("vim /etc/hosts", script) == ("foreign", None)
+
+
+def test_classify_status_line_command_unsplittable_is_foreign_without_raising(tmp_path):
+    # An unbalanced-quote command raises `ValueError: No closing quotation` inside
+    # `shlex.split`; the helper catches it and returns foreign. This is the branch
+    # that keeps `inspect-statusline` from dying on an operator's exotic status
+    # line.
+    script = _fake_script(tmp_path)
+    assert mod.classify_status_line_command("'unclosed", script) == ("foreign", None)
+
+
+def test_classify_status_line_command_matches_a_backslash_spelled_script_path(tmp_path):
+    # A Windows re-run spells its own script path with `\`; backslashes survive
+    # `shlex.split` inside double quotes, and `normalize_path_for_compare` folds
+    # them, so the command is still recognized as `direct`. Without this a Windows
+    # re-run would fail to see its prior install and double-configure.
+    script = _fake_script(tmp_path)
+    backslashed = script.replace("/", "\\")
+    command = '"py" "{0}" produce'.format(backslashed)
+    assert mod.classify_status_line_command(command, script) == ("direct", None)
+
+
+def test_classify_status_line_command_requires_the_produce_token(tmp_path):
+    # The script path is present but the command runs `read`, not `produce`:
+    # negative space that keeps the matcher from claiming any invocation of the
+    # helper as a producer.
+    script = _fake_script(tmp_path)
+    assert mod.classify_status_line_command(
+        '"py" "{0}" read --session-id x'.format(script), script
+    ) == ("foreign", None)
+
+
+def test_classify_status_line_command_never_parses_a_foreign_payload(tmp_path):
+    # A foreign command that literally contains `--wrap-command something` must
+    # still return `wrapped_command is None`: a foreign command is never parsed
+    # for anything.
+    script = _fake_script(tmp_path)
+    state, wrap = mod.classify_status_line_command("echo --wrap-command something", script)
+    assert state == "foreign"
+    assert wrap is None
+
+
+def test_classify_status_line_command_states_are_four_way_distinct(tmp_path):
+    script = _fake_script(tmp_path)
+    other = str(tmp_path / "elsewhere" / "context_gauge.py")
+    results = [
+        mod.classify_status_line_command('"py" "{0}" produce'.format(script), script),
+        mod.classify_status_line_command(
+            '"py" "{0}" produce --wrap-command \'w\''.format(script), script
+        ),
+        mod.classify_status_line_command('"py" "{0}" produce'.format(other), script),
+        mod.classify_status_line_command("vim x", script),
+    ]
+    states = [r[0] for r in results]
+    assert states == ["direct", "wrapped", "other-install", "foreign"]
+    assert len(set(states)) == 4
+    for state, _wrap in results:
+        assert isinstance(state, str)
+    for r in results:
+        assert isinstance(r, tuple) and len(r) == 2
+
+
+# ===========================================================================
+# Layer 1 — detect_higher_precedence_sources: managed scope
+# ===========================================================================
+#
+# The CLI `cmd_inspect_statusline` calls `detect_higher_precedence_sources`
+# with the default (real) managed directory, so the ONLY safe way to exercise
+# the managed-scope branches without writing to `/etc/claude-code/`,
+# `/Library/Application Support/ClaudeCode/`, or `C:\Program Files\ClaudeCode\`
+# is the function's own `managed_dir` injection point — the testability hook the
+# implementation Subtask pinned. These unit-layer tests point it at a `tmp_path`
+# sandbox and never touch the real system locations.
+
+
+def test_detect_higher_precedence_sources_managed_status_line(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    managed = tmp_path / "managed"
+    managed.mkdir()
+    (managed / "managed-settings.json").write_text(
+        json.dumps({"statusLine": {"type": "command", "command": "x"}}),
+        encoding="utf-8",
+    )
+    sources = mod.detect_higher_precedence_sources(repo, managed_dir=managed)
+    assert len(sources) == 1
+    assert sources[0]["scope"] == "managed"
+    assert sources[0]["path"] == str(managed / "managed-settings.json")
+    assert "statusLine" in sources[0]["reason"]
+
+
+@pytest.mark.parametrize("flag", ["allowManagedHooksOnly", "disableAllHooks"])
+def test_detect_higher_precedence_sources_managed_hooks_lockdown(tmp_path, flag):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    managed = tmp_path / "managed"
+    managed.mkdir()
+    (managed / "managed-settings.json").write_text(
+        json.dumps({flag: True}), encoding="utf-8"
+    )
+    sources = mod.detect_higher_precedence_sources(repo, managed_dir=managed)
+    assert len(sources) == 1
+    assert sources[0]["scope"] == "managed"
+
+
+def test_detect_higher_precedence_sources_managed_dropin(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    managed = tmp_path / "managed"
+    dropin = managed / "managed-settings.d"
+    dropin.mkdir(parents=True)
+    (dropin / "10-status.json").write_text(
+        json.dumps({"statusLine": {"command": "y"}}), encoding="utf-8"
+    )
+    sources = mod.detect_higher_precedence_sources(repo, managed_dir=managed)
+    assert len(sources) == 1
+    assert sources[0]["scope"] == "managed"
+    assert sources[0]["path"] == str(dropin / "10-status.json")
+
+
+def test_detect_higher_precedence_sources_absent_managed_dir_is_empty(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    # A managed dir that does not exist is skipped silently — no entry, no raise.
+    assert mod.detect_higher_precedence_sources(repo, managed_dir=tmp_path / "nope") == []
+
+
+# ===========================================================================
 # Layer 2 — CLI contract (subprocess)
 # ===========================================================================
 
@@ -1003,14 +1441,64 @@ def _env_with_tempdir(tmp_path):
     return env
 
 
-def _run(args, stdin=None, env=None):
+def _run(args, stdin=None, env=None, cwd=None):
+    # `cwd` is additive with a `None` default, so every pre-existing call site is
+    # byte-for-byte unchanged. It exists so a test can exercise
+    # `inspect-statusline`'s default `--repo-root` (the current working
+    # directory) without chdir'ing the test process itself.
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         input=stdin,
         capture_output=True,
         text=True,
         env=env,
+        cwd=cwd,
     )
+
+
+def _isolated_cli_env(tmp_path, config_dir=None, home=None):
+    """A copied environment sandboxed for a CLI `inspect-statusline` run.
+
+    Built on `_env_with_tempdir` (TMPDIR/TEMP/TMP → `tmp_path`), then:
+
+    - `HOME` and `USERPROFILE` → `home` (default `tmp_path/home`), with
+      `HOMEDRIVE`/`HOMEPATH` popped so the Windows fallback cannot reach a real
+      profile.
+    - When `config_dir` is None, `CLAUDE_CONFIG_DIR` is POPPED from the copied
+      environment. This is the single most important line here: `_env_with_tempdir`
+      copies `os.environ`, so a developer or CI runner who exports
+      `CLAUDE_CONFIG_DIR` would otherwise point every CLI test at their real
+      config directory. A test asserting the default `~/.claude` derivation must
+      pop it explicitly rather than assume it is unset.
+    - When `config_dir` is given, `CLAUDE_CONFIG_DIR` is set to it.
+    """
+    env = _env_with_tempdir(tmp_path)
+    resolved_home = home if home is not None else tmp_path / "home"
+    env["HOME"] = str(resolved_home)
+    env["USERPROFILE"] = str(resolved_home)
+    env.pop("HOMEDRIVE", None)
+    env.pop("HOMEPATH", None)
+    if config_dir is None:
+        env.pop("CLAUDE_CONFIG_DIR", None)
+    else:
+        env["CLAUDE_CONFIG_DIR"] = str(config_dir)
+    return env
+
+
+def _seed_settings(config_dir, obj_or_text):
+    """Write `<config_dir>/settings.json`, creating the directory. Returns the path.
+
+    Accepts either a dict (json-dumped) or raw text (written verbatim, for the
+    unparseable / non-object cases no encoder would produce).
+    """
+    config_dir = Path(config_dir)
+    config_dir.mkdir(parents=True, exist_ok=True)
+    path = config_dir / "settings.json"
+    if isinstance(obj_or_text, str):
+        path.write_text(obj_or_text, encoding="utf-8")
+    else:
+        path.write_text(json.dumps(obj_or_text), encoding="utf-8")
+    return path
 
 
 def _stub(tmp_path, name, source):
@@ -1487,13 +1975,357 @@ def test_cli_read_invalid_session_id_exits_2(tmp_path, bad):
     assert res.stdout.strip() == ""
 
 
+# --- inspect-statusline: the reported object -------------------------------
+#
+# Every invocation goes through `_isolated_cli_env`, and every `higher_precedence`
+# assertion passes an explicit clean `--repo-root` so a `.claude/` beside the
+# test process's real cwd cannot bleed in.
+
+INSPECT_KEYS = {
+    "settings_path",
+    "settings_exists",
+    "status_line_present",
+    "status_line_command",
+    "status_line_extra_keys",
+    "producer_state",
+    "wrapped_command",
+    "producer_current",
+    "script_path",
+    "python_executable",
+    "opt_out_marker_path",
+    "opt_out_marker_present",
+    "higher_precedence_sources",
+    "status_line_shell",
+}
+
+
+def _inspect(tmp_path, repo, env, cwd=None):
+    args = ["inspect-statusline"]
+    if repo is not None:
+        args += ["--repo-root", str(repo)]
+    return _run(args, env=env, cwd=cwd)
+
+
+def test_cli_inspect_statusline_absent_settings_file(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path))
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert isinstance(obj, dict)
+    # Exact key set: a key added later must force a decision here.
+    assert set(obj) == INSPECT_KEYS
+    assert obj["settings_exists"] is False
+    assert obj["producer_state"] == "absent"
+    assert obj["status_line_present"] is False
+    assert obj["status_line_command"] is None
+    assert obj["status_line_extra_keys"] == {}
+    assert obj["wrapped_command"] is None
+    assert obj["producer_current"] is False
+    assert obj["opt_out_marker_present"] is False
+    assert obj["higher_precedence_sources"] == []
+    assert obj["python_executable"] == sys.executable
+    assert obj["script_path"] == str(SCRIPT)
+
+
+def test_cli_inspect_statusline_creates_nothing(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    before = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path))
+    assert res.returncode == 0, res.stderr
+    after = sorted(p.relative_to(tmp_path) for p in tmp_path.rglob("*"))
+    assert before == after
+    # Read-only: neither the default config dir nor the gauge dir springs up.
+    assert not (tmp_path / "home" / ".claude").exists()
+    assert not (tmp_path / ".quorum").exists()
+
+
+def test_cli_inspect_statusline_reports_a_foreign_status_line(tmp_path):
+    config = tmp_path / "cfg"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": "vim /etc/hosts"}})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert obj["producer_state"] == "foreign"
+    assert obj["status_line_command"] == "vim /etc/hosts"
+    assert obj["wrapped_command"] is None
+
+
+def test_cli_inspect_statusline_reports_extra_status_line_keys(tmp_path):
+    config = tmp_path / "cfg"
+    extras = {"padding": 3, "refreshInterval": 1000, "hideVimModeIndicator": True}
+    status_line = dict(extras)
+    status_line["type"] = "command"
+    status_line["command"] = "vim x"
+    _seed_settings(config, {"statusLine": status_line})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert obj["status_line_extra_keys"] == extras
+    # `type` and `command` are never carried in the extra-keys map.
+    assert "type" not in obj["status_line_extra_keys"]
+    assert "command" not in obj["status_line_extra_keys"]
+
+
+def test_cli_inspect_statusline_reports_no_extra_status_line_keys(tmp_path):
+    config = tmp_path / "cfg"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": "vim x"}})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout)["status_line_extra_keys"] == {}
+
+
+@pytest.mark.parametrize(
+    "status_line",
+    ["a string", ["a", "list"], {"type": "command"}, {"command": ""}, {"command": 7}],
+    ids=["string", "list", "no-command", "empty-command", "non-string-command"],
+)
+def test_cli_inspect_statusline_degenerate_status_line_is_absent(tmp_path, status_line):
+    config = tmp_path / "cfg"
+    _seed_settings(config, {"statusLine": status_line})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert obj["producer_state"] == "absent"
+    # The module docstring pins `status_line_present` false for every degenerate
+    # shape ("every such degenerate shape reports status_line_present false and
+    # producer_state absent"), so it is asserted here rather than left unstated.
+    assert obj["status_line_present"] is False
+
+
+def test_cli_inspect_statusline_unparseable_settings_exits_2(tmp_path):
+    """An existing-but-unparseable settings file exits 2, never reports `absent`.
+
+    Reporting `absent` would be the dangerous answer: a caller that writes
+    settings keys off `absent` and would clobber a file it could not read. So the
+    inspection must hard-fail (exit 2, one stderr line naming the path) rather
+    than let a garbled file look like no configuration at all. The file must be
+    left byte-identical.
+    """
+    config = tmp_path / "cfg"
+    path = _seed_settings(config, "{not json")
+    before = path.read_bytes()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 2
+    assert res.stdout == ""
+    lines = res.stderr.strip().splitlines()
+    assert len(lines) == 1
+    assert str(path) in lines[0]
+    assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "text", ["[1, 2]", "42", '"a string"', "null", "true"],
+    ids=["array", "number", "string", "null", "bool"],
+)
+def test_cli_inspect_statusline_non_object_settings_exits_2(tmp_path, text):
+    config = tmp_path / "cfg"
+    path = _seed_settings(config, text)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 2
+    assert res.stdout == ""
+    lines = res.stderr.strip().splitlines()
+    assert len(lines) == 1
+    assert str(path) in lines[0]
+
+
+def test_cli_inspect_statusline_detects_a_direct_producer(tmp_path):
+    shell = mod.status_line_shell()
+    current = mod.compose_status_line_command(sys.executable, str(SCRIPT), None, shell)
+    config = tmp_path / "cfg"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": current}})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert obj["producer_state"] == "direct"
+    assert obj["wrapped_command"] is None
+    assert obj["producer_current"] is True
+
+
+def test_cli_inspect_statusline_detects_a_wrapped_producer(tmp_path):
+    shell = mod.status_line_shell()
+    current = mod.compose_status_line_command(sys.executable, str(SCRIPT), "my status", shell)
+    config = tmp_path / "cfg"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": current}})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert obj["producer_state"] == "wrapped"
+    assert obj["wrapped_command"] == "my status"
+    assert obj["producer_current"] is True
+
+
+def test_cli_inspect_statusline_direct_but_stale_interpreter_is_not_current(tmp_path):
+    # Same `direct` state, different interpreter token: `producer_current` flips
+    # false, which is how a caller learns a refresh is needed.
+    shell = mod.status_line_shell()
+    stale = mod.compose_status_line_command("/nonexistent/python3", str(SCRIPT), None, shell)
+    config = tmp_path / "cfg"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": stale}})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert obj["producer_state"] == "direct"
+    assert obj["producer_current"] is False
+
+
+def test_cli_inspect_statusline_detects_an_other_install(tmp_path):
+    other = mod.to_command_path(str(tmp_path / "otherdir" / "context_gauge.py"))
+    command = '"{0}" "{1}" produce'.format(sys.executable, other)
+    config = tmp_path / "cfg"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": command}})
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout)["producer_state"] == "other-install"
+
+
+def test_cli_inspect_statusline_reports_the_opt_out_marker(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = _isolated_cli_env(tmp_path)
+    # False before the marker exists — and the lookup creates nothing.
+    res = _inspect(tmp_path, repo, env)
+    assert res.returncode == 0, res.stderr
+    obj = json.loads(res.stdout)
+    assert obj["opt_out_marker_present"] is False
+    assert not (tmp_path / ".quorum").exists()
+    expected = tmp_path / ".quorum" / "context-guard-opt-out"
+    assert obj["opt_out_marker_path"] == str(expected)
+
+    # True once the marker is created under the sandboxed gauge dir.
+    expected.parent.mkdir(parents=True, exist_ok=True)
+    expected.write_text("", encoding="utf-8")
+    res2 = _inspect(tmp_path, repo, env)
+    obj2 = json.loads(res2.stdout)
+    assert obj2["opt_out_marker_present"] is True
+    assert obj2["opt_out_marker_path"] == str(expected)
+
+
+def test_cli_inspect_statusline_honors_claude_config_dir(tmp_path):
+    config = tmp_path / "cfg"
+    config.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path, config_dir=config))
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout)["settings_path"] == str(config / "settings.json")
+
+
+def test_cli_inspect_statusline_defaults_to_home_dot_claude(tmp_path):
+    # Proves `_isolated_cli_env` pops any inherited CLAUDE_CONFIG_DIR: the default
+    # derivation must resolve under the sandboxed home, not the developer's.
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path))
+    assert res.returncode == 0, res.stderr
+    expected = tmp_path / "home" / ".claude" / "settings.json"
+    assert json.loads(res.stdout)["settings_path"] == str(expected)
+
+
+def test_cli_inspect_statusline_reports_project_and_local_precedence(tmp_path):
+    repo = tmp_path / "repo"
+    dot = repo / ".claude"
+    dot.mkdir(parents=True)
+    project = dot / "settings.json"
+    local = dot / "settings.local.json"
+    project.write_text(json.dumps({"statusLine": {"command": "p"}}), encoding="utf-8")
+    local.write_text(json.dumps({"statusLine": {"command": "l"}}), encoding="utf-8")
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path))
+    assert res.returncode == 0, res.stderr
+    sources = json.loads(res.stdout)["higher_precedence_sources"]
+    by_scope = {s["scope"]: s for s in sources}
+    assert set(by_scope) == {"project", "local"}
+    assert len([s for s in sources if s["scope"] == "project"]) == 1
+    assert len([s for s in sources if s["scope"] == "local"]) == 1
+    for scope, path in (("project", project), ("local", local)):
+        assert set(by_scope[scope]) == {"scope", "path", "reason"}
+        assert by_scope[scope]["path"] == str(path)
+
+
+def test_cli_inspect_statusline_ignores_precedence_files_without_status_line(tmp_path):
+    repo = tmp_path / "repo"
+    dot = repo / ".claude"
+    dot.mkdir(parents=True)
+    (dot / "settings.json").write_text(json.dumps({"model": "opus"}), encoding="utf-8")
+    (dot / "settings.local.json").write_text(json.dumps({"theme": "dark"}), encoding="utf-8")
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout)["higher_precedence_sources"] == []
+
+
+@pytest.mark.parametrize(
+    "text", ["{not valid json", "[1, 2, 3]"], ids=["invalid-json", "top-level-array"]
+)
+def test_cli_inspect_statusline_tolerates_a_broken_precedence_file(tmp_path, text):
+    # Someone else's malformed project file must never fail our inspection.
+    repo = tmp_path / "repo"
+    dot = repo / ".claude"
+    dot.mkdir(parents=True)
+    (dot / "settings.json").write_text(text, encoding="utf-8")
+    res = _inspect(tmp_path, repo, _isolated_cli_env(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert res.stderr == ""
+    assert json.loads(res.stdout)["higher_precedence_sources"] == []
+
+
+def test_cli_inspect_statusline_uses_the_cwd_as_the_default_repo_root(tmp_path):
+    repo = tmp_path / "repo"
+    dot = repo / ".claude"
+    dot.mkdir(parents=True)
+    (dot / "settings.json").write_text(
+        json.dumps({"statusLine": {"command": "p"}}), encoding="utf-8"
+    )
+    # No --repo-root: the default is the process cwd, exercised via _run(cwd=...).
+    res = _inspect(tmp_path, None, _isolated_cli_env(tmp_path), cwd=str(repo))
+    assert res.returncode == 0, res.stderr
+    scopes = [s["scope"] for s in json.loads(res.stdout)["higher_precedence_sources"]]
+    assert "project" in scopes
+
+
+def test_cli_inspect_statusline_help_exits_0(tmp_path):
+    res = _run(["inspect-statusline", "--help"], env=_isolated_cli_env(tmp_path))
+    assert res.returncode == 0, res.stderr
+
+
+def test_cli_inspect_statusline_unknown_flag_exits_2(tmp_path):
+    res = _run(["inspect-statusline", "--nope"], env=_isolated_cli_env(tmp_path))
+    assert res.returncode == 2
+
+
 # --- argparse contract -----------------------------------------------------
 
-def test_cli_help_exits_0_and_names_both_subcommands(tmp_path):
+def test_cli_help_exits_0_and_names_the_core_subcommands(tmp_path):
     res = _run(["--help"], env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0, res.stderr
     assert "produce" in res.stdout
     assert "read" in res.stdout
+
+
+def test_cli_help_names_the_inspection_subcommand(tmp_path):
+    res = _run(["--help"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert "inspect-statusline" in res.stdout
 
 
 def test_cli_no_subcommand_exits_2(tmp_path):
@@ -1508,4 +2340,577 @@ def test_cli_unknown_subcommand_exits_2(tmp_path):
 
 def test_cli_read_requires_session_id(tmp_path):
     res = _run(["read"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 2
+
+
+# ===========================================================================
+# Layer 1 — quote_for_shell / compose_status_line_command (pure)
+# ===========================================================================
+
+# A single list of adversarial values reused across every quoting and wrapping
+# round-trip below: a space, a single quote, a double quote, a shell variable, a
+# backtick, a command separator, a newline, a literal `--wrap-command` token (the
+# anti-double-wrap payload the CLI depends on), the empty string, and a unicode
+# string. Any quoting bug on any of these shows up as a failed round trip rather
+# than a shape mismatch.
+NASTY_VALUES = [
+    "a b",
+    "it's",
+    'say "hi"',
+    "$HOME",
+    "`",
+    "a;b",
+    "a\nb",
+    "--wrap-command x",
+    "",
+    "unïcodé",
+]
+
+
+@pytest.mark.parametrize("value", NASTY_VALUES, ids=range(len(NASTY_VALUES)))
+def test_quote_for_shell_sh_round_trips(value):
+    # A genuine round-trip property, not a shape assertion: whatever `sh` quoting
+    # produces must tokenize back to the single original value under `shlex.split`.
+    assert shlex.split(mod.quote_for_shell(value, "sh")) == [value]
+
+
+@pytest.mark.parametrize("value", NASTY_VALUES, ids=range(len(NASTY_VALUES)))
+def test_quote_for_shell_git_bash_matches_sh(value):
+    # Git Bash accepts POSIX quoting, so it MUST get byte-identical output to `sh`;
+    # this pins that it is never handed a divergent quoting rule.
+    assert mod.quote_for_shell(value, "git-bash") == mod.quote_for_shell(value, "sh")
+
+
+def test_quote_for_shell_powershell_doubles_single_quotes():
+    # PowerShell single-quoting: wrap in single quotes, every inner single quote
+    # doubled. Exact-equality on each landmark case.
+    assert mod.quote_for_shell("it's", "powershell") == "'it''s'"
+    assert mod.quote_for_shell("a b", "powershell") == "'a b'"
+    two = mod.quote_for_shell("a'b'c", "powershell")
+    assert two == "'a''b''c'"
+    # Both single quotes doubled, and the result is single-quote delimited.
+    assert two.startswith("'") and two.endswith("'")
+
+
+def test_quote_for_shell_powershell_does_not_expand():
+    # A `$var` and a backtick are preserved character-for-character between the
+    # outer single quotes — PowerShell single quotes suppress every expansion.
+    value = "$PATH and a " + "`" + " backtick"
+    result = mod.quote_for_shell(value, "powershell")
+    assert result.startswith("'") and result.endswith("'")
+    assert result[1:-1] == value
+
+
+def test_quote_for_shell_empty_value():
+    assert mod.quote_for_shell("", "sh") == "''"
+    assert mod.quote_for_shell("", "powershell") == "''"
+
+
+# The unknown-`shell` argument is deliberately left uncovered: the landed
+# `quote_for_shell` docstring pins behavior only for `sh`, `git-bash`, and
+# `powershell` and says nothing about any other value (the code happens to fall
+# through to `shlex.quote`, but that is unstated), so asserting a contract for it
+# would invent one the module never promises.
+
+
+def test_compose_status_line_command_exact_shape():
+    # Exact string equality, not a substring probe: the two own-tokens are
+    # double-quoted, forward-slashed absolute paths joined by a single space and
+    # the literal ` produce`.
+    py = Path("/opt/py/bin/python3")
+    script = Path("/opt/skills/context_gauge.py")
+    expected = '"{0}" "{1}" produce'.format(
+        mod.to_command_path(py), mod.to_command_path(script)
+    )
+    assert mod.compose_status_line_command(py, script, None, "sh") == expected
+
+
+def test_compose_status_line_command_has_no_backslash():
+    # Paths built with the native separator must never leave a backslash in the
+    # composed command — Git Bash would consume it.
+    py = os.sep.join(["", "opt", "py", "python3"])
+    script = os.sep.join(["", "opt", "skills", "context_gauge.py"])
+    result = mod.compose_status_line_command(py, script, None, "sh")
+    assert "\\" not in result
+
+
+@pytest.mark.parametrize("wrap", [None, ""], ids=["none", "empty"])
+def test_compose_status_line_command_omits_the_flag_when_nothing_is_wrapped(wrap):
+    result = mod.compose_status_line_command("/py", "/s/context_gauge.py", wrap, "sh")
+    assert "--wrap-command" not in result
+    assert shlex.split(result)[-1] == "produce"
+
+
+# The empty string is excluded here: a falsy wrap payload is DEFINED to omit the
+# flag entirely (see the omit test above), so it has no last-token to round-trip.
+# Every non-empty adversarial value is exercised.
+NASTY_WRAP_VALUES = [v for v in NASTY_VALUES if v]
+
+
+@pytest.mark.parametrize("value", NASTY_WRAP_VALUES, ids=range(len(NASTY_WRAP_VALUES)))
+def test_compose_status_line_command_wrap_payload_round_trips(value):
+    # The property the anti-double-wrap CLI test rests on: an arbitrary wrap
+    # payload survives composition byte-exactly through `shlex.split`, including a
+    # payload that itself contains `--wrap-command` and one carrying embedded
+    # quotes.
+    composed = mod.compose_status_line_command("/py", "/s/context_gauge.py", value, "sh")
+    assert shlex.split(composed)[-1] == value
+
+
+@pytest.mark.parametrize(
+    "wrap", [None, "orig --wrap-command x"], ids=["unwrapped", "wrapped"]
+)
+def test_compose_status_line_command_has_exactly_one_produce_token(wrap):
+    tokens = shlex.split(
+        mod.compose_status_line_command("/py", "/s/context_gauge.py", wrap, "sh")
+    )
+    assert tokens.count("produce") == 1
+    assert tokens.count("--wrap-command") <= 1
+
+
+# ===========================================================================
+# Layer 2 — install-statusline / write-opt-out (CLI, subprocess)
+# ===========================================================================
+#
+# Isolation rules specific to this surface (the only code in the repo that writes
+# into the operator's Claude Code user settings AND the only code that spawns a
+# subprocess writing a gauge under the reserved `quo-setup-self-check` id):
+#
+# - EVERY `install-statusline` invocation passes `--no-self-check` EXCEPT the
+#   three tests whose subject IS the self-check (self-check verifies, failed
+#   self-check is non-fatal, and the with-self-check leg of the delete-nothing
+#   test). `--no-self-check` removes the subprocess-spawn variable from every
+#   other test.
+# - Those self-check invocations all run under `_isolated_cli_env(tmp_path,
+#   config_dir=...)`, whose TMPDIR/TEMP/TMP are inherited by the spawned shell, so
+#   the self-check gauge lands at
+#   `tmp_path/".quorum"/"context-usage-quo-setup-self-check.json"` — never the
+#   developer's real temp dir. `test_cli_install_statusline_self_check_verifies`
+#   asserts that file's existence under `tmp_path`, which simultaneously proves
+#   the self-check ran and proves the redirect held.
+# - The one in-process test (`os.replace` failure) never runs a real self-check:
+#   it calls `cmd_install_statusline` with the no-self-check flag under
+#   `_isolate_settings_env`, whose `_patch_tempdir` patches only the in-process
+#   `mod.tempfile` object and would NOT redirect a spawned child, so it disables
+#   the spawn rather than crossing the boundary.
+
+
+def _config_listing(config_dir):
+    """Sorted names directly inside a config directory (temp files included)."""
+    return sorted(p.name for p in Path(config_dir).iterdir())
+
+
+def _read_settings(config_dir):
+    return json.loads((Path(config_dir) / "settings.json").read_text(encoding="utf-8"))
+
+
+def test_cli_install_statusline_fresh_install(tmp_path):
+    config = tmp_path / "cfg"
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    summary = json.loads(res.stdout)
+    assert summary["action"] == "installed"
+    assert summary["previous_command"] is None
+    assert summary["preserved_status_line_keys"] == []
+    # Config directory was created and holds exactly the settings file.
+    assert config.is_dir()
+    on_disk = _read_settings(config)
+    assert list(on_disk.keys()) == ["statusLine"]
+    command = summary["new_command"]
+    assert on_disk["statusLine"] == {"type": "command", "command": command}
+    # Command shape: no backslash, the forward-slashed script path, produce last.
+    assert "\\" not in command
+    assert str(SCRIPT).replace("\\", "/") in command
+    assert shlex.split(command)[-1] == "produce"
+
+
+def test_cli_install_statusline_wraps_a_foreign_status_line(tmp_path):
+    config = tmp_path / "cfg"
+    foreign = "weather --loc 'San Jose'"
+    unrelated = {"nested": {"a": [1, 2], "b": "keep"}}
+    _seed_settings(
+        config,
+        {
+            "unrelated": unrelated,
+            "statusLine": {
+                "type": "command",
+                "command": foreign,
+                "padding": 3,
+                "refreshInterval": 1000,
+            },
+        },
+    )
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    summary = json.loads(res.stdout)
+    assert summary["action"] == "wrapped"
+    assert summary["previous_command"] == foreign
+    assert "padding" in summary["preserved_status_line_keys"]
+    on_disk = _read_settings(config)
+    # An unrelated top-level key deep-equals its seeded value.
+    assert on_disk["unrelated"] == unrelated
+    status_line = on_disk["statusLine"]
+    assert status_line["type"] == "command"
+    # The foreign statusLine's other keys survive the rewrite.
+    assert status_line["padding"] == 3
+    assert status_line["refreshInterval"] == 1000
+    # The foreign command is carried opaquely as the wrap payload, byte-exactly.
+    assert shlex.split(summary["new_command"])[-1] == foreign
+
+
+def test_cli_install_statusline_is_idempotent(tmp_path):
+    config = tmp_path / "cfg"
+    env = _isolated_cli_env(tmp_path, config_dir=config)
+    first = _run(["install-statusline", "--no-self-check"], env=env)
+    assert first.returncode == 0, first.stderr
+    settings_file = config / "settings.json"
+    before_bytes = settings_file.read_bytes()
+    before_mtime = settings_file.stat().st_mtime_ns
+
+    second = _run(["install-statusline", "--no-self-check"], env=env)
+    assert second.returncode == 0, second.stderr
+    assert json.loads(second.stdout)["action"] == "already-configured"
+    # No write: identical bytes AND an untouched mtime are the no-write proof.
+    assert settings_file.read_bytes() == before_bytes
+    assert settings_file.stat().st_mtime_ns == before_mtime
+    assert _config_listing(config) == ["settings.json"]
+
+
+def test_cli_install_statusline_repoints_without_nesting(tmp_path):
+    # THE most important test here: a nesting regression (wrapping the previous
+    # whole producer command instead of reusing its extracted payload) is invisible
+    # to every other assertion. Seed a producer whose script path is a DIFFERENT
+    # context_gauge.py (a moved install) carrying a wrap payload; the reinstall
+    # must reuse that payload verbatim and never double-wrap.
+    config = tmp_path / "cfg"
+    other_script = str(tmp_path / "old" / "context_gauge.py")
+    seeded = mod.compose_status_line_command(
+        sys.executable, other_script, "orig-cmd --flag", "sh"
+    )
+    _seed_settings(config, {"statusLine": {"type": "command", "command": seeded}})
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    summary = json.loads(res.stdout)
+    assert summary["action"] == "repointed"
+    tokens = shlex.split(summary["new_command"])
+    assert tokens.count("produce") == 1
+    assert tokens.count("--wrap-command") == 1
+    # The payload is exactly the previously-wrapped payload, NOT the whole prior
+    # command string (which is what a nesting bug would carry).
+    assert tokens[-1] == "orig-cmd --flag"
+
+
+def test_cli_install_statusline_repoints_a_direct_install_on_a_python_change(tmp_path):
+    # A `direct`/`wrapped` state whose recomposed command is not byte-identical
+    # reports `repointed` — here forced by a moved interpreter.
+    config = tmp_path / "cfg"
+    current = mod.compose_status_line_command(sys.executable, str(SCRIPT), None, "sh")
+    _seed_settings(config, {"statusLine": {"type": "command", "command": current}})
+    other_python = str(tmp_path / "other-python")
+    res = _run(
+        ["install-statusline", "--no-self-check", "--python", other_python],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    summary = json.loads(res.stdout)
+    assert summary["action"] == "repointed"
+    assert summary["previous_command"] == current
+    assert mod.to_command_path(other_python) in summary["new_command"]
+
+
+def test_cli_install_statusline_wrap_payload_round_trips_through_shlex(tmp_path):
+    config = tmp_path / "cfg"
+    foreign = "prompt --api $KEY --note 'it''s fine'"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": foreign}})
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    summary = json.loads(res.stdout)
+    assert shlex.split(summary["new_command"])[-1] == foreign
+
+
+def test_cli_install_statusline_unparseable_settings_exits_2(tmp_path):
+    config = tmp_path / "cfg"
+    path = _seed_settings(config, "{not json")
+    before = path.read_bytes()
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 2
+    lines = res.stderr.strip().splitlines()
+    assert len(lines) == 1
+    # Never clobbered: byte-identical, no statusLine written, no temp file left.
+    assert path.read_bytes() == before
+    assert _config_listing(config) == ["settings.json"]
+
+
+@pytest.mark.parametrize(
+    "text", ["[1, 2]", "42", '"a string"', "null", "true"],
+    ids=["array", "number", "string", "null", "bool"],
+)
+def test_cli_install_statusline_non_object_settings_exits_2(tmp_path, text):
+    config = tmp_path / "cfg"
+    path = _seed_settings(config, text)
+    before = path.read_bytes()
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 2
+    lines = res.stderr.strip().splitlines()
+    assert len(lines) == 1
+    assert path.read_bytes() == before
+    assert _config_listing(config) == ["settings.json"]
+
+
+def test_cli_install_statusline_leaves_no_temp_file(tmp_path):
+    config = tmp_path / "cfg"
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    assert _config_listing(config) == ["settings.json"]
+
+
+def test_cmd_install_statusline_replace_failure_leaves_the_original_intact(
+    monkeypatch, tmp_path
+):
+    """The atomic-write `except`→unlink path leaves no observable partial file.
+
+    In-process (not subprocess) so `mod.os.replace` can be forced to raise. This
+    is the ONLY reachable proof that a failed replace never leaves a half-written
+    settings file or an orphaned temp file behind. The self-check is disabled so
+    no spawn crosses the in-process tempdir patch — but `os.replace` raises well
+    before the self-check step anyway.
+    """
+    config = tmp_path / "cfg"
+    path = _seed_settings(
+        config,
+        {"keep": {"x": 1}, "statusLine": {"type": "command", "command": "vim x"}},
+    )
+    before = path.read_bytes()
+    _isolate_settings_env(monkeypatch, tmp_path, config_dir=config)
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("replace refused")
+
+    monkeypatch.setattr(mod.os, "replace", boom)
+    args = types.SimpleNamespace(repo_root=None, python=None, no_self_check=True)
+    with pytest.raises(RuntimeError):
+        mod.cmd_install_statusline(args)
+
+    assert path.read_bytes() == before
+    assert _config_listing(config) == ["settings.json"]
+
+
+def test_cli_install_statusline_no_self_check_performs_no_spawn(tmp_path):
+    config = tmp_path / "cfg"
+    res = _run(
+        ["install-statusline", "--no-self-check"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    # No producer was spawned: no gauge dir, no gauge file.
+    assert _gauge_files(tmp_path) == []
+    assert not (tmp_path / ".quorum").exists()
+    # The docstring pins the exact skipped shape.
+    assert json.loads(res.stdout)["self_check"] == {
+        "verified": None,
+        "detail": "skipped: --no-self-check",
+    }
+
+
+def test_cli_install_statusline_self_check_verifies(tmp_path):
+    # A self-check test: no `--no-self-check`, run under `_isolated_cli_env` so the
+    # spawned producer's gauge lands under tmp_path.
+    config = tmp_path / "cfg"
+    res = _run(
+        ["install-statusline"],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    assert json.loads(res.stdout)["self_check"]["verified"] is True
+    gauge = tmp_path / ".quorum" / "context-usage-quo-setup-self-check.json"
+    assert gauge.exists()
+    record = json.loads(gauge.read_text(encoding="utf-8"))
+    assert record["session_id"] == "quo-setup-self-check"
+    assert abs(gauge.stat().st_mtime - time.time()) < 30
+
+
+def test_cli_install_statusline_failed_self_check_is_non_fatal(tmp_path):
+    # Force the self-check to fail with a non-interpreter `--python`. The install
+    # is still reported (exit 0) and NOT reverted — the composed (broken) command
+    # remains on disk.
+    config = tmp_path / "cfg"
+    broken_python = str(tmp_path / "definitely-not-an-interpreter")
+    res = _run(
+        ["install-statusline", "--python", broken_python],
+        env=_isolated_cli_env(tmp_path, config_dir=config),
+    )
+    assert res.returncode == 0, res.stderr
+    summary = json.loads(res.stdout)
+    assert summary["self_check"]["verified"] is False
+    assert isinstance(summary["self_check"]["detail"], str)
+    assert summary["self_check"]["detail"]
+    # The settings file still holds the composed (broken) command — reported, not
+    # reverted.
+    on_disk = _read_settings(config)
+    assert on_disk["statusLine"]["command"] == summary["new_command"]
+    assert mod.to_command_path(broken_python) in on_disk["statusLine"]["command"]
+    assert "Traceback" not in res.stderr
+
+
+# --- write-opt-out ---------------------------------------------------------
+
+def test_cli_write_opt_out_creates_the_marker(tmp_path):
+    assert not (tmp_path / ".quorum").exists()
+    res = _run(["write-opt-out"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert (tmp_path / ".quorum").is_dir()
+    marker = tmp_path / ".quorum" / "context-guard-opt-out"
+    assert marker.exists()
+    # The docstring pins "prints its path", so assert exact equality.
+    assert res.stdout.strip() == str(marker)
+
+
+def test_cli_write_opt_out_is_idempotent(tmp_path):
+    env = _env_with_tempdir(tmp_path)
+    first = _run(["write-opt-out"], env=env)
+    assert first.returncode == 0, first.stderr
+    marker = tmp_path / ".quorum" / "context-guard-opt-out"
+    first_bytes = marker.read_bytes()
+    second = _run(["write-opt-out"], env=env)
+    assert second.returncode == 0, second.stderr
+    assert marker.read_bytes() == first_bytes
+    # Exactly one marker, and no gauge file was ever created.
+    markers = [
+        p for p in (tmp_path / ".quorum").iterdir() if p.name == "context-guard-opt-out"
+    ]
+    assert len(markers) == 1
+    assert _gauge_files(tmp_path) == []
+
+
+def test_cli_write_opt_out_marker_body_states_its_scope(tmp_path):
+    # Deliberately loose substring checks — the body is advisory prose, never
+    # parsed by the guard, so its exact wording is not a contract. What must hold:
+    # it states the missing-reading scope, states that deletion re-enables the
+    # guard, and clarifies it does NOT suppress a genuine over-threshold stop.
+    res = _run(["write-opt-out"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    body = (tmp_path / ".quorum" / "context-guard-opt-out").read_text(encoding="utf-8")
+    assert "missing-reading" in body
+    assert "Delete this file" in body
+    assert "over-threshold" in body
+    assert "NOT suppress" in body
+
+
+def test_cli_write_opt_out_has_no_removal_subcommand(tmp_path):
+    # No removal path exists and none may be added — pinned at the CLI surface.
+    help_res = _run(["--help"], env=_env_with_tempdir(tmp_path))
+    assert help_res.returncode == 0, help_res.stderr
+    lowered = help_res.stdout.lower()
+    for forbidden in ("remove-opt-out", "clear-opt-out", "delete-opt-out"):
+        assert forbidden not in lowered
+    bad = _run(["remove-opt-out"], env=_env_with_tempdir(tmp_path))
+    assert bad.returncode == 2
+
+
+# --- cross-subcommand round trips and the no-deletion invariant ------------
+
+def test_cli_install_then_inspect_reports_direct(tmp_path):
+    # The round trip the skill's idempotency skip rule depends on: nothing else
+    # proves the writer and the classifier agree on a direct install.
+    env = _isolated_cli_env(tmp_path)
+    install = _run(["install-statusline", "--no-self-check"], env=env)
+    assert install.returncode == 0, install.stderr
+    installed = json.loads(install.stdout)["new_command"]
+    inspect = _run(["inspect-statusline", "--repo-root", str(tmp_path)], env=env)
+    assert inspect.returncode == 0, inspect.stderr
+    obj = json.loads(inspect.stdout)
+    assert obj["producer_state"] == "direct"
+    assert obj["status_line_command"] == installed
+
+
+def test_cli_install_over_a_foreign_line_then_inspect_reports_wrapped(tmp_path):
+    config = tmp_path / "cfg"
+    foreign = "vim /etc/hosts"
+    _seed_settings(config, {"statusLine": {"type": "command", "command": foreign}})
+    env = _isolated_cli_env(tmp_path, config_dir=config)
+    install = _run(["install-statusline", "--no-self-check"], env=env)
+    assert install.returncode == 0, install.stderr
+    inspect = _run(["inspect-statusline", "--repo-root", str(tmp_path)], env=env)
+    assert inspect.returncode == 0, inspect.stderr
+    obj = json.loads(inspect.stdout)
+    assert obj["producer_state"] == "wrapped"
+    assert obj["wrapped_command"] == foreign
+
+
+def test_cli_write_opt_out_then_inspect_reports_the_marker_present(tmp_path):
+    env = _isolated_cli_env(tmp_path)
+    write = _run(["write-opt-out"], env=env)
+    assert write.returncode == 0, write.stderr
+    inspect = _run(["inspect-statusline", "--repo-root", str(tmp_path)], env=env)
+    assert inspect.returncode == 0, inspect.stderr
+    assert json.loads(inspect.stdout)["opt_out_marker_present"] is True
+
+
+def test_cli_mutating_subcommands_delete_nothing(tmp_path):
+    """Every mutating subcommand leaves pre-existing files byte-identical.
+
+    NO source-level grep for `unlink`/`remove`/`rmtree` is added on purpose: the
+    atomic-write error path legitimately unlinks its OWN temp file, so a source
+    scan would either be wrong or pressure the Engineer to weaken the atomic
+    write. This behavioral seed-and-compare check proves the invariant that
+    matters — no pre-existing file is destroyed — without constraining how the
+    write is implemented.
+    """
+    config = tmp_path / "cfg"
+    config.mkdir()
+    quorum = tmp_path / ".quorum"
+    quorum.mkdir()
+    sentinels = {
+        quorum / f"context-usage-{TEST_SESSION_PREFIX}sentinel.json": '{"a": 1}',
+        quorum / "unrelated-sentinel.txt": "keep me",
+        config / "sentinel.json": "config sentinel",
+    }
+    for path, text in sentinels.items():
+        path.write_text(text, encoding="utf-8")
+    before = {path: path.read_bytes() for path in sentinels}
+
+    env = _isolated_cli_env(tmp_path, config_dir=config)
+    # A with-self-check install (fresh → installs and spawns), a --no-self-check
+    # install (now already-configured), and a write-opt-out.
+    assert _run(["install-statusline"], env=env).returncode == 0
+    assert _run(["install-statusline", "--no-self-check"], env=env).returncode == 0
+    assert _run(["write-opt-out"], env=env).returncode == 0
+
+    for path, original in before.items():
+        assert path.exists(), f"a mutating subcommand deleted {path}"
+        assert path.read_bytes() == original, f"a mutating subcommand rewrote {path}"
+
+
+# --- argparse surface for the mutating subcommands -------------------------
+
+def test_cli_help_names_the_mutating_subcommands(tmp_path):
+    res = _run(["--help"], env=_env_with_tempdir(tmp_path))
+    assert res.returncode == 0, res.stderr
+    assert "install-statusline" in res.stdout
+    assert "write-opt-out" in res.stdout
+
+
+def test_cli_install_statusline_unknown_flag_exits_2(tmp_path):
+    res = _run(["install-statusline", "--bogus"], env=_isolated_cli_env(tmp_path))
     assert res.returncode == 2

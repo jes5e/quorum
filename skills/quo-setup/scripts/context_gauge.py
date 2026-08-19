@@ -50,6 +50,129 @@ session.
 - `--session-id <id>` (REQUIRED): the session identifier to read. It selects
   the gauge file, so it must match the identifier the producer wrote under.
 
+**Inspection mode:**
+
+    context_gauge.py inspect-statusline [--repo-root <path>]
+
+Reports the current user-level status-line configuration as a single compact
+JSON object on stdout and exits `0`. Read-only: it writes nothing and creates no
+file or directory. `--repo-root` (OPTIONAL, default: current working directory)
+is the repository whose project/local settings are checked for a
+higher-precedence status line.
+
+The emitted object carries these keys:
+
+- `settings_path` — the resolved user settings file path.
+- `settings_exists` — whether that file is present.
+- `status_line_present` — whether an EFFECTIVE status-line command is
+  configured. This is true ONLY when `statusLine` is an object carrying a
+  non-empty string `command`. It is false for a missing `statusLine` key, a
+  `statusLine` that is not an object, and a `statusLine` object whose `command`
+  is missing, empty, or not a string — every such degenerate shape reports
+  `status_line_present` false and `producer_state` `"absent"`.
+- `status_line_command` — the existing command string, or `null` when none.
+- `status_line_extra_keys` — every key of the existing `statusLine` object other
+  than `type` and `command` (e.g. `padding`, `refreshInterval`,
+  `hideVimModeIndicator`), so an installer can preserve them; `{}` when none.
+- `producer_state` — one of five values: `"direct"` (this helper's `produce`,
+  no wrapped command), `"wrapped"` (this helper's `produce` wrapping an operator
+  command), `"other-install"` (a different `context_gauge.py` running
+  `produce`), `"foreign"` (an unrelated status line, carried opaquely), or
+  `"absent"` (no effective status-line command, per `status_line_present`).
+- `wrapped_command` — the wrapped operator command extracted from a `wrapped`
+  or `other-install` state, else `null`.
+- `producer_current` — true only when `producer_state` is `direct` or `wrapped`
+  AND the existing command is byte-identical to the command that would be
+  composed now (this interpreter, this script path, the extracted wrap payload,
+  the detected status-line shell); false in every other state. An interpreter or
+  script-path change flips it false even while the state stays `direct`/
+  `wrapped`, which is how a caller knows a refresh is needed.
+- `script_path` — this helper's own resolved path.
+- `python_executable` — the interpreter running this helper.
+- `opt_out_marker_path`, `opt_out_marker_present` — the opt-out marker path (see
+  below) and whether it exists.
+- `higher_precedence_sources` — see "Higher-precedence settings" below.
+- `status_line_shell` — the shell the harness runs the status-line command
+  through: `"sh"` on POSIX, `"git-bash"` or `"powershell"` on Windows.
+
+Exit codes: `inspect-statusline` exits `0` on every reportable configuration,
+INCLUDING an absent settings file. It exits `2`, with a single stderr line
+naming the path and nothing on stdout, in exactly one case — the settings file
+exists but does not parse as a JSON object. That state is never reported as
+`absent`, because a caller that writes settings keys off `absent` and would
+otherwise clobber a file it could not read.
+
+**Installer mode:**
+
+    context_gauge.py install-statusline [--repo-root <path>] [--python <path>] [--no-self-check]
+
+Writes or updates the user-level settings `statusLine` so it runs this helper's
+`produce` on every refresh, then reports what it did as one compact JSON object
+on stdout and exits `0`. `--repo-root` (OPTIONAL, default: current working
+directory) is used only to report `higher_precedence_sources`. `--python`
+(OPTIONAL) overrides the interpreter embedded in the composed command; the
+default is `sys.executable`. `--no-self-check` (OPTIONAL) skips the post-write
+self-check.
+
+Wrap-don't-replace: an existing status line is preserved, never discarded, and a
+re-run never nests one wrapper inside another. The wrap payload is chosen from
+the inspected `producer_state`: `foreign` wraps the entire existing command
+string opaquely; `wrapped` and `other-install` reuse the payload already
+extracted from the existing wrapper (the anti-double-wrap rule — the payload is
+reused, never re-wrapped); `direct` and `absent` wrap nothing.
+
+`action` is one of four values, mapped explicitly from `producer_state`:
+
+- `absent` → `"installed"` (no status line was configured).
+- `foreign` → `"wrapped"` (an unrelated status line is now wrapped).
+- `other-install` → `"repointed"` (a different `context_gauge.py` producer was
+  replaced with this one, its wrap payload carried across).
+- `direct` or `wrapped` whose recomposed command is NOT byte-identical to the
+  existing one → `"repointed"` (same producer, moved interpreter or script path).
+- `direct` or `wrapped` whose recomposed command IS byte-identical →
+  `"already-configured"`; in this case NO write happens and the settings file's
+  modification time is left untouched.
+
+Never-clobber rule: if the settings file exists but does not parse as a JSON
+object, `install-statusline` exits `2` with a single stderr line and writes
+NOTHING — a file that cannot be read is never overwritten.
+
+The rewrite preserves state: unrelated top-level settings keys are left
+untouched, and the existing `statusLine` object's other keys (`padding`,
+`refreshInterval`, `hideVimModeIndicator`, ...) are merged through, so only
+`type` and `command` change. The write is atomic (`tempfile.mkstemp` in the
+settings directory, `json.dump`, `os.replace`, temp file unlinked on any error);
+there is no backup file — atomic replace plus key preservation plus the summary's
+`previous_command` echo is the entire recovery story, and writing an undeletable
+backup into the operator's config directory is not.
+
+Self-check (skipped under `--no-self-check`): after the write, the composed
+command is run once through the platform shell with a synthetic payload keyed by
+the reserved self-check session id, and the summary's `self_check.verified` is
+`true` when that run wrote a fresh gauge for the reserved id, `false` with a
+non-empty `detail` when it did not. A failed self-check is ADVISORY only: it
+never fails the install, because the settings write has already happened and
+reverting it would be worse than reporting the failure — the exit code stays `0`.
+When `--no-self-check` is given, no subprocess is spawned and `self_check` is
+exactly `{"verified": null, "detail": "skipped: --no-self-check"}`.
+
+The summary object carries: `action`, `settings_path`, `previous_command` (the
+command the operator had before, or `null` — the only record of it, so a manual
+restore is possible), `new_command`, `preserved_status_line_keys`, `self_check`,
+`higher_precedence_sources`, and `status_line_shell`.
+
+**Opt-out mode:**
+
+    context_gauge.py write-opt-out
+
+Writes the persistent opt-out marker (creating the gauge directory if absent),
+prints its path, and exits `0`. Idempotent: a repeated run rewrites the same
+content and reports the same path. The marker suppresses only the boundary
+guard's missing-reading hard-stop — never a genuine over-threshold stop — and
+deleting the file re-enables the guard. There is NO removal subcommand by
+design: this helper never deletes anything, so opting back in is a manual file
+delete, not a command.
+
 Gauge file
 ----------
     <tempdir>/.quorum/context-usage-<session_id>.json
@@ -58,6 +181,44 @@ Gauge file
 this resolves correctly on POSIX and on Windows without per-OS branching. The
 directory is created if absent. The filename is keyed by session identifier so
 concurrent sessions in one environment never collide.
+
+Opt-out marker
+--------------
+    <tempdir>/.quorum/context-guard-opt-out
+
+A persistent marker an operator writes to run unguarded. Its mere EXISTENCE is
+the signal — the contents are advisory only and are never parsed. The name and
+location are a cross-skill contract, so both the writer and the boundary guard
+that reads it name the same file. What the marker suppresses is narrow: only the
+missing-reading hard-stop (the stop that fires when no trustworthy reading is
+available). It does NOT suppress a genuine over-threshold stop — an operator who
+opts out of the missing-reading guard still stops when a real reading crosses the
+threshold. `inspect-statusline` reports the path and whether it exists; it never
+creates it.
+
+Higher-precedence settings
+--------------------------
+`inspect-statusline`'s `higher_precedence_sources` lists settings sources that
+outrank the user-level status line this helper configures, so a caller can warn
+that a user-level write may be overridden. Settings precedence is, highest
+first: managed settings, then command-line launch arguments, then local
+(`.claude/settings.local.json`), then project (`.claude/settings.json`), then
+user settings (lowest).
+
+DETECTABLE (reported when present, each as a `{"scope", "path", "reason"}`
+entry): a project- or local-scope `statusLine` in the repo's `.claude/`
+directory; and, in the per-OS file-based managed-settings file and its
+`managed-settings.d/` drop-in directory, a `statusLine` key, an
+`allowManagedHooksOnly` truthy flag, or a `disableAllHooks` truthy flag (the
+last two narrow the status line to managed settings only, disabling a
+user-level value). Any such file that is absent, unreadable, or unparseable is
+skipped silently.
+
+NOT DETECTABLE (a caller cannot learn these from this helper): a status line
+passed via the `--settings` launch flag or other command-line arguments;
+server- or enterprise-managed settings delivered out-of-band; and MDM-delivered
+policy that does not land in the file-based managed-settings location (a macOS
+configuration profile / plist, a Windows registry policy).
 
 The written JSON shape is:
 
@@ -145,12 +306,27 @@ therefore rests on `read`'s `missing`/`stale` routing rather than on any signal
 `produce` emits: on a mid-session payload drift the gauge file already exists, so
 the surviving classification is `stale`, not `missing`. That is a dependency on
 the reader's routing, not an unconditional guarantee from `produce`.
+
+The installer embeds `sys.executable` — the interpreter now running — rather than
+a bare `python3`/`python` token, because the status line runs under whatever the
+harness's shell resolves on PATH, which need not be the interpreter this install
+verified. A bare token could resolve to a 2.x, a venv-less, or a
+dependency-short interpreter that cannot run this helper, which would silently
+blank the gauge. Every path in the composed command is forward-slashed (via
+`to_command_path`) so the one command string works whether the harness runs it
+through `sh`, Git Bash, PowerShell, or `cmd.exe`; a backslash would be consumed
+by Git Bash. The wrapped payload's quoting style is chosen from the detected
+status-line shell (via `quote_for_shell`), not guessed, because Git Bash and
+PowerShell disagree on how a literal is escaped and the wrong choice would
+corrupt an operator's wrapped command.
 """
 
 import argparse
 import json
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -181,6 +357,69 @@ FRESHNESS_WINDOW_SECONDS = 120
 # The gauge file contract, defined once so no other code path spells it out.
 GAUGE_DIR_NAME = ".quorum"
 GAUGE_FILENAME_TEMPLATE = "context-usage-{session_id}.json"
+
+# The persistent opt-out marker. Its mere existence is the signal — the contents
+# are advisory only, so the boundary guard that reads it never parses the body.
+# This filename is a cross-skill string contract: the guard that suppresses its
+# missing-reading hard-stop reads exactly this name under the gauge directory,
+# so it lives here, beside the gauge-file constants, defined once for both sides.
+OPT_OUT_MARKER_FILENAME = "context-guard-opt-out"
+
+# Human-readable body written into the opt-out marker. The body is advisory only
+# — the boundary guard keys off the file's existence and never parses it — but it
+# states precisely what the marker does and does not suppress, and how to reverse
+# it, for an operator who opens the file. Held here so `write-opt-out` writes
+# byte-identical content on every run (idempotence). It deliberately never
+# mentions a removal command, because none exists: opting back in is a plain file
+# delete.
+OPT_OUT_MARKER_BODY = (
+    "This marker opts this environment out of the context-guard's "
+    "missing-reading hard-stop only.\n"
+    "While it exists, a boundary check that cannot obtain a trustworthy "
+    "context-window reading proceeds instead of stopping.\n"
+    "It does NOT suppress a genuine over-threshold stop: when a real reading "
+    "crosses the stop threshold, the guard still stops.\n"
+    "Delete this file to re-enable the missing-reading guard.\n"
+)
+
+# Where the operator's user-level settings file lives. `CLAUDE_CONFIG_DIR`, when
+# set, overrides the default configuration directory (`~/.claude`); the settings
+# file inside it is always `settings.json`. These are named constants rather than
+# inline literals because both the inspector and the installer must agree on the
+# exact path they read and write.
+CONFIG_DIR_ENV_VAR = "CLAUDE_CONFIG_DIR"
+DEFAULT_CONFIG_DIR_NAME = ".claude"
+SETTINGS_FILENAME = "settings.json"
+
+# The project- and local-scope settings filenames that sit above user settings
+# in the precedence order. A local file, when present, outranks the project file,
+# and both outrank the user file this helper writes.
+LOCAL_SETTINGS_FILENAME = "settings.local.json"
+
+# File-based managed-settings locations, one per OS. Managed settings are the
+# highest-precedence source, so a `statusLine` (or a hooks lockdown) here can
+# override or disable a user-level status line entirely. These are module-level
+# constants — never inlined — so the inspection code can be pointed at a
+# temporary directory instead of these real system paths, which nothing but an
+# administrator may write to.
+MANAGED_SETTINGS_DIRS = {
+    "darwin": "/Library/Application Support/ClaudeCode",
+    "linux": "/etc/claude-code",
+    "win32": "C:\\Program Files\\ClaudeCode",
+}
+MANAGED_SETTINGS_FILENAME = "managed-settings.json"
+MANAGED_SETTINGS_DROPIN_DIRNAME = "managed-settings.d"
+
+# Session identifier reserved for the installer's post-write self-check. It must
+# satisfy `SESSION_ID_RE` so the self-check can write a throwaway gauge under it.
+SELF_CHECK_SESSION_ID = "quo-setup-self-check"
+
+# Tolerance, in seconds, allowed between the moment the installer starts its
+# self-check and the modification time of the gauge that check expects the
+# composed command to write. Its only job is to distinguish a gauge this run just
+# triggered from one left over long ago; a small slack absorbs coarse filesystem
+# mtime resolution without admitting a stale leftover.
+SELF_CHECK_MTIME_TOLERANCE_SECONDS = 5
 
 # Conservative charset guard for a session identifier. Because the identifier
 # is interpolated into a filename, anything outside this set — a path
@@ -254,6 +493,256 @@ def gauge_path(session_id: str) -> Path:
     `is_valid_session_id` first; this function does no checking of its own.
     """
     return gauge_dir() / GAUGE_FILENAME_TEMPLATE.format(session_id=session_id)
+
+
+def opt_out_marker_path() -> Path:
+    """Return the opt-out marker path. Pure — creates nothing.
+
+    Resolves the temporary directory at call time, exactly like `gauge_dir()`,
+    so a caller that redirects the tempdir sees the redirection take effect.
+    """
+    return gauge_dir() / OPT_OUT_MARKER_FILENAME
+
+
+def config_dir() -> Path:
+    """Return the Claude Code configuration directory.
+
+    `CLAUDE_CONFIG_DIR`, when set and non-empty, overrides the default location;
+    otherwise the default is `~/.claude`. `Path.home()` resolves the home
+    directory on every OS — it covers `%USERPROFILE%` on Windows — so no per-OS
+    branching is needed.
+    """
+    override = os.environ.get(CONFIG_DIR_ENV_VAR)
+    if override:
+        return Path(override)
+    return Path.home() / DEFAULT_CONFIG_DIR_NAME
+
+
+def user_settings_path() -> Path:
+    """Return the user-level settings file path (`<config dir>/settings.json`)."""
+    return config_dir() / SETTINGS_FILENAME
+
+
+def normalize_path_for_compare(value: str) -> str:
+    """Normalize a filesystem path for comparison against another path token.
+
+    Applies `normpath` (collapse `.`/`..` and redundant separators) and
+    `normcase` (case- and separator-fold on Windows, no-op on POSIX), then folds
+    any remaining backslash to a forward slash so a command string written with
+    forward slashes compares equal to a native path. Used for every script-path
+    comparison so a moved or differently-spelled path is still recognized.
+    """
+    return os.path.normcase(os.path.normpath(value)).replace("\\", "/")
+
+
+def to_command_path(path) -> str:
+    """Return an absolute path safe to embed in a status-line command string.
+
+    Backslashes are replaced with forward slashes: on Windows the status-line
+    command runs through Git Bash when it is installed, and Git Bash consumes
+    unquoted backslashes in the command string — so a forward-slashed path is the
+    only spelling that survives on every platform.
+    """
+    return os.path.abspath(str(path)).replace("\\", "/")
+
+
+def _extract_wrap_command(tokens):
+    """Return the `--wrap-command` payload from a token list, or `None`.
+
+    Accepts both the space-separated (`--wrap-command X`) and the joined
+    (`--wrap-command=X`) spellings, and returns the payload exactly as it was
+    tokenized (already unquoted by `shlex.split`).
+    """
+    prefix = "--wrap-command="
+    for index, token in enumerate(tokens):
+        if token == "--wrap-command":
+            if index + 1 < len(tokens):
+                return tokens[index + 1]
+            return None
+        if token.startswith(prefix):
+            return token[len(prefix):]
+    return None
+
+
+def classify_status_line_command(command, script_path) -> tuple:
+    """Classify an existing status-line command against this helper.
+
+    Returns `(state, wrapped_command)` where `state` is one of:
+
+    - `"direct"` — a command that runs this exact script's `produce` with no
+      wrapped command (`wrapped_command` is `None`).
+    - `"wrapped"` — this exact script's `produce` wrapping an operator command;
+      `wrapped_command` is that wrapped payload string.
+    - `"other-install"` — some OTHER `context_gauge.py` (basename match, path
+      differs) running `produce`; `wrapped_command` is any wrap payload it
+      carried, else `None`.
+    - `"foreign"` — anything else, carried as an opaque string; `wrapped_command`
+      is `None`. A command that `shlex.split` cannot tokenize is `foreign` too —
+      it is never parsed further.
+    """
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        # Unbalanced quoting or similar: do not guess at its structure.
+        return ("foreign", None)
+
+    has_produce = "produce" in tokens
+    wrap = _extract_wrap_command(tokens)
+    target = normalize_path_for_compare(script_path)
+
+    names_self = any(normalize_path_for_compare(token) == target for token in tokens)
+    if names_self and has_produce:
+        if wrap is not None:
+            return ("wrapped", wrap)
+        return ("direct", None)
+
+    names_helper = any(
+        os.path.basename(token) == "context_gauge.py" for token in tokens
+    )
+    if names_helper and has_produce:
+        return ("other-install", wrap)
+
+    return ("foreign", None)
+
+
+def status_line_shell() -> str:
+    """Return the shell the harness runs the status-line command through.
+
+    `"sh"` on POSIX. On Windows the status-line command runs through Git Bash
+    when Git Bash is installed, or through PowerShell when it is absent, so
+    `"git-bash"` is returned when `shutil.which("bash")` finds one and
+    `"powershell"` otherwise. The quoting of an embedded wrapped command depends
+    on which of these it is.
+    """
+    if os.name == "nt":
+        if shutil.which("bash"):
+            return "git-bash"
+        return "powershell"
+    return "sh"
+
+
+def quote_for_shell(value: str, shell: str) -> str:
+    """Quote `value` for the shell the status-line command runs through.
+
+    `sh` and `git-bash` both accept POSIX quoting, so `shlex.quote` covers them.
+    `powershell` uses single quotes with every inner single quote doubled. The
+    quoting shell is chosen at install time because Claude Code runs the
+    status-line command through Git Bash when it is present on Windows and
+    PowerShell otherwise, and the two disagree on how a literal is escaped.
+    """
+    if shell == "powershell":
+        return "'" + value.replace("'", "''") + "'"
+    return shlex.quote(value)
+
+
+def compose_status_line_command(python_exe, script_path, wrap_command, shell) -> str:
+    """Compose the status-line command that runs this helper's `produce`.
+
+    Returns `"<python>" "<script>" produce`, both paths passed through
+    `to_command_path` (absolute, forward-slashed) and wrapped in DOUBLE quotes.
+    Double quotes on our own two tokens are safe in `sh`, Git Bash, PowerShell,
+    and `cmd.exe` alike, and because the paths are forward-slashed there is no
+    backslash for Git Bash to consume. When `wrap_command` is non-empty,
+    ` --wrap-command <quoted>` is appended, quoted for `shell`.
+    """
+    python_token = to_command_path(python_exe)
+    script_token = to_command_path(script_path)
+    command = '"{0}" "{1}" produce'.format(python_token, script_token)
+    if wrap_command:
+        command += " --wrap-command " + quote_for_shell(wrap_command, shell)
+    return command
+
+
+def _managed_settings_dir() -> Path:
+    """Return the file-based managed-settings directory for the current OS."""
+    if sys.platform.startswith("darwin"):
+        key = "darwin"
+    elif os.name == "nt":
+        key = "win32"
+    else:
+        key = "linux"
+    return Path(MANAGED_SETTINGS_DIRS[key])
+
+
+def detect_higher_precedence_sources(repo_root, managed_dir=None) -> list:
+    """Report settings sources that outrank a user-level status line.
+
+    Best-effort and never raises: any file that is absent, unreadable, or
+    unparseable is skipped silently, because a malformed file belonging to
+    someone else must not fail our inspection. Each returned entry is
+    `{"scope": ..., "path": ..., "reason": ...}`.
+
+    Checks the repo's project (`.claude/settings.json`) and local
+    (`.claude/settings.local.json`) files for a `statusLine` key, and the per-OS
+    managed-settings file plus every `*.json` in its `managed-settings.d/`
+    drop-in directory for a `statusLine` key, for `allowManagedHooksOnly` truthy,
+    and for `disableAllHooks` truthy. `managed_dir` is injectable so tests can
+    point the managed-scope checks at a temporary directory instead of the real
+    system location, which only an administrator may write to.
+    """
+    sources = []
+    repo_root = Path(repo_root)
+
+    def _load_object(path):
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+        except (OSError, ValueError, UnicodeDecodeError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        return data
+
+    project = repo_root / DEFAULT_CONFIG_DIR_NAME / SETTINGS_FILENAME
+    project_data = _load_object(project)
+    if project_data is not None and "statusLine" in project_data:
+        sources.append({
+            "scope": "project",
+            "path": str(project),
+            "reason": "project settings define a statusLine that outranks user settings",
+        })
+
+    local = repo_root / DEFAULT_CONFIG_DIR_NAME / LOCAL_SETTINGS_FILENAME
+    local_data = _load_object(local)
+    if local_data is not None and "statusLine" in local_data:
+        sources.append({
+            "scope": "local",
+            "path": str(local),
+            "reason": "local settings define a statusLine that outranks user settings",
+        })
+
+    if managed_dir is None:
+        managed_dir = _managed_settings_dir()
+    managed_dir = Path(managed_dir)
+    managed_files = [managed_dir / MANAGED_SETTINGS_FILENAME]
+    dropin = managed_dir / MANAGED_SETTINGS_DROPIN_DIRNAME
+    try:
+        managed_files.extend(sorted(dropin.glob("*.json")))
+    except OSError:
+        pass
+    for managed_file in managed_files:
+        managed_data = _load_object(managed_file)
+        if managed_data is None:
+            continue
+        if "statusLine" in managed_data:
+            sources.append({
+                "scope": "managed",
+                "path": str(managed_file),
+                "reason": "managed settings define a statusLine that outranks user settings",
+            })
+        if managed_data.get("allowManagedHooksOnly"):
+            sources.append({
+                "scope": "managed",
+                "path": str(managed_file),
+                "reason": "managed settings set allowManagedHooksOnly, so only a managed statusLine runs",
+            })
+        if managed_data.get("disableAllHooks"):
+            sources.append({
+                "scope": "managed",
+                "path": str(managed_file),
+                "reason": "managed settings set disableAllHooks, so the status line is disabled",
+            })
+    return sources
 
 
 def read_stdin_once() -> bytes:
@@ -575,6 +1064,277 @@ def cmd_read(args) -> int:
     return 0
 
 
+def cmd_inspect_statusline(args) -> int:
+    # The helper names itself (own-skill resolution): the script path is derived
+    # from `__file__`, never passed in, so a caller cannot point the inspection
+    # at a different script.
+    script_path = str(Path(__file__).resolve())
+    python_executable = sys.executable
+    shell = status_line_shell()
+    settings_path = user_settings_path()
+    repo_root = Path(args.repo_root) if args.repo_root else Path.cwd()
+
+    settings_exists = settings_path.exists()
+    status_line_present = False
+    status_line_command = None
+    status_line_extra_keys = {}
+    producer_state = "absent"
+    wrapped_command = None
+    producer_current = False
+
+    if settings_exists:
+        # A settings file that exists but does not parse as a JSON object is the
+        # one hard failure: reporting `absent` here would let the installer
+        # clobber a file it could not read. Fail (exit 2) with a single stderr
+        # line and print nothing on stdout.
+        try:
+            text = settings_path.read_text(encoding="utf-8")
+            settings = json.loads(text)
+        except (OSError, ValueError, UnicodeDecodeError) as error:
+            return fail(f"cannot read settings file {settings_path}: {error}")
+        if not isinstance(settings, dict):
+            return fail(
+                f"settings file {settings_path} is not a JSON object"
+            )
+
+        status_line = settings.get("statusLine")
+        if isinstance(status_line, dict):
+            # Every key other than `type` and `command` is carried through so the
+            # installer can preserve it on a rewrite.
+            status_line_extra_keys = {
+                key: value
+                for key, value in status_line.items()
+                if key not in ("type", "command")
+            }
+            command = status_line.get("command")
+            if isinstance(command, str) and command:
+                status_line_present = True
+                status_line_command = command
+                state, wrap = classify_status_line_command(command, script_path)
+                producer_state = state
+                wrapped_command = wrap
+                if state in ("direct", "wrapped"):
+                    composed = compose_status_line_command(
+                        python_executable, script_path, wrap, shell
+                    )
+                    producer_current = command == composed
+            # A missing, empty, or non-string `command` leaves `producer_state`
+            # `absent` and `status_line_present` false — a degenerate shape is
+            # treated as no effective status line.
+        # A non-object `statusLine` likewise leaves `producer_state` `absent`.
+
+    opt_out_path = opt_out_marker_path()
+    result = {
+        "settings_path": str(settings_path),
+        "settings_exists": settings_exists,
+        "status_line_present": status_line_present,
+        "status_line_command": status_line_command,
+        "status_line_extra_keys": status_line_extra_keys,
+        "producer_state": producer_state,
+        "wrapped_command": wrapped_command,
+        "producer_current": producer_current,
+        "script_path": script_path,
+        "python_executable": python_executable,
+        "opt_out_marker_path": str(opt_out_path),
+        # `.exists()` never creates the gauge directory as a side effect of the
+        # lookup, so a read-only inspection stays read-only.
+        "opt_out_marker_present": opt_out_path.exists(),
+        "higher_precedence_sources": detect_higher_precedence_sources(repo_root),
+        "status_line_shell": shell,
+    }
+    print(json.dumps(result))
+    return 0
+
+
+def _run_self_check(composed: str) -> dict:
+    """Run the composed command once and report whether it wrote a fresh gauge.
+
+    Advisory only — the caller NEVER fails the install on the outcome. Spawns the
+    composed command through the platform shell (via `run_wrapped`, so the same
+    `shell=True` / timeout discipline applies) with a synthetic payload keyed by
+    the reserved self-check session id, then checks that the reserved gauge was
+    written within `SELF_CHECK_MTIME_TOLERANCE_SECONDS` of when this check began.
+    Returns `{"verified": <bool>, "detail": <str>}`.
+    """
+    payload = json.dumps({
+        "session_id": SELF_CHECK_SESSION_ID,
+        "context_window": {"used_percentage": 0},
+        "workspace": {"current_dir": os.getcwd()},
+    })
+    started = time.time()
+    run_wrapped(composed, payload.encode("utf-8"))
+    check_path = gauge_path(SELF_CHECK_SESSION_ID)
+    try:
+        mtime = check_path.stat().st_mtime
+    except OSError:
+        return {
+            "verified": False,
+            "detail": (
+                "composed command wrote no gauge for the reserved self-check "
+                "session id"
+            ),
+        }
+    if mtime >= started - SELF_CHECK_MTIME_TOLERANCE_SECONDS:
+        return {
+            "verified": True,
+            "detail": "composed command wrote a fresh gauge for the reserved self-check session id",
+        }
+    return {
+        "verified": False,
+        "detail": "reserved self-check gauge exists but was not refreshed by this run",
+    }
+
+
+def cmd_install_statusline(args) -> int:
+    # Own-skill resolution: the script path is derived from `__file__`, never
+    # passed in, so the installer can only ever wire up THIS helper.
+    script_path = str(Path(__file__).resolve())
+    python_executable = args.python if args.python else sys.executable
+    shell = status_line_shell()
+    settings_path = user_settings_path()
+    repo_root = Path(args.repo_root) if args.repo_root else Path.cwd()
+
+    # Step 1: inspect existing settings. Start from an empty object so an absent
+    # file writes a settings file whose only key is `statusLine`.
+    settings = {}
+    existing_status_line = {}
+    existing_command = None
+    producer_state = "absent"
+    wrapped_payload = None
+    extra_keys = {}
+
+    if settings_path.exists():
+        # Never clobber a settings file we could not read: an unparseable file is
+        # the one hard failure, and it writes NOTHING.
+        try:
+            text = settings_path.read_text(encoding="utf-8")
+            settings = json.loads(text)
+        except (OSError, ValueError, UnicodeDecodeError) as error:
+            return fail(f"cannot read settings file {settings_path}: {error}")
+        if not isinstance(settings, dict):
+            return fail(f"settings file {settings_path} is not a JSON object")
+        status_line = settings.get("statusLine")
+        if isinstance(status_line, dict):
+            existing_status_line = status_line
+            extra_keys = {
+                key: value
+                for key, value in status_line.items()
+                if key not in ("type", "command")
+            }
+            command = status_line.get("command")
+            if isinstance(command, str) and command:
+                existing_command = command
+                producer_state, wrapped_payload = classify_status_line_command(
+                    command, script_path
+                )
+
+    # Step 2: determine the wrap payload. This is the anti-double-wrap step — a
+    # `wrapped`/`other-install` payload is REUSED, never re-wrapped.
+    if producer_state == "foreign":
+        # Carry the entire existing command opaquely.
+        wrap_command = existing_command
+    elif producer_state in ("wrapped", "other-install"):
+        # Reuse the payload already extracted from the existing wrapper.
+        wrap_command = wrapped_payload
+    else:
+        # `direct` or `absent`: nothing to wrap.
+        wrap_command = None
+
+    # Step 3: compose the new command.
+    composed = compose_status_line_command(
+        python_executable, script_path, wrap_command, shell
+    )
+
+    # Step 4: an already-current producer is a no-op — do not touch the file.
+    if producer_state in ("direct", "wrapped") and composed == existing_command:
+        summary = {
+            "action": "already-configured",
+            "settings_path": str(settings_path),
+            "previous_command": existing_command,
+            "new_command": composed,
+            "preserved_status_line_keys": sorted(extra_keys.keys()),
+            "self_check": {
+                "verified": None,
+                "detail": "not run: already-configured, no write performed",
+            },
+            "higher_precedence_sources": detect_higher_precedence_sources(repo_root),
+            "status_line_shell": shell,
+        }
+        print(json.dumps(summary))
+        return 0
+
+    # Explicit `producer_state` → `action` contract (see the module docstring).
+    # `direct`/`wrapped` reaching here are, by the guard above, non-identical, so
+    # they map to `repointed`.
+    action = {
+        "absent": "installed",
+        "foreign": "wrapped",
+        "other-install": "repointed",
+        "direct": "repointed",
+        "wrapped": "repointed",
+    }[producer_state]
+
+    # Step 5: read-modify-write. Merge over the existing `statusLine` object's
+    # other keys so `padding`, `refreshInterval`, `hideVimModeIndicator`, ...
+    # survive, and leave every unrelated top-level key untouched.
+    new_status_line = dict(existing_status_line)
+    new_status_line["type"] = "command"
+    new_status_line["command"] = composed
+    settings["statusLine"] = new_status_line
+
+    config_directory = settings_path.parent
+    config_directory.mkdir(parents=True, exist_ok=True)
+    # Atomic write: temp file in the settings file's own directory, then
+    # `os.replace`; unlink the temp file on any exception so no partial file is
+    # left behind. No backup file by design.
+    fd, tmp = tempfile.mkstemp(
+        dir=str(config_directory), prefix="." + SETTINGS_FILENAME + ".", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle, indent=2)
+            handle.write("\n")
+        os.replace(tmp, str(settings_path))
+    except Exception:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+    # Step 6: advisory self-check. Never fails the install — the write already
+    # stands, so the exit code stays 0 regardless of the outcome.
+    if args.no_self_check:
+        self_check = {"verified": None, "detail": "skipped: --no-self-check"}
+    else:
+        self_check = _run_self_check(composed)
+
+    # Step 7: one compact JSON summary, exit 0.
+    summary = {
+        "action": action,
+        "settings_path": str(settings_path),
+        "previous_command": existing_command,
+        "new_command": composed,
+        "preserved_status_line_keys": sorted(extra_keys.keys()),
+        "self_check": self_check,
+        "higher_precedence_sources": detect_higher_precedence_sources(repo_root),
+        "status_line_shell": shell,
+    }
+    print(json.dumps(summary))
+    return 0
+
+
+def cmd_write_opt_out(args) -> int:
+    # Reuse `ensure_gauge_dir()` so the marker lands beside the gauge files under
+    # the same `<tempdir>/.quorum/` directory, created if absent.
+    ensure_gauge_dir()
+    marker_path = opt_out_marker_path()
+    # Truncate-write (never append) so a repeated run rewrites byte-identical
+    # content — idempotent. There is no removal path here, by design.
+    with open(marker_path, "w", encoding="utf-8") as handle:
+        handle.write(OPT_OUT_MARKER_BODY)
+    print(str(marker_path))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Publish or read a per-session context-window usage gauge.",
@@ -603,6 +1363,45 @@ def main() -> int:
         help="session identifier selecting the gauge file to read",
     )
 
+    inspect = subparsers.add_parser(
+        "inspect-statusline",
+        help="report the current user status-line configuration as one JSON object",
+    )
+    inspect.add_argument(
+        "--repo-root",
+        dest="repo_root",
+        default=None,
+        help="repository root to check for higher-precedence settings (default: cwd)",
+    )
+
+    install = subparsers.add_parser(
+        "install-statusline",
+        help="write or update the user status-line command to run the gauge producer",
+    )
+    install.add_argument(
+        "--repo-root",
+        dest="repo_root",
+        default=None,
+        help="repository root to report higher-precedence settings for (default: cwd)",
+    )
+    install.add_argument(
+        "--python",
+        dest="python",
+        default=None,
+        help="interpreter to embed in the composed command (default: sys.executable)",
+    )
+    install.add_argument(
+        "--no-self-check",
+        dest="no_self_check",
+        action="store_true",
+        help="skip the post-write self-check (no subprocess is spawned)",
+    )
+
+    subparsers.add_parser(
+        "write-opt-out",
+        help="write the persistent opt-out marker that suppresses the missing-reading stop",
+    )
+
     try:
         args = parser.parse_args()
     except SystemExit as e:
@@ -610,7 +1409,13 @@ def main() -> int:
 
     if args.mode == "produce":
         return cmd_produce(args)
-    return cmd_read(args)
+    if args.mode == "read":
+        return cmd_read(args)
+    if args.mode == "inspect-statusline":
+        return cmd_inspect_statusline(args)
+    if args.mode == "install-statusline":
+        return cmd_install_statusline(args)
+    return cmd_write_opt_out(args)
 
 
 if __name__ == "__main__":

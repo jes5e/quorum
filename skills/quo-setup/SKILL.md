@@ -1,11 +1,12 @@
 ---
 name: quo-setup
-description: Configure hives for quorum
+description: Configure hives for quorum. Also configures the optional status-line context-usage gauge producer — pass the gauge-producer argument (or ask for producer configuration alone) to jump straight to that step.
+argument-hint: "[--configure-gauge-producer]"
 ---
 
 ## Overview
 
-Configure a repo for quorum. Sets up hives, writes a `## Documentation Locations` section and a `## Build Commands` section in CLAUDE.md, and (optionally) bootstraps baseline PRD/SDD docs by exploring the existing codebase.
+Configure a repo for quorum. Sets up hives, writes a `## Documentation Locations` section and a `## Build Commands` section in CLAUDE.md, (optionally) bootstraps baseline PRD/SDD docs by exploring the existing codebase, and (optionally) wires the context-usage gauge producer into your status line.
 
 **This skill is safe to re-run.** Each section detects existing configuration and only prompts where something is missing, stale, or you ask to change it. If you skipped doc bootstrap on the first run and want to add docs later, re-running setup re-offers the bootstrap option.
 
@@ -50,6 +51,21 @@ Status values:
 The Specs hive is a **top-level** hive. It is not nested inside any other hive.
 
 ## Instructions
+
+### Direct invocation: producer configuration only
+
+**Check this before doing anything else.** This entry point applies when either trigger holds:
+
+- The invocation carries the gauge-producer argument (`--configure-gauge-producer`), **or**
+- the dispatching caller's request is scoped solely to configuring the context-usage gauge producer (nothing else about hives, docs, or build commands).
+
+When either trigger applies, go straight to `### Configure the context-usage gauge producer (optional)`, run it, report its outcome, and **stop**. Do **not** run Prerequisites, fast-path detection, hive configuration, Documentation Locations, the PRD/SDD bootstrap, Build Commands, or Next Steps — none of them.
+
+This path needs neither the bees CLI nor a configured repo: it only reads and writes the operator's user settings and the marker file, touching no hive and no CLAUDE.md. That is exactly what lets a boundary-time gate dispatch this path on any machine. It is idempotent for the same reason the step itself is — it re-runs detection and takes no action when a producer is already configured and current.
+
+**Opt-out override (this path only).** On this direct path an existing opt-out marker does **not** silently end the invocation. Report it — name the marker path (`<tempdir>/.quorum/context-guard-opt-out`, i.e. `/tmp/.quorum/context-guard-opt-out` on POSIX, `%TEMP%\.quorum\context-guard-opt-out` on Windows) and say the operator previously chose to run unguarded — and still fire the step's gate: an explicit request to configure is itself the change of mind the marker was never meant to veto. The silent opt-out skip applies only to the automatic slow-path and fast-path offers, not here.
+
+When neither trigger applies, ignore this section and continue to `### Prerequisites` as today.
 
 ### Prerequisites
 
@@ -146,7 +162,7 @@ If `fast_path_eligible` is **true**, run the actions below.
 
 Print this paragraph to the user verbatim:
 
-> Looks like this repo was already set up for bees on another machine. The on-disk hive markers are here but they're not registered in your machine's bees config. I can re-register them for you and you'll be ready to go. CLAUDE.md will not be touched.
+> Looks like this repo was already set up for bees on another machine. The on-disk hive markers are here but they're not registered in your machine's bees config. I can re-register them for you and you'll be ready to go. CLAUDE.md will not be touched — though an optional status-line context-usage gauge producer offer, or an announced refresh of an existing stale one, may follow.
 
 #### Re-register each on-disk hive
 
@@ -228,9 +244,17 @@ For each unknown hive, do this inline:
 
    If the user replied `none` for child tiers, omit the `bees set-types` call entirely (matches the `issues` hive shape).
 
+#### Offer the context-usage gauge producer
+
+**The fast path does offer this step.** A freshly-cloned machine is exactly where the status line is unconfigured: that setting is per-machine and uncommitted — the very same class of gap the fast path exists to repair (the on-disk hives are committed, the per-machine registration is not). So it belongs here alongside re-registration.
+
+Offering it here still protects the fast path's two promises. It touches no CLAUDE.md file — a status-line setting is a write to the operator's user settings, a different file entirely. And it costs at most one extra prompt, because detection suppresses the gate entirely when a producer is already configured and current, or when the opt-out marker is present.
+
+Run the `inspect-statusline` detector, apply the same two skip rules (opt-out first, then already-configured-and-current, taking the refresh branch when configured-but-stale), and otherwise run the gate and the action from `### Configure the context-usage gauge producer (optional)`. Follow that section for the detector command, the skip rules, the gate options, the installer, the opt-out marker, and every caveat — one copy of that prose, not two. Do not restate its snippets or options here.
+
 #### Confirm and exit
 
-Print: `"Re-registered N hives. You're ready to go."` (where N is the count of hives processed above), then use `AskUserQuestion`:
+Print: `"Re-registered N hives. You're ready to go."` (where N is the count of hives processed above) — and when the producer step above actually ran, append its outcome to that line (configured, refreshed, already current, or declined). Then use `AskUserQuestion`:
 
 > "Setup complete. The fast path skipped the full walk-through because your repo was already configured. Anything else?"
 >
@@ -707,9 +731,138 @@ Then write or update a `## Build Commands` section in the project's CLAUDE.md, u
 
 The bullet keys (`Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`) are a contract — downstream skills look up commands by these exact strings. Do not rename them.
 
+### Configure the context-usage gauge producer (optional)
+
+**Why this matters.** Claude Code reports how much of the model's context window is in use to the status-line command — and to nothing else. A small producer bundled with this skill republishes that reading to a per-session file, so the workflow can read it back at clean stopping points and warn before a boundary lands with the window nearly full. This step is optional: it wires that producer into your status line for you. Declining changes nothing else about setup — every other part of the workflow works the same either way.
+
+#### Detect first
+
+Before any prompt, inspect the current status-line configuration. The producer and inspector both live in the bundled helper at `<this skill's base directory>/scripts/context_gauge.py` (where "this skill" is `quo-setup`). Replace `<bees-setup-base-dir>` with the literal path from the skill invocation header:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<bees-setup-base-dir>/scripts/context_gauge.py" inspect-statusline --repo-root "$(pwd)"
+```
+
+```powershell
+# Windows (PowerShell):
+python "<bees-setup-base-dir>\scripts\context_gauge.py" inspect-statusline --repo-root "$((Get-Location).Path)"
+```
+
+The inspector writes nothing and creates no file; it emits one JSON object to stdout:
+
+```json
+{
+  "settings_path": "/abs/path/to/user/settings.json",
+  "settings_exists": true,
+  "status_line_present": true,
+  "status_line_command": "<the operator's current status-line command, or null>",
+  "producer_state": "foreign",
+  "wrapped_command": null,
+  "producer_current": false,
+  "opt_out_marker_path": "/tmp/.quorum/context-guard-opt-out",
+  "opt_out_marker_present": false,
+  "higher_precedence_sources": [],
+  "status_line_shell": "sh"
+}
+```
+
+`producer_state` is one of `absent` (no status line configured), `direct` (this producer, no wrapped command), `wrapped` (this producer wrapping an operator command), `other-install` (a different copy of this producer), or `foreign` (an unrelated status line). `producer_current` is true only when `producer_state` is `direct` or `wrapped` **and** the installed command is already byte-identical to what would be composed now; a moved or upgraded interpreter flips it false while the state stays `direct`/`wrapped`. Each entry of `higher_precedence_sources` is a `{"scope", "path", "reason"}` object naming a settings source that outranks the user-level status line.
+
+#### Skip rules — evaluate these before any prompt, in this order (the order is load-bearing)
+
+1. **Opt-out marker first.** When `opt_out_marker_present` is true, say nothing at all and move on — no prompt, no writes, no announcement. This short-circuits the WHOLE step, including the refresh branch below: an operator who chose "run unguarded — don't ask again" gets silence even when a stale producer configuration is detected. (The sole exception is the direct-invocation entry point offered elsewhere, where the operator has explicitly asked to configure the producer: there an existing marker is reported and the gate still fires, because an explicit request is itself the change of mind the marker was never meant to veto. That entry point deliberately overrides this rule; this setup-flow path does not.)
+
+2. **Already-configured-and-current second.** When `producer_state` is `direct` or `wrapped` AND `producer_current` is true, print one line — `The context-usage gauge producer is already configured.` — and move on with no question. When the state is `direct` or `wrapped` but `producer_current` is **false** (the installed command's interpreter or script path no longer matches what would be composed now — e.g. a moved or upgraded interpreter, which leaves a silently broken status line), do NOT fire the gate either. Take a short **refresh** branch instead: announce that an existing producer configuration is stale and will be refreshed; if `higher_precedence_sources` is non-empty, name each entry's scope and path and say plainly that the refreshed user-level setting may not take effect there (the refresh has no gate, so this announcement is where the pinned-environment honesty requirement lands on this branch); then run `install-statusline` (below, as one literal command) and report per the reporting duties in *Act* — echo `previous_command`, report the self-check outcome, and never present a failed self-check as complete.
+
+This ordering — opt-out, then already-configured/refresh — is what makes the step idempotent and what makes it safe for a boundary-time gate to dispatch on a machine where it already ran: a second pass writes nothing new, and an operator who opted out is never nagged.
+
+#### The gate
+
+Otherwise, offer the choice.
+
+**First, evaluate the pinned-environment condition — before composing the gate.** When `higher_precedence_sources` is non-empty, the gate's question text must name each detected entry's scope and path and state plainly that a user-level status-line write may not take effect there, and option 1 must drop the "(recommended)" tag — its label instead states that the write may be outranked. When a detected entry's `reason` names `allowManagedHooksOnly` or `disableAllHooks`, the question must LEAD with the published-contract pointer — the environment owner must satisfy the gauge-file contract in the project's customer-facing documentation, because a user-level status-line write is documented to be silently skipped in that environment — rather than presenting the write as the recommended action. Telling the operator this before they choose is what makes "say so rather than silently write an ineffective setting" honest: they learn it while deciding, not after the write.
+
+Then fire `AskUserQuestion` with exactly three options. (The runtime auto-appends a free-text slot; per the multi-choice-only convention, do NOT add a fake "Other" / "type your own" option.)
+
+1. **Configure it (recommended — only when no higher-precedence source was detected)** — wire the producer into your status line. When `producer_state` is `foreign`, the label must say the existing status line will be preserved and the gauge added alongside it, and the question text must quote the operator's current `status_line_command` back to them so they can see exactly what will be wrapped. When `producer_state` is `other-install`, the question must state that an existing gauge producer at a different path was found, that it will be repointed at this install, and that any display already wrapped inside it is preserved rather than nested.
+2. **Not now** — write nothing of any kind. The offer is made again on a future setup run.
+3. **Run unguarded — don't ask again** — write the persistent opt-out marker (below).
+
+The wrap-vs-direct decision is made from the detection result, not by the operator: there is no "wrap it" option, because wrapping is exactly what "Configure it" already does when a status line exists.
+
+#### Act
+
+**If the operator picks "Configure it"** (or on the refresh branch above), run the installer as one literal command:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<bees-setup-base-dir>/scripts/context_gauge.py" install-statusline --repo-root "$(pwd)"
+```
+
+```powershell
+# Windows (PowerShell):
+python "<bees-setup-base-dir>\scripts\context_gauge.py" install-statusline --repo-root "$((Get-Location).Path)"
+```
+
+The installer wraps rather than replaces — an existing status line is preserved, and a re-run never nests one wrapper inside another. **Disclose the self-check side effect as you run it:** after writing the setting, the installer exercises the newly-composed command once with a synthetic payload to confirm it produces a reading — and because the composed command wraps the operator's existing status line, that self-check runs the operator's wrapped command once.
+
+The installer emits one summary JSON object:
+
+```json
+{
+  "action": "wrapped",
+  "settings_path": "/abs/path/to/user/settings.json",
+  "previous_command": "<the operator's prior command, or null>",
+  "new_command": "<the composed command that was written>",
+  "preserved_status_line_keys": {},
+  "self_check": {"verified": true, "detail": ""},
+  "higher_precedence_sources": [],
+  "status_line_shell": "sh"
+}
+```
+
+Report to the operator: the `action` (`installed`, `wrapped`, `repointed`, or `already-configured`); the `previous_command`, echoed back **verbatim** when it is non-null, with the note that this echo is the only record of their prior configuration (a manual restore is possible from it); and the self-check outcome. If `self_check.verified` is false, tell the operator the setting was written but the command did not produce a reading when exercised, quote `self_check.detail`, and warn that the status line may come up blank — do NOT present the install as complete.
+
+**If the operator picks "Run unguarded — don't ask again",** write the opt-out marker as one literal command:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<bees-setup-base-dir>/scripts/context_gauge.py" write-opt-out
+```
+
+```powershell
+# Windows (PowerShell):
+python "<bees-setup-base-dir>\scripts\context_gauge.py" write-opt-out
+```
+
+**If the operator picks "Not now",** write nothing and continue to the next section.
+
+#### After configuring: two caveats
+
+**Activation is next-session.** Status-line configuration is picked up when a session starts, so treat the producer as active from the **next** session — the run in progress must not be assumed guarded, because it began before the setting existed.
+
+**Pinned environments may outrank a user-level write.** Two parts, both required:
+- *Detected sources* — already folded into the gate's question text above when `higher_precedence_sources` was non-empty (or named in the refresh-branch announcement). Do not defer that disclosure to after the write.
+- *Undetectable sources, stated even when the detected list is empty* — some higher-precedence sources cannot be seen from disk: a session launched against an explicit settings file on the command line, organization settings delivered at sign-in, and MDM-delivered policy. Any of these can silently outrank the setting just written. In every such case, point the operator at the published gauge-file contract in the project's customer-facing documentation, so their environment owner can satisfy it with a producer of their own — rather than at a user-level setting that cannot take effect there.
+
+#### What the opt-out marker means
+
+The opt-out marker lives at `<tempdir>/.quorum/context-guard-opt-out` (on POSIX, `/tmp/.quorum/context-guard-opt-out`; on Windows, `%TEMP%\.quorum\context-guard-opt-out`). Its existence suppresses only the boundary stop that fires when **no reading is being published** — it does NOT suppress a genuine over-threshold stop when a reading *is* present, so an operator who opts out still stops when a real reading crosses the threshold. To re-enable the offer and the missing-reading guard, remove that file — there is no command to undo the opt-out, by design; just delete the named file.
+
+#### Troubleshooting
+
+If a later session's status line comes up blank, or the workflow reports that it has no reading, diagnose through the reader's two classifications — no reading is being published, or a reading has stopped refreshing — rather than expecting a loud failure. Re-running the inspector above shows the current `producer_state` and whether the composed command is `producer_current`; a `foreign` or `absent` state, or `producer_current` false, means the producer is not wired in for this session and this step can be re-offered to fix it.
+
+#### Fast path
+
+The new-machine fast path also offers this step; the rationale for surfacing it there lives in that section.
+
 ### Next Steps
 
 After setup is complete, tell the user that quorum is ready to use. CLAUDE.md now contains both a `## Documentation Locations` section (consumed by Doc Writer / Engineer / Test Writer agents during execution) and a `## Build Commands` section (consumed by Engineer agents in `quo-execute` and `quo-fix-issue` for compile/format/lint/test invocations). Both are precondition checks for the downstream workflow skills — running `/quo-execute`, `/quo-fix-issue`, `/quo-plan-from-specs`, or `/quo-file-issue` against a repo missing either section will hard-fail with `Run /quo-setup first.`
+
+If the context-usage gauge producer was configured during this run, remind the operator it becomes active from the next session (status-line configuration is read at session start, so the run in progress isn't guarded); if it was not, note that re-running setup re-offers it.
 
 The next-step recommendation depends on whether the user already has spec docs (a PRD and SDD, or equivalent) on disk. Use `AskUserQuestion` to find out, then surface the matching path:
 
