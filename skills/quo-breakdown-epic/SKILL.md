@@ -822,7 +822,7 @@ Before rendering the menu in `#### Menu options` below, branch on the multi-Epic
 - **Mode 2 (Work through all Epics)**: branch on which case the `#### Pick the Recommended option` logic identified for this Epic boundary:
   - **No-drafted-siblings case** — planning is done. Render the full menu so the user can pick what to do next (typically *"In a fresh session, execute the whole Bee"*); there is no auto-continue target since no drafted Epics remain.
   - **Drafted-siblings-remain, reshape-risk case** — this is one of Mode 2's mandatory pause cases. Render the full menu with *"In a fresh session, execute this Epic first; defer downstream breakdown"* as the Recommended pick exactly as it would in Mode 1. Mode 2 does not auto-continue past a contract-stability concern; the user must resolve the reshape risk explicitly.
-  - **Drafted-siblings-remain, no-reshape-risk case** — auto-select *"In a fresh session, break down the next Epic"* (or the same-session continuation noted in that option's prose). Do not present the menu; surface a one-line note to the user announcing the auto-continue and naming the next Epic ID being broken down so they can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to break down `<next-epic-id>` — `<title>`."*), then fall through to the **Epic-boundary state-externalization checkpoint** at the end of this section — which runs on this path exactly as it does on the menu paths — and only then proceed to break down the next drafted Epic in this same session against the same captured Mode 2 choice.
+  - **Drafted-siblings-remain, no-reshape-risk case** — auto-select *"In a fresh session, break down the next Epic"* (or the same-session continuation noted in that option's prose). Do not present the menu; surface a one-line note to the user announcing the auto-continue and naming the next Epic ID being broken down so they can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to break down `<next-epic-id>` — `<title>`."*), then fall through to the **Epic-boundary state-externalization checkpoint** at the end of this section — which runs on this path exactly as it does on the menu paths — then run the **Context-window boundary guard (Mode 2 auto-continue only)** defined at the end of this section (this auto-continue path is the *only* path that guard fires on), and proceed to break down the next drafted Epic in this same session against the same captured Mode 2 choice **only if the guard does not stop the run.**
 
 The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces: any final Bee-level reviewer finding flagged as a blocker, any genuine red flag the orchestrator surfaces during the next Epic's breakdown, and any precondition or contract violation. Mode 2 is *"skip discretionary continue-or-not prompts"*, not *"skip every interactive prompt"*.
 
@@ -848,7 +848,7 @@ Always include all six options below. The Recommended badge moves across three o
 
 #### Epic-boundary state-externalization checkpoint
 
-**Run this checkpoint unconditionally, as the last thing Section 7 does — on every path, in every mode.** It runs after the menu answer has been consumed (Mode 1, and every Mode 2 case that renders the menu) or immediately after the Mode 2 auto-continue note is surfaced (the case that skips the menu), and before control either returns to Section 2 for the next Epic or leaves the skill. Do **not** condition it on the captured run mode, on which menu option the user picked, or on whether the next Epic will be broken down in this session or a fresh one. Several of these paths continue in the same session — Mode 2's auto-continue skips the menu entirely, and the menu's own *"In a fresh session, break down the next Epic"* option explicitly blesses same-session continuation — and making the checkpoint unconditional removes the need to work out which case is in play before deciding whether to run it.
+**Run this checkpoint unconditionally, on every path, in every mode — it is the last *unconditional* step of Section 7, followed only by the conditional `#### Context-window boundary guard (Mode 2 auto-continue only)` below on the single path that fires it.** It runs after the menu answer has been consumed (Mode 1, and every Mode 2 case that renders the menu) or immediately after the Mode 2 auto-continue note is surfaced (the case that skips the menu), and before control either returns to Section 2 for the next Epic or leaves the skill. Do **not** condition it on the captured run mode, on which menu option the user picked, or on whether the next Epic will be broken down in this session or a fresh one. Several of these paths continue in the same session — Mode 2's auto-continue skips the menu entirely, and the menu's own *"In a fresh session, break down the next Epic"* option explicitly blesses same-session continuation — and making the checkpoint unconditional removes the need to work out which case is in play before deciding whether to run it.
 
 Its job is to verify that every load-bearing fact is already in a durable carrier and to refresh the ones this skill owns, so that whenever the harness compacts the conversation — at this boundary or partway through the next Epic — the run can be re-derived instead of reconstructed from memory. On the paths where the run ends here rather than continuing (*Done for now*, *Review first*, any fresh-session option), run it exactly the same way with `none` as the next unit: what it verifies and writes is precisely what has to outlive this session. This is the canonical anchor name; Section 4's `#### Recursive delegation: not supported` refers to it by name.
 
@@ -874,3 +874,92 @@ Run these three steps. Every step below is a tool call the orchestrator can actu
 3. **Re-read, do not recall, at every dispatch in the next Epic.** Concretely: before each research-Agent or PM dispatch in the next Epic, `bees show-ticket` that Epic's body and its parent Bee (including `reference_materials`) and `Read` the run-state manifest for the run-scoped values (captured mode, unit scope, pre-run SHA) — rather than reusing a value quoted earlier in the conversation. Carry **no** value forward from the prior Epic: if a fact the next Epic needs is not readable from one of the carriers above, stop and write it into one before dispatching anything.
 
 **What this checkpoint does not do.** It does not clear, compact, or otherwise reclaim the orchestrator's context, and it must never be narrated as if it did. No model-invocable mechanism for self-clearing or self-compacting exists; token reclamation is owned by the harness, which compacts the conversation on its own once the window fills. The reclamation lever that does exist is the fresh-session recommendation already carried in this section's standing note and menu options — this checkpoint is what makes that lever, and any harness compaction whenever it fires, lossless.
+
+#### Context-window boundary guard (Mode 2 auto-continue only)
+
+**Scope — this guard fires on exactly one path.** It runs only on the **Mode 2 (Work through all Epics), drafted-siblings-remain, no-reshape-risk auto-continue-to-next-Epic path** of `#### Branch on the captured multi-Epic run mode` above — the single path that continues in the *same session* without pausing for the user. It fires **after** the Epic-boundary state-externalization checkpoint has run (so all run-scoped state is already durable on disk and a fresh session could resume losslessly) and **before** the skill proceeds to break down the next drafted Epic. Do **not** run it on any menu-rendering path (Mode 1, the Mode 2 no-drafted-siblings case, the Mode 2 reshape-risk case) or on any run-ending path (*Review first*, *Done for now*, any fresh-session option): those recommend a fresh session and end the skill rather than auto-continuing in place, so there is nothing to guard. Unlike the Epic-boundary checkpoint — which is unconditional on every path — this guard is deliberately conditional; do **not** inherit the checkpoint's unconditionality.
+
+**What it reads, and what it is not.** The guard reads an **external gauge file** published by a separate status-line producer process — `context_gauge.py`, shipped by `/quo-setup`. It does **not** measure the orchestrator's own token usage and is **not** self-introspection: it consults another process's file and, if that file reports the context window is near the harness's auto-compaction point, stops the run at this clean Epic boundary so the next Epic starts fresh instead of mid-way into a compaction. The only context-reclamation lever this skill has is the **fresh-session recommendation**; the orchestrator has no model-invocable self-clear or self-compact, so this guard never claims to reclaim context — it stops and recommends, nothing more.
+
+**Ordering is load-bearing (mirror Section 0's `### 0. Check session reasoning effort`).** Read the session id **first**, evaluate it, and only *then* decide whether a gate task fires. Do NOT `TaskCreate` a `gate-*` task before the branch below reaches the one case that fires one — on every path except the `missing`-without-opt-out case no gate fires at all, and a stranded `pending` `gate-*` task violates the two-step contract's yield-control discipline, whose recovery mechanism would re-fire the prescribed tool from the leftover task on a later run and produce a phantom prompt.
+
+**Step 1 — read the session id.** One literal command:
+
+```bash
+# POSIX (bash / zsh):
+printenv CLAUDE_CODE_SESSION_ID
+```
+
+```powershell
+# Windows (PowerShell):
+Write-Output $env:CLAUDE_CODE_SESSION_ID
+```
+
+**Trim any trailing whitespace/newline** from the value before using it — a trailing newline fails the helper's `--session-id` validation.
+
+**Step 2 — session id unset or empty → skip the guard silently and continue** to break down the next Epic. This is the ONLY silent-skip path (the unsupported-CLI carve-out, matching Section 0's `CLAUDE_EFFORT`-unset handling): an older CLI or a launch path that does not export the session id cannot be guarded, and a spurious stop on every run is worse than a missed advisory.
+
+**Step 3 — session id present.** Resolve the helper as a **sibling of this skill's base directory**: `<this skill's base directory>/../quo-setup/scripts/context_gauge.py` (POSIX `/`, PowerShell `\`). The base directory is shown in the skill invocation header at session start. This is the same sibling-resolution discipline this skill already uses for `hive_commit.py` (`../quo-execute/scripts/...`) — `context_gauge.py` is shipped by `/quo-setup`, so it resolves under `../quo-setup/scripts/`, not this skill's own `scripts/`.
+
+a. **Obtain the stop threshold from the helper's threshold seam** — one literal call that prints a single integer to stdout. Read `context_gauge.py` at runtime to confirm the subcommand name (`stop-threshold`). **Never restate the numeric threshold in this prose** — always obtain it from this call.
+
+```bash
+# POSIX (bash / zsh):
+python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" stop-threshold
+```
+
+```powershell
+# Windows (PowerShell):
+python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" stop-threshold
+```
+
+b. **Read the gauge for this session** — one literal call, substituting the trimmed session id from step 1:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" read --session-id <trimmed-id>
+```
+
+```powershell
+# Windows (PowerShell):
+python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" read --session-id <trimmed-id>
+```
+
+c. **Branch on the read output and exit status.** `read` prints one of four values and exits 0 for all four; it exits non-zero (2) on a malformed gauge file OR an invalid `--session-id`:
+
+- **An integer ≥ the threshold → STOP** at this boundary. Report the current percentage to the user and recommend resuming in a **fresh session**, naming the exact resume command — `/quo-breakdown-epic <bee-id>` (or `/quo-breakdown-epic <next-epic-id>` for the specific next drafted Epic). Then exit the skill; do NOT break down the next Epic in this session. The Epic-boundary checkpoint already externalized all run-scoped state, so the fresh session resumes losslessly.
+- **An integer < the threshold → continue** silently to break down the next Epic. No output.
+- **`no-reading` → continue** silently. The file exists and is fresh but carries no percentage yet (transient — a live producer early in a session or just after a compaction); the producer is alive, so this is not a stop signal.
+- **`stale` → STOP** at this boundary. A stale gauge means the producer is not updating the file; because usage only grows within a session, a stale number biases low and cannot be trusted to have cleared the threshold. Note to the user that the status-line producer appears stalled, and that recurring staleness across fresh sessions means they should check their status-line producer configuration. Recommend the fresh-session resume with the `/quo-breakdown-epic <bee-id>` command. Do NOT let `stale` fall through to continue.
+- **Non-zero exit, or empty stdout → the same fail-safe stop-and-ask as `stale`.** The reading is untrustworthy, so stop rather than continue. Note that `read` exits 2 on a malformed gauge OR an invalid `--session-id` — do NOT assume exit 2 implies a corrupt file. Recommend the fresh-session resume. Never fall through to continue.
+- **`missing` → consult the opt-out marker, then branch.** First check the persistent opt-out marker via one literal existence check:
+
+  ```bash
+  # POSIX (bash / zsh):
+  test -f /tmp/.quorum/context-guard-opt-out
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  Test-Path "$env:TEMP\.quorum\context-guard-opt-out"
+  ```
+
+  **If the marker is present → skip the guard silently and continue** to break down the next Epic. If the marker is absent → **hard-stop via the two-step `TaskCreate` → `AskUserQuestion` gate** in step 4.
+
+**Step 4 — the missing-reading gate (only on `missing` with no opt-out marker).** Honor the two-step `TaskCreate` → `AskUserQuestion` contract (per Section 4's TaskList naming convention's gate-task entry): first `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task (distinct per-fire suffix) naming this boundary context-guard gate, then call `AskUserQuestion` in the **same turn**; do not yield control while that task is `pending`/`in_progress`, and mark it `completed` the moment the answer is consumed. The question text must (a) state that the environment may override the operator's user status-line config, so no gauge reading is being published for this session; (b) publish the gauge file contract — the per-session gauge file's path under `<tempdir>/.quorum/`, its required fields (the `session_id` and the `context_window.used_percentage` reading), and its overwrite-per-refresh semantics; (c) state that **Configure now** runs `/quo-setup --configure-gauge-producer` inline. Present these four options (multi-choice only — no fake free-text options):
+
+- **Configure now** — invoke `/quo-setup --configure-gauge-producer` inline via the Skill tool. Because a freshly-configured producer only begins publishing NEXT session, after a successful Configure now the gate **recommends resuming in a fresh session** (naming the `/quo-breakdown-epic <bee-id>` resume command) rather than implying this run is now guarded.
+- **Proceed without the guard (this run)** — continue to break down the next Epic; write no marker.
+- **Never guard me (persistent opt-out)** — write the persistent marker via the sibling helper's `write-opt-out` subcommand (one literal call), then continue to break down the next Epic:
+
+  ```bash
+  # POSIX (bash / zsh):
+  python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" write-opt-out
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" write-opt-out
+  ```
+
+- **Stop here** — exit the skill with the `/quo-breakdown-epic <bee-id>` fresh-session resume command.

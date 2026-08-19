@@ -665,7 +665,10 @@ Once the issue is fixed:
 
 This surface only **reads** the tracker — it never writes, appends to, or deletes it (the write side is owned by Section 7.5's append triggers).
 
-5. Continue to Section 7.5 (per-Issue deferral hygiene) first. Once that gate closes, run the **Issue-boundary state-externalization checkpoint** defined immediately below. Then, in batch mode (`all` or list mode), proceed to the next issue in the batch (go back to step 2); in single mode, proceed to Section 8.
+5. Continue to Section 7.5 (per-Issue deferral hygiene) first. Once that gate closes, run the **Issue-boundary state-externalization checkpoint** defined immediately below. Then branch on mode:
+   - **Single mode** — proceed to Section 8.
+   - **Batch mode (`all` or list mode) with the batch exhausted** (no next Issue remains) — proceed to Section 8.
+   - **Batch mode with a next Issue still remaining in the batch** — run the **Context-window boundary guard** defined below (it fires ONLY on this one continuing, in-session path), and then, if the guard did not stop the run, proceed to the next issue in the batch (go back to step 2).
 
 #### Issue-boundary state-externalization checkpoint
 
@@ -696,6 +699,97 @@ At the point step 5 calls for it — and not before — run these three steps, a
 3. **Re-read, do not recall, at every dispatch on the next Issue.** Concretely: before each Agent dispatch on the next Issue, `bees show-ticket` that Issue's body and status and `Read` the run-state manifest for the run-scoped values (ordered batch, isolation strategy, tracker path, `<pre-session-sha>`) — rather than reusing a value quoted earlier in the conversation. The next Issue's design directive comes from its own Section 3 Analyst pass, never from the previous Issue's. Carry **no** value forward from the prior Issue: if a fact the next Issue needs is not readable from one of the carriers above, stop and write it into one before dispatching anything.
 
 **What this checkpoint does not do.** It does not clear, compact, or otherwise reclaim the orchestrator's context, and it must never be narrated as if it did. No model-invocable mechanism for self-clearing or self-compacting exists; token reclamation is owned by the harness, which compacts the conversation on its own once the window fills. This checkpoint is what makes any such compaction — whenever it fires, including mid-Issue — lossless.
+
+#### Context-window boundary guard
+
+This guard is a **definition co-located with the Issue-boundary checkpoint above**, not a step in Section 7's linear flow — run it only where step 5 calls for it: on the **one continuing, in-session path** — batch mode (`all` or list) with a next Issue still remaining in the batch — *after* the Issue-boundary state-externalization checkpoint has refreshed the durable carriers (so a fresh session can resume from disk) and *before* control loops back to step 2. It does **NOT** run on any run-ending path: single mode (proceeds to Section 8) and batch mode when the batch is exhausted (also proceeds to Section 8) cross no in-session Issue boundary, so a fresh-session stop recommendation there is noise and a missing-reading gate would fire an `AskUserQuestion` immediately before final review. The Issue-boundary checkpoint above is unconditional on every path; this guard deliberately is not — do not inherit its unconditionality. A single-Issue run crosses no boundary and never invokes the guard.
+
+**What the guard reads, and what it does not.** The guard reads an **external gauge file** published by a separate status-line producer process — it does not and cannot measure the orchestrator's own token usage, and it is not self-introspection. When the reading says the window is filling, the only reclamation lever is starting a **fresh session** (per the fresh-session-per-phase recommendation at run close-out); the orchestrator has no model-invocable way to clear or compact its own context, so this guard never instructs that. Its job is narrow: stop the batch at this clean Issue boundary — where the run is fully re-derivable from disk — before the harness's auto-compaction would otherwise fire partway through the next Issue.
+
+**Ordering is load-bearing (mirror Section 1's `#### Check session reasoning effort`).** Read the session id **first**, evaluate it, and only *then* decide whether any gate task is created. Do NOT create a `gate-*` task before the reading is in hand: on the common path no gate fires at all, and a stranded `pending` `gate-*` task violates the yield-control discipline of the two-step contract.
+
+**Step 1 — read the session id.** One literal command:
+
+```bash
+# POSIX (bash / zsh):
+printenv CLAUDE_CODE_SESSION_ID
+```
+
+```powershell
+# Windows (PowerShell):
+Write-Output $env:CLAUDE_CODE_SESSION_ID
+```
+
+**Trim any trailing whitespace or newline** from the value before use — a trailing newline fails the helper's `--session-id` charset validation.
+
+**Step 2 — session id unset or empty → skip the guard silently and continue** to the next Issue (back to step 2 of Section 7). This is the ONLY silent-skip path (the unsupported-CLI carve-out), matching how Section 1 treats an unset `CLAUDE_EFFORT`. Create no `gate-*` task and emit no output.
+
+**Step 3 — session id present.** Resolve the gauge helper as a sibling of this skill's base directory — `<this skill's base directory>/../quo-setup/scripts/context_gauge.py` (POSIX `/`, PowerShell `\`; the base directory is in the skill invocation header). This is the same sibling-resolution discipline this skill already uses for `scoped_marker_resolver.py` and `hive_commit.py`.
+
+First obtain the stop threshold from the helper's threshold-emitting seam — one literal call that prints the integer on stdout:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" stop-threshold
+```
+
+```powershell
+# Windows (PowerShell):
+python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" stop-threshold
+```
+
+Obtain the threshold from this seam and compare the reading against whatever integer it prints — the helper is the single definition site of the number, so this prose never restates it.
+
+Then read the current reading for this session — one literal call:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" read --session-id <trimmed-session-id>
+```
+
+```powershell
+# Windows (PowerShell):
+python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" read --session-id <trimmed-session-id>
+```
+
+**Step 4 — branch on the `read` output and its exit status.** `read` prints exactly one of four values (an integer percentage, `no-reading`, `stale`, or `missing`) and exits `0` for all four; it exits non-zero (`2`) on a malformed gauge OR an invalid `--session-id`. The resume command named in every stop branch below is the fresh-session resume: `/quo-fix-issue all` for an `all` run, or `/quo-fix-issue <remaining-ids>` listing the still-unfixed subset (the Issues in this run's batch not yet marked `done`) for a list run.
+
+- **Integer ≥ threshold → STOP** at this boundary. Report the current percentage and recommend resuming in a **fresh session**, naming the exact resume command. Then exit the skill — do not loop back to step 2.
+- **Integer < threshold → continue** to the next Issue (back to step 2). No output.
+- **`no-reading` → continue** to the next Issue (back to step 2). This is the transient fresh-but-null state — the producer is alive, the number is just not populated yet. No output.
+- **`stale` → STOP** at this boundary. The gauge file exists but the producer appears to have stalled; because usage only grows within a session, a stale number biases low and must not be trusted as headroom. Note that the producer appears stalled, and that recurring staleness across fresh sessions means the operator should check their status-line producer. Recommend the fresh-session resume with the resume command. Do NOT let `stale` fall through to continue.
+- **Non-zero exit, or empty stdout → the same fail-safe stop-and-ask as `stale`** (an untrustworthy reading). Because `read` exits `2` on a malformed gauge OR an invalid `--session-id`, do NOT assume exit `2` implies a corrupt file. Never fall through to continue.
+- **`missing`** — no gauge file exists for this session (usually no producer is configured in this environment). Before stopping, check the persistent opt-out marker at `<tempdir>/.quorum/context-guard-opt-out` (`/tmp/.quorum/context-guard-opt-out` on POSIX, `%TEMP%\.quorum\context-guard-opt-out` on Windows) with one literal existence check:
+
+  ```bash
+  # POSIX (bash / zsh):
+  test -f /tmp/.quorum/context-guard-opt-out
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  Test-Path "$env:TEMP\.quorum\context-guard-opt-out"
+  ```
+
+  **If the marker is present → skip the guard silently and continue** to the next Issue (back to step 2). **If absent → hard-stop via the two-step gate in step 5 below.**
+
+**Step 5 — the missing-reading gate (reached only from the `missing`-and-no-marker branch above).** Honor the two-step `TaskCreate` → `AskUserQuestion` contract: **first** `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this boundary context-guard gate (a distinct `<short-suffix>` per fire, per Section 4's TaskList naming convention's gate-task entry; honor the yield-control discipline — do not yield while it is `pending`/`in_progress`), **then** call `AskUserQuestion` in the same turn. Mark the `gate-*` task `completed` once the answer is consumed. The question text must (a) state that the environment may override the operator's user-level status-line config, so no reading is being published; (b) publish the gauge file contract — its path (`<tempdir>/.quorum/context-usage-<session_id>.json`), the required `session_id` and `context_window.used_percentage` fields, and its overwrite-per-refresh semantics; and (c) state that **Configure now** runs `/quo-setup --configure-gauge-producer` inline. Present these options (multi-choice only — no fake free-text options):
+
+- **Configure now** — invoke `/quo-setup --configure-gauge-producer` inline via the Skill tool (the same inline-Skill precedent Section 1's URL-resolution sub-step uses for `/quo-file-issue`). Because a freshly-configured producer only begins publishing **next** session, after a successful Configure now **recommend resuming in a fresh session** with the resume command rather than implying the current run is now guarded, then exit.
+- **Proceed without the guard (this run)** — continue to the next Issue (back to step 2); write no marker.
+- **Never guard me (persistent opt-out)** — write the marker via the sibling helper's `write-opt-out` mode (one literal call), then continue to the next Issue (back to step 2):
+
+  ```bash
+  # POSIX (bash / zsh):
+  python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" write-opt-out
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" write-opt-out
+  ```
+
+- **Stop here** — exit the skill with the fresh-session resume command.
 
 ### 7.5 Before handoff — deferral hygiene
 

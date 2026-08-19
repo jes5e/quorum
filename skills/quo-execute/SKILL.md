@@ -525,8 +525,8 @@ Classify the result into exactly one of three branches (the status vocabulary `d
 
 2. **Workable Epic remains** (and no drafted Epics exist) — at least one Epic has `status` in `{ready, in_progress}` AND all its `up_dependencies` are `done`. Branch on the **multi-Epic run mode** captured in Section 2:
 
-   - **Mode 1 (Stop after each Epic), or Section 2's mode prompt was skipped** (only one Epic existed in scope at run start): ask the user if they want to continue with the next logical Epic. If they accept, run the **Epic-boundary state-externalization checkpoint** defined below (next unit: the next Epic's ID), then return to step 2. If they decline, run that same checkpoint (next unit: `none`, since no further Epic is picked up in this run), then move to final Bee review.
-   - **Mode 2 (Work through all Epics)**: auto-continue. Surface a one-line note announcing the auto-continue and naming the next Epic ID being picked up so the user can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to `<next-epic-id>` — `<title>`."*). Then run the **Epic-boundary state-externalization checkpoint** defined below (next unit: the next Epic's ID) and return to step 2. The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces — branch 1's drafted-or-blocked-on-drafted Epic stop above takes precedence (the order-of-evaluation rule already requires evaluating branch 1 first), and any final reviewer-surfaced blocker from Sections 5 and 6 still halts the run.
+   - **Mode 1 (Stop after each Epic), or Section 2's mode prompt was skipped** (only one Epic existed in scope at run start): ask the user if they want to continue with the next logical Epic. If they accept, run the **Epic-boundary state-externalization checkpoint** defined below (next unit: the next Epic's ID), then run the **Epic-boundary context-window guard** defined below (which may stop the run at this clean boundary), then return to step 2. If they decline, run that same checkpoint (next unit: `none`, since no further Epic is picked up in this run) — but **not** the context-window guard, which never runs on a run-ending path — then move to final Bee review.
+   - **Mode 2 (Work through all Epics)**: auto-continue. Surface a one-line note announcing the auto-continue and naming the next Epic ID being picked up so the user can interrupt if desired (e.g., *"Mode 2 (Work through all Epics): auto-continuing to `<next-epic-id>` — `<title>`."*). Then run the **Epic-boundary state-externalization checkpoint** defined below (next unit: the next Epic's ID), then run the **Epic-boundary context-window guard** defined below (which may stop the run at this clean boundary), and return to step 2. The Mode 2 auto-continue path still respects every other stop the orchestrator already enforces — branch 1's drafted-or-blocked-on-drafted Epic stop above takes precedence (the order-of-evaluation rule already requires evaluating branch 1 first), and any final reviewer-surfaced blocker from Sections 5 and 6 still halts the run.
 
 3. **All Epics under this Bee are `done`** — run the **Epic-boundary state-externalization checkpoint** defined below (next unit: `none`), then proceed to Step 5 final Bee review.
 
@@ -565,6 +565,112 @@ Every path out of Section 4.2's branches invokes this checkpoint by name — the
 - branch 1 before the loop exits for breakdown work, and branch 3 before proceeding to final Bee review (next unit: `none` on both).
 
 The three `none` paths still run the checkpoint in full: the run is ending in this session either way, and the point of the checkpoint is that what it verifies and writes outlives the conversation.
+
+##### Epic-boundary context-window guard
+
+Like the checkpoint above, this is a **definition, not a step in Section 4.2's linear flow** — do not run it merely because reading reached this heading; run it only where an invoking branch calls for it by name. Exactly **two** paths invoke it, both continuing in-session paths in branch 2:
+
+- branch 2's Mode 1 **accept** path (next unit: the next Epic's ID);
+- branch 2's Mode 2 auto-continue path (next unit: the next Epic's ID).
+
+On each, the guard runs **after** the Epic-boundary state-externalization checkpoint has completed (so all run state is already durable on disk and a fresh session can resume cleanly) and **before** control returns to step 2. It runs on **no** `next unit: none` run-ending path — not branch 1's exit for breakdown work, not branch 2's Mode 1 decline, and not branch 3's move to final Bee review — because on a run that is ending in this session a fresh-session stop recommendation is noise, and a missing-reading gate would fire an `AskUserQuestion` immediately before final review. A single-Epic run that crosses no Epic boundary never reaches this guard at all. The state-externalization checkpoint is unconditional on every exit path; **this guard deliberately is not — do not inherit its unconditionality.**
+
+**What this guard is (and is not).** It reads an **external** context-window gauge that a separate status-line producer process computed and wrote to a file (the `context_gauge.py` producer/reader contract). It does **not** measure the orchestrator's own token usage and is not self-introspection; consuming that on-disk reading and stopping the run at a clean boundary on it is an external measurement consumed like any other durable carrier, exactly as the checkpoint's *What this checkpoint does not do* paragraph permits. Neither the read nor the boundary-stop reclaims any context — the only reclamation lever is starting a **fresh session**, which every stop below recommends. Do not add any "clear your working context" instruction: no model-invocable self-clear or self-compact lever exists.
+
+Run these steps:
+
+**Step 1 — read the session id first, and evaluate it before creating any gate task.** Mirror Section 1's `#### Check session reasoning effort` ordering rule: read the environment variable with one literal command, evaluate it, and only *then* decide whether a gate fires. Do NOT `TaskCreate` before the evaluation — a stranded `pending` `gate-*` task violates the two-step contract's yield-control discipline.
+
+```bash
+# POSIX (bash / zsh):
+printenv CLAUDE_CODE_SESSION_ID
+```
+
+```powershell
+# Windows (PowerShell):
+Write-Output $env:CLAUDE_CODE_SESSION_ID
+```
+
+**Trim any trailing whitespace/newline** from the value before use — a trailing newline fails the helper's `--session-id` validation.
+
+**Step 2 — session id unset or empty → skip the guard silently and continue** to step 2 of branch 2. This is the **only** silent-skip path (the unsupported-CLI carve-out), matching Section 1's `CLAUDE_EFFORT`-unset handling: no gate, no `TaskCreate`, no output.
+
+**Step 3 — session id present.**
+
+a. Resolve the gauge helper as a sibling of this skill's base directory — the same sibling-resolution discipline used for `scoped_marker_resolver.py` in Section 3; the base directory is shown in the skill invocation header at session start:
+
+```bash
+# POSIX (bash / zsh):
+<this skill's base directory>/../quo-setup/scripts/context_gauge.py
+```
+
+```powershell
+# Windows (PowerShell):
+<this skill's base directory>\..\quo-setup\scripts\context_gauge.py
+```
+
+b. **Obtain the stop threshold from the helper** with one literal call — the helper prints a single integer percentage. **NEVER restate that number in prose**; read it from the helper each time so this skill carries no second definition site:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" stop-threshold
+```
+
+```powershell
+# Windows (PowerShell):
+python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" stop-threshold
+```
+
+c. **Read the current reading** with one literal call, substituting the trimmed session id from step 1:
+
+```bash
+# POSIX (bash / zsh):
+python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" read --session-id <trimmed-session-id>
+```
+
+```powershell
+# Windows (PowerShell):
+python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" read --session-id <trimmed-session-id>
+```
+
+d. Branch on the reading's stdout and exit status. `read` prints exactly one of four values — an integer percentage, `no-reading`, `stale`, or `missing` — and exits `0` for all four; it exits non-zero on a malformed gauge **or** an invalid `--session-id`, so do NOT assume a non-zero exit implies a corrupt file:
+
+- **integer ≥ threshold → STOP** at this boundary. Report the current percentage and recommend resuming in a **fresh session**, naming the exact resume command `/quo-execute <bee-id>`. Then exit the skill.
+- **integer < threshold → continue** to step 2 of branch 2, no output.
+- **`no-reading` → continue** to step 2 of branch 2, no output (a transient fresh-but-null reading — the producer is alive, the number is just not populated yet).
+- **`stale` → STOP** at this boundary. Note that the producer appears to have stalled, and that recurring staleness across fresh sessions means the operator should check their status-line producer. Recommend the fresh-session resume, naming `/quo-execute <bee-id>`. Do NOT let `stale` fall through to continue.
+- **non-zero exit or empty stdout → the same fail-safe stop-and-ask as `stale`** — an untrustworthy reading is treated exactly like a stalled one: STOP at this boundary and recommend the fresh-session resume with `/quo-execute <bee-id>`. Never fall through to continue.
+- **`missing`** → first check the persistent opt-out marker at `<tempdir>/.quorum/context-guard-opt-out` with one literal existence check:
+
+  ```bash
+  # POSIX (bash / zsh):
+  test -f /tmp/.quorum/context-guard-opt-out
+  ```
+
+  ```powershell
+  # Windows (PowerShell):
+  Test-Path "$env:TEMP\.quorum\context-guard-opt-out"
+  ```
+
+  **If the marker is present → skip the guard silently and continue** to step 2 of branch 2 (the operator has recorded a standing choice to run unguarded). If it is absent → **hard-stop via the two-step gate** in step 4.
+
+**Step 4 — the missing-reading gate.** Per the two-step `TaskCreate` → `AskUserQuestion` contract (Section 3's TaskList naming convention's gate-task entry), **first** `TaskCreate` a `gate-askuserquestion-<short-suffix>` TaskList task naming this boundary context-guard gate (a distinct per-fire `<short-suffix>`; honor the yield-control discipline — do not yield control while it is `pending`/`in_progress`), **then** call `AskUserQuestion` in the same turn. Mark the `gate-*` task `completed` the moment the answer is consumed. The question text should: (a) state that the environment may override the operator's user-level status-line config, so no reading is being published; (b) publish the gauge file contract — its path (`<tempdir>/.quorum/context-usage-<session_id>.json`), its required fields (a `session_id` and a `context_window` object carrying `used_percentage`), and its overwrite-per-session semantics; (c) state that **Configure now** runs `/quo-setup --configure-gauge-producer` inline. Present these options (multi-choice only — do not add fake free-text options that duplicate `AskUserQuestion`'s auto-appended `Type something.` / `Chat about this` slot):
+
+1. **Configure now** — invoke `/quo-setup --configure-gauge-producer` inline via the Skill tool. Because a freshly-configured producer only begins publishing **next** session, after a successful Configure now the gate **recommends resuming in a fresh session** rather than implying this run is now guarded.
+2. **Proceed without the guard (this run)** — continue to step 2 of branch 2; write no marker.
+3. **Never guard me (persistent opt-out)** — write the persistent opt-out marker via the sibling helper with one literal call, then continue to step 2 of branch 2:
+
+   ```bash
+   # POSIX (bash / zsh):
+   python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" write-opt-out
+   ```
+
+   ```powershell
+   # Windows (PowerShell):
+   python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" write-opt-out
+   ```
+
+4. **Stop here** — exit the skill with the `/quo-execute <bee-id>` fresh-session resume command.
 
 ### Orchestrator discipline: routing review findings
 
