@@ -26,10 +26,19 @@ session identifier and the context-window object, and publishes them to the
 gauge file. Prints a status-line display string on stdout.
 
 - `--wrap-command <cmd>` (OPTIONAL, single string): an existing status-line
-  command to preserve. When given, the same captured stdin payload is fed to
-  `<cmd>` and its stdout is printed verbatim as the display, so an operator's
-  current status line is wrapped rather than replaced. When omitted, a minimal
-  default display line is printed.
+  command to preserve. When given, `<cmd>` is invoked on EVERY refresh with
+  exactly the bytes that arrived on stdin — valid payloads, empty stdin, and
+  bytes that did not parse alike — and its stdout is re-emitted verbatim as the
+  display, so an operator's current status line is wrapped rather than replaced.
+  This transparency has an honest limit: `produce` cannot guarantee a non-blank
+  display, because the wrapped command may itself print nothing for a given
+  input. What it guarantees is narrower — `produce` never causes the blank of
+  its own accord. When omitted, a minimal default display line is printed; note
+  that this always-emit guarantee is about the wrap path, so without
+  `--wrap-command` an empty or unparseable payload yields an empty default
+  display (there is no payload to derive one from) and the harness blanks the
+  line on empty output. That empty display is `produce`'s own and is
+  legitimately empty.
 
 **Reader mode:**
 
@@ -83,12 +92,18 @@ Fail-safe rules a consumer MUST honor
 
 Exit codes
 ----------
-- `0` for every normal state, including `missing`, `stale`, and `no-reading` —
-  these are ordinary conditions, not errors, and a consumer must be able to
-  distinguish them from a crash.
-- `2` only on genuine malformation (an unreadable or non-conforming gauge
-  file, or an argparse usage error), reported as a single human-readable line
-  on stderr.
+The split is per subcommand.
+
+- `produce` returns `0` on every input shape — valid, empty, and unparseable
+  stdin all exit `0`. Its only non-zero exit is an argparse usage error, which
+  is raised before `cmd_produce` runs. An unparseable stdin payload writes one
+  diagnostic line to stderr and still exits `0`.
+- `read` returns `0` for every normal reading value, including `missing`,
+  `stale`, and `no-reading` — these are ordinary conditions, not errors, and a
+  consumer must be able to distinguish them from a crash. It returns `2` only on
+  a malformed gauge file (unreadable or non-conforming), reported as a single
+  human-readable line on stderr, with an invalid `--session-id` or an argparse
+  usage error also exiting `2`.
 
 Invariants (load-bearing)
 -------------------------
@@ -104,6 +119,32 @@ Invariants (load-bearing)
   the gauge themselves instead of using this helper. Changing either breaks
   every one of those parties silently — a reader that finds nothing reports
   `missing`, which looks like an unconfigured environment rather than a bug.
+- Display transparency under `--wrap-command`: no input-parse outcome may skip
+  invoking the wrapped command or skip emitting its stdout, and `produce` must
+  never return non-zero on the wrap path. The reason is load-bearing, not a
+  style choice: the harness blanks the status line when a status-line command
+  exits non-zero OR produces no output (Claude Code status-line documentation,
+  Troubleshooting > "Script errors or hangs",
+  https://code.claude.com/docs/en/statusline). A non-zero exit or a skipped
+  display on the wrap path would therefore blank the operator's status line —
+  the exact outcome the wrap path exists to prevent — so a future edit that
+  reintroduces an early non-zero return would silently undo this guarantee.
+
+Decision record
+---------------
+Two stdin shapes used to blank a wrapped display: empty stdin (a refresh that
+carried no payload) and stdin that did not parse as a JSON object. Both now take
+the wrap path and exit `0`. The alternative of emitting the display while still
+exiting non-zero was rejected: per the harness behavior cited in the invariant
+above, the status line is blanked on a non-zero exit code regardless of what was
+printed, so a non-zero exit cannot coexist with a preserved display. The
+malformation signal is not discarded — an unparseable payload still writes one
+line to stderr — it is simply carried there rather than in the exit code.
+Detecting a producer that has genuinely stopped or whose payload has drifted
+therefore rests on `read`'s `missing`/`stale` routing rather than on any signal
+`produce` emits: on a mid-session payload drift the gauge file already exists, so
+the surviving classification is `stale`, not `missing`. That is a dependency on
+the reader's routing, not an unconditional guarantee from `produce`.
 """
 
 import argparse
@@ -179,6 +220,10 @@ class MalformedGauge(Exception):
 def fail(message: str) -> int:
     print(message, file=sys.stderr)
     return 2
+
+
+def warn(message: str) -> None:
+    print(message, file=sys.stderr)
 
 
 def gauge_dir() -> Path:
@@ -327,7 +372,10 @@ def run_wrapped(command: str, stdin_bytes: bytes) -> str:
     Failures never propagate. A command that cannot spawn, exits non-zero, or
     outruns the timeout yields whatever stdout was captured (possibly empty)
     and the producer still succeeds: the gauge write has already happened, and
-    a blank status line beats a broken one.
+    a blank status line beats a broken one. Note the direction of that blank:
+    `produce` never blanks the display of its own accord, but a blank that
+    originates in the wrapped command's own failure or silence is passed
+    through here as-is rather than papered over.
 
     This is the one extra short-lived, time-bounded process spawn per
     status-line refresh, accepted as a small bounded cost.
@@ -366,22 +414,32 @@ def cmd_produce(args) -> int:
     try:
         payload = parse_payload(captured)
     except ValueError as error:
-        return fail(f"unreadable status-line payload on stdin: {error}")
+        # An unparseable payload is not fatal: record the diagnostic and
+        # normalize to None so this refresh joins the empty-stdin path rather
+        # than short-circuiting. The display tail below still runs — the
+        # operator's status line does not get to go blank just because this
+        # refresh's stdin was garbage.
+        warn(f"unreadable status-line payload on stdin: {error}")
+        payload = None
 
-    if payload is None:
-        # Nothing arrived on stdin. Not an error, and nothing to display.
-        return 0
+    if payload is not None:
+        record = extract_gauge_record(payload)
+        if record is not None:
+            # Ordering is load-bearing: publish the gauge BEFORE running the
+            # wrapped command, so a slow or failing wrapped command cannot cost
+            # this refresh its reading.
+            write_gauge(record)
+        # A payload with no usable session identity writes nothing, but the
+        # display still has to be emitted — the operator's status line does not
+        # get to go blank just because this refresh had no session context.
 
-    record = extract_gauge_record(payload)
-    if record is not None:
-        # Ordering is load-bearing: publish the gauge BEFORE running the
-        # wrapped command, so a slow or failing wrapped command cannot cost
-        # this refresh its reading.
-        write_gauge(record)
-    # A payload with no usable session identity writes nothing, but the
-    # display still has to be emitted — the operator's status line does not
-    # get to go blank just because this refresh had no session context.
-
+    # Single exit, unconditional display tail: every path above converges here,
+    # so the display is emitted exactly once no matter what stdin carried. This
+    # generalizes the no-usable-session-id principle just above — a refresh
+    # never blanks the operator's status line on account of missing or garbled
+    # input, and the function never returns non-zero on the wrap path. On the
+    # wrap path the captured bytes are replayed as-is; any blank that results is
+    # the wrapped command's own, never this function's doing.
     if args.wrap_command:
         emit_display(run_wrapped(args.wrap_command, captured))
     else:

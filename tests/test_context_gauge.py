@@ -46,6 +46,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import types
 from pathlib import Path
 
 import pytest
@@ -581,6 +582,160 @@ def test_run_wrapped_tolerates_missing_command(monkeypatch):
     assert out == ""
 
 
+# --- cmd_produce: blanking shapes still run the wrapped command -------------
+#
+# Path-independent invariant: under `--wrap-command`, a stdin shape that used to
+# blank the status line (unparseable JSON, or empty/whitespace-only stdin) must
+# still emit the wrapped command's display, replaying the ONCE-captured bytes.
+# The implemented fix is path (b): `cmd_produce` returns 0 on every input shape
+# (it warns to stderr on unparseable stdin, normalizes the payload to None, and
+# always emits the display). These unit-layer tests call `cmd_produce` in-process
+# with `run_wrapped` swapped for a recorder, so no real subprocess is spawned and
+# the byte-exact stdin handed to the wrapped command can be asserted directly.
+#
+# `mod.sys` IS the shared stdlib module object, so the stdin patch goes through
+# `monkeypatch` (auto-undone) and never a bare assignment.
+
+
+class _StubBuffer:
+    """A `sys.stdin.buffer` stand-in whose `read()` returns fixed bytes."""
+
+    def __init__(self, payload):
+        self._payload = payload
+
+    def read(self):
+        return self._payload
+
+
+class _StubStdin:
+    """A `sys.stdin` stand-in exposing a `.buffer` with a `.read()`."""
+
+    def __init__(self, payload):
+        self.buffer = _StubBuffer(payload)
+
+
+class _CountingBuffer:
+    """A `.buffer` that yields the payload once, then `b""` forever after.
+
+    A second drain of a real pipe comes back empty; this models that exactly so
+    a test can prove `cmd_produce` reads stdin only once. If the helper ever
+    re-read, the wrapped command would receive `b""` and silently blank.
+    """
+
+    def __init__(self, payload):
+        self._payload = payload
+        self.calls = 0
+
+    def read(self):
+        self.calls += 1
+        if self.calls == 1:
+            return self._payload
+        return b""
+
+
+class _CountingStdin:
+    def __init__(self, payload):
+        self.buffer = _CountingBuffer(payload)
+
+
+def test_cmd_produce_unparseable_stdin_runs_the_wrapped_command_with_the_captured_bytes(
+    monkeypatch, tmp_path, capsys
+):
+    _patch_tempdir(monkeypatch, tmp_path)
+    monkeypatch.setattr(mod.sys, "stdin", _StubStdin(b"{not json"))
+    recorded = []
+    sentinel = "SENTINEL-DISPLAY"
+
+    def recorder(command, stdin_bytes):
+        recorded.append((command, stdin_bytes))
+        return sentinel
+
+    monkeypatch.setattr(mod, "run_wrapped", recorder)
+    rc = mod.cmd_produce(types.SimpleNamespace(wrap_command="the-cmd"))
+    # Byte-exact: the unparseable bytes are replayed to the wrapped command as-is.
+    assert recorded == [("the-cmd", b"{not json")]
+    assert capsys.readouterr().out == sentinel
+    # Path (b): the wrap path always returns 0, never 2.
+    assert rc == 0
+
+
+def test_cmd_produce_empty_stdin_runs_the_wrapped_command(monkeypatch, tmp_path, capsys):
+    _patch_tempdir(monkeypatch, tmp_path)
+    monkeypatch.setattr(mod.sys, "stdin", _StubStdin(b""))
+    recorded = []
+    sentinel = "SENTINEL-DISPLAY"
+
+    def recorder(command, stdin_bytes):
+        recorded.append((command, stdin_bytes))
+        return sentinel
+
+    monkeypatch.setattr(mod, "run_wrapped", recorder)
+    rc = mod.cmd_produce(types.SimpleNamespace(wrap_command="the-cmd"))
+    assert recorded == [("the-cmd", b"")]
+    assert capsys.readouterr().out == sentinel
+    assert rc == 0
+
+
+@pytest.mark.parametrize(
+    "payload", [b"{not json", b""], ids=["unparseable", "empty"]
+)
+def test_cmd_produce_blanking_shapes_drain_stdin_exactly_once(
+    monkeypatch, tmp_path, payload
+):
+    _patch_tempdir(monkeypatch, tmp_path)
+    stdin = _CountingStdin(payload)
+    monkeypatch.setattr(mod.sys, "stdin", stdin)
+    recorded = []
+    monkeypatch.setattr(
+        mod, "run_wrapped", lambda command, stdin_bytes: recorded.append(stdin_bytes) or ""
+    )
+    mod.cmd_produce(types.SimpleNamespace(wrap_command="the-cmd"))
+    # Exactly one drain: a second `read()` would come back empty and blank the
+    # wrapped display. This is the regression `read_stdin_once` exists to prevent.
+    assert stdin.buffer.calls == 1
+    assert recorded == [payload]
+
+
+@pytest.mark.parametrize(
+    "payload", [b"{not json", b""], ids=["unparseable", "empty"]
+)
+def test_cmd_produce_blanking_shapes_without_wrap_do_not_run_a_wrapped_command(
+    monkeypatch, tmp_path, capsys, payload
+):
+    _patch_tempdir(monkeypatch, tmp_path)
+    monkeypatch.setattr(mod.sys, "stdin", _StubStdin(payload))
+    recorded = []
+
+    def recorder(command, stdin_bytes):
+        recorded.append((command, stdin_bytes))
+        return "SHOULD-NOT-APPEAR"
+
+    monkeypatch.setattr(mod, "run_wrapped", recorder)
+    rc = mod.cmd_produce(types.SimpleNamespace(wrap_command=None))
+    # Contrast case: with no wrap command the wrapped path is never taken, and a
+    # blanking shape yields an empty default display. Keeps tests 7-9 honest.
+    assert recorded == []
+    assert capsys.readouterr().out == ""
+    assert rc == 0
+
+
+@pytest.mark.parametrize(
+    "payload", [b"{not json", b""], ids=["unparseable", "empty"]
+)
+@pytest.mark.parametrize("wrap", ["the-cmd", None], ids=["wrapped", "unwrapped"])
+def test_cmd_produce_blanking_shapes_write_no_gauge(
+    monkeypatch, tmp_path, payload, wrap
+):
+    _patch_tempdir(monkeypatch, tmp_path)
+    monkeypatch.setattr(mod.sys, "stdin", _StubStdin(payload))
+    monkeypatch.setattr(mod, "run_wrapped", lambda command, stdin_bytes: "")
+    rc = mod.cmd_produce(types.SimpleNamespace(wrap_command=wrap))
+    assert rc == 0
+    # Gauge-write semantics are unchanged by the fix: a blanking shape carries no
+    # usable session identity, so nothing is written and the dir is never created.
+    assert not (tmp_path / ".quorum").exists()
+
+
 # --- classify_reading: integer readings ------------------------------------
 
 @pytest.mark.parametrize(
@@ -983,7 +1138,13 @@ def test_cli_produce_unusable_session_id_writes_nothing_but_still_displays(
 
 # --- produce: stdin handling -----------------------------------------------
 
-def test_cli_produce_empty_stdin_is_a_silent_noop(tmp_path):
+def test_cli_produce_empty_stdin_without_wrap_is_a_silent_noop(tmp_path):
+    """Empty stdin is dispositioned two ways, and this pins only the unwrapped
+    arm: with no `--wrap-command` there is nothing to display, so `produce`
+    stays fully silent (exit 0, empty stdout, empty stderr, no gauge file). The
+    wrapped arm — empty stdin still emits the wrapped command's display rather
+    than blanking — is pinned by the sibling Subtask's wrapped-command test.
+    """
     res = _run(["produce"], stdin="", env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0
     assert res.stdout == ""
@@ -991,11 +1152,13 @@ def test_cli_produce_empty_stdin_is_a_silent_noop(tmp_path):
     assert _gauge_files(tmp_path) == []
 
 
-def test_cli_produce_unparseable_stdin_exits_2(tmp_path):
+def test_cli_produce_unparseable_stdin_without_wrap_exits_0_and_warns(tmp_path):
     res = _run(["produce"], stdin="{not json", env=_env_with_tempdir(tmp_path))
-    assert res.returncode == 2
+    assert res.returncode == 0
+    assert res.stdout == ""
     assert len(res.stderr.strip().splitlines()) == 1
     assert _gauge_files(tmp_path) == []
+    assert not (tmp_path / ".quorum").exists()
 
 
 # --- produce: the display --------------------------------------------------
@@ -1078,6 +1241,152 @@ def test_cli_produce_broken_wrap_command_still_writes_the_gauge(tmp_path, kind):
     assert json.loads(
         _cli_gauge_path(tmp_path, session_id).read_text(encoding="utf-8")
     ) == payload
+
+
+# --- produce: blanking shapes under --wrap-command --------------------------
+#
+# Path-independent invariant: under `--wrap-command`, both former blanking
+# shapes (unparseable JSON stdin, and empty/whitespace-only stdin) still emit the
+# wrapped command's display byte-for-byte. The implemented fix is path (b) —
+# `produce` returns exit code 0 on every input shape and never blanks of its own
+# accord — so each test below asserts `returncode == 0` exactly (the superseded
+# path (a) would have exited 2). Nothing here writes a gauge, so no session-id
+# prefix is needed.
+
+
+def test_cli_produce_unparseable_stdin_with_wrap_emits_the_wrapped_display(tmp_path):
+    # The direct inverse of the shipped defect: unparseable stdin must NOT blank
+    # the operator's wrapped status line.
+    marker = "MARKER-no-trailing-newline"
+    command = _stub(
+        tmp_path,
+        "marker_stub.py",
+        "import sys\nsys.stdout.write(" + repr(marker) + ")\n",
+    )
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin="{not json",
+        env=_env_with_tempdir(tmp_path),
+    )
+    # Byte for byte: the wrapped command ran and its output passed through.
+    assert res.stdout == marker
+    # Path (b): exit 0 (the superseded path (a) value 2 must never be accepted).
+    assert res.returncode == 0
+    assert _gauge_files(tmp_path) == []
+    assert not (tmp_path / ".quorum").exists()
+
+
+def test_cli_produce_unparseable_stdin_with_wrap_replays_the_captured_bytes(tmp_path):
+    command = _stub(
+        tmp_path,
+        "echo_stdin_stub.py",
+        "import sys\nsys.stdout.buffer.write(sys.stdin.buffer.read())\n",
+    )
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin="{not json",
+        env=_env_with_tempdir(tmp_path),
+    )
+    # The failure path REPLAYS the once-captured bytes rather than re-reading a
+    # drained pipe: the stub saw the exact non-JSON bytes fed in.
+    assert res.stdout == "{not json"
+    assert res.returncode == 0
+    assert _gauge_files(tmp_path) == []
+    assert not (tmp_path / ".quorum").exists()
+
+
+@pytest.mark.parametrize(
+    "raw", ["[1, 2]", '"a string"', "42", "null", "true"],
+    ids=["array", "string", "number", "null", "bool"],
+)
+def test_cli_produce_non_object_json_with_wrap_emits_the_wrapped_display(tmp_path, raw):
+    # Non-object top-level JSON takes the SAME `ValueError` branch as `{not json`
+    # (parse_payload raises "top-level JSON value is not an object"), so it must
+    # get the identical disposition — else a fix that special-cases only
+    # JSONDecodeError would leave half the blanking shapes broken.
+    marker = "MARKER-no-trailing-newline"
+    command = _stub(
+        tmp_path,
+        "marker_stub.py",
+        "import sys\nsys.stdout.write(" + repr(marker) + ")\n",
+    )
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin=raw,
+        env=_env_with_tempdir(tmp_path),
+    )
+    assert res.stdout == marker
+    assert res.returncode == 0
+    assert _gauge_files(tmp_path) == []
+    assert not (tmp_path / ".quorum").exists()
+
+
+def test_cli_produce_empty_stdin_with_wrap_emits_the_wrapped_display(tmp_path):
+    marker = "MARKER-no-trailing-newline"
+    command = _stub(
+        tmp_path,
+        "marker_stub.py",
+        "import sys\nsys.stdout.write(" + repr(marker) + ")\n",
+    )
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin="",
+        env=_env_with_tempdir(tmp_path),
+    )
+    assert res.stdout == marker
+    # Empty stdin is a no-op refresh under both paths, so exit 0 either way.
+    assert res.returncode == 0
+    # No warn is emitted for empty stdin (it is not a malformed payload).
+    assert res.stderr == ""
+    assert _gauge_files(tmp_path) == []
+    assert not (tmp_path / ".quorum").exists()
+
+
+@pytest.mark.parametrize(
+    "raw", ["   ", "\n", " \t\r\n "], ids=["spaces", "newline", "mixed"]
+)
+def test_cli_produce_whitespace_only_stdin_with_wrap_emits_the_wrapped_display(tmp_path, raw):
+    # parse_payload classifies whitespace-only input as empty (None), so these
+    # follow the empty-stdin case, NOT the unparseable one — no warn, exit 0.
+    marker = "MARKER-no-trailing-newline"
+    command = _stub(
+        tmp_path,
+        "marker_stub.py",
+        "import sys\nsys.stdout.write(" + repr(marker) + ")\n",
+    )
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin=raw,
+        env=_env_with_tempdir(tmp_path),
+    )
+    assert res.stdout == marker
+    assert res.returncode == 0
+    assert res.stderr == ""
+    assert _gauge_files(tmp_path) == []
+    assert not (tmp_path / ".quorum").exists()
+
+
+@pytest.mark.parametrize("kind", ["nonzero", "missing"])
+@pytest.mark.parametrize("stdin", ["{not json", ""], ids=["unparseable", "empty"])
+def test_cli_produce_broken_wrap_command_on_a_blanking_shape_does_not_crash(
+    tmp_path, kind, stdin
+):
+    # A broken operator command on a blanking shape must not route the failure
+    # path around run_wrapped's tolerance and turn into a producer crash.
+    if kind == "nonzero":
+        command = _stub(tmp_path, "fail_stub.py", "import sys\nsys.exit(3)\n")
+    else:
+        command = '"' + str(tmp_path / "definitely-not-a-real-command") + '"'
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin=stdin,
+        env=_env_with_tempdir(tmp_path),
+    )
+    # The wrapped command produced nothing; the producer passes that blank
+    # through rather than crashing.
+    assert res.stdout == ""
+    assert res.returncode == 0
+    assert "Traceback" not in res.stderr
 
 
 # --- read: the four classifications ----------------------------------------
