@@ -11,7 +11,7 @@ reference_materials:
 - value: b.8sh
   resolver: bees
 created_at: '2026-08-16T17:33:11.989013'
-status: in_progress
+status: done
 schema_version: '0.1'
 guid: 55rjpn2y82za9a8qrkpqkfe8st5ds24r
 ---
@@ -35,4 +35,3 @@ Concrete watch-points for this feature: Epic 1's helper docstring must carry its
 ## Deferred from /quo-fix-issue run (2026-08-18 22:50)
 
 The systemic fix tracked here as Issue **b.bq4** has landed (branch `fix/b.ja9`). The shipped-artifact-reference rule this Bee defines in `## Review criterion — no shipped-artifact references to unshipped docs` above is now promoted to a **permanent, repo-wide** criterion in `CLAUDE.md` `## Review criteria for skill changes` — the rule-3 shipping-boundary extension (a shipped-artifact reference to a repo-only doc that never ships dangles on a fresh install and is a rule-3 violation) plus the README carve-out. Because that criterion binds every skill-change review in this repo, not just this feature's cycles, the feature-scoped copy above is now a drift-prone second source and can **retire**: future review cycles should rely on the CLAUDE.md criterion rather than this Bee-body section.
-
