@@ -1,0 +1,16 @@
+# Docker Desktop Synchronized File Share ignore list (.dockerignore syntax).
+# This repo is served into the claude-secure-container sandbox via a
+# synchronized share; see that repo's docker-compose.yml. Paths here are
+# never copied into the VM-side ext4 copy and never synced back.
+#
+# Bytecode only — in-container it is already redirected to a volume
+# (PYTHONPYCACHEPREFIX); on the host it is macOS bytecode.
+**/__pycache__
+#
+# Keep .git SYNCED (do not add it here): excluded paths never reach the VM
+# copy, so ignoring it would leave the container's checkout with no repo.
+#
+# Note: this repo is the source of the sandbox's skills/agents snapshot. That
+# snapshot is a host-side copy made by `./run --rebuild` from the HOST tree,
+# so the share does not change how skills reach the container or the review
+# model (edits are reviewed via git, picked up only at rebuild).
