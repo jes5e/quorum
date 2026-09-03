@@ -48,4 +48,13 @@ Rationale: effort is never the tiebreaker (see the user quote); the user reserve
 
 - Sibling Issues from the same run: Analyst blast-radius sweep; strict lane sequencing.
 - Sibling Issue IDs: b.q3f (Analyst blast-radius sweep), b.pdq (lane sequencing). Reference run: event_consumer_service b.239, 2026-09-02.
+## Amendment (2026-09-03) — mechanism-introducing findings are design changes, not fixes
+
+Source: the retrospective of the `/quo-fix-issue b.pdq` run. Of ~35 findings after round 1, only a handful concerned what the Issue asked for; the rest concerned machinery that did not exist when the run began (a report receiver, an `aborted-*` marker, an unexplained-movement gate, per-scope close-outs, naming in two more scopes). Each new mechanism has a lifecycle across four or five scopes, so each one generated further rounds. The routing table routes by fix-path count and depth and has no notion of "this fix adds a mechanism."
+
+1. **New routing condition.** A finding whose preferred (or only) fix path introduces a new state, TaskList name class, gate, or marker — reviewer-tagged `introduces-mechanism` per b.q3f Amendment 3, or detected by the orchestrator when the fix path names one — is routed to the **scope-bounding gate** (Fix properly now / Defer to follow-up Issue / Accept the limitation) regardless of depth tag, with **Defer to follow-up Issue as the recommended default** when the mechanism serves a case the Issue body never mentioned. The follow-up Issue carries the reviewer's sketched design verbatim so nothing is lost. Under this rule the reference run would have closed around round 2 with two or three follow-up Issues instead of six rounds.
+
+2. **"Highest quality" is defined for the orchestrator.** When picking among fix paths, highest quality means the smallest change that leaves the text or code internally consistent and complete for the Issue's stated defect — total-system complexity counts against a path. "Adds a mechanism" is a reason to defer, not a reason to build; effort is still never the tiebreaker between paths of equal completeness. The orchestrator on the reference run read "highest quality" as "structurally complete every time" and about ten refactor-locally choices each spawned a round of scope variants; encode the definition in the routing prose so it does not depend on orchestrator judgment.
+
+3. **Mirror in `/quo-execute`**, as the base Issue already requires for the routing table.
 
