@@ -2,10 +2,11 @@
 id: b.y2q
 type: bee
 title: context_gauge.py produce crashes and blanks the status line when the gauge directory is unwritable
-status: open
-created_at: '2026-09-02T22:33:59.186280'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-02T22:33:59.186280'
+status: done
+schema_version: '0.1'
 guid: y2qz41uvkh3i6faqvg6zscbhron3bfok
 ---
 
@@ -40,4 +41,3 @@ Found during a full review of Plan b.55r. The helper's docstring documents the n
 - Catching inside `write_gauge` was rejected: `_run_self_check` relies on the gauge write being observable, and the installer's atomic settings write has its own error contract.
 - Exiting non-zero while still printing the display was rejected for the same reason recorded in the module's decision record: the harness blanks the line on non-zero exit regardless of stdout.
 - Pre-checking writability (`os.access`) was rejected as a TOCTOU-shaped duplicate of the write itself; catching the actual `OSError` is simpler and complete.
-

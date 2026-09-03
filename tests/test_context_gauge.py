@@ -53,6 +53,7 @@ is load-bearing: a developer or CI runner who exports it would otherwise point
 every default-derivation test at their real configuration directory.
 """
 
+import collections
 import json
 import os
 import shlex
@@ -866,6 +867,209 @@ def test_cmd_produce_blanking_shapes_write_no_gauge(
     assert not (tmp_path / ".quorum").exists()
 
 
+# --- cmd_produce: an unwritable gauge directory must not blank the display ---
+#
+# Same invariant as the blanking shapes above, one failure class further out:
+# the payload parses and carries a usable session identity, but the gauge write
+# itself raises `OSError`. `produce` must warn once, skip the write, and still
+# reach the display tail with exit 0 — the harness blanks the status line on a
+# non-zero exit OR on empty output, so a propagating `OSError` blanks the
+# operator's line on EVERY refresh for as long as the condition lasts. The
+# trigger is ordinary: a world-writable temp directory whose `.quorum` was
+# created by a different user.
+#
+# The fixture below parametrizes over ALL THREE filesystem failure points rather
+# than just the convenient one — see its docstring for why no single arm is
+# enough, and in particular why the `open` failure needs a uid-independent arm.
+
+
+#: What `unwritable_gauge_dir` hands its consumers. `session_id` travels WITH the
+#: arm because one arm's sabotage is keyed to that exact gauge filename; see the
+#: fixture docstring.
+UnwritableGauge = collections.namedtuple("UnwritableGauge", "arm session_id")
+
+
+@pytest.fixture(params=["blocked", "readonly", "gauge-path-is-dir"])
+def unwritable_gauge_dir(request, tmp_path):
+    """Make this session's gauge write fail three structurally different ways.
+
+    All three arms live under `tmp_path`, so the autouse `no_real_tempdir_writes`
+    fixture is satisfied and nothing touches the real temp directory. Returns an
+    `UnwritableGauge(arm, session_id)`.
+
+    Consumers MUST take the session id from here rather than minting their own.
+    The `gauge-path-is-dir` arm sabotages one specific gauge FILENAME, so a
+    consumer that used a different identifier would write successfully and the
+    arm would pass WITHOUT TESTING — the same silent-green failure the
+    `readonly` probe below exists to prevent.
+
+    - `blocked` — a regular FILE sits where the gauge directory belongs, so
+      `ensure_gauge_dir`'s `mkdir` raises `FileExistsError` (an `OSError`
+      subclass). This arm is uid- and platform-independent, and it is the ONLY
+      one that exercises the `mkdir` failure point; the `open` never runs.
+    - `readonly` — a real directory at mode `0o555`, so the `mkdir` succeeds
+      (`exist_ok=True`) and the `open(path, "w")` inside `write_gauge` raises
+      `PermissionError`. This is the shipped-defect shape from the field report,
+      reproduced with the field's own mechanism (permissions).
+    - `gauge-path-is-dir` — the gauge DIRECTORY is left normal and writable, and
+      a directory is pre-created at the gauge FILE's own path, so the `mkdir`
+      succeeds and `open(path, "w")` raises `IsADirectoryError` (`[Errno 21]`,
+      an `OSError`). This reaches the same `open` failure point as `readonly`
+      but through structure rather than permissions, so it holds under ANY uid
+      and on Windows. Without it, a root CI container — where `readonly` skips
+      and `blocked` never gets past the `mkdir` — would run this whole suite with
+      ZERO coverage of the shipped defect's actual failure point.
+
+    Keeping all three matters because a single arm would leave part of the fix
+    unexercised: `write_gauge` fails at distinct points and the production `try`
+    has to span them all.
+
+    The `readonly` arm is guarded by an actual writability PROBE rather than by
+    an assumption that the mode bits bite. Root ignores mode bits entirely, and
+    Windows does not honor `chmod` on directories, so on either an unprobed arm
+    would pass WITHOUT TESTING — the write would succeed, the `except` branch
+    would never run, and a regression would sail through green. The probe skips
+    instead, which is loud. (It subsumes the narrower `os.geteuid() == 0` check:
+    it is one condition covering root, Windows, and any ACL arrangement that
+    overrides the mode.) The directory is restored to `0o755` at teardown so
+    pytest's `tmp_path` reaper is never left with a directory it cannot clear.
+    That skip is now survivable rather than a coverage hole, because
+    `gauge-path-is-dir` covers the same failure point unconditionally.
+    """
+    # The arm name rides in the session id so a failure report names the arm.
+    session_id = TEST_SESSION_PREFIX + "unwritable-" + request.param
+    result = UnwritableGauge(request.param, session_id)
+    target = tmp_path / ".quorum"
+
+    if request.param == "blocked":
+        target.write_text("a regular file, not a directory", encoding="utf-8")
+        return result
+
+    if request.param == "gauge-path-is-dir":
+        target.mkdir()
+        # `_cli_gauge_path` is the suite's single spelling of the gauge filename
+        # template; reusing it here keeps this sabotage in step with what the
+        # helper actually derives from `session_id`.
+        _cli_gauge_path(tmp_path, session_id).mkdir()
+        return result
+
+    target.mkdir()
+    target.chmod(0o555)
+    request.addfinalizer(lambda: target.chmod(0o755))
+    probe = target / "writability-probe"
+    try:
+        probe.touch()
+    except OSError:
+        return result
+    probe.unlink()
+    pytest.skip(
+        "this environment can still write into a 0o555 directory (root, Windows, "
+        "or an overriding ACL), so the read-only arm would pass without testing"
+    )
+
+
+def test_cmd_produce_unwritable_gauge_dir_still_emits_the_wrapped_display(
+    monkeypatch, tmp_path, capsys, unwritable_gauge_dir
+):
+    """REGRESSION GUARD. Pre-fix this raised out of `cmd_produce`."""
+    _patch_tempdir(monkeypatch, tmp_path)
+    session_id = unwritable_gauge_dir.session_id
+    payload = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 44},
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+    }
+    raw = json.dumps(payload).encode("utf-8")
+    monkeypatch.setattr(mod.sys, "stdin", _StubStdin(raw))
+    recorded = []
+    sentinel = "SENTINEL-DISPLAY"
+
+    def recorder(command, stdin_bytes):
+        recorded.append((command, stdin_bytes))
+        return sentinel
+
+    monkeypatch.setattr(mod, "run_wrapped", recorder)
+    rc = mod.cmd_produce(types.SimpleNamespace(wrap_command="the-cmd"))
+    out = capsys.readouterr()
+    # The write failed, but the wrapped command still ran with the byte-exact
+    # captured stdin and its display still reached stdout.
+    assert recorded == [("the-cmd", raw)]
+    assert out.out == sentinel
+    assert rc == 0
+    # The failure is carried on stderr, in exactly one line — not in the exit
+    # code, which the harness would read as "blank the line". Assert WHAT that
+    # line says, not merely that there is one: a count-only assertion would be
+    # satisfied by the unrelated payload-parse diagnostic. All three arms fail
+    # inside `write_gauge`, so this prefix holds arm-independently while the
+    # `[Errno ...]` tail legitimately differs.
+    err_lines = out.err.strip().splitlines()
+    assert len(err_lines) == 1
+    assert "cannot publish the context gauge" in err_lines[0]
+    # Nothing was published: the reader will report `missing`, the documented
+    # downstream signal.
+    assert _gauge_files(tmp_path) == []
+
+
+def test_cmd_produce_unwritable_gauge_dir_without_wrap_emits_the_default_display(
+    monkeypatch, tmp_path, capsys, unwritable_gauge_dir
+):
+    """REGRESSION GUARD. The unwrapped arm blanked identically pre-fix."""
+    _patch_tempdir(monkeypatch, tmp_path)
+    session_id = unwritable_gauge_dir.session_id
+    payload = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 44},
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+    }
+    monkeypatch.setattr(mod.sys, "stdin", _StubStdin(json.dumps(payload).encode("utf-8")))
+    recorded = []
+
+    def recorder(command, stdin_bytes):
+        recorded.append((command, stdin_bytes))
+        return "SHOULD-NOT-APPEAR"
+
+    monkeypatch.setattr(mod, "run_wrapped", recorder)
+    rc = mod.cmd_produce(types.SimpleNamespace(wrap_command=None))
+    out = capsys.readouterr()
+    assert recorded == []
+    # Unlike the blanking shapes, this payload PARSED — so the default display is
+    # the workspace basename, non-empty. A write failure costs the reading, never
+    # the display.
+    assert out.out == "quorum"
+    assert rc == 0
+    err_lines = out.err.strip().splitlines()
+    assert len(err_lines) == 1
+    assert "cannot publish the context gauge" in err_lines[0]
+    assert _gauge_files(tmp_path) == []
+
+
+def test_write_gauge_still_raises_on_an_unwritable_gauge_dir(
+    monkeypatch, tmp_path, unwritable_gauge_dir
+):
+    """The catch belongs at the call site, NOT inside `write_gauge`.
+
+    `write_gauge` is a pure function: it raises, and its caller disposes — the
+    same layering `classify_reading` and `cmd_read` use, and the one the helper's
+    decision record states outright ("the pure function raises and the CLI layer
+    disposes"). The never-blank guarantee is a property of the process's exit
+    code and stdout, which only `cmd_produce` owns, so `cmd_produce` is where the
+    `try` belongs.
+
+    Today `cmd_produce` is `write_gauge`'s ONLY production caller, so moving the
+    `try` inward would not break anything visible right now — which is exactly
+    why this pin is worth having. A second caller (an installer verification, a
+    future `publish` subcommand) that needs to know the write failed would find
+    the failure already swallowed one layer down and silently report success it
+    never achieved. This test fails on that "simplification" while the defect is
+    still cheap to undo.
+    """
+    _patch_tempdir(monkeypatch, tmp_path)
+    session_id = unwritable_gauge_dir.session_id
+    record = {"session_id": session_id, "context_window": {"used_percentage": 44}}
+    with pytest.raises(OSError):
+        mod.write_gauge(record)
+
+
 # --- classify_reading: integer readings ------------------------------------
 
 @pytest.mark.parametrize(
@@ -1085,6 +1289,59 @@ def test_classify_reading_non_utf8_gauge_is_malformed(monkeypatch, tmp_path):
     # Assert the BRANCH, not just the exception type: a file that decoded and
     # then failed the JSON parse would also raise MalformedGauge here.
     assert "not valid UTF-8" in str(excinfo.value)
+
+
+def test_classify_reading_un_stat_able_gauge_is_malformed(monkeypatch, tmp_path):
+    """A gauge whose `stat` raises is malformation, NOT `missing`.
+
+    `classify_reading`'s first step catches `FileNotFoundError` as `missing` and
+    routes every OTHER `OSError` to `MalformedGauge`. That split is the whole
+    safety argument for the step: an un-stat-able path is not evidence of
+    absence, and reporting `missing` would tell a consumer "no producer is
+    configured here, carry on" when the truth is "the path cannot be examined".
+    Widening the `except FileNotFoundError` to a bare `except OSError` is a
+    realistic simplification that no other unit test would catch.
+
+    The un-stat-able condition is built structurally rather than with
+    permissions, so it holds under any uid and on Windows: a regular FILE sits
+    where the `.quorum` directory belongs, making `.quorum` a non-directory
+    component of the gauge path, so `stat` raises `NotADirectoryError`. This is
+    the unit twin of the CLI-layer `blocked` arm in
+    `test_cli_a_failed_publish_leaves_the_reader_with_no_usable_reading` — the
+    module's unit-pins-the-branch / CLI-pins-the-shape pattern.
+    """
+    _patch_tempdir(monkeypatch, tmp_path)
+    session_id = TEST_SESSION_PREFIX + "un-stat-able"
+    (tmp_path / ".quorum").write_text("a regular file, not a directory", encoding="utf-8")
+    path = mod.gauge_path(session_id)
+
+    with pytest.raises(mod.MalformedGauge) as excinfo:
+        mod.classify_reading(path, now=time.time())
+    # Assert the BRANCH, not just the exception type: several later steps raise
+    # the same exception, and only this one can fire before the file is read.
+    assert "cannot stat gauge file" in str(excinfo.value)
+
+
+def test_classify_reading_unreadable_gauge_is_malformed(monkeypatch, tmp_path):
+    """Unit pin for the branch the `gauge-path-is-dir` CLI arm exercises end-to-end.
+
+    A DIRECTORY at the gauge file's own path stats fine (so the reading is
+    fresh, not `missing`) and then fails at `read_text` with
+    `IsADirectoryError` — an `OSError` that is not `FileNotFoundError`, so it
+    must surface as malformation rather than `missing`. Built structurally so
+    it holds under any uid.
+    """
+    _patch_tempdir(monkeypatch, tmp_path)
+    mod.ensure_gauge_dir()
+    session_id = TEST_SESSION_PREFIX + "unreadable"
+    path = mod.gauge_path(session_id)
+    path.mkdir()
+
+    with pytest.raises(mod.MalformedGauge) as excinfo:
+        mod.classify_reading(path, now=path.stat().st_mtime)
+    # Assert the BRANCH, not just the exception type: the stat branch above and
+    # the parse branches below raise the same exception with other messages.
+    assert "gauge file is unreadable" in str(excinfo.value)
 
 
 @pytest.mark.parametrize("value", ["true", "false"], ids=["true", "false"])
@@ -1564,10 +1821,22 @@ def _seed_cli_gauge_bytes(tmp_path, session_id, raw):
 
 
 def _gauge_files(tmp_path):
+    """Names of PUBLISHED gauge files under `<tmp_path>/.quorum`.
+
+    `is_file()` is load-bearing, not defensive noise: the
+    `unwritable_gauge_dir` fixture's `gauge-path-is-dir` arm pre-creates a
+    DIRECTORY at the gauge file's own path, whose name matches this glob. A
+    name-only listing would report that placeholder as a published gauge and
+    turn every `_gauge_files(tmp_path) == []` assertion on that arm into a
+    false failure — the question these call sites ask is whether a gauge was
+    written, and a directory is not a written gauge.
+    """
     directory = tmp_path / ".quorum"
     if not directory.is_dir():
         return []
-    return sorted(p.name for p in directory.glob("context-usage-*.json"))
+    return sorted(
+        p.name for p in directory.glob("context-usage-*.json") if p.is_file()
+    )
 
 
 # --- produce: writing the gauge --------------------------------------------
@@ -1902,6 +2171,194 @@ def test_cli_produce_broken_wrap_command_on_a_blanking_shape_does_not_crash(
     # The wrapped command produced nothing; the producer passes that blank
     # through rather than crashing.
     assert res.stdout == ""
+    assert res.returncode == 0
+    assert "Traceback" not in res.stderr
+
+
+# --- produce: an unwritable gauge directory under the CLI contract ----------
+#
+# The subprocess layer is where this defect was actually observed and where the
+# harness reads the contract: a traceback out of `main()` means exit 1 and empty
+# stdout, and the harness blanks the status line on either. These tests assert
+# the process-level facts the unit layer cannot — the real `returncode`, real
+# stderr with no `Traceback`, and a real wrapped command's bytes on stdout.
+# `unwritable_gauge_dir` supplies all three filesystem failure points, and the
+# session id each test publishes under comes FROM that fixture — see its
+# docstring for why minting a local one would disarm an arm.
+
+
+def test_cli_produce_unwritable_gauge_dir_with_wrap_emits_the_wrapped_display(
+    tmp_path, unwritable_gauge_dir
+):
+    """REGRESSION GUARD. Pre-fix: exit 1, empty stdout, traceback on stderr."""
+    session_id = unwritable_gauge_dir.session_id
+    marker = "MARKER-no-trailing-newline"
+    command = _stub(
+        tmp_path,
+        "marker_stub.py",
+        "import sys\nsys.stdout.write(" + repr(marker) + ")\n",
+    )
+    payload = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 33},
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+    }
+    res = _run(
+        ["produce", "--wrap-command", command],
+        stdin=json.dumps(payload),
+        env=_env_with_tempdir(tmp_path),
+    )
+    # Byte for byte: the wrapped display survives a failed gauge write intact.
+    assert res.stdout == marker
+    assert res.returncode == 0
+    # One diagnostic line, it is a diagnostic — not a traceback — and it is THE
+    # gauge-write diagnostic rather than some other line that happens to be
+    # alone. All three arms fail inside `write_gauge`, so the message prefix is
+    # arm-independent; the `[Errno ...]` tail legitimately differs per arm.
+    err_lines = res.stderr.strip().splitlines()
+    assert len(err_lines) == 1
+    assert "cannot publish the context gauge" in err_lines[0]
+    assert "Traceback" not in res.stderr
+    assert _gauge_files(tmp_path) == []
+
+
+def test_cli_produce_unwritable_gauge_dir_without_wrap_emits_the_default_display(
+    tmp_path, unwritable_gauge_dir
+):
+    """REGRESSION GUARD. The unwrapped arm crashed identically pre-fix.
+
+    The expected stdout here is the workspace basename, NOT the empty string: the
+    payload is well-formed, so `default_display` has something to say. That
+    distinguishes this from the parse-failure cases above, whose empty stdout is
+    legitimate — an assertion of `""` would have passed against a producer that
+    had stopped emitting a display at all.
+    """
+    session_id = unwritable_gauge_dir.session_id
+    payload = {
+        "session_id": session_id,
+        "context_window": {"used_percentage": 33},
+        "workspace": {"current_dir": "/home/dev/code/quorum"},
+    }
+    res = _run(
+        ["produce"],
+        stdin=json.dumps(payload),
+        env=_env_with_tempdir(tmp_path),
+    )
+    assert res.stdout == "quorum"
+    assert res.returncode == 0
+    err_lines = res.stderr.strip().splitlines()
+    assert len(err_lines) == 1
+    assert "cannot publish the context gauge" in err_lines[0]
+    assert "Traceback" not in res.stderr
+    assert _gauge_files(tmp_path) == []
+
+
+def test_cli_a_failed_publish_leaves_the_reader_with_no_usable_reading(
+    tmp_path, unwritable_gauge_dir
+):
+    """End-to-end: `produce` swallows the write failure, so `read` carries it.
+
+    The fix moves the failure signal off `produce`'s exit code, which makes the
+    reader the only place a consumer can still learn that no reading exists. That
+    hand-off is a claim the helper's decision record now makes, and nothing else
+    in the suite crosses the two subcommands to check it. What matters for the
+    guard's safety is what is asserted in EVERY arm: `read` never emits a
+    percentage — asserted as "not a decimal integer at all", the same shape check
+    `test_reading_values_are_four_way_distinct` uses, so it also holds against a
+    reading this test never anticipated rather than only against the two literals
+    this payload could have produced.
+
+    The arms then legitimately diverge, and pinning that is the point:
+
+    - `readonly` — the gauge directory is a real directory, the gauge file is
+      simply absent, and `read` reports `missing` at exit 0. This is the shape
+      the decision record describes.
+    - `blocked` — a regular file occupies the directory's path, so `stat` on the
+      gauge raises `NotADirectoryError` and `classify_reading` routes it to
+      `MalformedGauge` -> exit 2. That is deliberate and commented as such in the
+      helper ("present but un-stat-able ... a non-directory component in the
+      path"), not a defect: an un-stat-able path is not evidence of absence.
+      Asserting `missing` here would be asserting the decision record's prose
+      over the code's documented behavior.
+    - `gauge-path-is-dir` — a directory occupies the gauge FILE's path, so `stat`
+      succeeds (a directory has an mtime, and it is fresh), staleness passes, and
+      `read_text` raises `IsADirectoryError` -> `MalformedGauge` -> exit 2. Same
+      contracted exit shape as `blocked` but reached through a LATER branch, so
+      the two are pinned by their distinct diagnostics rather than lumped
+      together; collapsing them would let one branch cover for the other.
+    """
+    session_id = unwritable_gauge_dir.session_id
+    payload = {"session_id": session_id, "context_window": {"used_percentage": 33}}
+    env = _env_with_tempdir(tmp_path)
+    produced = _run(["produce"], stdin=json.dumps(payload), env=env)
+    assert produced.returncode == 0
+    # The publish really did fail — without this, an arm whose sabotage silently
+    # stopped biting would still satisfy everything below via `missing`.
+    assert "cannot publish the context gauge" in produced.stderr
+    assert _gauge_files(tmp_path) == []
+
+    res = _run(["read", "--session-id", session_id], env=env)
+    # True in every arm, and the load-bearing half: a lost reading is never
+    # reported as a percentage.
+    assert not res.stdout.strip().isdigit()
+    if unwritable_gauge_dir.arm == "readonly":
+        assert res.returncode == 0, res.stderr
+        assert res.stdout == "missing\n"
+    else:
+        assert res.returncode == 2
+        assert res.stdout == ""
+        err_lines = res.stderr.strip().splitlines()
+        assert len(err_lines) == 1
+        # Which malformation branch fired is the arm's whole point.
+        if unwritable_gauge_dir.arm == "blocked":
+            assert "cannot stat gauge file" in err_lines[0]
+        else:
+            assert "gauge file is unreadable" in err_lines[0]
+
+
+@pytest.mark.parametrize("stdin_kind", ["valid", "unparseable", "empty"])
+@pytest.mark.parametrize("wrap_kind", ["working", "broken", "absent"])
+def test_cli_produce_never_crashes_across_the_adverse_environment_matrix(
+    tmp_path, unwritable_gauge_dir, stdin_kind, wrap_kind
+):
+    """Structural guard for the whole class: no combination may exit non-zero.
+
+    The named tests above pin the two cases that matter most precisely; this one
+    sweeps every stdin shape x wrap-command state x gauge-dir failure point
+    together, asserting only the two facts the harness actually branches on. It
+    exists because the shipped defect was a MISSING combination rather than a
+    wrong assertion — parse failures were covered, filesystem failures were not,
+    and no single-axis test would have noticed. Deliberately thin: stdout content
+    is the named tests' job, so widening this one is not the fix if it ever fails.
+    """
+    if stdin_kind == "valid":
+        stdin = json.dumps(
+            {
+                # The fixture's session id, not a local one: on the
+                # `gauge-path-is-dir` arm any other identifier would write
+                # successfully and this sweep would stop covering that arm.
+                "session_id": unwritable_gauge_dir.session_id,
+                "context_window": {"used_percentage": 33},
+                "workspace": {"current_dir": "/home/dev/code/quorum"},
+            }
+        )
+    elif stdin_kind == "unparseable":
+        stdin = "{not json"
+    else:
+        stdin = ""
+
+    if wrap_kind == "working":
+        args = ["produce", "--wrap-command", _stub(
+            tmp_path, "marker_stub.py", "import sys\nsys.stdout.write('M')\n"
+        )]
+    elif wrap_kind == "broken":
+        args = ["produce", "--wrap-command", _stub(
+            tmp_path, "fail_stub.py", "import sys\nsys.exit(3)\n"
+        )]
+    else:
+        args = ["produce"]
+
+    res = _run(args, stdin=stdin, env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0
     assert "Traceback" not in res.stderr
 

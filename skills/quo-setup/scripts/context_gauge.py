@@ -269,10 +269,13 @@ Exit codes
 ----------
 The split is per subcommand.
 
-- `produce` returns `0` on every input shape — valid, empty, and unparseable
-  stdin all exit `0`. Its only non-zero exit is an argparse usage error, which
-  is raised before `cmd_produce` runs. An unparseable stdin payload writes one
-  diagnostic line to stderr and still exits `0`.
+- `produce` returns `0` on every input shape AND on a failed gauge write —
+  valid, empty, and unparseable stdin all exit `0`, and so does a refresh whose
+  gauge write raised `OSError` (an unwritable, read-only, or full gauge
+  directory). Its only non-zero exit is an argparse usage error, which is raised
+  before `cmd_produce` runs. Every one of those shapes still emits the display
+  and still exits `0`; the two that are genuine failures — unparseable stdin and
+  a failed gauge write — each also write one diagnostic line to stderr.
 - `read` returns `0` for every normal reading value, including `missing`,
   `stale`, and `no-reading` — these are ordinary conditions, not errors, and a
   consumer must be able to distinguish them from a crash. It returns `2` only on
@@ -296,32 +299,56 @@ Invariants (load-bearing)
   the gauge themselves instead of using this helper. Changing either breaks
   every one of those parties silently — a reader that finds nothing reports
   `missing`, which looks like an unconfigured environment rather than a bug.
-- Display transparency under `--wrap-command`: no input-parse outcome may skip
-  invoking the wrapped command or skip emitting its stdout, and `produce` must
-  never return non-zero on the wrap path. The reason is load-bearing, not a
-  style choice: the harness blanks the status line when a status-line command
-  exits non-zero OR produces no output (Claude Code status-line documentation,
-  Troubleshooting > "Script errors or hangs",
-  https://code.claude.com/docs/en/statusline). A non-zero exit or a skipped
-  display on the wrap path would therefore blank the operator's status line —
-  the exact outcome the wrap path exists to prevent — so a future edit that
-  reintroduces an early non-zero return would silently undo this guarantee.
+- Display transparency under `--wrap-command`: no producer-side failure —
+  neither an input-parse outcome nor a failed gauge write — may skip invoking
+  the wrapped command or skip emitting its stdout, and `produce` must never
+  return non-zero on the wrap path. The scope is deliberately every
+  producer-side failure and not just the input ones: an earlier input-only
+  phrasing of this invariant is what let an unwritable gauge directory blank the
+  display. The reason is load-bearing, not a style choice: the harness blanks
+  the status line when a status-line command exits non-zero OR produces no
+  output (Claude Code status-line documentation, Troubleshooting > "Script
+  errors or hangs", https://code.claude.com/docs/en/statusline). A non-zero exit
+  or a skipped display on the wrap path would therefore blank the operator's
+  status line — the exact outcome the wrap path exists to prevent — so a future
+  edit that reintroduces an early non-zero return, or that lets a new
+  producer-side failure escape `cmd_produce`, would silently undo this
+  guarantee.
 
 Decision record
 ---------------
-Two stdin shapes used to blank a wrapped display: empty stdin (a refresh that
-carried no payload) and stdin that did not parse as a JSON object. Both now take
-the wrap path and exit `0`. The alternative of emitting the display while still
-exiting non-zero was rejected: per the harness behavior cited in the invariant
-above, the status line is blanked on a non-zero exit code regardless of what was
-printed, so a non-zero exit cannot coexist with a preserved display. The
-malformation signal is not discarded — an unparseable payload still writes one
-line to stderr — it is simply carried there rather than in the exit code.
-Detecting a producer that has genuinely stopped or whose payload has drifted
-therefore rests on `read`'s `missing`/`stale` routing rather than on any signal
-`produce` emits: on a mid-session payload drift the gauge file already exists, so
-the surviving classification is `stale`, not `missing`. That is a dependency on
-the reader's routing, not an unconditional guarantee from `produce`.
+Two stdin shapes and one filesystem failure used to blank a wrapped display:
+empty stdin (a refresh that carried no payload, a no-op rather than a failure),
+stdin that did not parse as a JSON object, and a gauge write that raised
+`OSError` (the gauge directory unwritable, read-only, or full — ordinary on a
+shared machine, where the first user to create the directory under a
+world-writable temporary directory owns it and every other user's producer then
+fails on every refresh). All three now take the wrap path
+and exit `0`. The write failure is caught at its call site in `cmd_produce`
+rather than inside `write_gauge`, because the never-blank guarantee is a
+property of the process's exit code and stdout, which only `cmd_produce` owns:
+the pure function raises and the CLI layer disposes, the same layering
+`classify_reading` and `cmd_read` use. Pre-checking writability was rejected as
+a TOCTOU-shaped duplicate of the write itself, blind to a full or read-only
+filesystem; falling back to another directory was rejected because it would
+violate the never-write-outside-the-gauge-directory invariant above and the
+reader would report `missing` anyway. The alternative of emitting the display
+while still exiting non-zero was rejected: per the harness behavior cited in the
+invariant above, the status line is blanked on a non-zero exit code regardless of
+what was printed, so a non-zero exit cannot coexist with a preserved display. No
+failure signal is discarded — an unparseable payload and a failed gauge write
+each still write one line to stderr — it is simply carried there rather than in
+the exit code. Detecting a producer that has genuinely stopped, whose payload has
+drifted, or whose gauge directory it cannot write therefore rests on `read`'s
+`missing`/`stale` routing rather than on any signal `produce` emits: on a
+mid-session payload drift or a mid-session write failure the gauge file already
+exists, so the surviving classification is `stale`, while a gauge that was never
+written at all classifies as `missing` when the gauge directory is absent or
+traversable, and exits `2` as a malformed gauge when that directory cannot be
+traversed or is not a directory at all — `classify_reading` routes a `stat`
+that raises any `OSError` other than `FileNotFoundError` to `MalformedGauge`.
+That is a dependency on the reader's routing, not an unconditional guarantee
+from `produce`.
 
 The installer embeds `sys.executable` — the interpreter now running — rather than
 a bare `python3`/`python` token, because the status line runs under whatever the
@@ -941,7 +968,22 @@ def cmd_produce(args) -> int:
             # Ordering is load-bearing: publish the gauge BEFORE running the
             # wrapped command, so a slow or failing wrapped command cannot cost
             # this refresh its reading.
-            write_gauge(record)
+            try:
+                write_gauge(record)
+            except OSError as error:
+                # The gauge is best-effort; the display is not. An unwritable or
+                # full gauge directory must not blank the operator's status line.
+                # Catch here rather than inside `write_gauge`: pure functions
+                # raise, the CLI layer disposes. `OSError` and not `Exception` —
+                # `record` came from a `json.loads` result, so the `json.dumps`
+                # inside `write_gauge` cannot raise `TypeError` on this path, and
+                # a broader catch would swallow genuine bugs. The wrapped call
+                # covers all three failure points: the `mkdir`, the `open`, and
+                # the implicit flush/close where ENOSPC/EDQUOT surface. On the
+                # `mkdir` and `open` arms `error` already carries the offending
+                # path, so naming the gauge-file path here would be redundant on
+                # the `open` failure and wrong on the `mkdir` one.
+                warn(f"cannot publish the context gauge: {error}")
         # A payload with no usable session identity writes nothing, but the
         # display still has to be emitted — the operator's status line does not
         # get to go blank just because this refresh had no session context.
