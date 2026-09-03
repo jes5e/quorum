@@ -2,10 +2,11 @@
 id: b.ebw
 type: bee
 title: 'Unify the two temp-directory conventions: helpers use tempfile.gettempdir(), skill prose uses literal /tmp/.quorum'
-status: open
-created_at: '2026-09-03T02:22:21.827998'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-03T02:22:21.827998'
+status: open
+schema_version: '0.1'
 guid: ebwzp17xytpiod5u63mnia9y8cqzyff6
 ---
 
@@ -43,4 +44,10 @@ Surfaced by the fresh-eyes plan review of Plan b.d8n (2026-09-03), which noted t
 
 - Deferred out of Plan b.d8n rather than folded in: the plan's purpose is to shrink the guard; changing a repo-wide convention inside it would widen its blast radius.
 - Option (b) rejected: violates the single-literal-command bash etiquette and would touch dozens of snippets.
+
+## Deferred from /quo-fix-issue run (2026-09-03 22:25)
+
+Surfaced while fixing Issue b.y2q (commit b2b113e on `fix/b.y2q`), which hardened `skills/quo-setup/scripts/context_gauge.py` so an unwritable, read-only, or full gauge directory no longer blanks the status line.
+
+**Carry the shared-tempdir ownership hazard into the unification decision.** That fix hardens the *helper*, which resolves `<tempdir>` via `tempfile.gettempdir()`. Skill prose still writes the run-state manifests, `--body-file` scratch files, and the compromise tracker to the literal `/tmp/.quorum` with no tolerance path at all, so it retains the full shared-`/tmp` exposure b.y2q's Impact section describes: `/tmp` is world-writable with the sticky bit, the first user to create `/tmp/.quorum` owns it, and every other user's prose-side write then fails (and a non-traversable directory, e.g. created under `umask 077`, makes the reader exit `2` rather than report `missing`). On macOS the two conventions resolve to genuinely different directories (`$TMPDIR` vs `/tmp`), so one can be writable while the other is not. Whichever option this Issue picks should decide the collision-and-permissions behavior for the prose side explicitly — e.g. what a skill does when `mkdir -p /tmp/.quorum` succeeds but the directory is owned by another user — rather than inheriting it silently. Option (a) as written moves the helper *onto* the exposed path, so this consideration bears on the choice, not just on its follow-through.
 
