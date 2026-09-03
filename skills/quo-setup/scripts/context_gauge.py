@@ -252,8 +252,10 @@ Reader output values
   populated yet.
 - `stale` — the file exists but was last written longer ago than the freshness
   window. The producer appears to have stopped updating.
-- `missing` — no gauge file exists for this session. Usually means no producer
-  is configured in this environment.
+- `missing` — no gauge file exists for this session, and the gauge directory is
+  absent or traversable. Usually means no producer is configured in this
+  environment. A gauge directory that cannot be traversed, or that is not a
+  directory at all, is reported as a malformed gauge instead — see `Exit codes`.
 
 Fail-safe rules a consumer MUST honor
 -------------------------------------
@@ -279,9 +281,11 @@ The split is per subcommand.
 - `read` returns `0` for every normal reading value, including `missing`,
   `stale`, and `no-reading` — these are ordinary conditions, not errors, and a
   consumer must be able to distinguish them from a crash. It returns `2` only on
-  a malformed gauge file (unreadable or non-conforming), reported as a single
-  human-readable line on stderr, with an invalid `--session-id` or an argparse
-  usage error also exiting `2`.
+  a malformed gauge file (unreadable or non-conforming), or on a gauge directory
+  that cannot be traversed or is not a directory at all — the latter reachable
+  with no gauge file present, since the `stat` fails before absence can be
+  established. Either is reported as a single human-readable line on stderr,
+  with an invalid `--session-id` or an argparse usage error also exiting `2`.
 - `stop-threshold` returns `0`; its only non-zero exit is an argparse usage
   error, which is raised before `cmd_stop_threshold` runs.
 
@@ -323,16 +327,16 @@ stdin that did not parse as a JSON object, and a gauge write that raised
 `OSError` (the gauge directory unwritable, read-only, or full — ordinary on a
 shared machine, where the first user to create the directory under a
 world-writable temporary directory owns it and every other user's producer then
-fails on every refresh). All three now take the wrap path
-and exit `0`. The write failure is caught at its call site in `cmd_produce`
-rather than inside `write_gauge`, because the never-blank guarantee is a
-property of the process's exit code and stdout, which only `cmd_produce` owns:
-the pure function raises and the CLI layer disposes, the same layering
-`classify_reading` and `cmd_read` use. Pre-checking writability was rejected as
-a TOCTOU-shaped duplicate of the write itself, blind to a full or read-only
-filesystem; falling back to another directory was rejected because it would
-violate the never-write-outside-the-gauge-directory invariant above and the
-reader would report `missing` anyway. The alternative of emitting the display
+fails on every refresh). All three now take the wrap path and exit `0`. The
+write failure is caught at its call site in `cmd_produce` rather than inside
+`write_gauge`, because the never-blank guarantee is a property of the process's
+exit code and stdout, which only `cmd_produce` owns: the pure function raises
+and the CLI layer disposes, the same layering `classify_reading` and `cmd_read`
+use. Pre-checking writability was rejected as a TOCTOU-shaped duplicate of the
+write itself, blind to a full or read-only filesystem; falling back to
+another directory was rejected because it would violate the
+never-write-outside-the-gauge-directory invariant above and the reader would
+report `missing` anyway. The alternative of emitting the display
 while still exiting non-zero was rejected: per the harness behavior cited in the
 invariant above, the status line is blanked on a non-zero exit code regardless of
 what was printed, so a non-zero exit cannot coexist with a preserved display. No
@@ -860,6 +864,10 @@ def write_gauge(record: dict) -> Path:
 
     Writes only ever land under `gauge_dir()`, keyed by session identifier so
     concurrent sessions cannot collide.
+
+    Propagates `OSError` from `ensure_gauge_dir`, from `open`, and from the
+    implicit flush/close on exit from the `with` block: this function does not
+    dispose of a write failure, its caller does.
     """
     ensure_gauge_dir()
     path = gauge_path(record["session_id"])
@@ -979,11 +987,14 @@ def cmd_produce(args) -> int:
                 # inside `write_gauge` cannot raise `TypeError` on this path, and
                 # a broader catch would swallow genuine bugs. The wrapped call
                 # covers all three failure points: the `mkdir`, the `open`, and
-                # the implicit flush/close where ENOSPC/EDQUOT surface. On the
-                # `mkdir` and `open` arms `error` already carries the offending
-                # path, so naming the gauge-file path here would be redundant on
-                # the `open` failure and wrong on the `mkdir` one.
-                warn(f"cannot publish the context gauge: {error}")
+                # the implicit flush/close where ENOSPC/EDQUOT surface. The
+                # message names the gauge *directory* because that is the one
+                # location correct on all three arms, and because the
+                # exception's own `filename` is absent on the flush/close arm
+                # (ENOSPC surfaces as a bare "No space left on device" with no
+                # path). Naming the gauge-*file* path instead would be wrong on
+                # the `mkdir` arm, which never reaches the file.
+                warn(f"cannot publish the context gauge under {gauge_dir()}: {error}")
         # A payload with no usable session identity writes nothing, but the
         # display still has to be emitted — the operator's status line does not
         # get to go blank just because this refresh had no session context.
@@ -1044,7 +1055,10 @@ def classify_reading(
     except OSError as error:
         # Present but un-stat-able (permissions, a non-directory component in
         # the path): not a normal state, so it is malformation, not `missing`.
-        raise MalformedGauge(f"cannot stat gauge file: {error}") from error
+        raise MalformedGauge(
+            f"cannot stat gauge file (is the gauge directory {gauge_dir()} "
+            f"present as a directory you can traverse?): {error}"
+        ) from error
 
     # (b) Staleness is checked BEFORE parsing, on purpose: a stalled producer's
     # last write is untrustworthy no matter what it contains. A consequence

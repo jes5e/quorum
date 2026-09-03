@@ -852,7 +852,7 @@ The opt-out marker lives at `<tempdir>/.quorum/context-guard-opt-out` (on POSIX,
 
 #### Troubleshooting
 
-If a later session's status line comes up blank, or the workflow reports that it has no reading, diagnose through the reader's two classifications — no reading is being published, or a reading has stopped refreshing — rather than expecting a loud failure. Re-running the inspector above shows the current `producer_state` and whether the composed command is `producer_current`; a `foreign` or `absent` state, or `producer_current` false, means the producer is not wired in for this session and this step can be re-offered to fix it.
+If a later session's status line comes up blank, or the workflow reports that it has no reading, diagnose through the reader's two classifications — no reading is being published, or a reading has stopped refreshing — rather than expecting a loud failure. Re-running the inspector above shows the current `producer_state` and whether the composed command is `producer_current`; a `foreign` or `absent` state, or `producer_current` false, means the producer is not wired in for this session and this step can be re-offered to fix it. The opposite pairing — the inspector reports a healthy `direct` or `wrapped` producer that is `producer_current`, yet the workflow still reports no reading (`read` says `missing`) — means the producer is wired in but most likely unable to write its gauge; check the ownership and permissions of the gauge directory `<tempdir>/.quorum` (on POSIX, `/tmp/.quorum`; on Windows, `%TEMP%\.quorum`), which on a shared machine may already belong to another user.
 
 #### Fast path
 

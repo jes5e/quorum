@@ -907,6 +907,14 @@ def unwritable_gauge_dir(request, tmp_path):
       `ensure_gauge_dir`'s `mkdir` raises `FileExistsError` (an `OSError`
       subclass). This arm is uid- and platform-independent, and it is the ONLY
       one that exercises the `mkdir` failure point; the `open` never runs.
+      That platform-independence covers the PRODUCE side only. A reader that
+      later `stat`s a path through this same non-directory component fails with
+      a class this suite has verified on POSIX (`NotADirectoryError`) and has
+      NOT verified on Windows, where a file in a path component is reported as
+      `ERROR_PATH_NOT_FOUND` in at least some cases — which Python surfaces as
+      `FileNotFoundError`, i.e. `missing` rather than malformation. Consumers
+      that assert the reader-side class therefore skip on Windows and say so;
+      consumers that only assert the produce-side behavior run everywhere.
     - `readonly` — a real directory at mode `0o555`, so the `mkdir` succeeds
       (`exist_ok=True`) and the `open(path, "w")` inside `write_gauge` raises
       `PermissionError`. This is the shipped-defect shape from the field report,
@@ -1291,6 +1299,17 @@ def test_classify_reading_non_utf8_gauge_is_malformed(monkeypatch, tmp_path):
     assert "not valid UTF-8" in str(excinfo.value)
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason=(
+        "POSIX-only sabotage: a file at a path COMPONENT raises NotADirectoryError "
+        "on POSIX, but Windows may report ERROR_PATH_NOT_FOUND -> FileNotFoundError, "
+        "which classify_reading routes to `missing`, not MalformedGauge. Unverified "
+        "on Windows. To lift this skip, confirm what Path.stat() raises there for a "
+        "path whose parent is a regular file; if it is FileNotFoundError, this branch "
+        "needs a different Windows-side un-stat-able trigger, not a weaker assertion."
+    ),
+)
 def test_classify_reading_un_stat_able_gauge_is_malformed(monkeypatch, tmp_path):
     """A gauge whose `stat` raises is malformation, NOT `missing`.
 
@@ -1303,12 +1322,15 @@ def test_classify_reading_un_stat_able_gauge_is_malformed(monkeypatch, tmp_path)
     realistic simplification that no other unit test would catch.
 
     The un-stat-able condition is built structurally rather than with
-    permissions, so it holds under any uid and on Windows: a regular FILE sits
-    where the `.quorum` directory belongs, making `.quorum` a non-directory
-    component of the gauge path, so `stat` raises `NotADirectoryError`. This is
-    the unit twin of the CLI-layer `blocked` arm in
+    permissions, so it holds under any uid: a regular FILE sits where the
+    `.quorum` directory belongs, making `.quorum` a non-directory component of
+    the gauge path, so `stat` raises `NotADirectoryError`. That stat-failure
+    class is POSIX-verified and Windows-UNVERIFIED — hence the `skipif` above
+    rather than a claim of platform independence. This is the unit twin of the
+    CLI-layer `blocked` arm in
     `test_cli_a_failed_publish_leaves_the_reader_with_no_usable_reading` — the
-    module's unit-pins-the-branch / CLI-pins-the-shape pattern.
+    module's unit-pins-the-branch / CLI-pins-the-shape pattern — and that arm's
+    reader-side assertion carries the same skip for the same reason.
     """
     _patch_tempdir(monkeypatch, tmp_path)
     session_id = TEST_SESSION_PREFIX + "un-stat-able"
@@ -2279,7 +2301,10 @@ def test_cli_a_failed_publish_leaves_the_reader_with_no_usable_reading(
       helper ("present but un-stat-able ... a non-directory component in the
       path"), not a defect: an un-stat-able path is not evidence of absence.
       Asserting `missing` here would be asserting the decision record's prose
-      over the code's documented behavior.
+      over the code's documented behavior. This reader-side class is
+      POSIX-verified and Windows-UNVERIFIED, so this arm's post-`read`
+      assertions skip on Windows (the `produce` half above still runs there —
+      the `mkdir` `FileExistsError` is platform-independent).
     - `gauge-path-is-dir` — a directory occupies the gauge FILE's path, so `stat`
       succeeds (a directory has an mtime, and it is fresh), staleness passes, and
       `read_text` raises `IsADirectoryError` -> `MalformedGauge` -> exit 2. Same
@@ -2301,6 +2326,18 @@ def test_cli_a_failed_publish_leaves_the_reader_with_no_usable_reading(
     # True in every arm, and the load-bearing half: a lost reading is never
     # reported as a percentage.
     assert not res.stdout.strip().isdigit()
+    if unwritable_gauge_dir.arm == "blocked" and os.name == "nt":
+        pytest.skip(
+            "POSIX-only sabotage: a file at a path COMPONENT raises "
+            "NotADirectoryError on POSIX, but Windows may report "
+            "ERROR_PATH_NOT_FOUND -> FileNotFoundError, which classify_reading "
+            "routes to `missing` (exit 0), not MalformedGauge (exit 2). "
+            "Unverified on Windows. To lift this skip, confirm what Path.stat() "
+            "raises there for a path whose parent is a regular file; if it is "
+            "FileNotFoundError, this arm needs a different Windows-side "
+            "un-stat-able trigger, not a weaker assertion. The produce-side "
+            "assertions above already ran on this platform."
+        )
     if unwritable_gauge_dir.arm == "readonly":
         assert res.returncode == 0, res.stderr
         assert res.stdout == "missing\n"
@@ -2330,6 +2367,16 @@ def test_cli_produce_never_crashes_across_the_adverse_environment_matrix(
     wrong assertion — parse failures were covered, filesystem failures were not,
     and no single-axis test would have noticed. Deliberately thin: stdout content
     is the named tests' job, so widening this one is not the fix if it ever fails.
+
+    Read the coverage claim precisely, because the axes are not equally live: the
+    `unparseable` and `empty` stdin shapes bail before `write_gauge` is ever
+    reached, so the gauge-dir sabotage is INERT in 18 of the 27 cases and those
+    re-cover the blanking shape already pinned by the named parse-failure tests.
+    The 9 `valid`-stdin cases are the sweep that actually exercises this fix. The
+    other 18 are kept on purpose rather than trimmed: the defect being guarded is
+    a missing COMBINATION, so the guard has to be the full cross-product — a
+    matrix pruned to the combinations someone believed were live is exactly the
+    reasoning that let the original gap through.
     """
     if stdin_kind == "valid":
         stdin = json.dumps(
