@@ -9,7 +9,7 @@ tags:
 parent: null
 reference_materials: null
 created_at: '2026-09-02T20:22:55.360353'
-status: open
+status: done
 schema_version: '0.1'
 guid: pdqp21jwfhrrmau3crp3xzwmiubkez8v
 ---
@@ -54,4 +54,3 @@ event_consumer_service Issue b.239, 2026-09-02:
 ## Amendment 2 (2026-09-02) — Engineer completeness evidence on sweep-type directives
 
 Sequencing removed rework but did not shorten the round count on the reference run: Engineer rounds 4, 5, 6 and 7 each closed "the last" redaction site and each declared the sweep complete, and each was then shown one more site by the next review. When a directive includes a sweep (every site an invariant touches — see the sibling Analyst ticket), the Engineer's deliverable MUST include a **completeness check with evidence**: the search patterns run, every hit, and for each hit either the change made or the reason it is deliberately untouched. The reviewer verifies the diff against that list (and against the Analyst's Blast radius list) instead of rediscovering sites from scratch, so an incomplete sweep is caught as a list gap in one round rather than as a new finding per round. Add to `agents/engineer.md` (fix mode and execute mode) and to the Code Reviewer's checklist.
-
