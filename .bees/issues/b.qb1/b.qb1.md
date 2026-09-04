@@ -2,10 +2,11 @@
 id: b.qb1
 type: bee
 title: 'Review loops must converge: delta re-review, blockers and regressions only after round 1, round-3 cap'
-status: open
-created_at: '2026-09-04T00:02:06.972824'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-04T00:02:06.972824'
+status: open
+schema_version: '0.1'
 guid: qb1cdqsrts315zuyxi328p3c76ik49in
 ---
 
@@ -37,4 +38,15 @@ Round count on every run, without lowering the quality gate: blockers and regres
 ## Background and rationale
 
 Surfaced by the speed review of 2026-09-03 (b.y2q, b.pdq). Complements Issue b.nn8's mechanism-introducing-finding rule: b.nn8 keeps later rounds from *building* new machinery; this Issue keeps them from *rediscovering* nits.
+## Amendment (2026-09-04) — the cap bounds churn, never blockers; "delta" means the change and everything it reaches
+
+Reviewed against large compiled codebases (Rust, C++), where a small textual change can break an invariant far from the diff and where round-2/3 findings are often genuine. Three corrections to the expected behavior above:
+
+1. **Scope of a re-review is the delta plus its reach, never the changed lines alone.** Round N+1's brief: examine the changes since round N *and everything they touch* — call sites, trait/interface bounds and impls, error-propagation paths, ownership/lifetime and borrow assumptions, `unsafe` or otherwise contract-bearing blocks whose safety argument depends on the changed behavior, concurrency assumptions (`Send`/`Sync`, locks, async cancellation), and public API/ABI surfaces. What is excluded from later rounds is *rediscovery of style and clarity items in unchanged code*, not analysis of what the change affects.
+
+2. **Blockers are never capped.** The round-3 rule bounds `suggestion`/`nit` churn only: after round 3, new suggestions and nits are recorded as acknowledged in the report. A `blocker` or a correctness regression is re-reviewed until clean in every round, at any round number. What changes at round 3 is the *response* to a blocker, not whether it is reviewed: three consecutive rounds that each produce a new blocker mean the fix is being designed by review — the orchestrator stops building and escalates through the scope-bounding gate (fix properly with a re-Analyst pass / defer to a follow-up Issue / accept the limitation), with the reviewer's findings attached, rather than dispatching a fourth blind fix.
+
+3. **No churn cap on cross-cutting changes without consent.** When the Analyst's blast radius is Tier 3 (multiple subsystems or a shared library — Issue b.3og's tiers), the suggestion/nit cap does not apply automatically; the orchestrator surfaces the round count at the gate and the user chooses whether to bound it. On such changes a "suggestion" about a second subsystem is often a latent blocker.
+
+Compiler and test gates are unaffected by this Issue: the Engineer's Compile/type-check, Lint, and Narrow/Full test runs happen on every round regardless of review-round rules.
 
