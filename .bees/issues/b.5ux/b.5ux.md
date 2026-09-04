@@ -2,10 +2,11 @@
 id: b.5ux
 type: bee
 title: '/quo-execute ordering gaps after b.pdq: PM in-flight review, test-Subtask fan-out'
-status: open
-created_at: '2026-09-04T01:58:24.486826'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-04T01:58:24.486826'
+status: open
+schema_version: '0.1'
 guid: 5ux8y5jogpfghfbq882dnw54wf13azhx
 ---
 
@@ -43,11 +44,11 @@ Correctness of the review and fingerprint guarantees b.pdq introduced, in execut
 2. Same section, per-Task PM dispatch (Section 4.1): add the analogous precondition — do not dispatch `pm-<task-id>` while any `engineer-<subtask-id>` for a Subtask of that Task is `pending` or `in_progress` — and reference it from part (g) Clause 1 so a re-dispatch round's PM review waits for every same-Task Engineer, not only the one the round dispatched.
 3. Update the TaskList naming-convention prose and Section 4.1's close-out sweep if either precondition needs a new name form (it should not — both key on existing `engineer-<subtask-id>` / `pm-<task-id>` names).
 4. Mirror the two limitation notes b.pdq left in the fingerprint-list bullet (~"the union covers only Engineer returns the orchestrator holds at dispatch time") into statements that the precondition now makes the union complete for same-Task siblings.
-5. Docs: `docs/sdd.md` `## Orchestration in execution skills` "Cold dispatch for all roles" bullet and the b.pdq `### Feature:` entry's "Why the `/quo-execute` mirror is deliberately narrow" paragraph must be re-qualified (the forward fan-out stays concurrent across Tasks and across implementation Subtasks; only the Test Writer lane and the per-Task PM now wait for same-Task Engineers). `README.md` "Parallel by construction" line may need a clause. Tests: extend `tests/test_review_lane_ordering_contract.py` (precondition presence, prefix + status matching) and `tests/test_tasklist_name_class_closeout.py` if any name form changes.
+5. Docs: `docs/sdd.md` `## Orchestration in execution skills` "Cold dispatch for all roles" bullet and the b.pdq `### Feature:` entry's "Why the `/quo-execute` mirror is deliberately narrow" paragraph must be re-qualified (the forward fan-out stays concurrent across Tasks and across implementation Subtasks; only the Test Writer lane and the per-Task PM now wait for same-Task Engineers). `README.md` "Parallel by construction" line may need a clause. Tests: extend `tests/test_review_lane_ordering_contract.py` (precondition presence, prefix + status matching) — note that its `EXPECTED_PRECONDITIONS = 3` non-vacuity floor counts `MUST NOT dispatch … Engineer` precondition lines per orchestrator and must be raised to match the new preconditions or the test fails — and `tests/test_tasklist_name_class_closeout.py` if any name form changes.
 
 ## Background and rationale
 
-Both gaps were found by the Code Reviewer during b.pdq (rounds 5 and 6) as second-order effects of the fixes landing there. The reviewer sketched fix 1 as a `[new-machinery]` path and the orchestrator deferred it under the run's convergence rule (a finding whose fix introduces a new state, name class, gate, marker, close-out or precondition is a design change to file, not build). Sub-finding 1 was recorded by the Analyst at b.pdq's design gate as a genuine open question distinct from that Issue's defect.
+Sub-finding 1 was recorded by the Analyst at b.pdq's design gate as a genuine open question distinct from that Issue's defect (`### Deferred refinements`, destination new Issue). Sub-finding 2 was found by the Code Reviewer during b.pdq (round 6) as a second-order effect of the parent-Task union rule; the reviewer sketched fix 1 as a `[new-machinery]` path and the orchestrator deferred it under the run's convergence rule (a finding whose fix introduces a new state, name class, gate, marker, close-out or precondition is a design change to file, not build).
 
 ## Decisions and rejected alternatives
 
