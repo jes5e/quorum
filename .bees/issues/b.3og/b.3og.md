@@ -2,10 +2,11 @@
 id: b.3og
 type: bee
 title: Size the /quo-fix-issue pipeline to the Analyst's blast radius (tiered lanes and post-completion sweep)
-status: open
-created_at: '2026-09-04T00:02:05.471397'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-04T00:02:05.471397'
+status: open
+schema_version: '0.1'
 guid: 3ogo7uvu5sxpd4gffww95zjhyvzz1bn1
 ---
 
@@ -41,4 +42,7 @@ Speed on the most common case. Most Issues in a normal code project are Tier 1; 
 ## Background and rationale
 
 Surfaced by the speed review of 2026-09-03 across the b.y2q and b.pdq runs. Filed stack-neutrally: the tiers are defined by surfaces a code change touches, not by this repo's prose structure.
+## Amendment (2026-09-04) — reviewers can escalate the tier
+
+Tiering must not make blast-radius under-estimation silent. Any reviewer (code, test, doc, PM, or the post-completion sweep) that finds a site, surface, or dependency **outside the Analyst's `### Blast radius` list** reports it as a finding against the Analyst pass (per Issue b.q3f) **and the orchestrator escalates the tier** — Tier 1 → 2 when a public API, schema, wire, config, or doc surface appears; any tier → 3 when a second subsystem or shared library appears — re-dispatching the lanes the lower tier skipped (Doc Writer / doc reviewer; full-mode post-completion sweep) for the remainder of the run. Record the escalation and its cause in the run-state manifest and the final report. This is the quality guard for the speed gain: a wrong tier costs one extra dispatch, never a skipped lane.
 
