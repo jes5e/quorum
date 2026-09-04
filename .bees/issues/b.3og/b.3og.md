@@ -45,4 +45,13 @@ Surfaced by the speed review of 2026-09-03 across the b.y2q and b.pdq runs. File
 ## Amendment (2026-09-04) — reviewers can escalate the tier
 
 Tiering must not make blast-radius under-estimation silent. Any reviewer (code, test, doc, PM, or the post-completion sweep) that finds a site, surface, or dependency **outside the Analyst's `### Blast radius` list** reports it as a finding against the Analyst pass (per Issue b.q3f) **and the orchestrator escalates the tier** — Tier 1 → 2 when a public API, schema, wire, config, or doc surface appears; any tier → 3 when a second subsystem or shared library appears — re-dispatching the lanes the lower tier skipped (Doc Writer / doc reviewer; full-mode post-completion sweep) for the remainder of the run. Record the escalation and its cause in the run-state manifest and the final report. This is the quality guard for the speed gain: a wrong tier costs one extra dispatch, never a skipped lane.
+## Amendment 2 (2026-09-04) — strict form: never skip a reviewer; tiering skips only the Doc Writer dispatch when there is provably nothing to write
+
+Supersedes the Tier 1 lane set in the Expected behavior. Quality is non-negotiable, so no tier may reduce what is *reviewed*. The final shape:
+
+- **Every reviewer runs in every tier:** code review, test review, doc review, PM traceability, and the fresh post-completion sweep — all in full mode, all tiers. No blocker-only mode.
+- **The only lane tiering may drop is the Doc Writer dispatch**, and only when two independent sources agree there is nothing to write: the Analyst's `### Blast radius` lists no customer-facing, architecture, or shipped-skill doc site, **and** the PM's traceability pass confirms no doc surface is affected. The doc reviewer still runs and confirms the no-doc-impact conclusion against the diff; if it finds a doc site, the Doc Writer is dispatched (the escalation rule in the first amendment).
+- **Tier is still derived and recorded** (Tier 1/2/3 from the blast radius) and surfaced at the design gate, because b.q3f's Engineer completeness-evidence requirement and b.qb1's escalation thresholds key on it — but it no longer gates any review.
+
+The remaining speed gain is honest but smaller: one avoided cold Doc Writer dispatch on doc-free changes, and the reviewers' round-N briefs from b.qb1. If Issue b.7wb's phase timings later show review lanes dominate small-fix wall-clock, revisit with data, not by default.
 

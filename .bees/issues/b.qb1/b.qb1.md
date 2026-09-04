@@ -49,4 +49,14 @@ Reviewed against large compiled codebases (Rust, C++), where a small textual cha
 3. **No churn cap on cross-cutting changes without consent.** When the Analyst's blast radius is Tier 3 (multiple subsystems or a shared library — Issue b.3og's tiers), the suggestion/nit cap does not apply automatically; the orchestrator surfaces the round count at the gate and the user chooses whether to bound it. On such changes a "suggestion" about a second subsystem is often a latent blocker.
 
 Compiler and test gates are unaffected by this Issue: the Engineer's Compile/type-check, Lint, and Narrow/Full test runs happen on every round regardless of review-round rules.
+## Amendment 2 (2026-09-04) — strict form: no cap at any severity; convergence of attention only
+
+Supersedes the round-3 cap in the Expected behavior and in the first amendment. Quality is non-negotiable, so this Issue must not stop review at any severity. The final shape:
+
+1. **No round cap on any finding.** `blocker`, `suggestion`, and `nit` items are all reportable and all addressed in every round, at any round number. Nothing is "acknowledged instead of fixed" by a counter.
+2. **Speed comes only from not repeating.** Round N+1's brief: (a) review the change since round N **and everything it reaches** (call sites, trait/interface bounds and impls, error-propagation paths, ownership/borrow assumptions, `unsafe` or contract-bearing blocks, concurrency assumptions, public API/ABI surfaces); (b) do **not** re-litigate unchanged code the previous round already reviewed, and do not re-raise an item already recorded unless the fix regressed it; (c) every finding must be *new* relative to the prior rounds' lists, which are embedded in the dispatch prompt. This removes rediscovery — the source of b.y2q's four doc rounds and most of b.pdq's 35 post-round-1 findings — without removing coverage.
+3. **Escalation, not cutoff, when blockers keep coming.** Three consecutive rounds that each produce a new blocker mean the fix is being designed by review; the orchestrator stops dispatching blind fixes and escalates through the scope-bounding gate (re-Analyst / defer to a follow-up Issue with the findings attached / accept) — a design signal for the user, never a reason to skip a round.
+4. Compiler, lint, and Narrow/Full test gates run on every round regardless.
+
+The tests this Issue adds must pin that no orchestrator prose contains a numeric round limit that suppresses findings.
 
