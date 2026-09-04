@@ -49,6 +49,11 @@ The README->`docs/*` carve-out (a `README.md` link to `docs/*` is legitimate —
 README is not installed via `cp -r skills/*`) needs no handling here because
 README.md is not a shipped artifact and is not scanned.
 
+The shipped tree itself is enumerated by `conftest.shipped_artifacts()` rather
+than by a glob local to this module: a second prose-contract module asserts a
+different property over the same set, and two enumerators would drift into
+disagreeing about where the shipped boundary is.
+
 `README.md` is ALSO intentionally omitted from the detector's repo-only-doc
 token set (the `docs/*`|`CONTRIBUTING.md`|`CLAUDE.md` alternation in
 `CITATION_TAIL`) — not merely unscanned as a scan *source*. Unlike internal
@@ -64,7 +69,7 @@ not add it.
 
 import re
 
-from conftest import REPO_ROOT
+from conftest import REPO_ROOT, read, shipped_artifacts
 
 # Target-repo CLAUDE.md contract keys every skill legitimately reads from the
 # *installing* project's CLAUDE.md. These are the only doc-plus-section citation
@@ -85,20 +90,6 @@ CITATION_TAIL = re.compile(
     r"(?:docs/[\w.-]+\.md|CONTRIBUTING\.md|CLAUDE\.md)"
     r"`?\s*`##\s*(?P<section>[^`]+?)\s*`"
 )
-
-
-def shipped_artifacts():
-    """Every file the install procedure copies into a target project.
-
-    `skills/*` and `agents/*` ship wholesale, so this covers every SKILL.md,
-    every bundled helper script, and every role contract. Returned repo-root
-    relative for readable failure messages.
-    """
-    paths = []
-    paths += sorted((REPO_ROOT / "skills").rglob("*.md"))
-    paths += sorted((REPO_ROOT / "skills").rglob("*.py"))
-    paths += sorted((REPO_ROOT / "agents").rglob("*.md"))
-    return [p for p in paths if "__pycache__" not in p.parts]
 
 
 def dangling_citations(text):
@@ -126,7 +117,7 @@ def test_no_shipped_artifact_cites_a_repo_only_doc_section():
     offenders = []
     for path in artifacts:
         rel = path.relative_to(REPO_ROOT)
-        for section, line_no in dangling_citations(path.read_text(encoding="utf-8")):
+        for section, line_no in dangling_citations(read(path)):
             offenders.append(f"{rel}:{line_no}: dangling citation to `## {section}`")
 
     assert not offenders, (

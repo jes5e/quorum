@@ -10,7 +10,7 @@ tags:
 parent: null
 reference_materials: null
 created_at: '2026-09-02T20:22:55.435746'
-status: open
+status: done
 schema_version: '0.1'
 guid: nn8fqmxghiy55q5ncjmt1w6popxb16s9
 ---
@@ -68,4 +68,3 @@ The mechanism-introducing-finding rule above must be phrased for code projects i
 1. **Route the new `Orchestrator picked path` decision through part (g), not around it.** Whatever path the orchestrator picks, if it changes source the dispatch must follow (g)'s ordering. State that in the rewritten table's routing column or in (g)'s lead sentence, whichever reads as the single rule.
 2. **Refresh part (g)'s cross-references.** It currently cites "part (a)" (the auto-dispatch row) and "the gate in part (c) or (d)"; after the rewrite confirm those referents still exist and still mean what (g) assumes. Also re-read `skills/quo-engineer-review/SKILL.md`'s compatibility constraint ("the numbered list stays the sole routing surface, so `(num-paths, max-depth)` remains the orchestrator's only parse input") — depth tags survive your table, so the constraint survives in substance, but its wording names the old tuple.
 3. **Route part (d)'s `Cancel` option through the shared aborted-unit close-out.** Today (d)'s `Cancel` "aborts the current Issue's fix run (proceed to the next Issue in batch / `all` mode, or end cleanly if none remain)". That exit predates the close-out and skips it: it does not sweep `aborted-*` markers, does not run Section 7.5's deferral-hygiene gate, and does not run the Issue-boundary state-externalization checkpoint on its aborted path or the batch-mode context-window guard. Point (d)'s `Cancel` at `#### Aborted-Issue close-out` (and its `/quo-execute` mirror at `##### Aborted-run close-out`) so all three abort routes behave identically. The b.pdq `### Feature:` entry in `docs/sdd.md` names the two routers that exist today; add the third when you land this.
-

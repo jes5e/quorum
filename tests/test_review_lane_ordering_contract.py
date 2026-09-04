@@ -30,6 +30,7 @@ from conftest import (
     QUO_EXECUTE,
     QUO_FIX_ISSUE,
     read,
+    routing_section,
 )
 
 ORCHESTRATORS = (
@@ -37,13 +38,24 @@ ORCHESTRATORS = (
     QUO_EXECUTE,
 )
 
-ROUTING_SECTION_HEADING = "### Orchestrator discipline: routing review findings"
 PART_G_MARKER = "**(g) Re-dispatch ordering when a fix path changes source.**"
 
-# Stable phrases from part (g)'s ordering rule. Both skills carry these
-# byte-identically even though the middle of the sentence differs (`/quo-execute`
-# names two code-review sites, `/quo-fix-issue` one).
+# Stable phrases from part (g)'s lead and its ordering rule. Both skills carry
+# these byte-identically even though the middle of the sentence differs
+# (`/quo-execute` names two code-review sites, `/quo-fix-issue` one).
+#
+# The first entry is part (g)'s back-reference to where a finding's routing gets
+# settled. It names **both** origins — the orchestrator's own path pick under
+# part (a) *and* the user's pick at gate (c)/(d). The retired wording said
+# "auto-dispatch per part (a)", which mislabels part (a) as an automatic
+# dispatch rather than a decision the orchestrator makes; pinning the trailing
+# "or the user's pick..." half alone would not catch a revert, because that half
+# is common to both wordings. The bold markers are included: they are part of
+# the byte-identical text, and the surrounding entries quote their emphasis
+# markers the same way.
 ORDERING_PHRASES = (
+    "**the orchestrator's own path pick per part (a), or the user's pick at "
+    "the gate in part (c) or (d)**",
     "are **ordered, not concurrent**",
     "dispatch the **Engineer** first",
     "only once that code review has closed dispatch the **Test Writer** and/or "
@@ -143,22 +155,6 @@ def precondition_lines(relpath):
     ]
 
 
-def routing_section(text):
-    """The `### Orchestrator discipline: routing review findings` section."""
-    lines = text.splitlines()
-    starts = [i for i, line in enumerate(lines) if line.strip() == ROUTING_SECTION_HEADING]
-    assert len(starts) == 1, (
-        f"expected exactly one {ROUTING_SECTION_HEADING!r} heading, got {len(starts)}"
-    )
-    start = starts[0]
-    end = len(lines)
-    for j in range(start + 1, len(lines)):
-        if re.match(r"^#{1,3} ", lines[j]):
-            end = j
-            break
-    return "\n".join(lines[start:end])
-
-
 def test_both_orchestrators_carry_part_g():
     """Part (g) exists in both skills' routing-findings section."""
     for relpath in ORCHESTRATORS:
@@ -170,7 +166,13 @@ def test_both_orchestrators_carry_part_g():
 
 
 def test_part_g_names_the_engineer_then_review_then_writer_ordering():
-    """Part (g) states the Engineer -> code review -> writer ordering."""
+    """Part (g) states the Engineer -> code review -> writer ordering.
+
+    Also pins part (g)'s lead back-reference to the two places a finding's
+    routing gets settled, which is the precondition the ordering rule attaches
+    to: the orchestrator's own path pick under part (a), or the user's pick at
+    gate (c)/(d).
+    """
     for relpath in ORCHESTRATORS:
         section = routing_section(read(relpath))
         part_g = section[section.index(PART_G_MARKER):]

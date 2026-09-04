@@ -237,9 +237,16 @@ def test_clean_review_may_still_carry_effects_bullets():
 def test_subsection_is_narrative_not_a_routing_surface():
     """Actionable effects must also appear as numbered, tagged findings.
 
-    The orchestrators' routing table parses `(num-paths, max-depth)` from the
-    numbered list and from nothing else, so an actionable effect that lives only
-    in the narrative is invisible to routing.
+    The orchestrators' routing reads the numbered findings' severity tags,
+    enumerated fix paths, and per-path `[depth:<...>]`, `[preferred]`, and
+    `[introduces-mechanism]` tokens, and nothing else — so an actionable effect
+    that lives only in the narrative is invisible to routing. (Issue b.nn8
+    retired the `(num-paths, max-depth)` tuple this docstring used to name; the
+    sentence pinned below was reworded with it, but the constraint it states —
+    the numbered list is the sole routing surface — is unchanged. The input
+    *set* that sentence enumerates is pinned in
+    `test_routing_decision_contract.py`, which owns the routing contract; this
+    test owns only the narrative-vs-routing-surface split.)
     """
     text = review_text()
     assert "The numbered list remains the **sole** routing surface" in text
