@@ -1,7 +1,7 @@
 ---
 id: b.qb1
 type: bee
-title: 'Review loops must converge: delta re-review, blockers and regressions only after round 1, round-3 cap'
+title: 'Review loops: full-diff review every round by default; prior findings carried to suppress duplicates and verify fixes; blockers never deferred; three blocker rounds re-run the Analyst'
 parent: null
 reference_materials: null
 created_at: '2026-09-04T00:02:06.972824'
@@ -85,4 +85,14 @@ Amendment 2's convergence-of-attention rule means rounds 2+ examine the change a
 3. Be dispatched with the round-1 and intermediate findings **withheld** (as today), so it cannot anchor on them; anchoring is exactly what makes intermediate rediscovery low-yield.
 
 Net effect: whole-diff coverage happens twice (round 1 and the sweep); what the convergence rule removes is repeated *anchored* passes over unchanged text in between. Tests this Issue adds must pin that the sweep's dispatch prompt asks for all severities and that its findings enter the fix loop rather than the report.
+## Amendment 6 (2026-09-04) — default is full-diff review in every round; change-plus-reach scope is opt-in only
 
+Corrects Amendments 2 and 5. Each review round in this workflow is a fresh, cold agent (the reviewer contracts run cold by design), so rounds 2..N are additional independent full passes with real discovery value on untouched code — b.y2q's later doc rounds each found something that was fixed. Narrowing those rounds to the change and its reach would trade away discovery. Quality is non-negotiable, so:
+
+1. **Default: every round reviews the full diff at all severities.** No convergence-of-attention narrowing by default. The final post-completion sweep remains as today (full, cold, all severities; findings enter the fix loop).
+2. **What every round does get, with no coverage trade:** the dispatch prompt carries the prior rounds' findings and their fix status so the reviewer (a) does not re-raise an item already recorded, (b) verifies each recorded fix actually landed and did not regress, and (c) labels each new finding as new. This removes duplicate findings and lets the orchestrator see convergence, without removing a single pass.
+3. **Change-plus-reach scope is an explicit per-project opt-in**, configured in the target repo's CLAUDE.md (a documented key, default absent = full review), for teams that consciously accept the discovery trade described in Amendment 5's residual. When enabled, Amendment 5's sweep-as-backstop rules apply in full. The default installation never narrows.
+4. **Retained unchanged from Amendments 3–4:** blockers are never deferred, accepted, or counted out at any level; three consecutive new-blocker rounds trigger the automatic Analyst re-dispatch (execute mode where applicable) and the loop continues; the scope-bounding gate is unreachable for blocker severity.
+5. **Where the speed comes from instead:** Issues b.q3f and b.nn8 remove the *causes* of extra rounds (mechanisms introduced mid-run; surfaces discovered one per round); b.pdq removes writer rework; b.3og (strict) removes one avoidable dispatch. This Issue's contribution is convergence *visibility* and duplicate suppression, not fewer passes.
+
+Tests this Issue adds must pin: the default dispatch prompt asks for a full-diff review at all severities; the opt-in key is absent from the shipped skills' defaults; no numeric round limit suppresses any finding; no routing path exists from a `blocker` to defer/accept.
