@@ -30,7 +30,7 @@ Source code is anything the system *executes* or *follows as program text*. This
 - **Skill / subagent program source** in skill repos: `skills/<name>/SKILL.md` files are the program text Claude Code follows when a skill is invoked, and `agents/<name>.md` files are the program text Claude Code follows when a custom subagent is dispatched — both are source code in those repos, not natural-language documentation. Treat them as in scope. The repo's `CLAUDE.md` is the canonical signal that a repo's markdown is skill / subagent program source — if it has a `## Review criteria for skill changes` section (or equivalent), the markdown under `skills/`, `agents/`, or similar is code, not docs.
 - **Configuration that drives runtime behavior** — schema files, build manifests, lint configs — in scope when the change affects executable behavior.
 
-For markdown skill / subagent program source (`SKILL.md`, `agents/<name>.md`), apply the check categories below selectively. **Apply** these categories: #2 Architecture & Design (cross-section consistency, contract drift), #4 Code Quality (DRY / duplication / ambiguous prose only — long-function and magic-number sub-checks don't apply to prose), #7 Cross-File / Cross-Call-Site Interactions (especially reverse-dependency checks on contract-key renames and cross-skill cross-references), plus prose unambiguity and any project-specific design rules surfaced by `CLAUDE.md` (project-neutrality, OS-pairing, language-agnosticism, etc.). **Skip** categories that are language-specific by construction: #1 Dead/Obsolete Code, #3 Security & Correctness, #5 Error Handling, #6 Performance — they don't apply to natural-language prose.
+For markdown skill / subagent program source (`SKILL.md`, `agents/<name>.md`), apply the check categories below selectively. **Apply** these categories: #2 Architecture & Design (cross-section consistency, contract drift), #4 Code Quality (DRY / duplication / ambiguous prose only — long-function and magic-number sub-checks don't apply to prose), #7 Cross-File / Cross-Call-Site Interactions (especially reverse-dependency checks on contract-key renames and cross-skill cross-references), #8 Second-Order Effects (what a prose change newly exposes — an instruction that now fires on a path it did not before, a renamed contract key or emission shape a sibling skill parses, a step relocated across a gate), plus prose unambiguity and any project-specific design rules surfaced by `CLAUDE.md` (project-neutrality, OS-pairing, language-agnosticism, etc.). **Skip** categories that are language-specific by construction: #1 Dead/Obsolete Code, #3 Security & Correctness, #5 Error Handling, #6 Performance — they don't apply to natural-language prose.
 
 Out of scope for `/quo-engineer-review`:
 - **Unit test code** — covered by `/quo-test-writer-review`.
@@ -127,6 +127,22 @@ These are the issues per-Task reviews structurally miss because reviewers typica
 - **Cumulative resource accounting**: if the diff adds acquires from a bounded resource (connection pool, semaphore, mutex, queue slot), model the aggregate behavior across all call sites — including call sites in *other* files not touched by this diff. Flag starvation scenarios and lifetime-mismatch interactions (e.g., short-lived API request handlers competing for a connection pool against a new long-lived background worker that holds connections across many requests — at steady state the long-lived consumer can starve the request path).
 - **Symmetric-change check**: if the diff adds a *new* resource (key, file, queue, pool entry, etc.), search for every code path that cleans up the sibling resource class and verify the new resource is handled symmetrically. Example: adding a new `cache:user:{id}:permissions` key class in the write path requires the cache-invalidation path, the user-deletion path, and any periodic-purge job to all DELETE this key class — otherwise stale-permissions data leaks past role changes.
 
+#### 8. Second-Order Effects (CRITICAL — required on every review)
+
+**For each change in the diff, state what it newly exposes, weakens, or can now fail — not only whether it is correct.** Category #7 asks whether existing callers still hold; this category asks the forward question: granting that the change does what it intends, what *else* is now true that was not true before? A fix's consequence is often only visible once the fix has landed, so a reviewer who checks only correctness pushes that discovery into the next round.
+
+Concrete shapes to look for (illustrative, not exhaustive):
+
+- **A newly-added call on a path that previously could not fail.** Adding an operation — a log line that serializes an object, a metrics emit, a fetch of a cached credential — into a stretch of code that previously had no failure mode gives that stretch one. Ask what the new call raises, blocks on, or times out against, and whether the surrounding path handles it.
+- **A rename or a redaction that changes an externally-observable label.** Renaming a field, span attribute, metric label, or log key changes what downstream consumers see, and those consumers are usually not in the diff — dashboards, alert rules, log queries, and sinks that key on the old name. Redaction is the same shape: the value that used to reach a sink no longer does.
+- **A statement that moved across a guard or a validation boundary.** Code that relocated from after a check to before it (or across a lock, a transaction boundary, an early return, or an authorization gate) now runs under different preconditions than it was written for. Name the precondition it lost.
+
+**Scope: the whole change set, not only the primary package.** When the change spans first-party dependencies the same team owns — another member of the same workspace, a sibling package checked out alongside this one, a vendored internal library — those are part of the change set for this category and their effects must be reasoned about together. A second-order effect frequently surfaces only at the seam between the primary package and such a dependency (a value that is now redacted on one side reaching a sink defined on the other). Third-party dependencies the team does not own are out of scope.
+
+**Sweep verification.** When the invocation supplied a **completeness list** for a sweep-type directive (the search patterns the Engineer ran, every hit, and per hit either the change made or the reason it is deliberately untouched — the caller relays it under a labelled heading such as `## Engineer's completeness evidence`), verify the diff **against that list** rather than rediscovering the sites yourself: re-run the listed patterns, check every hit is accounted for, and check the list's patterns actually cover the property the directive named. Report any shortfall as a **gap in the list** — a pattern that was too narrow, a hit with no disposition, a disposition contradicted by the diff — so an incomplete sweep is caught once, as a list defect, rather than one newly-discovered site per review round.
+
+**When no completeness list was supplied**, the missing list is a finding **only if the invocation itself named the assignment as sweep-shaped** (the caller described the directive as covering every site where some property holds, or supplied an enumerated site list without the Engineer's reconciliation of it). Do NOT infer sweep-shapedness from the diff and then report the absence: a caller that simply never relayed the list produces exactly the same signal as an Engineer who never wrote one, and the review has no way to tell them apart — reporting it anyway makes this a finding that fires on every repetitive-looking diff. When the assignment shape is not stated and the diff looks sweep-like, treat the sites themselves on their merits under the other categories instead.
+
 ### Step 3: Prioritize and Filter
 
 Focus on important issues only:
@@ -171,6 +187,10 @@ Worked examples covering every depth bucket, plus both single-path and multi-pat
    (b) [depth:re-architect] [preferred] Thread an explicit non-null type through the data-flow layer so the null can never reach here. — multi-path finding: the cheap local fix and the durable structural fix are both viable; the orchestrator/user chooses.
 ```
 
+**Required `### Second-order effects` subsection.** Both output shapes below carry a `### Second-order effects` subsection, placed **after the numbered work-item list and immediately above the routing trailer**. It is **unconditional** — emit the heading on every review, including clean ones. It reports what the change set newly exposes, weakens, or can now fail per Step 2 category #8, in short narrative prose (one bullet per effect, each naming the change and the consequence). When the review surfaced nothing, emit the fixed single line `No second-order effects identified.` under the heading rather than omitting the heading — a section that appears only when the reviewer had something to say degrades into one nobody can rely on being asked for.
+
+**Compatibility constraint — the subsection is narrative, not a routing surface.** Anything **actionable** surfaced there MUST **also** be emitted as a numbered, severity- and depth-tagged finding in the work-item list above, in the line shapes defined earlier. The numbered list remains the **sole** routing surface: the orchestrator's routing table parses `(num-paths, max-depth)` from the numbered findings and from nothing else, so an actionable effect that appears only in the narrative subsection is invisible to routing and will not be acted on. Emitting it twice — once as narrative context, once as a tagged finding — is the intended shape, not redundancy to optimize away. Effects that are genuinely not actionable (an observation worth recording for the audit trail, a consequence that is correct and intended) live in the subsection only.
+
 **Shape 1 — Findings present** (one or more items in the list):
 
 ```markdown
@@ -183,6 +203,12 @@ Worked examples covering every depth bucket, plus both single-path and multi-pat
 3. `suggestion` (a) [depth:refactor-locally] Extract helper functions — Refactor process_transactions() in llm_categorizer.py:120; function is 60 lines.
 4. `nit` (a) [depth:trivial-tweak] Remove commented-out code in llm_categorizer.py:200-210.
 
+### Second-order effects
+
+- The new audit log line in transactions.py:85 serializes the credential object on a path that previously performed no I/O — it can now raise on an expired token after the transaction has been opened. Emitted as work item 1 above.
+- Renaming the `user.id` span attribute to `user.ref` changes an externally-observable label; dashboards and alert rules keying on the old name are outside this diff. Emitted as work item 2 above.
+- The retry wrapper added in cache.py is confined to an idempotent read and introduces no new failure surface — recorded here for the audit trail, no work item.
+
 **Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Engineer Agent to address them and re-invoke this skill on the updated diff (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so the two-step gate-task contract does not apply on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the two-step `TaskCreate` → `AskUserQuestion` contract applies — first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn. If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
 
@@ -193,6 +219,12 @@ Worked examples covering every depth bucket, plus both single-path and multi-pat
 
 No code issues found.
 
+### Second-order effects
+
+No second-order effects identified.
+
 **Your next tool use MUST advance the workflow.** Proceed to the next review lane (or to Task / Issue close-out if this was the last lane); no re-dispatch needed for the Engineer on this iteration. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
+
+Shape 2's `No second-order effects identified.` line is the empty case, not the only case. A clean review can legitimately carry second-order bullets: if the change set exposes something worth recording but nothing actionable, list those bullets under the heading and still emit `No code issues found.` above it — the two lines are independent, and the clean work-item list is what keeps the trailer on its findings-absent shape.
 
