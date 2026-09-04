@@ -76,4 +76,13 @@ Amendments 2–3 apply to `/quo-execute` in full, with the following specifics (
 3. **Revised designs land in durable carriers.** If the revised directive changes the Task's scope or Subtask set, the orchestrator amends the Task body (and Subtask bodies) in bees before re-dispatching, so the change survives compaction and is visible to the PM's traceability pass; cross-Task or cross-Epic implications are surfaced at the existing inter-Epic interaction checkpoint rather than acted on silently.
 4. **Contract updates.** `agents/analyst.md` frontmatter and `## Why this role exists` must stop saying the Analyst is dispatched only by `/quo-fix-issue`; CLAUDE.md's `agents/<role>.md` bullet and the SDD's model-assignment section are updated to match (same model/effort pins — `xhigh`).
 5. **Out of scope for this mirror:** `/quo-plan`'s spec-review and plan-review "proceed anyway (override blockers)" options remain. Those blockers are document-quality checklist findings on PRD/SDD prose, and a human taking explicit, recorded responsibility at spec time is a different act from an orchestrator waiving a code defect; Issue b.eid is what tightens what those reviews check.
+## Amendment 5 (2026-09-04) — the post-completion sweep is the whole-diff backstop for rounds 2+
+
+Amendment 2's convergence-of-attention rule means rounds 2+ examine the change and its reach, not untouched code round 1 already reviewed. The residual risk is a round-1 miss in untouched code that today's repeated full passes sometimes catch. That coverage is preserved by the **fresh post-completion sweep** (`/quo-fix-issue` Section 8, `/quo-execute` Section 6), which must therefore:
+
+1. Review the **entire** diff cold, at **all severities**, in every tier (per Issue b.3og's strict form) — it is the second whole-diff pass, by a reviewer with no anchoring on the intermediate rounds.
+2. Route its findings into a normal fix-and-review cycle — blockers, suggestions, and nits alike are addressed, and that cycle is uncapped like every other — not into an acknowledged-items report.
+3. Be dispatched with the round-1 and intermediate findings **withheld** (as today), so it cannot anchor on them; anchoring is exactly what makes intermediate rediscovery low-yield.
+
+Net effect: whole-diff coverage happens twice (round 1 and the sweep); what the convergence rule removes is repeated *anchored* passes over unchanged text in between. Tests this Issue adds must pin that the sweep's dispatch prompt asks for all severities and that its findings enter the fix loop rather than the report.
 
