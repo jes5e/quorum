@@ -59,4 +59,12 @@ Supersedes the round-3 cap in the Expected behavior and in the first amendment. 
 4. Compiler, lint, and Narrow/Full test gates run on every round regardless.
 
 The tests this Issue adds must pin that no orchestrator prose contains a numeric round limit that suppresses findings.
+## Amendment 3 (2026-09-04) — blockers have no escape hatch; the design signal re-runs the Analyst, it does not open a gate
+
+Corrects Amendment 2 item 3. Routing three consecutive blocker rounds to the scope-bounding gate was a cap in disguise: that gate's menu includes "defer to a follow-up Issue" and "accept the limitation", and for a `blocker` either choice closes the Issue with a known defect.
+
+1. **A blocker is never deferred, accepted, or counted out.** An Issue (or a Task in `/quo-execute`) MUST NOT reach `done` while any `blocker` or correctness regression from any review round remains unaddressed. No round number, no gate option, and no orchestrator judgment can waive this.
+2. **Three consecutive rounds that each surface a new blocker change the *method*, not the coverage.** The orchestrator automatically re-dispatches the Analyst with the full accumulated findings (all rounds, all lanes) and the current diff, asking for a revised Design Proposal; the Engineer → Code Reviewer loop then continues under the revised design, still with no cap. One transcript line and one manifest entry record that the re-Analyst fired and why. The user is informed, not asked; they may intervene at any time but nothing waits on them.
+3. **The scope-bounding gate is for suggestions and nits only.** Its "defer" and "accept" options are unreachable for blocker-severity findings; the routing prose and the compromise tracker's entry shape must make that structurally true (a tracker entry cannot record a deferred blocker).
+4. Tests this Issue adds must pin (a) no numeric round limit suppresses any finding, and (b) no routing path exists from a `blocker` to "defer" or "accept".
 
