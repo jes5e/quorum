@@ -96,3 +96,13 @@ Corrects Amendments 2 and 5. Each review round in this workflow is a fresh, cold
 5. **Where the speed comes from instead:** Issues b.q3f and b.nn8 remove the *causes* of extra rounds (mechanisms introduced mid-run; surfaces discovered one per round); b.pdq removes writer rework; b.3og (strict) removes one avoidable dispatch. This Issue's contribution is convergence *visibility* and duplicate suppression, not fewer passes.
 
 Tests this Issue adds must pin: the default dispatch prompt asks for a full-diff review at all severities; the opt-in key is absent from the shipped skills' defaults; no numeric round limit suppresses any finding; no routing path exists from a `blocker` to defer/accept.
+## Amendment 7 (2026-09-08) — the blocker rule as actually resolved on the b.nn8 run; supersedes the absolute wording in Amendments 3–4
+
+The b.nn8 run showed that an absolute "blockers are never deferred" collides with "a fix that introduces a mechanism is deferred": taken literally it forced every blocker-driven mechanism to be built in place, costing rounds 4–16 of that run. The operator resolved it on 2026-09-08 (recorded in b.nn8); this Issue adopts the same rule so its own run does not re-impose the absolute:
+
+1. **A blocker may take "Defer to follow-up Issue" only when both hold:** (a) its fix introduces a mechanism (state, config surface, field, task, exception type, observability attribute, identifier class, gate, retry path) that serves a case **outside the Issue's stated defect**, and (b) the change is **narrowed so the blocker no longer applies to anything that ships**. The follow-up Issue carries the reviewer's design verbatim; the narrowing is recorded (compromise-tracker Trigger A) and the PM and post-completion checks treat "blocker + Defer without a narrowing record" as a violation.
+2. **Guard: narrowing may never reduce coverage of the Issue's stated defect.** If a blocker cannot be made inapplicable to what ships without leaving the stated defect partly unfixed, it is in scope and takes Fix properly now or Analyst re-dispatch — never Defer.
+3. **"Accept the limitation" remains unreachable for blockers** at every level and in both orchestrators; nothing ships with a live blocker.
+4. The automatic Analyst re-dispatch after three consecutive new-blocker rounds (Amendments 3–4) stands; it is the route for blockers that are in scope but keep spawning machinery.
+5. **Authority rule for the orchestrator (from b.nn8 cause #2):** the orchestrator never extends its own authority mid-run (e.g., composing fix paths no reviewer enumerated); an incomplete reviewer menu routes to gate (c), where "Fix properly now" yields the complete fix. Self-ratified extensions are a violation the PM check names.
+
