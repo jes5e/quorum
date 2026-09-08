@@ -541,8 +541,8 @@ Emit each finding exactly in this shape:
   one path, and only when a preference is real. It is meaningful only for
   multi-path findings — a single-path finding has no preference to express, so
   marking it there is harmless but discouraged. When no path carries
-  `[preferred]`, that is fully valid and the downstream "no path marked
-  Recommended" behavior is unchanged.
+  `[preferred]`, that is fully valid — the consumer makes its own pick either
+  way, and `[preferred]` is only an input to it.
 
 Calibrate the per-fix-path depth tag against these buckets:
 

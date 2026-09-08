@@ -6,12 +6,23 @@ module can get the module object with one call and unit-test its pure functions 
 
 The prose-contract modules (the ones that pin cross-file invariants carried by
 skill and role *prose* rather than by a helper's CLI) need no importlib dance —
-just the artifact's path and its text. Their shared paths and the one-line
-`read` helper live here for the same reason the script relpaths do: a path
-hardcoded in three modules drifts in one of them when an artifact is renamed.
+just the artifact's path and its text. What they share lives here in three
+layers, each with its own drift rationale:
+
+  * the **artifact paths** and the one-line `read` helper, for the same reason
+    the script relpaths do — a path hardcoded in three modules drifts in one of
+    them when an artifact is renamed;
+  * `shipped_artifacts()`, the single definition of *what ships*, because two
+    enumerators would drift into disagreeing about the shipped boundary that
+    both of their callers are asserting about;
+  * `heading_section()` / `routing_section()`, the section slicers, because a
+    slicer that silently yields an empty slice turns every assertion made
+    against it vacuous rather than failing — so the exactly-one-heading check
+    belongs in one place, not re-derived per module.
 """
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -28,6 +39,10 @@ CONTEXT_GAUGE = "skills/quo-setup/scripts/context_gauge.py"
 QUO_EXECUTE = "skills/quo-execute/SKILL.md"
 QUO_FIX_ISSUE = "skills/quo-fix-issue/SKILL.md"
 QUO_ENGINEER_REVIEW = "skills/quo-engineer-review/SKILL.md"
+QUO_TEST_WRITER_REVIEW = "skills/quo-test-writer-review/SKILL.md"
+QUO_DOC_WRITER_REVIEW = "skills/quo-doc-writer-review/SKILL.md"
+QUO_SPEC_REVIEW = "skills/quo-spec-review/SKILL.md"
+QUO_PLAN = "skills/quo-plan/SKILL.md"
 
 AGENTS_DIR = REPO_ROOT / "agents"
 
@@ -38,6 +53,11 @@ AGENT_ENGINEER = "agents/engineer.md"
 AGENT_PM = "agents/pm.md"
 AGENT_TEST_WRITER = "agents/test-writer.md"
 
+# The one section both orchestrators carry that defines how review findings are
+# routed. More than one prose-contract module slices it, so the heading and the
+# slicer live here rather than in whichever module needed them first.
+ROUTING_SECTION_HEADING = "### Orchestrator discipline: routing review findings"
+
 
 def read(path):
     """Read a repo file as text.
@@ -47,6 +67,57 @@ def read(path):
     call shapes the prose-contract modules use resolve identically.
     """
     return (REPO_ROOT / path).read_text(encoding="utf-8")
+
+
+def shipped_artifacts():
+    """Every file the install procedure copies into a target project.
+
+    `skills/*` and `agents/*` ship wholesale, so this covers every SKILL.md,
+    every bundled helper script, and every role contract. Returned as absolute
+    `Path`s, sorted within each group; pass one to `read` for its text.
+
+    This is the single definition of "what ships". More than one prose-contract
+    module needs the set — one to prove no shipped artifact carries a dangling
+    repo-only-doc citation, another to prove none names a retired vocabulary
+    token — and two enumerators would drift into disagreeing about the shipped
+    boundary, which is the one thing both of them are asserting about.
+    """
+    paths = []
+    paths += sorted((REPO_ROOT / "skills").rglob("*.md"))
+    paths += sorted((REPO_ROOT / "skills").rglob("*.py"))
+    paths += sorted((REPO_ROOT / "agents").rglob("*.md"))
+    return [p for p in paths if "__pycache__" not in p.parts]
+
+
+def heading_section(text, heading):
+    """The slice of `text` under `heading`, up to the next same-or-higher heading.
+
+    `heading` is the full markdown heading line (`### Foo`); its `#` run fixes
+    the level, so a `####` sub-heading is kept inside the returned slice and a
+    sibling `###` ends it. The exactly-one assertion is deliberate: a heading
+    that was renamed or duplicated would otherwise silently yield an empty or
+    over-long slice, and every assertion made against that slice would go
+    vacuous rather than fail.
+    """
+    level = len(heading) - len(heading.lstrip("#"))
+    lines = text.splitlines()
+    starts = [i for i, line in enumerate(lines) if line.strip() == heading]
+    assert len(starts) == 1, (
+        f"expected exactly one {heading!r} heading, got {len(starts)}"
+    )
+    start = starts[0]
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        match = re.match(r"^(#{1,6}) ", lines[j])
+        if match and len(match.group(1)) <= level:
+            end = j
+            break
+    return "\n".join(lines[start:end])
+
+
+def routing_section(text):
+    """The `### Orchestrator discipline: routing review findings` section."""
+    return heading_section(text, ROUTING_SECTION_HEADING)
 
 
 def load_script(relpath):
