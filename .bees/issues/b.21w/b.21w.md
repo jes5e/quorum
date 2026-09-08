@@ -2,10 +2,11 @@
 id: b.21w
 type: bee
 title: 'b.q3f follow-on: when the agents/analyst.md mechanism definition lands, flip b.nn8''s strict xfail and reconcile the citer set'
-status: open
-created_at: '2026-09-04T08:38:00.695507'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-04T08:38:00.695507'
+status: done
+schema_version: '0.1'
 guid: 21ww9jfkj4hw57spqd6kgy7v9iswjzg8
 ---
 
@@ -44,4 +45,3 @@ Work this Issue immediately after b.q3f merges. Files: `tests/test_routing_decis
 
 - b.q3f (open): owns the definition (Amendment 3 and its clarification). This Issue depends on it.
 - b.nn8 (landed): consumer half; the strict xfail; Compromise 2.
-

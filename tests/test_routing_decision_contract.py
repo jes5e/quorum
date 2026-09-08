@@ -85,8 +85,6 @@ time.
 
 import re
 
-import pytest
-
 from conftest import (
     AGENT_ANALYST,
     AGENT_CODE_REVIEWER,
@@ -3120,35 +3118,16 @@ def test_four_artifacts_define_the_mechanism_by_citing_the_analyst_role():
         )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "The definition lands in `agents/analyst.md` with the concurrent "
-        "sibling change b.q3f, whose Amendment 3 specifies it; this Issue's own "
-        "change set deliberately does not write it (docs/sdd.md records the "
-        "forward-looking pointer). REMOVE THIS MARKER when b.q3f lands — under "
-        "strict mode this test reports XPASS, which fails the run, the moment "
-        "the definition appears."
-    ),
-)
 def test_analyst_role_carries_the_mechanism_definition_its_citers_point_at():
     """The far half of the fifth link: the citation target actually exists.
 
     Four shipped artifacts point at `agents/analyst.md` for what "introduces a
-    mechanism" means, and in this worktree that file carries no such
-    definition — a dangling pointer that a reader following it today resolves
-    to nothing, quietly degrading row 2's fallback to whatever the reader
-    already believed. The definition is not this Issue's to write: it is
-    specified by the concurrent sibling change b.q3f and is the one place a
-    ticket ID belongs in this suite, because the marker's removal condition is
-    that ticket landing.
-
-    `xfail(strict=True)` is the shape that fits: the pin exists now, so the
-    dangling link is visible as an XFAIL in every run's report rather than
-    living only in review prose, and strict mode converts the fix into a loud
-    XPASS failure — so the marker cannot outlive the condition it documents.
-    The assertion deliberately anchors on the enumeration's vocabulary and not
-    on a heading or a sentence, since neither is knowable from here.
+    mechanism" means, and that file's lifecycle-axis paragraph is the single
+    canonical home of the definition. This pins that the citation resolves, so
+    a future edit that drops or renames the definition surfaces here rather
+    than as four pointers quietly resolving to nothing. The assertion anchors
+    on the enumeration's vocabulary and not on a heading or a sentence, so the
+    definition's own wording and placement stay the role file's to choose.
     """
     text = read(AGENT_ANALYST).lower()
     assert "mechanism" in text, (
