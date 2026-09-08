@@ -2,24 +2,25 @@
 id: b.isi
 type: bee
 title: 'Post-completion review at high compromise-tracker volume: bound the recovery-gate sequence, recalibrate the >10-entries render rule, distinguish remediated contract violations'
-status: open
-created_at: '2026-09-04T08:37:57.944726'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-04T08:37:57.944726'
+status: open
+schema_version: '0.1'
 guid: isidyejamcntdfj9k1565kezpex8madu
 ---
 
 ## Description
 
-b.nn8 made the compromise tracker a routinely-written ledger (Trigger C appends on every ungated multi-path or composed pick; the b.nn8 run itself produced 42 entries). Three parts of the post-completion review (Section 8 in `/quo-fix-issue`, Section 6 in `/quo-execute`) were calibrated for the earlier rare-tracker world and now scale badly or read stale state. All three sit in the same section and are best fixed in one pass.
+b.nn8 made the compromise tracker a routinely-written ledger (Trigger C appends on every ungated multi-path pick, with the lone-`trivial-tweak` carve-out as the only non-appending ungated route; the b.nn8 run itself produced on the order of a hundred entries across its in-flight and post-completion passes). Three parts of the post-completion review (Section 8 in `/quo-fix-issue`, Section 6 in `/quo-execute`) were calibrated for the earlier rare-tracker world and now scale badly or read stale state. All three sit in the same section and are best fixed in one pass.
 
-1. **No bound on the recovery-gate sequence.** Step 7 fires one SR-6.7 or SR-4.6 recovery gate per `[compromise-challenge]` finding, non-aggregated, in emission order; PHASE 3 evaluates every `Orchestrator picked path (…)` entry on two axes. A post-completion reviewer that challenges even a fraction of a 40-entry tracker produces a serial `AskUserQuestion` sequence with no volume handling — the gates removed from the in-flight loop can reappear, in bulk, at run end.
+1. **No bound on the recovery-gate sequence.** Step 7 fires one SR-6.7 or SR-4.6 recovery gate per `[compromise-challenge]` finding, non-aggregated, in emission order; PHASE 3 evaluates every `Orchestrator picked path (…)` entry on two axes. A post-completion reviewer that challenges even a fraction of a large tracker produces a serial `AskUserQuestion` sequence with no volume handling — the gates removed from the in-flight loop can reappear, in bulk, at run end.
 2. **The `>10 entries → surface them ALL in full, no truncation` render rule** for `**Accepted compromises**` was written when the tracker rarely existed; tens of entries are now normal, so the end-of-run summary grew by roughly an order of magnitude and no surface revisits the rule. It fires correctly at any volume — this is calibration, not inconsistency.
-3. **PHASE 2's deferred-or-accepted-blocker check reads a tracker field that is never rewritten.** `agents/pm.md`'s unit-scoped in-flight check (added in b.nn8) can catch such a violation and have it remediated in-flight, but the entry still reads as live at post-completion, where step 7 recommends `Fix in this session`. Doubly conditional today (the state is unreachable by construction because both gates withhold Defer/Accept from blockers), and the fix touches the PHASE blocks that a test pins byte-identical across both skills through PHASE 5.
+3. **PHASE 2's blocker contract check reads a tracker field that is never rewritten.** `agents/pm.md`'s unit-scoped in-flight check (added in b.nn8) names an already-resolved entry in one line rather than re-emitting it, but PHASE 2 has no such carve-out: an entry remediated in-flight still reads as live at post-completion, where step 7 recommends `Fix in this session`. The fix touches the PHASE blocks that a test pins byte-identical across both skills through PHASE 5.
 
 ## Current behavior
 
-Post-completion review cost and prompt count scale linearly with tracker entries with no ceiling; the summary renders every entry in full; a remediated contract violation cannot be distinguished from a live one.
+Post-completion review cost and prompt count scale linearly with tracker entries with no ceiling; the summary renders every entry in full; a remediated contract violation cannot be distinguished from a live one at run end.
 
 ## Expected behavior
 
@@ -35,7 +36,7 @@ One pass over `skills/quo-fix-issue/SKILL.md` Section 7 step 4 (render) and Sect
 
 ## Background and rationale
 
-Surfaced by the PM during the b.nn8 run (rounds 2 and 3) and by several Code Reviewer second-order-effects notes. Deferred because bounding the gate sequence or adding a remediation marker is new machinery the Issue never asked for; b.nn8 shipped the base-rate corrections (render steps and checkpoint tracker-absent notes) only.
+Surfaced by the PM during the b.nn8 run (rounds 2 and 3) and by several Code Reviewer second-order-effects notes. Deferred because bounding the gate sequence or adding a remediation marker is new machinery the Issue never asked for; b.nn8 shipped the base-rate corrections (render steps and checkpoint tracker-absent notes) and the PM-side already-resolved carve-out only.
 
 ## Related
 

@@ -164,6 +164,12 @@ EXPECTED_ROUTING_ROWS = (
 # Cells of the retired `(num-paths, max-depth)` table. Each is distinctive
 # enough that its reappearance means the old table came back rather than that
 # some unrelated prose happens to match.
+#
+# This constant and the two below are **first-generation** retirements, removed
+# by `6fc1c28` and therefore present only at `6fc1c28~1` (= `91eb07d`) — NOT at
+# `6fc1c28`, which is the reference for the module's second-generation
+# retirements. See the reference-points note above `RETIRED_COMPOSE_SHAPES`
+# before checking any of these against a revision.
 RETIRED_TABLE_SHAPES = (
     "Number of fix paths",
     "Maximum depth across paths",
@@ -306,7 +312,34 @@ STEP_1_INCOMPLETE_MENU_CLAUSES = (
 # clause ("never applies when the Step-1 pick was composed") carries none of
 # these shapes and sits outside the routing section, so this guard alone would
 # miss a revert of it. `RETIRED_TRIGGER_C_SHAPES` catches that paragraph instead
-# — verified: three of its entries match that line at HEAD.
+# — verified against the pre-strip prose at `6fc1c28`, where three of its
+# entries match that line.
+#
+# ---------------------------------------------------------------------------
+# Reference points for every "what was retired" statement in this module.
+#
+# Both generations are committed, so **HEAD names neither of them** — a comment
+# here that says "at HEAD" is describing prose that no longer exists. There are
+# two reference points, because this module pins two distinct retirements:
+#
+#   * **Retired by `6fc1c28`** (the Issue's original landing) — present only at
+#     `6fc1c28~1` (= `91eb07d`), already gone by `6fc1c28`:
+#     `RETIRED_TABLE_SHAPES`, `RETIRED_MULTIPATH_ROW`,
+#     `RETIRED_ROUTING_TUPLE_TOKEN`, `RETIRED_DECISION_VALUE`. These are the
+#     `(num-paths, max-depth)` routing table and its vocabulary.
+#   * **Retired by `c9b1651`** (this run's post-completion fix) — present at
+#     `6fc1c28`, gone today: `RETIRED_COMPOSE_SHAPES`,
+#     `RETIRED_TRIGGER_C_SHAPES`. These are the composed-path allowance and the
+#     second Trigger C firing site, both of which `6fc1c28` *introduced*.
+#
+# So `6fc1c28` is the "before" for the second generation and the "after" for the
+# first: checking a first-generation shape against it finds nothing and proves
+# nothing. Reach for `6fc1c28~1` there instead.
+#
+# One idiom note: `RETIRED_MULTIPATH_ROW` is a table row whose columns are
+# padded, so it is matched against `squeeze()`d text. A raw substring check
+# against either revision finds nothing and is not evidence of absence.
+# ---------------------------------------------------------------------------
 RETIRED_COMPOSE_SHAPES = (
     "The enumeration is the menu, not a ceiling",
     "**compose** the complete fix",
@@ -379,8 +412,9 @@ TRIGGER_C_FIRING_SITE_TAIL = "no Trigger C entry is written for it."
 
 # The region ends at the NEXT trigger's lead, not at the firing-site sentence's
 # own tail, because Trigger C's prose extends past that sentence and the retired
-# prose lived in the part a tail-bounded slice cannot see. The two skills failed
-# that bound differently at HEAD, and neither failure is a near miss:
+# prose lived in the part a tail-bounded slice cannot see. In the **pre-strip**
+# state (`6fc1c28`) the two skills failed that bound differently, and neither
+# failure is a near miss:
 #
 #   * fix mode HAD the tail, and the cross-skill parenthetical began on the same
 #     line just **two bytes** past it (the gap is a space and an open paren), so
@@ -413,8 +447,8 @@ RETIRED_TRIGGER_C_SHAPES = (
     # and a carve-out scoped to site (1). A half-revert that restores that
     # machinery without restoring either count would pass a count-only list
     # while the second ungated route is back in the prose, so the vocabulary is
-    # pinned alongside. Every one of these is verified present at HEAD and
-    # absent from both skills today.
+    # pinned alongside. Every one of these is verified present in the
+    # **pre-strip** prose at `6fc1c28` and absent from both skills today.
     "It fires at **two** sites",
     "site (2)",
     "gateless `blocker` dispatch",
@@ -489,12 +523,66 @@ COMPAT_ROUTING_INPUTS = (
 
 DECISION_ENUM_LEAD = "- **Decision:** <one of:"
 DECISION_PICK_VALUE = "Orchestrator picked path (x) — highest-quality"
+
+# A **first-generation** retirement, like the table shapes near the top of this
+# module: removed by `6fc1c28`, so it is present only at `6fc1c28~1`
+# (= `91eb07d`) and not at `6fc1c28`. See the reference-points note above
+# `RETIRED_COMPOSE_SHAPES`.
 RETIRED_DECISION_VALUE = "Auto-routed (a) per single-path refactor-locally rule"
 
 # The two halves of the enum value that survive the per-entry letter
 # substitution. PHASE 3 must match on exactly these, since the letter varies.
-DECISION_PICK_PREFIX = "Orchestrator picked path ("
-DECISION_PICK_SUFFIX = ") — highest-quality"
+#
+# **Derived from the value, not restated.** The enum's `(x)` slot is where the
+# writing step substitutes the chosen path's own letter, so the two halves are
+# by definition what remains once `x` is removed — and splitting on it makes
+# that relationship structural. Two literals would be a second copy of the
+# value, free to drift out of agreement with it while both still looked right;
+# this way a reword of `DECISION_PICK_VALUE` carries the anchors with it, and
+# the subsumption the PHASE 3 test relies on holds by construction rather than
+# by coincidence.
+#
+# The single-`x` check runs **before** the split, not after: a value with two
+# `x`s (or none) makes the unpack itself raise `ValueError`, so an assert placed
+# below could never run and its diagnostic would never print. Ordering it first
+# is what turns "too many values to unpack" — which names neither the constant
+# nor the reason — into a message that says which value broke and why the `x`
+# matters.
+assert DECISION_PICK_VALUE.count("x") == 1, (
+    "DECISION_PICK_VALUE must contain exactly one 'x' — the letter placeholder "
+    f"the PHASE 3 anchors are split on; got {DECISION_PICK_VALUE!r}"
+)
+DECISION_PICK_PREFIX, DECISION_PICK_SUFFIX = DECISION_PICK_VALUE.split("x")
+
+# --- The SR-6.7 recovery gate's name ------------------------------------------
+
+# Trigger D's prose says it "anchors to those gates by name", which makes the
+# name a cross-reference rather than a label: step 7 defines the gate, Trigger D
+# names it twice (once in the lead that claims the anchoring, once as the
+# sub-heading carrying that gate's write logic), and nothing but the string
+# itself links the three. Rename one and Trigger D's claim quietly becomes false
+# — the write logic would sit under a heading no gate answers to.
+SR_6_7_GATE_NAME = "SR-6.7 ungated-route recovery gate"
+SR_6_7_GATE_SITES = {
+    "step 7's bullet heading": f"- **{SR_6_7_GATE_NAME}.**",
+    "Trigger D's sub-heading": f"- **{SR_6_7_GATE_NAME}:**",
+}
+
+# The name this gate carried before it was renamed for what it recovers rather
+# than for the misjudgment that reaches it. Pinned as an absence because the old
+# name is the plausible thing to write from memory.
+#
+# Scoped deliberately: `(depth misjudgment)` survives inside the tracker's
+# `Decision` value and `depth-misjudgment override` survives as a gloss on that
+# value — both deliberate, both retained, and neither is this gate's name. The
+# absence check keys on the full retired **gate name** so it cannot catch them.
+RETIRED_SR_6_7_GATE_NAME = "depth-misjudgment recovery gate"
+
+# Trigger D's lead, for addressing the third site (the one with no bullet form
+# of its own). Aliased rather than restated: Trigger C's region ends exactly
+# where Trigger D's paragraph begins, so the two are one string by construction
+# and a reword of the lead moves both readers together.
+TRIGGER_D_LEAD = TRIGGER_C_REGION_END
 
 # --- Severity rule -----------------------------------------------------------
 
@@ -1165,6 +1253,22 @@ PM_OUT_OF_SCOPE_ONE_LINE = (
     "name it in **one line** as a pre-existing violation from an earlier unit, "
     "with no fix-path line"
 )
+# The skill-side counterpart of `PM_REPORT_NOTE_CLAUSE`. The PM declares its
+# one-line note is not a finding; part (e) is where that declaration has to be
+# honoured, because the shim there is what would otherwise pick the note up —
+# untagged, read as `re-architect`, and gated. Two ends, two files, no shared
+# carrier: the PM can go on declaring the exemption long after the shim stopped
+# granting it, and the symptom is a user gate firing on a report note.
+#
+# The part (f) clause is pinned with the lead because part (f)'s malformed-tag
+# bullet is the shim's sibling reader and would otherwise inherit the same
+# problem — an exemption that covers only part (e) leaves the note reachable by
+# the other route that surfaces untagged emissions to the user.
+SHIM_REPORT_NOTE_EXEMPTION_LEAD = "**One emission is out of the shim's reach:**"
+SHIM_REPORT_NOTE_PART_F_CLAUSE = (
+    "part (f)'s malformed-tag bullet does not reach it either"
+)
+
 PM_REPORT_NOTE_CLAUSE = (
     "**That one line is a report note, not a finding** — it carries no "
     "severity tag and no fix-path line **by design**, so the orchestrator must "
@@ -1322,7 +1426,8 @@ def trigger_c_region(relpath):
     residue scan — prose sitting *past* the sentence the scan would otherwise
     anchor on is exactly the prose a tail-bounded slice cannot see. (The
     `TRIGGER_C_REGION_END` comment records how each skill failed that narrower
-    bound at HEAD; the two failed it in different ways.)
+    bound in the pre-strip state at `6fc1c28`; the two failed it in different
+    ways.)
 
     Both ends are asserted, plus the firing-site tail in between: a missing
     anchor would otherwise yield a region that silently proves nothing.
@@ -1764,6 +1869,72 @@ def test_trigger_c_names_row_six_as_its_only_firing_site_in_both_skills():
 # --------------------------------------------------------------------------
 
 
+def test_the_sr_6_7_gate_name_matches_at_all_three_sites_in_both_skills():
+    """Trigger D's write logic and step 7's gate agree on the gate's name.
+
+    Trigger D says it "anchors to those gates by name", so the name is doing
+    cross-reference work, not labelling. **This test covers the SR-6.7 gate
+    only** — see the acknowledged gap below for SR-4.6, whose name is already
+    inconsistent and is not pinned here.
+
+    SR-6.7's name appears three times per skill — step 7's bullet defining the
+    gate, Trigger D's lead claiming the anchoring, and Trigger D's sub-heading
+    holding that gate's write logic — and the string is the only thing tying
+    them together. Rename one site and Trigger D's claim becomes false without
+    anything failing: the write logic ends up under a heading no gate answers
+    to, and the tracker write for a recovered ungated pick has no reachable
+    specification.
+
+    The count is asserted alongside the sites, because "three" is what makes
+    the enumeration exhaustive: a fourth mention added elsewhere and left out of
+    a later rename is the same drift in a place this test does not look.
+
+    The old name is pinned as an absence in the same pass. Note what that check
+    deliberately does *not* catch: `(depth misjudgment)` inside the tracker's
+    `Decision` value, and the `depth-misjudgment override` gloss on it, are
+    retained on purpose — they describe the misjudgment, not the gate. The
+    absence check keys on the full retired gate name so those survive it.
+
+    One acknowledged gap, knowingly unpinned: **SR-4.6's name is already
+    inconsistent across the same three sites, identically in both skills.**
+    Step 7's bullet defines `SR-4.6 under-enumeration recovery gate`, while
+    Trigger D's lead and sub-heading both say `SR-4.6 under-enumeration analog
+    recovery gate` — so Trigger D's anchor-by-name resolves for SR-6.7 and not
+    for SR-4.6. That asymmetry was ratified as a sanctioned seam rather than
+    repaired, and skill edits are out of scope for this pass, so pinning it now
+    would encode a state the prose is not committed to. Both wordings are
+    recorded here, with the sites each occupies, so whoever reconciles them
+    knows which two strings to converge and where each one lives.
+    (`SR-4.6 under-enumeration analog override`, in the tracker's `Decision`
+    enum, is the override gloss and is not the gate's name; it survives any
+    such rename, exactly as SR-6.7's does.)
+    """
+    for relpath in ORCHESTRATORS:
+        text = read(relpath)
+        assert text.count(SR_6_7_GATE_NAME) == 3, (
+            f"{relpath}: expected {SR_6_7_GATE_NAME!r} at exactly three sites "
+            f"(step 7's bullet, Trigger D's lead, Trigger D's sub-heading), "
+            f"found {text.count(SR_6_7_GATE_NAME)}"
+        )
+        for label, form in SR_6_7_GATE_SITES.items():
+            assert text.count(form) == 1, (
+                f"{relpath}: {label} is no longer exactly one {form!r} — the "
+                "gate was renamed at one site and not the others, so Trigger "
+                "D's anchor-by-name no longer resolves"
+            )
+        trigger_d = paragraph_starting(relpath, TRIGGER_D_LEAD)
+        assert SR_6_7_GATE_NAME in trigger_d, (
+            f"{relpath}: Trigger D's lead no longer names "
+            f"{SR_6_7_GATE_NAME!r}, so its claim to anchor on the gates by "
+            "name has nothing behind it"
+        )
+        assert RETIRED_SR_6_7_GATE_NAME not in text, (
+            f"{relpath}: the retired gate name {RETIRED_SR_6_7_GATE_NAME!r} is "
+            "back — the gate is named for what it recovers, not for the "
+            "misjudgment that reaches it"
+        )
+
+
 def test_decision_enum_carries_the_orchestrator_pick_value():
     """Both trackers can record an ungated orchestrator pick."""
     for relpath in ORCHESTRATORS:
@@ -1798,19 +1969,22 @@ def test_phase_3_anchors_match_the_decision_value_written_in_the_same_skill():
     around the letter. Those anchors live in two places per file with nothing
     linking them; drift in either one leaves PHASE 3 matching no entry at all,
     and PHASE 3 is the only surface that challenges an ungated pick.
+
+    Only the PHASE 3 end is asserted here. The enum end is covered by
+    `test_decision_enum_carries_the_orchestrator_pick_value`, which pins
+    `DECISION_PICK_VALUE` — and the anchors are **split from that value**, so
+    each is a substring of it by construction, not by two literals happening to
+    agree. Asserting them against the enum line again therefore could not fail
+    unless that test already had. Keeping the redundant pair would spread one
+    fact across two guards and make the enum's owner ambiguous.
     """
     for relpath in ORCHESTRATORS:
         phase_3 = phase_block(relpath, 3)
-        enum_line = paragraph_starting(relpath, DECISION_ENUM_LEAD)
         for anchor in (DECISION_PICK_PREFIX, DECISION_PICK_SUFFIX):
             assert anchor in phase_3, (
                 f"{relpath}: PHASE 3 of the post-completion prompt no longer "
                 f"carries the {anchor!r} anchor, so it cannot match the tracker "
                 "entries it exists to challenge"
-            )
-            assert anchor in enum_line, (
-                f"{relpath}: the tracker `Decision` enum no longer carries the "
-                f"{anchor!r} anchor that PHASE 3 matches on"
             )
 
 
@@ -3051,6 +3225,18 @@ def test_pm_reports_an_out_of_scope_tracker_violation_as_a_note_not_a_finding():
     and, carrying no depth tag, each re-raise would hit the routing section's
     untagged-emission shim and fire a user gate. Saying the line is a report
     note is what keeps it out of routing entirely.
+
+    Both ends of that exemption are guarded here, because either alone is
+    inert. `agents/pm.md` *declares* the note is not a finding; part (e) is
+    where the declaration has to be honoured, since its shim is what would
+    otherwise pick the note up. They sit in three different files with nothing
+    linking them, so the PM can go on declaring an exemption the shim stopped
+    granting, and the only symptom is a user gate firing on a report note —
+    which reads as the shim working correctly.
+
+    Part (f)'s malformed-tag bullet is pinned with it: it is the shim's sibling
+    reader, and an exemption scoped to part (e) alone leaves the note reachable
+    by the other route that surfaces untagged emissions to the user.
     """
     text = read(AGENT_PM)
     assert PM_TRACKER_SCOPE_SPLIT in text, (
@@ -3066,6 +3252,19 @@ def test_pm_reports_an_out_of_scope_tracker_violation_as_a_note_not_a_finding():
         "rather than a finding, so the orchestrator would route it — and the "
         "untagged-emission shim would gate it"
     )
+
+    for relpath in ORCHESTRATORS:
+        part_e = routing_parts(relpath)["e"]
+        assert SHIM_REPORT_NOTE_EXEMPTION_LEAD in part_e, (
+            f"{relpath}: part (e)'s shim no longer exempts the PM's report "
+            f"note, so `{AGENT_PM}` declares an exemption the shim does not "
+            "grant — the note is read as `re-architect` and gated"
+        )
+        assert SHIM_REPORT_NOTE_PART_F_CLAUSE in part_e, (
+            f"{relpath}: part (e)'s exemption no longer extends to part (f)'s "
+            "malformed-tag bullet, leaving the report note reachable by the "
+            "shim's sibling reader"
+        )
 
 
 # --------------------------------------------------------------------------
