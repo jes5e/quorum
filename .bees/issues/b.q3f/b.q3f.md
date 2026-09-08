@@ -9,7 +9,7 @@ tags:
 parent: null
 reference_materials: null
 created_at: '2026-09-02T20:22:55.277552'
-status: open
+status: done
 schema_version: '0.1'
 guid: q3fgxrryv8h9ibsij6hh39ye2cihkrbm
 ---
@@ -79,3 +79,14 @@ Amendment 3 above was drafted from a prose-repo run and uses this repo's vocabul
 2. Embed it alongside `## Engineer's completeness evidence` in the Code Reviewer and PM dispatch prompts (fix mode: `skills/quo-fix-issue/SKILL.md` Phase A Code Reviewer dispatch and Phase C PM dispatch; execute mode: `skills/quo-execute/SKILL.md` per-Task PM dispatch and Bee-level Code Reviewer / `pm-<bee-id>` dispatch), and have `agents/code-reviewer.md` / `agents/pm.md` relay it into their `/quo-engineer-review` invocations the same way they relay the completeness evidence.
 3. Extend `skills/quo-engineer-review/SKILL.md` check #8 so the diff is verified against both lists: a Blast-radius site not addressed and not dispositioned in the Engineer's evidence is a finding against the Engineer; a site in the diff that is on neither list is a finding against the Analyst pass (report it as a list gap, not a new fix round).
 
+## Post-completion observations for the consolidation pass
+
+Recorded at the 2026-09-08 close-out of this Issue's `/quo-fix-issue` run, under the ignored-feedback rule. Each item was a coverage-only or cosmetic review observation that the operator directed be deferred rather than looped once the test lane had run thirteen review rounds without a defect in the shipped contract. None changes shipped behavior.
+
+1. **Test coverage — the Revise light-feedback shortcut is unpinned.** `skills/quo-fix-issue/SKILL.md` Section 3's Revise branch says the orchestrator may "capture the original directive sections per the Approve branch above, plus the user's clarification" (this Issue widened it from "the original Recommended approach"). No test in `tests/test_blast_radius_contract.py` pins that sentence; a revert to the single-section wording passes the suite. Impact is bounded because the sentence routes into the Approve branch, whose three-section enumeration is pinned. A one-assertion test scoped to the paragraph anchored on "When the user's feedback is light enough to incorporate" (unique in the file) would close it. (Test review round 13, nit.)
+
+2. **Test-guard boundary — attribution by segment.** `test_design_question_rung_introduces_no_machinery_of_its_own` splits the design-question rung into segments on `.`, `:`, `!`, `?`, and line breaks, and flags any segment naming a `gate-*` task or `AskUserQuestion` that does not also name Section 3. A minted token placed inside the rung's existing ~1000-character first bullet, which names Section 3 several times, still borrows attribution and passes. Both the Test Writer and the Test Reviewer adjudicated this as an accepted boundary: the only narrowing (splitting on `—` or `;`) would strand the rung's legitimate "reuses Section 3's gate" phrasing into its own segments and fail correct prose. The boundary is recorded in the `SENTENCE_SPLIT` comment; a realistically shaped drift (a new bullet or sentence) is caught. (Test review rounds 4 and 5.)
+
+3. **Pre-existing prefix-only heading citation.** `skills/quo-fix-issue/SKILL.md` Section 3's surfacing paragraph cites `agents/analyst.md` `## Structured-output contract`; the actual heading is `## Structured-output contract (Analyst → orchestrator)`. Both the heading's parenthetical and the prefix citation predate this run (present at the branch point), the reference resolves unambiguously, and sixteen code-review rounds passed it. The SDD's own citation was tightened to the exact heading; the shipped one was left as a pre-existing cosmetic reference outside this Issue's diff. (Doc Writer observation, round 12.)
+
+4. **Deferred coverage items already addressed in-run without a dedicated review round** (listed for the record): pinning the empty-list paragraph's closing licensed-check clause; paragraph-scoping the empty-list test; pinning the producer's emit-condition for the Blast-radius fixed empty line. Each got one writer pass under the operator's nit rule and was verified by the following round's full review.

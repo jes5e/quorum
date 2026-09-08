@@ -31,6 +31,7 @@ QUO_ENGINEER_REVIEW = "skills/quo-engineer-review/SKILL.md"
 
 AGENTS_DIR = REPO_ROOT / "agents"
 
+AGENT_ANALYST = "agents/analyst.md"
 AGENT_CODE_REVIEWER = "agents/code-reviewer.md"
 AGENT_DOC_WRITER = "agents/doc-writer.md"
 AGENT_ENGINEER = "agents/engineer.md"
