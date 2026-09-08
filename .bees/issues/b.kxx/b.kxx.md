@@ -2,10 +2,11 @@
 id: b.kxx
 type: bee
 title: Decide whether the orchestrator may compose a fix path when no reviewer-enumerated path is complete (stripped from b.nn8)
-status: open
-created_at: '2026-09-08T15:00:03.633935'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-08T15:00:03.633935'
+status: open
+schema_version: '0.1'
 guid: kxxdqv2w8o6hauiofzn4duekq4isqyjs
 ---
 
@@ -15,9 +16,9 @@ During the b.nn8 fix run the orchestrator's pick-then-route procedure was widene
 
 ## Current behavior
 
-After b.nn8 (as landed), Step 1 reads: "**The pick is always one of the paths the reviewer enumerated.** When *no* enumerated path is the smallest internally-consistent complete change — every one of them leaves the stated defect partly unfixed — pick the most complete of them anyway: row 4 then routes it to gate (c) precisely because it is narrower than the complete fix, and `Fix properly now` there dispatches the complete fix. An incomplete menu is a **reviewer defect** for PHASE 4 to challenge, not a decision the orchestrator absorbs by writing a path of its own."
+After b.nn8 (as landed), Step 1 reads: "**The pick is always one of the paths the reviewer enumerated.** When *no* enumerated path is the smallest internally-consistent complete change — every one of them leaves the stated defect partly unfixed — pick the most complete of them anyway. Step 2 then routes it: rows 2, 3 and 4 all send it to gate (c), where `Fix properly now` dispatches the complete fix; the exception is a finding whose depth tag is absent or malformed, which row 1 sends to gate (d) instead, and that gate has no `Fix properly now` — the user picks among the paths as emitted. Either way the incomplete menu becomes visible: the gate fires where it otherwise would not have, and a Trigger A entry records the choice when the user defers. That is what reaches the post-completion review; the orchestrator does not absorb the gap by writing a path of its own."
 
-So the complete fix is reachable, but only through a user gate whose answer is the orchestrator's own composed fix — one click per under-enumerated finding.
+So the complete fix is reachable, but only through a user gate whose `Fix properly now` answer dispatches a fix the orchestrator authors at that point — one click per under-enumerated finding — and not at all on a row-1 (malformed-tag) fire.
 
 ## Expected behavior
 

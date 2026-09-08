@@ -54,14 +54,27 @@ The failure modes pinned here:
      `agents/analyst.md` rather than restating it, so the definition site is
      load-bearing for both row 2's primary signal and its fallback reading.
 
-  5. **A half-landed composed path.** Step 1 may compose a fix path no reviewer
-     enumerated and assign it a depth. That one branch has five readers — the
-     section lead's never-invent carve-out, the completeness definition (which
-     exempts a composed path from row 4), both gates' presentation rules, and
-     Trigger C's entry shape — and each is a separate paragraph in a separate
-     part of two separate files. Any one of them left behind turns the branch
-     into a path that is picked and then mis-routed, mis-presented, or
-     unrecorded.
+  5. **A half-landed `blocker` Defer-with-narrowing branch.** A `blocker` is
+     never accepted, and reaches Defer only when the fix path it needs
+     introduces a mechanism serving a case outside the unit's stated defect —
+     and then only paired with a narrowing that still covers that defect. That
+     one conditional branch has six readers — part (c)'s two-condition rule and
+     its coverage guard, the file-first / dispatch-directly pairing order, part
+     (d)'s mirror of the same guard, the mechanism-row default's severity
+     qualification, Trigger A's narrowing record, and PHASE 2's third violation
+     shape — each a separate paragraph in a separate part of two separate
+     files. Any one left behind turns the branch into a route that shelves a
+     blocker, drops the narrowing, or records neither.
+
+  6. **A resurrected composed path.** An earlier revision let Step 1 compose a
+     fix path no reviewer enumerated. That allowance was stripped: the pick is
+     always one of the enumerated paths, and an incomplete menu is made visible
+     by gating rather than absorbed by the orchestrator writing its own path.
+     The allowance reached **seven** sites in each skill — the section lead's
+     never-invent carve-out, Step 1's branch, the completeness definition's
+     row-4 exemption, both gates' presentation rules, the render step's
+     tracker-absent clause, and Trigger C's entry substitution — so a
+     half-reverted edit is what a residue guard has to catch.
 
 `docs/sdd.md` is deliberately **not** pinned here. It carries the same
 `Decision` enum and is updated in the Doc Writer's lane, which runs concurrently
@@ -175,9 +188,17 @@ RETIRED_ROUTING_TUPLE_TOKEN = "num-paths"
 # `CLOSE_OUT_ROUTER_COUNT_WORD` pins for the close-out's router list — so it is
 # derived from the table on disk rather than hardcoded: a future row routed to
 # gate (c) moves the derived word off "four" and fails against the unrecounted
-# prose. The two skills' copies of the sentence diverge after the shared count
-# clause (execute mode's tail adds "and whether the gate fires at all"), so only
-# the clause below is pinned.
+# prose.
+#
+# Only the count clause is pinned, and not because the sentence diverges — the
+# two skills' copies are byte-identical today, the execute-only tail this
+# comment used to cite having gone with the gate-fires-for-a-blocker change.
+# The clause is pinned because it is the **derived half** of the fact: it is
+# what this module computes from the table and compares, while the rest of the
+# sentence is prose no computation produces. Widening the pin to the whole
+# sentence would convert a staleness guard into a second mirror test, which
+# `routing_parts` already covers, and would make an unrelated reword of the
+# surrounding prose fail a check about the count.
 SCOPE_GATE_ROUTING_CELL = "gate (c)"
 SCOPE_GATE_NON_ROW_ENTRY_CONDITIONS = 1  # part (b)'s scope-bound behavior
 COUNT_WORDS = {
@@ -207,26 +228,106 @@ MECHANISM_MEANING_LEAD = '**What "introduces a mechanism" means.**'
 # numbers for itself, so it is mirrored whole rather than clause by clause.
 ROW_SIX_LEAD = "Row 6 dispatches a fresh ephemeral implementer Agent"
 
-# Step 1's two copies differ in exactly one token — the compromise-tracker
-# section each skill numbers differently (7.5 in fix mode, 6.5 in execute mode).
-# Normalizing every `Section <n>` / `Section <n>.<m>` reference to one token is
-# what lets the rest of the paragraph be compared byte-for-byte; the paragraph
-# carries no other numbered cross-reference, so the normalization cannot mask a
-# real divergence.
+# Normalizes every `Section <n>` / `Section <n>.<m>` reference to one token, so
+# prose mirrored across the two skills can be compared byte-for-byte despite
+# each skill numbering its own sections.
+#
+# Its live consumer is the **row-6 paragraph**, which cites two sections that
+# differ per skill (Section 4 / Section 7.5 in fix mode, Section 3 / Section 6.5
+# in execute mode). Step 1 also runs through it but no longer needs to: Step 1
+# carries no numbered cross-reference in either skill today — it once pointed at
+# the compromise-tracker section, in the sentence the composed-path branch took
+# with it — so the normalization is currently a no-op there. It is kept on that
+# comparison deliberately, as the cheap direction of the trade: a Step 1 that
+# later gains a section reference keeps mirroring, whereas removing the call now
+# means a future one-sided reference reads as drift.
+#
+# What the normalization cannot mask, on either paragraph, is a divergence
+# outside a `Section <n>` token — which is what both mirror tests are for.
 SECTION_REF = re.compile(r"Section \d+(?:\.\d+)?")
 SECTION_REF_TOKEN = "Section <n>"
 
-# Step 1's compose branch: the orchestrator may write a path no reviewer
-# enumerated, and must assign it a depth so Step 2 can route it.
-STEP_1_COMPOSE_CLAUSES = (
-    "**The enumeration is the menu, not a ceiling.**",
-    "the orchestrator may **compose** the complete fix itself and pick that "
-    "composed path",
-    "**Assign the composed path a depth** from the reviewer's own three-value "
-    "vocabulary",
-    "Step 2's rows 5 and 6 read that assigned value wherever they say \"the "
-    "chosen path's depth tag\"",
+# Step 1's closure rule and what it does when the menu is short. The pick is
+# drawn from the reviewer's enumeration and nothing else; an incomplete menu is
+# surfaced by routing the most complete enumerated path to a gate, never
+# absorbed by the orchestrator writing a path of its own.
+STEP_1_ENUMERATION_IS_CLOSED = (
+    "**The pick is always one of the paths the reviewer enumerated.**"
 )
+STEP_1_INCOMPLETE_MENU_CLAUSES = (
+    "When *no* enumerated path is the smallest internally-consistent complete "
+    "change — every one of them leaves the stated defect partly unfixed — pick "
+    "the most complete of them anyway.",
+    "rows 2, 3 and 4 all send it to gate (c), where `Fix properly now` "
+    "dispatches the complete fix; the exception is a finding whose depth tag "
+    "is absent or malformed, which row 1 sends to gate (d) instead",
+    # The accounting of what the gating actually buys, in two halves. Stated as
+    # bare "the menu becomes visible" the clause overclaims: the visibility is
+    # in-session only, and on `Fix properly now` — the branch the gate
+    # recommends — nothing is written down at all. Both halves are pinned
+    # because either alone misreports the guarantee. Without the first, the
+    # in-session visibility this routing does deliver goes unstated; without
+    # the second, a reader takes the post-completion review to see every
+    # under-enumerated finding, when it sees only the shelved ones.
+    #
+    # The durable half names BOTH shelving triggers, not just Trigger A. Naming
+    # only the Defer branch understates the record by exactly one branch — an
+    # accepted limitation is a Trigger B entry and reaches the same review — so
+    # a constant stopping at Trigger A would pin a narrower claim than the
+    # prose makes and would go stale against the honest one.
+    "Either way the incomplete menu becomes visible **in session**: a gate "
+    "fires where it otherwise would not have, and the user sees the menu it "
+    "fired on.",
+    "A **durable** record reaches the post-completion review only when the "
+    "user defers or accepts — Trigger A on `Defer to follow-up Issue`, Trigger "
+    "B on `Accept the limitation` — while `Fix properly now` writes none, so "
+    "an incomplete menu resolved that way leaves no trace past the run.",
+    "the orchestrator does not absorb the gap by writing a path of its own",
+)
+
+# The retired compose branch, by its most distinctive surviving shapes.
+#
+# It reached **seven** sites in each skill: the section lead's never-invent
+# carve-out, Step 1's branch, the completeness definition's row-4 exemption,
+# gate (c)'s context line, gate (d)'s presentation rule, the render step's
+# tracker-absent clause, and Trigger C's entry substitution. (Seven *sites*, not
+# seven paragraphs everywhere — in execute mode the Trigger C site spans two.)
+#
+# The shapes below do NOT map one-to-one onto those sites, and reading them that
+# way is what previously left a site uncovered: three of the six live in the
+# single Step 1 paragraph, while `composed path` alone spans five sites. What
+# covers the set is the six shapes **plus** the section-scoped stem scan below —
+# the first five sites sit inside the routing section, so the stem reaches them,
+# while the render clause and Trigger C sit outside it and are reachable only by
+# a fixed shape. That is why `, or was composed` had to be added (round 2's
+# blocker) rather than left to the stem.
+#
+# One acknowledged gap, covered elsewhere: execute mode's Trigger C carve-out
+# clause ("never applies when the Step-1 pick was composed") carries none of
+# these shapes and sits outside the routing section, so this guard alone would
+# miss a revert of it. `RETIRED_TRIGGER_C_SHAPES` catches that paragraph instead
+# — verified: three of its entries match that line at HEAD.
+RETIRED_COMPOSE_SHAPES = (
+    "The enumeration is the menu, not a ceiling",
+    "**compose** the complete fix",
+    "composed path",
+    "**One carve-out, and only one:**",
+    "orchestrator-composed",
+    # The render step's own residue. Its site is a mid-sentence clause with no
+    # distinctive vocabulary of its own, so the file-wide scan is what reaches
+    # it — `TRACKER_ABSENT_RENDER_CLAUSE` proves the surviving text is right,
+    # and this proves the retired text is gone. Neither implies the other: a
+    # sentence can carry both halves at once.
+    ", or was composed",
+)
+
+# The stem is scanned across the whole routing section as a backstop for a
+# residue the fixed shapes above would miss. Scoped to that section because the
+# stem has legitimate unrelated uses elsewhere in both skills — the hive-commit
+# helper note's "decomposing a multi-step shell snippet" is the one that appears
+# in both, outside the routing section, and would otherwise fail a file-wide
+# scan on every run.
+COMPOSE_STEM = re.compile(r"compos", re.IGNORECASE)
 
 # Step 1's tie-break rule: what the reviewer's `[preferred]` token is worth when
 # it disagrees with completeness. The Step 1 mirror test above catches only
@@ -244,27 +345,12 @@ STEP_1_PREFERRED_IS_AN_INPUT = (
     "internally-consistent complete change, take the fuller path."
 )
 
-# The section lead's never-invent rule, and the one carve-out that keeps Step
-# 1's depth assignment from contradicting it.
+# The section lead's never-invent rule, stated unqualified. With the compose
+# branch gone the orchestrator originates no depth at all, so the rule carries
+# no carve-out — and the absence of one is the contract, not an omission.
 NEVER_INVENT_RULE = (
-    "the depth of a path the reviewer enumerated is the reviewer's call, read "
-    "as emitted, and is the one classification the orchestrator must never "
-    "invent"
-)
-COMPOSED_ORIGINATION_CARVE_OUT = (
-    "**One carve-out, and only one:** a path the orchestrator **composes** at "
-    "Step 1 carries no reviewer depth tag because no reviewer ever saw it, so "
-    "the orchestrator assigns that path a depth itself (Step 1 below). That is "
-    "origination, not re-classification"
-)
-
-# The definition's closing clause, which is what stops the compose branch from
-# looping: a composed path is complete by construction, so row 4 (narrower than
-# the complete fix) can never send it to gate (c).
-HIGHEST_QUALITY_COMPOSED_CLAUSE = (
-    "**This definition is what a composed path is composed to**: a path the "
-    "orchestrator writes because no enumerated one met it, so a composed path "
-    "never satisfies row 4 by construction"
+    "the depth of a path is the reviewer's call, read as emitted, and is the "
+    "one classification the orchestrator must never invent"
 )
 
 # The two sentences of the mechanism definition that are shared verbatim. The
@@ -278,50 +364,67 @@ MECHANISM_PRIMARY_SIGNAL = (
     "only when no tag is present"
 )
 
-# --- The composed path across its four downstream readers ---------------------
+# --- Trigger C's single firing site ------------------------------------------
 
-GATE_C_COMPOSED_CONTEXT = (
-    "**When the Step-1 pick was a composed path**, that context line also "
-    "describes it — its letter, the depth Step 1 assigned it, and what it does"
-)
-GATE_C_COMPOSED_CROSS_REF = (
-    "This is the same rule part (d)'s composed-path clause carries at its own "
-    "gate."
-)
-GATE_D_COMPOSED_CHOICE = (
-    "**When the Step-1 pick was a composed path** routed here by row 5, "
-    "present that composed path as a choice of its own alongside the "
-    "reviewer's — under the next unused letter, described in full — and mark "
-    "**it** `(Recommended)` per the rule above"
-)
-TRIGGER_C_COMPOSED_CARVE_OUT = (
-    "**The carve-out is evaluated on the reviewer's enumeration alone, and "
-    "never applies when the Step-1 pick was composed:** composing is itself a "
-    "pick between what the reviewer enumerated and a path no reviewer "
-    "proposed, so a composed entry always appends however few — or however "
-    "shallow — the enumerated paths were."
-)
+# Row 6 is the whole of the ungated route in both skills, and the sentence
+# saying so is byte-identical across them and stands as its own paragraph in
+# each. It is therefore addressed with `paragraph_starting`, whose exactly-one
+# assertion makes that own-paragraph claim true by construction rather than by
+# this comment: should the sentence ever be folded back into the trigger's
+# paragraph — the shape it briefly had in execute mode — the guard fails and
+# says so, instead of a bare containment check passing over the change.
+TRIGGER_C_LEAD = "**Trigger C — ungated route (the orchestrator's own path pick).**"
+TRIGGER_C_FIRING_SITE = "**Row 6 is this trigger's only firing site.**"
+TRIGGER_C_FIRING_SITE_TAIL = "no Trigger C entry is written for it."
 
-# Trigger C's composed-entry field substitution. The two skills carry it in
-# different containers (an inline clause in fix mode, its own bullet in execute
-# mode) and differ in sentence-initial casing, so the shared *clauses* are
-# pinned rather than a whole sentence.
-TRIGGER_C_COMPOSED_FIELDS = (
-    "write the **next unused letter** after the reviewer's own in the `(x)` "
-    "slot",
-    "**carrying the depth Step 1 assigned it**",
-    "in `Rationale` that **the reviewer did not enumerate this path**",
-    "**what the enumerated paths lacked**",
-)
+# The region ends at the NEXT trigger's lead, not at the firing-site sentence's
+# own tail, because Trigger C's prose extends past that sentence and the retired
+# prose lived in the part a tail-bounded slice cannot see. The two skills failed
+# that bound differently at HEAD, and neither failure is a near miss:
+#
+#   * fix mode HAD the tail, and the cross-skill parenthetical began on the same
+#     line just **two bytes** past it (the gap is a space and an open paren), so
+#     a tail-bounded slice stopped immediately short of the very text the
+#     sibling-name scan exists to find;
+#   * execute mode had **no firing-site sentence at all** — its trigger ran
+#     straight on through further paragraphs and bullet blocks of site-(2)
+#     machinery — so a tail-bounded slice had nothing to anchor on there and
+#     would raise rather than under-read.
+#
+# Bounding on the next lead is also what makes the region survive a paragraph
+# being added: whatever Trigger C grows, it grows before Trigger D.
+TRIGGER_C_REGION_END = "**Trigger D — "
 
-# The inline marker the composed line carries in the paths field. The `Rationale`
-# clauses above already say the path was composed, but PHASE 4 judges the
-# reviewer's under-enumeration off the paths field alone; an unmarked composed
-# line inflates that field with a path the reviewer never proposed, and does so
-# in exactly the case where the composition is the evidence of under-enumeration.
-TRIGGER_C_COMPOSED_INLINE_MARKER = (
-    "(orchestrator-composed — not enumerated by the reviewer)"
+# The retired second firing site and the cross-skill comparison that justified
+# it. Execute mode once collapsed its blocker choice sets to a single choice and
+# dispatched those findings ungated, which obliged a second Trigger C site and a
+# paragraph in each skill explaining how the other differed. Both gates now fire
+# for a blocker in both skills, so the second site is gone — and with it the
+# comparison, which is the half that rots silently once only one skill is
+# edited.
+RETIRED_TRIGGER_C_SHAPES = (
+    # The two firing-site counts, one per skill's own retired wording.
+    "only firing site in this skill",
+    "second firing site",
+    # The retired execute-mode trigger's own vocabulary. The two counts above
+    # are single clauses, but the machinery they belonged to was not: it ran on
+    # past them through further paragraphs and bullet blocks — a second site
+    # class, its `Rationale` additions, field substitutions for its sub-cases,
+    # and a carve-out scoped to site (1). A half-revert that restores that
+    # machinery without restoring either count would pass a count-only list
+    # while the second ungated route is back in the prose, so the vocabulary is
+    # pinned alongside. Every one of these is verified present at HEAD and
+    # absent from both skills today.
+    "It fires at **two** sites",
+    "site (2)",
+    "gateless `blocker` dispatch",
+    "Field substitution on site (2)",
+    "The lone-`trivial-tweak` carve-out applies on site (1) only.",
 )
+OTHER_ORCHESTRATOR_NAME = {
+    QUO_FIX_ISSUE: "/quo-execute",
+    QUO_EXECUTE: "/quo-fix-issue",
+}
 
 # The two places the state-externalization checkpoint reasons about an absent
 # tracker file. Both have to agree with Trigger C about which picks oblige an
@@ -330,9 +433,18 @@ CHECKPOINT_GAP_QUALIFIER = (
     "an ungated path pick **that Trigger C requires an entry for** was "
     "dispatched"
 )
+# Extended through the em-dash continuation deliberately. The pre-change
+# sentence read "... among two or more paths, or was composed — Trigger C's
+# ...", so a constant stopping at "two or more paths" is a strict PREFIX of the
+# old text and matches it too — the guard would have passed against the very
+# prose the removal was supposed to retire, leaving this site uncovered. Reading
+# through the em-dash is what makes the constant discriminate: the old sentence
+# has ", or was composed" between the two halves, so the extended string is
+# absent from it.
 TRACKER_ABSENT_RENDER_CLAUSE = (
     "an ungated path pick appends an entry whenever the pick was among two or "
-    "more paths, or was composed"
+    "more paths — Trigger C's lone-`trivial-tweak` carve-out is the only "
+    "ungated route that appends nothing"
 )
 
 # --- The `[preferred]` closing clause, in five emitters ----------------------
@@ -386,24 +498,266 @@ DECISION_PICK_SUFFIX = ") — highest-quality"
 
 # --- Severity rule -----------------------------------------------------------
 
-# Both gates lead their severity rule with this. The remainder of the sentence
-# differs per gate and per skill (execute mode's part (c) adds "and fires no
-# gate here"), so only the shared lead is pinned.
+# Both gates lead their severity rule with this prefix, and it is the longest
+# string common to all four copies — so it is what the mechanical
+# every-shelving-choice-is-qualified scan below keys on.
+#
+# What varies, and where: the remainder differs **per gate** (part (c) states
+# the never-accept / defer-only-with-a-narrowing rule, part (d) states that a
+# blocker's Defer route is conditional), and part (d)'s paragraph additionally
+# differs **per skill** past its lead — fix mode names the Analyst re-dispatch
+# among the choices the `(Recommended)` marker must be withheld from, execute
+# mode carries the zero-path **free-text** branch in its place. Both skills'
+# part (d) name the zero-path case; what differs is how each resolves it (fix
+# mode sends it to the Analyst re-dispatch, execute mode fires the gate on an
+# empty per-path list and takes a prose direction), which is the same
+# distinction `EXECUTE_ZERO_PATH_GATE_FIRES` records. Part (c)'s paragraph is byte-
+# identical across the two skills today; the execute-only "and fires no gate
+# here" tail this comment used to cite is gone, because that gate now fires for
+# a blocker in both skills. The per-gate leads are pinned in full by
+# SCOPE_GATE_BLOCKER_RULE and ROUTING_GATE_BLOCKER_RULE.
 BLOCKER_EXCLUSION_LEAD = "**Severity rules the choice set"
 
 SCOPE_GATE_BLOCKER_RULE = (
-    "**Severity rules the choice set — a `blocker` can be neither deferred nor "
-    "accepted"
+    "**Severity rules the choice set — a `blocker` can never be accepted, and "
+    "can be deferred only with a narrowing.**"
 )
-SCOPE_GATE_WITHHELD_CHOICES = (
-    "the `Defer to follow-up Issue` and `Accept the limitation` choices below "
-    "are **unreachable**"
+SCOPE_GATE_ACCEPT_UNREACHABLE = (
+    "**`Accept the limitation` is unreachable, unconditionally**"
 )
 ROUTING_GATE_BLOCKER_RULE = (
-    "**Severity rules the choice set here too — a `blocker` has no Defer route.**"
+    "**Severity rules the choice set here too — a `blocker`'s Defer route is "
+    "conditional.**"
 )
-ROUTING_GATE_WITHHELD_CHOICE = (
-    "the `Defer to follow-up Issue` choice below is **unreachable**"
+
+# The paragraph lead, for addressing part (d)'s severity paragraph specifically
+# rather than part (d) at large. Shorter than the full rule above because it is
+# used as a `paragraph_starting` anchor, which matches on a line's opening.
+ROUTING_GATE_SEVERITY_LEAD = "**Severity rules the choice set here too"
+ROUTING_GATE_CONDITIONAL_DEFER = (
+    "the `Defer to follow-up Issue` choice below is **unreachable unless part "
+    "(c)'s two conditions both hold**"
+)
+
+# Execute mode's zero-path **free-text** branch, and the reason
+# `TRIGGER_C_FIRING_SITE` is true here. Both skills' part (d) name the zero-path
+# case; this is how execute mode resolves it.
+# A row-1 blocker can arrive with no fix path enumerated at all —
+# nothing for the per-path list to hold — and the shape that resolves it is a
+# gate that fires anyway on an empty list, taking the user's prose direction
+# through the free-text slot. Both halves are load-bearing and neither implies
+# the other: without the first the gate would have nothing to present and the
+# natural reading is that it does not fire, which is exactly the "gate declines
+# to fire, so dispatch ungated" shape the retired second Trigger C firing site
+# existed to record; without the second, a user-directed dispatch looks like an
+# ungated route and Trigger C's row-6-only claim becomes false in execute mode.
+# QUO_EXECUTE-only: fix mode routes a zero-path blocker to its Analyst
+# re-dispatch, so it has no free-text branch to exempt.
+EXECUTE_ZERO_PATH_GATE_FIRES = (
+    "the gate still fires on it: the per-path list is simply empty"
+)
+EXECUTE_USER_DIRECTED_IS_NOT_UNGATED = (
+    "a user-directed fix is not an ungated route, so Section 6.5's **Trigger "
+    "C** writes nothing for it"
+)
+
+# Part (d)'s own Defer bullet reads "rather than picking a path now" — nothing
+# ships against the finding this round. That is right for a `suggestion` or
+# `nit` and flatly wrong for a `blocker`, whose deferral is only legitimate
+# paired with a narrowing dispatched the same round. The gate carries the
+# correction explicitly rather than leaving a reader to reconcile the bullet
+# with part (c)'s rule, because the bullet is what the orchestrator reads when
+# it assembles the choice. Part (c) carries the same reconciliation for its own
+# copy of that bullet — see `SCOPE_GATE_DEFER_BULLET_RECONCILIATION`.
+ROUTING_GATE_BLOCKER_PAIRING = (
+    "**When it is offered to a blocker here, the deferral is paired with a "
+    "narrowing dispatched this round, never shipped alone** — the `Defer to "
+    "follow-up Issue` bullet's \"rather than picking a path now\" describes the "
+    "non-blocker case, where nothing ships against the finding this round."
+)
+
+# Part (c)'s floor for a `blocker`. The two members differ per skill — fix mode
+# routes a wrong-directive blocker back to the Analyst, execute mode has no
+# Analyst and offers `Cancel` (stop the run and re-plan) instead — so the lead
+# is mirrored prose and the pair itself is per-skill. Without the floor, a
+# blocker whose Defer conditions do not both hold reaches a gate with one
+# choice, which is a dispatch wearing a gate's clothes.
+BASE_PAIR_LEAD = "**The base pair is always offered.**"
+BASE_PAIR_MEMBERS = {
+    QUO_FIX_ISSUE: (
+        "a `blocker` gets `Fix properly now` and `Re-dispatch the Analyst with "
+        "this finding`"
+    ),
+    QUO_EXECUTE: "a `blocker` gets `Fix properly now` and `Cancel`",
+}
+
+# The other half of that per-skill split: where `Cancel` is NOT offered. The two
+# statements are not stylistic variants — they scope differently because the
+# base pairs differ. Execute mode puts `Cancel` in a blocker's base pair, so its
+# rule has to withhold it from the `suggestion` / `nit` set specifically; fix
+# mode has no `Cancel` at this gate at all, since the Analyst re-dispatch
+# carries the stop-and-re-plan answer instead. Swap either sentence for the
+# other and the gate contradicts its own base pair — execute mode would deny a
+# blocker the `Cancel` its floor guarantees, or fix mode would advertise a
+# choice it never defines.
+SCOPE_GATE_NO_CANCEL_RULE = {
+    QUO_FIX_ISSUE: "**There is no `Cancel` option at this gate**",
+    QUO_EXECUTE: (
+        "**There is no `Cancel` option on the `suggestion` / `nit` choice set**"
+    ),
+}
+
+# The two conditions that open a `blocker`'s Defer route, and the guard that
+# closes it again. Both conditions must hold — an `and`, not an `or` — because
+# either alone still shelves a blocker: a mechanism serving the stated defect
+# cannot be narrowed away, and a non-mechanism path has nothing to defer.
+DEFER_THIRD_CHOICE_LEAD = (
+    "- **`Defer to follow-up Issue` is added as a third choice *only when "
+    "both* of these hold:**"
+)
+DEFER_CONDITIONS = (
+    "(i) the fix path the finding needs **introduces a mechanism**",
+    "(ii) that mechanism serves a case **outside this unit's stated defect**",
+)
+
+# The branch is row-independent on a `blocker`. Condition (i) tests the fix path
+# the finding *needs*, not the path Step 2 routed — so the two conditions can
+# both hold on a row-3 or row-4 fire, where nothing about the chosen path
+# mentions a mechanism at all. Without this sentence the branch reads as row-2
+# only (the mechanism row), which is the reading the mechanism-row default
+# paragraph invites, and a blocker that could legitimately defer would be
+# handed the base pair instead.
+DEFER_ROW_INDEPENDENCE = (
+    "**It applies whichever row fired this gate on a blocker — 2, 3 or 4.**"
+)
+
+# "It" in that sentence is this: the Defer-plus-narrowing pairing being the
+# recommended default. Pinned because a pronoun with no pinned antecedent is a
+# sentence whose meaning can change without the sentence changing — reword the
+# clause above it and the row-independence rule silently starts qualifying
+# something else, while the guard on it still passes.
+DEFER_ROW_INDEPENDENCE_ANTECEDENT = (
+    "That pairing is then the **recommended default** — mark the choice "
+    "`(Recommended)` even on a blocker"
+)
+
+# The guard, stated at both gates. Pinned without its trailing punctuation: part
+# (c) closes the bolded run with a period inside the emphasis and part (d)
+# continues the sentence with a comma outside it, so the shared contract is the
+# clause rather than either file's sentence boundary.
+NARROWING_COVERAGE_GUARD = (
+    "A narrowing may never reduce coverage of the stated defect"
+)
+
+# The pairing order. Filing first is what makes the narrowing legitimate: part
+# (f) forbids shipping it when the filing failed, so a narrowing dispatched
+# before `/quo-file-issue` returned has already shipped by the time that rule
+# could withhold it.
+DEFER_FILE_FIRST = (
+    "**the deferral is paired with the narrowing, never shipped alone**: "
+    "**file the follow-up Issue first**, carrying the reviewer's sketched "
+    "design **verbatim**, and dispatch the narrowing"
+)
+DEFER_FILE_FIRST_ORDER = "only once `/quo-file-issue` has returned an Issue ID"
+
+# The narrowing's terminality. Re-entering Step 2 with it would match row 4 —
+# narrower than the smallest internally-consistent complete fix — and route it
+# back to the gate that just produced it, which is an unbounded loop rather than
+# a fix.
+NARROWING_DISPATCHED_DIRECTLY = (
+    "**Dispatch that narrowing directly, not by re-entering Step 2 with it** — "
+    "it is narrower than the complete fix by construction, so Step 2 would "
+    "match row 4 and route it straight back to this gate."
+)
+
+# Part (d) now carries two independent `(Recommended)` rules — the Step-1 pick's
+# per-path marker, and the blocker Defer branch's — so it has to say which wins.
+# The two copies diverge mid-sentence (fix mode names the third marker its
+# empty-list case would otherwise set), so the shared head and tail are pinned
+# rather than the sentence.
+ROUTING_GATE_MARKER_PRECEDENCE = (
+    "**That `(Recommended)` takes precedence over the per-path marker**: mark "
+    "`Defer to follow-up Issue` Recommended and withhold the marker from "
+    "**every other choice**"
+)
+ROUTING_GATE_EXACTLY_ONE_MARKER = "so exactly one choice carries it, as at part (c)."
+
+# The Analyst re-dispatch choice, fix mode only. Its two ends: part (c) defines
+# the in-flight-lane sweep, Section 3's Approve branch orders it before Phase A
+# re-entry. Execute mode has no Analyst and no counterpart.
+#
+# The heading below is the container the ordering end must live in. Naming it
+# lets each end be asserted against its own section rather than file-wide,
+# which is what makes "these two ends are in different places" checkable at
+# all — the whole point of the pin.
+ANALYST_APPROVE_BRANCH_HEADING = "#### Branch on the user's choice"
+
+# --- Deferred-refinements supersession, fix mode only -------------------------
+
+# The `defer-*` ledger is the Analyst lane's only inter-session carrier: nothing
+# downstream reconstructs it (Section 7.5's Step 1 enumerates only tasks still
+# active, and its Step 0 walks only the latest Analyst block). So the rule for
+# what supersession clears is destructive if stated one clause too wide — and it
+# briefly was, until a code review caught it. The narrow rule turns on WHY an
+# iteration's tasks are stale: a Revise chain's tasks belong to proposals the
+# user rejected in favour of the next, while an earlier *Approve*'s tasks belong
+# to an approval that still stands. Both sentences are pinned, because the
+# clearing half alone is exactly the over-wide rule that would destroy every
+# banked refinement at the first re-fire.
+DEFERRED_REFINEMENTS_HEADING = (
+    "#### Consume the Analyst's `### Deferred refinements` block"
+)
+DEFERRED_REFINEMENTS_THIRD_ROUTE = (
+    "OR when the user picks Approve after this gate was re-fired from part "
+    "(c)/(d)'s `Re-dispatch the Analyst with this finding` choice"
+)
+DEFERRED_REFINEMENTS_SUPERSESSION_RULES = (
+    "**Supersession clears only the `defer-*` tasks of an iteration the user "
+    "never approved**",
+    "**`defer-*` tasks created at an earlier *Approve* survive a later "
+    "re-fire**",
+)
+
+# The sweep obligation survives Revise iterations. The re-fire lands on a gate
+# whose Revise branch loops back through a fresh Analyst, so an operator can
+# Revise once or twice before Approving — and read narrowly ("on Approve of the
+# re-dispatched Analyst's return"), the sweep then never runs on the Approve
+# that actually re-enters Phase A. That failure is silent in the worst way: the
+# writer lanes stay `pending`, and part (g)'s Engineer-dispatch precondition
+# wedges the next Engineer on tasks nothing will ever clear.
+ANALYST_REDISPATCH_SWEEP_SURVIVES_REVISE = (
+    "This holds on **every** Approve reached from that re-fire — including a "
+    "later Approve after one or more Revise iterations on it — not only on an "
+    "Approve of the re-dispatched Analyst's first return."
+)
+ANALYST_REDISPATCH_SWEEP_SPEC = (
+    "**On `Approve`, re-enter Section 4 Phase A with the revised directive — "
+    "but close out this Issue's open TaskList tasks first**"
+)
+ANALYST_REDISPATCH_SWEEP_ORDERING = (
+    "**When this gate was re-fired from part (c)/(d)'s `Re-dispatch the "
+    "Analyst with this finding` choice**, run that choice's in-flight-lane "
+    "TaskList sweep"
+)
+ANALYST_REDISPATCH_SPEC_POINTER = (
+    "that bullet in `### Orchestrator discipline: routing review findings` is "
+    "the specification, this is only the ordering"
+)
+
+# The discard is wider than the sweep. The sweep can only reach lanes that have
+# an active TaskList task, and two classes of finding have none: the siblings
+# co-emitted by the reviewer return that fired this gate (they live in the
+# orchestrator's context on no task at all) and any lane that returned between
+# the gate answer and the sweep (already `completed`). Read as "discard what the
+# sweep caught", both classes get routed — against the directive the
+# re-dispatch just superseded, which is the one thing this branch exists to
+# prevent. Head and tail are pinned; the two parenthetical classes between them
+# are the reasoning.
+ANALYST_REDISPATCH_DISCARD_SCOPE = (
+    "**That discard covers every finding raised under the superseded "
+    "directive, not only the lanes this sweep caught in flight**",
+    "Route none of them; the revised directive is what the next round reviews "
+    "against.",
 )
 
 DEFER_BULLET = "- **Defer to follow-up Issue**"
@@ -421,14 +775,28 @@ SHELVING_BULLETS = (DEFER_BULLET, ACCEPT_BULLET)
 EXPECTED_SHELVING_BULLETS = 3
 
 MECHANISM_DEFAULT_LEAD = "**Recommended default on the mechanism row.**"
-NON_BLOCKER_QUALIFIER = "**non-`blocker`**"
 
-# The two clauses of that paragraph that are shared verbatim, pinned in the
-# `MECHANISM_PRIMARY_SIGNAL` idiom rather than as a whole-paragraph mirror: the
-# copies legitimately diverge in how each skill states the blocker exclusion,
-# because the two gates withhold differently — fix mode drops the choice from a
-# gate that still fires ("the choice does not exist at all"), execute mode does
-# not fire the gate at all. Only the clauses below are mirrored prose.
+# The mechanism row's Defer default now applies at every severity, with one
+# qualification: on a `blocker` the deferral ships the narrowing rather than a
+# soft fix, and only while the Defer-with-narrowing branch is open at all. The
+# withholding half is the load-bearing one — without it the default recommends a
+# choice the coverage guard has already taken off the table.
+MECHANISM_DEFAULT_SEVERITY_SCOPE = (
+    "This holds **at every severity**, with one qualification on a `blocker`:"
+)
+MECHANISM_DEFAULT_COVERAGE_WITHHOLDING = (
+    "When its coverage guard withholds `Defer` (narrowing the change would "
+    "leave the stated defect partly unfixed), there is no choice to mark, even "
+    "on a row-2 fire."
+)
+
+# Two clauses of that paragraph, pinned individually in the
+# `MECHANISM_PRIMARY_SIGNAL` idiom. The paragraph is byte-identical across the
+# two skills today — the per-skill blocker-exclusion parentheticals it used to
+# carry are gone, since that gate now fires for a blocker in both — so a
+# whole-paragraph mirror would also hold. Clause-level pins are kept anyway,
+# because a mirror only proves the two copies agree: delete a clause from both
+# and they still agree, and these two are the ones whose loss is silent.
 #
 # The first is the recommendation itself; without it the gate presents Defer as
 # one neutral option among the set, and the "gate less, but shelve the machinery
@@ -445,7 +813,159 @@ MECHANISM_DEFAULT_VERBATIM_HANDOFF = (
     "deferring it."
 )
 
-TRIGGER_BLOCKER_CLAUSE = "**Unreachable for a `blocker`-severity finding**"
+# Trigger B records an accepted limitation, which no `blocker` can ever reach —
+# so its exclusion is unconditional, and the word carrying that is the whole
+# difference between it and Trigger A's conditional one.
+TRIGGER_B_UNREACHABLE = (
+    "**Unreachable for a `blocker`-severity finding**, unconditionally"
+)
+
+# Trigger A is the one tracker write a `blocker` CAN reach, and only on the
+# Defer-with-narrowing branch. Its heading was widened to "either gate" when
+# part (d)'s Defer branch was made to fire the same trigger, and the entry's
+# narrowing record is what separates a legitimate blocker deferral from the
+# contract violation PHASE 2 and the PM both hunt for.
+TRIGGER_A_HEADING = "**Trigger A — Defer to follow-up Issue at either gate.**"
+TRIGGER_A_BLOCKER_REACHABILITY = (
+    "**On a `blocker`-severity finding this branch is reachable only as "
+    "Defer-with-narrowing, at either gate**"
+)
+TRIGGER_A_NARROWING_RECORD = (
+    "the entry MUST then carry a **narrowing record** in `Rationale`"
+)
+
+# What the entry's **paths field** holds when the reviewer enumerated nothing
+# at all. Reachable only at the routing-decision gate, whose `Defer` is offered
+# whatever the path count. Without it a zero-path deferral is written with that
+# field unspecified, while `Rationale` already has a rule for the same
+# situation — one case, two fields, and an entry shape that is incomplete until
+# both are stated.
+TRIGGER_A_ZERO_PATH_FIELD = (
+    "Write `Fix paths surfaced by reviewer: none` when the reviewer enumerated "
+    "no path at all — reachable at the routing-decision gate, whose `Defer` "
+    "choice is offered whatever the path count."
+)
+
+# When the entry's `Rationale` soft-fix slot reads `none did`. Broader than the
+# zero-path case above: it covers every deferral that ships nothing, which
+# includes the single-path case at the scope-bounding gate. This is the
+# tracker-side twin of part (d)'s "ships nothing against the finding this
+# round" — scoped to "the single-path case" alone it is wrong at gate (d),
+# where Defer ships nothing no matter how many paths the reviewer enumerated,
+# so a multi-path deferral taken there would be recorded as though one of the
+# remaining paths shipped as a soft fix. That is not a vague entry but a false
+# one, and PHASE 2 and the PM both read the tracker as fact.
+TRIGGER_A_NONE_DID_SCOPE = (
+    "or that **none did**, whenever deferring leaves no fix this round — the "
+    "single-path case at the scope-bounding gate, and any deferral at the "
+    "routing-decision gate, whose `Defer` bullet ships nothing against the "
+    "finding regardless of how many paths the reviewer enumerated."
+)
+
+# Part (c)'s statement of the same split, from the gate end. Trigger B is
+# unreachable for a blocker; Trigger A is reachable for exactly one shape.
+SCOPE_GATE_TRIGGER_SPLIT = (
+    "**Trigger A is reachable for one**, on the Defer-with-narrowing branch "
+    "above"
+)
+
+# Part (c)'s twin of `ROUTING_GATE_BLOCKER_PAIRING`. Both gates share one
+# `Defer to follow-up Issue` bullet written for the non-blocker case, and both
+# have to reconcile it against the blocker branch before a reader reaches it.
+# Part (c)'s bullet carries THREE closing clauses a blocker would otherwise be
+# read against, and the sentence answers each in turn:
+#
+#   1. the no-fix-this-round branch — impossible here, since condition (ii)
+#      guarantees a narrowing exists and it always ships;
+#   2. the never-invent-a-narrowing prohibition — aimed at filling an empty
+#      soft-fix slot on a non-blocker, not at the narrowing this branch
+#      requires. Unreconciled, this one reads as forbidding the very narrowing
+#      the severity rule demands;
+#   3. the soft-fix identification ("the most complete of the enumerated paths
+#      that remain") — on a blocker what ships is the narrowing, not a
+#      leftover enumerated path. Unreconciled, this one is worse than a
+#      contradiction: it is followable, and following it ships a path the
+#      severity rule never authorised while the narrowing goes undispatched.
+#
+# Pinned whole rather than clause-by-clause because the count is the contract —
+# the sentence opens by claiming to dispose of the bullet's closing clauses, so
+# a fourth clause added to the bullet without a fourth answer here leaves that
+# claim false while every individual clause pin still passes.
+SCOPE_GATE_DEFER_BULLET_RECONCILIATION = (
+    "**Neither of the `Defer to follow-up Issue` bullet's closing clauses "
+    "applies to one:** its no-fix-this-round branch cannot arise, because "
+    "condition (ii) guarantees a narrowing exists and that narrowing always "
+    "ships; its never-invent-a-narrowing prohibition is about filling an "
+    "empty soft-fix slot on a non-blocker, not about the narrowing this branch "
+    "requires; and neither does its soft-fix identification: what ships on a "
+    "blocker is the narrowing this branch requires, not the most complete of "
+    "the enumerated paths that remain."
+)
+
+# The paragraph that carries part (c)'s reconciliation, for anchoring it there
+# rather than to part (c) at large — the same anchoring `ROUTING_GATE_SEVERITY_LEAD`
+# gives part (d)'s.
+#
+# NOT the severity lead, which is what part (d)'s anchor is: the two parts are
+# shaped differently. Part (d) states its whole severity rule as one paragraph,
+# so its lead addresses all of it. Part (c) opens with a one-line lead, hangs
+# the blocker choice set off it as sub-bullets, and then closes with this
+# summary paragraph — so the severity lead addresses only that first line, and
+# the reconciliation lives here. This paragraph still sits above part (c)'s
+# choice bullets, which is what the ordering requirement needs; the test
+# asserts that position rather than assuming it.
+SCOPE_GATE_BLOCKER_SUMMARY_LEAD = (
+    "The gate fires for a `blocker` like any other finding"
+)
+
+# PHASE 2's three violation shapes. The gates should never produce any of them,
+# so each is a backstop rather than a routine check — and the third is the one
+# that only exists because a blocker CAN now be deferred: an entry that carries a
+# narrowing record still violates the contract when the narrowing it records
+# left the stated defect partly unfixed. Matched against squeezed text because
+# the prompt is hard-wrapped mid-sentence.
+PHASE_2_VIOLATION_SHAPES = (
+    "is a contract violation — a blocker can never be accepted",
+    "carries **no narrowing record**",
+    "left the unit's stated defect partly unfixed",
+)
+PHASE_2_CHALLENGE_SEVERITY = (
+    "Emit any of these as a `[compromise-challenge]` finding at `blocker` "
+    "severity, never lower."
+)
+
+# The post-completion step that routes PHASE 2's output. It names the excluded
+# class and enumerates the same three shapes PHASE 2 emits, so the two ends have
+# to describe one class; a shape added to PHASE 2 and not here arrives at a
+# recovery gate that was written for a class it is not in.
+RECOVERY_GATE_EXCLUDED_CLASS = (
+    "**One challenge class has no recovery gate, by design: the "
+    "accepted-`blocker`-or-unnarrowed-deferral contract violation PHASE 2 "
+    "emits.**"
+)
+RECOVERY_GATE_EXCLUDED_SHAPES = (
+    "the entry records an acceptance the gates should never have offered, or a "
+    "deferral shipped without the narrowing that was its precondition, or one "
+    "whose narrowing left the stated defect partly unfixed"
+)
+
+# Part (f)'s enforcement half of the file-first ordering. Part (c) says file
+# first; this says what happens when the filing fails, and without it the
+# ordering rule has no consequence attached to it.
+FILE_ISSUE_FAILURE_REACHES_A_BLOCKER = (
+    "**A `blocker` can reach this bullet**, via the Defer-with-narrowing "
+    "branch, and on one the failed filing is load-bearing: **do not ship the "
+    "narrowing when the filing failed**"
+)
+
+# The tracker's `Rationale` field spec, which has to describe what Trigger A
+# writes into it. The field spec is stated twice per skill — once in the entry
+# template's placeholder, once in the five-fields prose beneath it — and both
+# copies are the reader's account of what a blocker deferral's entry contains.
+TRACKER_RATIONALE_NARROWING_CLAUSE = (
+    "on a blocker deferral the narrowing record in its place"
+)
+TRACKER_RATIONALE_CARRIERS = 2
 
 # --- Cancel routing ----------------------------------------------------------
 
@@ -461,16 +981,72 @@ CLOSE_OUT_ROUTER_SENTENCE = "branches route here"
 # The spelled-out count that opens each close-out's router sentence. It is the
 # half of the pointer a reader checks the list against, and it is what goes
 # stale when a router is added without recounting — the exact defect this Issue
-# fixed, which added `Cancel` as fix mode's third router and execute mode's
-# second. The counts differ because fix mode has one router execute mode has
-# no analogue for (Section 3's Analyst-proposal gate).
+# fixed, which added `Cancel` as a router to both close-outs. Both counts are
+# three, for different reasons: fix mode has a router execute mode has no
+# analogue for (Section 3's Analyst-proposal gate), and execute mode has one fix
+# mode has no analogue for (part (c)'s `Cancel`, which sits in a `blocker`'s
+# base pair where fix mode offers the Analyst re-dispatch instead).
 CLOSE_OUT_ROUTER_COUNT_WORD = {
     QUO_FIX_ISSUE: "Three",
-    QUO_EXECUTE: "Two",
+    QUO_EXECUTE: "Three",
 }
 CANCEL_ROUTER_PHRASE = (
     "the routing-decision gate's **Cancel** choice (part (d) of "
     "`### Orchestrator discipline: routing review findings`)"
+)
+
+# A second router from each close-out's sentence, pinned per skill: the gate
+# `CANCEL_ROUTER_PHRASE` does not name. It is not "the remaining" one — each
+# sentence names three routers and this module pins two, so one is left over
+# either way. Nor is the name positional: fix mode lists this one second and
+# execute mode third.
+#
+# What it buys: with the count word alone, "Three" is checkable only against
+# itself. Adding a second name makes the guard a change-detector over the count
+# word plus two of the three routers, so a rewrite that drops or renames either
+# of those two is caught rather than passing under an unchanged "Three".
+#
+# One acknowledged gap, not covered anywhere in this module: the third router —
+# the Reconcile-step unexplained-movement gate's **Abort this Issue** / **Abort
+# this unit** choice — is unpinned. Verified by deletion: removing it from
+# either close-out's router sentence leaves every guard in this module passing,
+# with the count word still reading "Three" over a list of two. Pinning it was
+# considered and declined; it is the one router this Issue did not touch, and
+# the constant would exist only to make the count self-consistent rather than to
+# protect a contract this Issue changed.
+THIRD_ROUTER_PHRASE = {
+    QUO_FIX_ISSUE: "Section 3's Analyst-proposal gate's **Cancel** choice",
+    QUO_EXECUTE: (
+        "the scope-bounding gate's **Cancel** choice (part (c) of that same "
+        "section, offered only in a `blocker`'s choice set)"
+    ),
+}
+
+# Execute mode's close-out has two `Cancel` producers but its downstream prose
+# names only one. **Every** statement in this skill that branches on "a
+# routing-gate `Cancel`" — the sweep's scope selection, the marker rule, the
+# checkpoint's scope resolution, the Progress write, the stop message — was
+# written when part (d)'s was the only such branch. This sentence is the sole
+# carrier making them cover part (c)'s too; without it, part (c)'s `Cancel`
+# routes to a close-out whose every step reads as specified for the other
+# branch. (No count is given deliberately: the occurrences are spread across
+# more lines than any figure written here would stay true to, and the claim
+# does not need one — it is about all of them.)
+EXECUTE_CANCEL_EQUIVALENCE = (
+    "The two `Cancel` branches behave identically here — both are a user "
+    "answering *stop and re-plan* at a review site — so wherever any statement "
+    "in this skill branches on the routing-gate `Cancel`, read it as covering "
+    "either gate's `Cancel`."
+)
+
+# Execute mode's Bee-scope abort sweep. The Bee-level TaskList close-out it
+# borrows enumerates only `*-<bee-id>` names, so the `gate-*` task that fired the
+# `Cancel` is not in that enumeration and has to be named here or it is stranded
+# `pending` by the very branch that created it.
+EXECUTE_BEE_SCOPE_GATE_SWEEP = (
+    "**and the `gate-*` task that fired the branch routing here** — that "
+    "enumeration carries no `gate-*` name, so a `Cancel` fired at this review "
+    "would otherwise strand its own gate task `pending`"
 )
 
 # --- `[introduces-mechanism]` chain ------------------------------------------
@@ -516,7 +1092,66 @@ MECHANISM_DEFINITION_TERM_GROUPS = (
 
 TRACKER_PATH_PLACEHOLDER = "<compromise-tracker-path>"
 PM_TRACKER_CHECK_LEAD = (
-    "**Any deferred or accepted `blocker` the run's compromise tracker records.**"
+    "**Any accepted `blocker`, or improperly deferred `blocker`, the run's "
+    "compromise tracker records.**"
+)
+
+# The half of the PM's check that a coverage-blind reading loses. A deferral
+# carrying a narrowing record is not automatically legitimate — the narrowing
+# has to still cover the unit's stated defect, which is the same guard parts (c)
+# and (d) state at the gates and PHASE 2 states after the run. The PM is the
+# only one of the three positioned to read the record against the diff while a
+# lane is still open to fix it.
+PM_NARROWING_MUST_COVER_THE_DEFECT = (
+    "A blocker deferral **with** a narrowing record is legitimate **only when "
+    "that narrowing still covers the unit's stated defect**"
+)
+
+# Why the PM's destination channel cannot carry a blocker deferral, now that the
+# gates can. The prohibition alone reads as a flat asymmetry a later editor could
+# "correct" by mirroring the gates' new conditional Defer into the PM's
+# destination list. The rationale is what makes the asymmetry legible: the gates
+# pair a deferral with a dispatched narrowing and a tracker entry recording it,
+# and a `defer-*` ledger entry pairs it with nothing.
+PM_BLOCKER_DESTINATION_RATIONALE = (
+    "Deferring a blocker is a decision that belongs to the orchestrator's "
+    "routing gates, which pair the deferral with a **dispatched narrowing** "
+    "and a tracker entry recording it"
+)
+
+# The bullet's closing instruction, which used to read "say plainly that it
+# must be fixed in this scope" — a claim the gates made false the moment a
+# blocker's Defer-with-narrowing branch opened. The corrected form says what is
+# actually true: the outcome is not the PM's to decide, and the gates have two
+# outcomes open to them. Pinned because the retired wording is the tempting one
+# to restore: it is shorter, it reads as a stronger rule, and it contradicts
+# the two gates it shares a contract with.
+PM_BLOCKER_NOT_THE_PMS_TO_SHELVE = (
+    "say plainly that it is not the PM's to shelve: the gates decide, and the "
+    "only outcomes open to them are a fix in this scope or a deferral paired "
+    "with a dispatched narrowing."
+)
+
+# A violation the diff under review has already resolved is not a violation.
+# Without this the PM re-raises, at `blocker` severity, an entry whose fix is
+# sitting in the very tree it is reading — routing a finding with no work left
+# in it, once per pass, because the tracker is append-only and this check reads
+# it without amending it.
+PM_RESOLVED_ENTRY_ONE_LINE = (
+    "when the deferred blocker has been re-opened and addressed in the tree "
+    "this PM is reviewing, name the entry in **one line** as already resolved "
+    "rather than re-emitting it as a `blocker` finding"
+)
+
+# The tracker stays append-only: the PM reports what it reads and never edits
+# it. This is what keeps the already-resolved rule above from turning into a
+# licence to tidy — "the entry is stale, so fix the entry" is the obvious next
+# thought, and acting on it would silently rewrite the run's only record of a
+# routing decision, out from under PHASE 2, which reads the same file after the
+# run and has no way to know an entry was amended.
+PM_TRACKER_IS_READ_ONLY = (
+    "Leave the tracker entry itself alone; this check reads it, it does not "
+    "amend it."
 )
 
 # The tracker is run-scoped; the PM is unit-scoped. Without the split below, a
@@ -676,6 +1311,39 @@ def normalize_section_refs(text):
     return SECTION_REF.sub(SECTION_REF_TOKEN, text)
 
 
+def trigger_c_region(relpath):
+    """All of Trigger C's prose: its lead through to Trigger D's.
+
+    Sliced rather than read as a paragraph because Trigger C spans more than
+    one: the firing-site sentence is its own paragraph in both skills today,
+    and the retired revision ran on past it through further paragraphs and
+    bullet blocks of machinery. Bounding on the next trigger's lead is what
+    makes the slice cover whatever lies between, which is the whole point of a
+    residue scan — prose sitting *past* the sentence the scan would otherwise
+    anchor on is exactly the prose a tail-bounded slice cannot see. (The
+    `TRIGGER_C_REGION_END` comment records how each skill failed that narrower
+    bound at HEAD; the two failed it in different ways.)
+
+    Both ends are asserted, plus the firing-site tail in between: a missing
+    anchor would otherwise yield a region that silently proves nothing.
+    """
+    text = read(relpath)
+    assert TRIGGER_C_LEAD in text, f"{relpath}: no {TRIGGER_C_LEAD!r} paragraph"
+    start = text.index(TRIGGER_C_LEAD)
+    assert TRIGGER_C_REGION_END in text[start:], (
+        f"{relpath}: no {TRIGGER_C_REGION_END!r} lead after Trigger C, so the "
+        "region this scans has no defined end"
+    )
+    end = text.index(TRIGGER_C_REGION_END, start)
+    region = text[start:end]
+    assert TRIGGER_C_FIRING_SITE_TAIL in region, (
+        f"{relpath}: Trigger C's region does not contain "
+        f"{TRIGGER_C_FIRING_SITE_TAIL!r} — the firing-site prose moved out from "
+        "between the two triggers and this slice no longer covers it"
+    )
+    return region
+
+
 def paragraph_starting(relpath, lead):
     """The single line of `relpath` that begins with `lead`."""
     matched = [line for line in read(relpath).splitlines() if line.startswith(lead)]
@@ -735,11 +1403,11 @@ def test_the_retired_gate_every_multipath_finding_table_is_gone():
 def test_no_shipped_artifact_names_the_retired_routing_tuple():
     """`(num-paths, max-depth)` is retired vocabulary across shipped prose.
 
-    The tuple was the orchestrator's parse input, and three artifacts besides
-    the orchestrators described it as such — `/quo-engineer-review`'s
-    compatibility constraint and `/quo-spec-review`'s severity-rendering note
-    among them. A surviving mention tells a reader the routing still keys on a
-    path *count*, which is exactly the rule this Issue removed.
+    The tuple was the orchestrator's parse input, and two artifacts besides the
+    orchestrators described it as such — `/quo-engineer-review`'s compatibility
+    constraint and `/quo-spec-review`'s severity-rendering note. A surviving
+    mention tells a reader the routing still keys on a path *count*, which is
+    exactly the rule this Issue removed.
 
     Scoped to shipped artifacts on purpose: repo-only ticket bodies under
     `.bees/` record the historical design and are not rewritten. The set comes
@@ -828,9 +1496,14 @@ def test_scope_bounding_gate_counts_the_rows_that_route_to_it():
     future row to gate (c) and the derived word moves off "four" while the
     unrecounted sentence still says four.
 
-    Only the shared count clause is pinned. The sentence's tail diverges
-    between the two skills — execute mode's adds "and whether the gate fires at
-    all" — so it is not mirrored prose and is not compared as such.
+    Only the count clause is pinned, and not because the sentence diverges —
+    the two skills' copies are byte-identical today, the execute-only tail this
+    docstring used to cite having gone with the change that made the gate fire
+    for a blocker in both. The clause is pinned because it is the **derived
+    half** of the fact: the count is computed here from the table and compared,
+    while the surrounding prose is not something this guard can derive. Pinning
+    the whole sentence would restate the mirror check `routing_parts` already
+    provides, and would fail this count guard on an unrelated reword.
     """
     for relpath in ORCHESTRATORS:
         sentence = scope_gate_entry_condition_sentence(relpath)
@@ -846,24 +1519,86 @@ def test_scope_bounding_gate_counts_the_rows_that_route_to_it():
 # --------------------------------------------------------------------------
 
 
-def test_step_1_carries_the_compose_branch_in_both_orchestrators():
-    """Step 1 lets the orchestrator write a path no reviewer enumerated.
+def test_step_1_picks_only_from_the_paths_the_reviewer_enumerated():
+    """Step 1's pick is closed over the reviewer's enumeration.
 
-    Without this branch the only move available when every enumerated path is
-    a narrowing is to pick the least-bad one and route it to gate (c) via row
-    4 — which is a user gate fired to ask about a menu the orchestrator has
-    already judged incomplete. The depth-assignment sentence is part of the
-    same branch, not decoration: a composed path with no depth would fall to
-    row 1 and gate anyway, undoing the branch.
+    This is the rule that decides who absorbs an incomplete menu. Without it
+    the orchestrator's judgment step reads as open-ended — nothing says the
+    pick has to come from the list — and the natural move when every
+    enumerated path is a narrowing is to write a better one and dispatch it
+    ungated, which is precisely the decision the gates exist to surface.
+
+    The incomplete-menu clauses are pinned alongside the closure rule because
+    the rule alone leaves a dead end: told only that it may not go outside the
+    list, an orchestrator facing an all-narrowings menu has no stated move.
+    The clauses are that move — pick the most complete anyway, let rows 2-4
+    (or row 1) carry it to a gate, and do not absorb the gap.
+
+    Two of them carry the **accounting** of what that gating buys, and they are
+    the honest half of the branch: the menu becomes visible **in session**, and
+    a **durable** record reaches the post-completion review *only* where the
+    user shelves the finding — Trigger A on Defer, Trigger B on Accept —
+    because `Fix properly now`, the branch the gate recommends, writes no
+    tracker entry at all. Losing either clause turns a bounded guarantee into
+    an unbounded-sounding one, and that is the failure mode this whole section
+    replaced a composed-path allowance to avoid; overstating what replaced it
+    is the regression that matters most here.
     """
     for relpath in ORCHESTRATORS:
         paragraph = paragraph_starting(relpath, STEP_1_LEAD)
-        for clause in STEP_1_COMPOSE_CLAUSES:
+        assert STEP_1_ENUMERATION_IS_CLOSED in paragraph, (
+            f"{relpath}: Step 1 no longer closes the pick over the reviewer's "
+            "enumeration, so nothing stops the orchestrator dispatching a path "
+            "no reviewer proposed and no gate ever saw"
+        )
+        for clause in STEP_1_INCOMPLETE_MENU_CLAUSES:
             assert clause in paragraph, (
                 f"{relpath}: Step 1 no longer carries the clause {clause!r} — "
-                "the compose branch is incomplete, and a composed path either "
-                "cannot be picked or reaches Step 2 with no depth to route on"
+                "an all-narrowings menu now has no stated move, and the "
+                "closure rule above reads as a dead end"
             )
+
+
+def test_the_composed_path_branch_is_retired_from_both_orchestrators():
+    """No trace of the orchestrator-composes-its-own-path allowance survives.
+
+    The allowance was stripped because a composed path is a fix the user never
+    saw, dispatched ungated, on the one finding whose menu the orchestrator had
+    just judged incomplete — the exact decision the gates exist for. Removing
+    it touched **seven** sites in each file: the section lead's never-invent
+    carve-out, Step 1's branch, the completeness definition's row-4 exemption,
+    gate (c)'s context line, gate (d)'s presentation rule, the render step's
+    tracker-absent clause, and Trigger C's entry substitution. A half-reverted
+    edit is one of those sites coming back on its own.
+
+    The pinned shapes are not one per site, and reading them that way is how
+    the render clause went uncovered until round 2 — three shapes live in the
+    Step 1 paragraph alone, while `composed path` spans five sites. Coverage
+    comes from the two halves together. The fixed shapes are checked file-wide,
+    which is what reaches the render clause and Trigger C, both outside the
+    routing section; the bare stem is checked only inside that section, where
+    any occurrence at all is residue, and catches a reworded reintroduction no
+    fixed shape would match.
+
+    One site is knowingly not covered here: execute mode's Trigger C carve-out
+    clause carries no compose shape and sits outside the routing section.
+    `test_trigger_c_names_row_six_as_its_only_firing_site_in_both_skills`
+    catches that paragraph via its own retired-shape list.
+    """
+    for relpath in ORCHESTRATORS:
+        text = read(relpath)
+        for shape in RETIRED_COMPOSE_SHAPES:
+            assert shape not in text, (
+                f"{relpath}: the retired composed-path branch's {shape!r} is "
+                "back — the orchestrator can again dispatch a path no reviewer "
+                "enumerated and no gate saw"
+            )
+        residue = COMPOSE_STEM.findall(routing_section(text))
+        assert not residue, (
+            f"{relpath}: the routing section still uses the compose vocabulary "
+            f"({len(residue)} occurrence(s)) — Step 1's pick is closed over the "
+            "reviewer's enumeration and nothing there should mention composing"
+        )
 
 
 def test_step_1_treats_the_preferred_token_as_an_input_not_a_verdict():
@@ -889,12 +1624,18 @@ def test_step_1_treats_the_preferred_token_as_an_input_not_a_verdict():
 def test_step_1_is_mirrored_across_the_two_orchestrators():
     """Step 1 is one paragraph kept in two files.
 
-    It is duplicated prose with no shared carrier, and the two copies differ in
-    exactly one token: the compromise-tracker section each skill numbers for
-    itself. Normalizing that reference is what lets the rest be compared
-    byte-for-byte — a difference anywhere else is drift, and drift in the
+    It is duplicated prose with no shared carrier, and the two copies are
+    byte-identical today: any difference at all is drift, and drift in the
     orchestrator's only judgment step means the two skills pick differently on
     the same finding.
+
+    The `normalize_section_refs` call is a no-op on this paragraph as it now
+    stands — Step 1 carries no numbered cross-reference in either skill, having
+    lost the compromise-tracker pointer along with the composed-path branch that
+    cited it. It is kept because it costs nothing and fails in the safe
+    direction: a Step 1 that later regains a per-skill section reference keeps
+    mirroring instead of reporting a false divergence. (The same helper is not
+    optional on the row-6 paragraph, which cites two such sections today.)
     """
     normalized = {
         relpath: normalize_section_refs(paragraph_starting(relpath, STEP_1_LEAD))
@@ -908,25 +1649,22 @@ def test_step_1_is_mirrored_across_the_two_orchestrators():
     )
 
 
-def test_the_never_invent_rule_carves_out_the_composed_path():
-    """The section lead scopes "never invent a depth" to enumerated paths.
+def test_the_never_invent_rule_is_stated_without_a_carve_out():
+    """The section lead forbids the orchestrator originating any depth at all.
 
-    Step 1 has the orchestrator assign a depth to a path it composed, which
-    reads as a flat contradiction of the lead's never-invent rule unless the
-    lead names the carve-out. Losing either half leaves the section telling the
-    orchestrator both to assign the depth and never to — and the resolution a
-    reader picks decides whether composed paths route at all.
+    Depth decides routing — row 5 gates on `re-architect`, row 6 dispatches
+    everything shallower ungated — so an orchestrator that may originate a
+    depth may route its own pick past the gate by judging it shallow. With the
+    compose branch gone there is no path the orchestrator originates, so the
+    rule stands unqualified; the absence of a carve-out is the contract, and
+    `test_the_composed_path_branch_is_retired_from_both_orchestrators` is what
+    keeps one from being reintroduced.
     """
     for relpath in ORCHESTRATORS:
-        section = routing_section(read(relpath))
-        assert NEVER_INVENT_RULE in section, (
-            f"{relpath}: the routing section no longer scopes the never-invent "
-            "rule to the depth of a path the reviewer enumerated"
-        )
-        assert COMPOSED_ORIGINATION_CARVE_OUT in section, (
-            f"{relpath}: the routing section states the never-invent rule with "
-            "no carve-out for a composed path, so Step 1's depth assignment "
-            "now contradicts it"
+        assert NEVER_INVENT_RULE in routing_section(read(relpath)), (
+            f"{relpath}: the routing section no longer states, unqualified, "
+            "that a path's depth is the reviewer's call and the one "
+            "classification the orchestrator must never invent"
         )
 
 
@@ -943,24 +1681,6 @@ def test_highest_quality_definition_is_mirrored_across_the_two_orchestrators():
         'the `What "highest-quality" means` definition has diverged between '
         "`/quo-fix-issue` and `/quo-execute`"
     )
-
-
-def test_a_composed_path_can_never_satisfy_row_four():
-    """The definition closes the compose-then-gate-anyway loop.
-
-    Row 4 sends a path narrower than the complete fix to gate (c). A composed
-    path is written *to* the completeness definition, so it cannot be narrower
-    than it — and saying so is what stops an orchestrator from composing a
-    complete fix and then routing it to the very gate composing exists to
-    avoid.
-    """
-    for relpath in ORCHESTRATORS:
-        paragraph = paragraph_starting(relpath, HIGHEST_QUALITY_LEAD)
-        assert HIGHEST_QUALITY_COMPOSED_CLAUSE in paragraph, (
-            f"{relpath}: the highest-quality definition no longer says a "
-            "composed path never satisfies row 4, so a composed pick can be "
-            "read back onto the narrowing row and gated"
-        )
 
 
 def test_the_mechanism_tag_is_primary_and_detection_is_the_fallback():
@@ -985,104 +1705,57 @@ def test_the_mechanism_tag_is_primary_and_detection_is_the_fallback():
 
 
 # --------------------------------------------------------------------------
-# The composed path's four downstream readers
+# Trigger C's single firing site
 # --------------------------------------------------------------------------
 
 
-def test_scope_bounding_gate_describes_a_composed_pick_in_its_context_line():
-    """Gate (c) shows the user the path it is asking about.
+def test_trigger_c_names_row_six_as_its_only_firing_site_in_both_skills():
+    """Row 6 is the whole of the ungated route, and neither skill says otherwise.
 
-    The question text reproduces the reviewer's finding verbatim, and a
-    composed path appears nowhere in it. Without the context line's
-    composed-path clause the user is asked to bound the scope of a path they
-    cannot see anywhere on the screen.
-    """
-    for relpath in ORCHESTRATORS:
-        part_c = routing_parts(relpath)["c"]
-        assert GATE_C_COMPOSED_CONTEXT in part_c, (
-            f"{relpath}: part (c)'s context line no longer describes a composed "
-            "Step-1 pick, so the gate can fire about a path absent from the "
-            "finding text it quotes"
-        )
-        assert GATE_C_COMPOSED_CROSS_REF in part_c, (
-            f"{relpath}: part (c) no longer points at part (d)'s composed-path "
-            "clause as the same rule, so the two gates' handling can drift "
-            "apart unnoticed"
-        )
+    Trigger C is the only record an ungated pick leaves, so the set of routes
+    that fire it is the set PHASE 3 can challenge. Execute mode once collapsed
+    a `blocker`'s choice set to a single choice and dispatched those findings
+    without firing the gate, which obliged a second firing site and a
+    cross-skill paragraph in each file explaining how the other differed. Both
+    gates now fire for a blocker in both skills, so there is one site and
+    nothing to compare.
 
+    The cross-skill comparison is pinned as an absence, not just the retired
+    wording: a paragraph in one file describing the *other* file's behavior has
+    no carrier keeping it true, so it rots the moment the other file is edited
+    alone — the same one-sided-edit failure this module exists for, in the one
+    shape a mirror test cannot catch.
 
-def test_routing_decision_gate_offers_the_composed_path_as_its_recommendation():
-    """Gate (d) presents the composed pick as a choice and recommends it.
-
-    Part (d)'s own rule puts `(Recommended)` on the Step-1 pick. When that pick
-    was composed, the reviewer-surfaced choices are exactly the paths the
-    orchestrator rejected as incomplete — so a gate that lists only them has no
-    choice to mark, and asks the user to ratify a pick it never showed.
-    """
-    for relpath in ORCHESTRATORS:
-        part_d = routing_parts(relpath)["d"]
-        assert GATE_D_COMPOSED_CHOICE in part_d, (
-            f"{relpath}: part (d) no longer presents a composed Step-1 pick as "
-            "its own `(Recommended)` choice"
-        )
-
-
-def test_trigger_c_carve_out_never_applies_to_a_composed_pick():
-    """The lone-`trivial-tweak` carve-out is read off the reviewer's list only.
-
-    The carve-out skips the tracker write when the reviewer enumerated a single
-    trivial path. A composed pick is a decision *against* that enumeration, so
-    reading the carve-out over the composed path's own shape would silently
-    drop the only record that the orchestrator went outside the menu — the one
-    entry PHASE 3 most needs to challenge.
+    The firing-site sentence is addressed as a **paragraph** rather than looked
+    up in the file text. `paragraph_starting`'s exactly-one assertion is what
+    keeps the claim honest: the sentence stands alone in both skills today, and
+    folding it back into the trigger's own paragraph — the shape execute mode
+    briefly had, and the shape that let the retired second firing site sit
+    beside it unnoticed — now fails here rather than passing a containment
+    check. The wider `trigger_c_region` slice is unaffected and still bounded
+    at Trigger D, because the residue scans have to reach prose *past* this
+    sentence, which is exactly what a paragraph-sized view would miss.
     """
     for relpath in ORCHESTRATORS:
         text = read(relpath)
-        assert TRIGGER_C_COMPOSED_CARVE_OUT in text, (
-            f"{relpath}: Trigger C's carve-out is no longer scoped to the "
-            "reviewer's enumeration alone, so a composed pick can fall through "
-            "it and go unrecorded"
+        firing_site = paragraph_starting(relpath, TRIGGER_C_FIRING_SITE)
+        assert firing_site.rstrip().endswith(TRIGGER_C_FIRING_SITE_TAIL), (
+            f"{relpath}: Trigger C's firing-site paragraph no longer closes on "
+            f"{TRIGGER_C_FIRING_SITE_TAIL!r} — it has grown a tail past the "
+            "point where the sentence stops ruling out a second ungated route, "
+            "which is where the retired cross-skill parenthetical lived"
         )
-
-
-def test_trigger_c_records_a_composed_pick_with_its_letter_and_depth():
-    """The composed entry carries what PHASE 3 needs to push against.
-
-    A composed entry is the one tracker entry whose path no reviewer vouched
-    for, so it needs the most on it: a letter that does not collide with the
-    reviewer's, the depth Step 1 originated (PHASE 3's axis (i) has nothing to
-    challenge without it), and a rationale saying what the enumerated paths
-    lacked. The two skills carry these in different containers, so the shared
-    clauses are pinned rather than a whole sentence.
-    """
-    for relpath in ORCHESTRATORS:
-        text = read(relpath)
-        for clause in TRIGGER_C_COMPOSED_FIELDS:
-            assert clause in text, (
-                f"{relpath}: Trigger C's composed-entry field substitution no "
-                f"longer carries {clause!r}"
+        for shape in RETIRED_TRIGGER_C_SHAPES:
+            assert shape not in text, (
+                f"{relpath}: the retired {shape!r} wording is back — Trigger C "
+                "describes more firing sites than row 6"
             )
-
-
-def test_trigger_c_marks_the_composed_line_inline_in_the_paths_field():
-    """The composed path is labelled where PHASE 4 reads it, not only in Rationale.
-
-    The paths field is one list holding two different kinds of line — what the
-    reviewer enumerated, and what the orchestrator composed — and PHASE 4
-    judges the reviewer's under-enumeration by counting that list. Without the
-    inline marker the two kinds are indistinguishable there, so a composed
-    entry makes the reviewer's menu look one path longer than it was, in
-    precisely the case where the orchestrator having to compose is the evidence
-    the menu was short. The marker is a fixed literal because it is matched by
-    a reader, and exactly one per skill because a second copy would mean a
-    reviewer-enumerated line had been marked too.
-    """
-    for relpath in ORCHESTRATORS:
-        occurrences = read(relpath).count(TRIGGER_C_COMPOSED_INLINE_MARKER)
-        assert occurrences == 1, (
-            f"{relpath}: expected exactly one "
-            f"{TRIGGER_C_COMPOSED_INLINE_MARKER!r} inline marker in Trigger C's "
-            f"composed-path substitution, found {occurrences}"
+        region = trigger_c_region(relpath)
+        other = OTHER_ORCHESTRATOR_NAME[relpath]
+        assert other not in region, (
+            f"{relpath}: Trigger C's prose describes `{other}`'s behavior. "
+            "Nothing carries that claim across the two files, so it goes stale "
+            f"the next time `{other}` is edited on its own"
         )
 
 
@@ -1163,36 +1836,358 @@ def test_phase_2_and_phase_3_are_mirrored_across_the_two_skills():
 # --------------------------------------------------------------------------
 
 
-def test_scope_bounding_gate_states_a_blocker_is_neither_deferred_nor_accepted():
-    """Part (c) withholds both shelving choices from a `blocker`."""
+def test_scope_bounding_gate_never_lets_a_blocker_be_accepted():
+    """Part (c) withholds `Accept the limitation` from a `blocker`, always.
+
+    Accept is the one choice with no conditional branch on either side of it:
+    accepting a blocker ships the blocker, and no narrowing, follow-up Issue,
+    or tracker entry changes that. The word carrying the unconditionality is
+    the load-bearing one — "unreachable" alone reads as the head of a sentence
+    that could grow an exception clause, which is how the Defer half came to
+    have one.
+    """
     for relpath in ORCHESTRATORS:
         part_c = routing_parts(relpath)["c"]
         assert SCOPE_GATE_BLOCKER_RULE in part_c, (
-            f"{relpath}: part (c) no longer states that a `blocker` can be "
-            "neither deferred nor accepted"
+            f"{relpath}: part (c) no longer leads its severity rule with the "
+            "never-accepted / defer-only-with-a-narrowing statement"
         )
-        assert SCOPE_GATE_WITHHELD_CHOICES in part_c, (
-            f"{relpath}: part (c) no longer names `Defer to follow-up Issue` and "
-            "`Accept the limitation` as unreachable for a `blocker`"
+        assert SCOPE_GATE_ACCEPT_UNREACHABLE in part_c, (
+            f"{relpath}: part (c) no longer names `Accept the limitation` "
+            "unreachable *unconditionally* for a `blocker`"
         )
 
 
-def test_routing_decision_gate_states_a_blocker_has_no_defer_route():
-    """Part (d) withholds the Defer choice from a `blocker`.
+def test_routing_decision_gate_makes_a_blockers_defer_route_conditional():
+    """Part (d) opens Defer to a `blocker` only on part (c)'s two conditions.
 
     Part (d) offers no Accept choice at all, so Defer is the whole of what has
-    to be withheld here — but withholding it at part (c) alone would leave the
-    other gate as an open route to the same outcome.
+    to be governed here — and governing it at part (c) alone would leave the
+    other gate as an open route to the same outcome, on terms part (c) never
+    set. Deferring to part (c)'s conditions rather than restating them is what
+    keeps one rule: a second copy of the two conditions is a second copy that
+    can be relaxed on its own.
+
+    The pairing correction is asserted against the **severity paragraph**, not
+    against part (d) at large. Its whole job is to qualify the `Defer to
+    follow-up Issue` bullet *before* a reader reaches it — the same
+    rule-above-the-choices ordering the mechanical shelving-bullet guard
+    enforces elsewhere in this module. Sitting anywhere in part (d) satisfies a
+    part-wide check, including below the bullet it corrects, where a reader
+    assembling the choice has already passed it.
     """
     for relpath in ORCHESTRATORS:
         part_d = routing_parts(relpath)["d"]
+        severity_paragraph = paragraph_starting(relpath, ROUTING_GATE_SEVERITY_LEAD)
         assert ROUTING_GATE_BLOCKER_RULE in part_d, (
-            f"{relpath}: part (d) no longer states that a `blocker` has no Defer "
-            "route"
+            f"{relpath}: part (d) no longer states that a `blocker`'s Defer "
+            "route is conditional"
         )
-        assert ROUTING_GATE_WITHHELD_CHOICE in part_d, (
-            f"{relpath}: part (d) no longer names `Defer to follow-up Issue` as "
-            "unreachable for a `blocker`"
+        assert ROUTING_GATE_CONDITIONAL_DEFER in part_d, (
+            f"{relpath}: part (d) no longer conditions `Defer to follow-up "
+            "Issue` on part (c)'s two conditions both holding — it either "
+            "offers a blocker an unconditional Defer or withholds one part (c) "
+            "allows"
+        )
+        assert ROUTING_GATE_BLOCKER_PAIRING in severity_paragraph, (
+            f"{relpath}: part (d)'s severity paragraph no longer corrects its "
+            "own `Defer to follow-up Issue` bullet for the blocker case, so "
+            "the bullet's \"rather than picking a path now\" reads as licence "
+            "to defer a blocker with nothing narrowed and nothing shipped"
+        )
+
+
+def test_execute_zero_path_gate_fires_and_its_dispatch_is_not_an_ungated_route():
+    """Execute's gate (d) fires on an empty path list, and that dispatch is gated.
+
+    This paragraph is what makes Trigger C's "row 6 is the only firing site"
+    true in execute mode. A row-1 `blocker` can arrive with no fix path
+    enumerated at all, and the retired revision read that as a gate declining
+    to fire — which made the follow-on dispatch ungated, which is why its
+    Trigger C carried a second firing site to record it. The replacement closes
+    the branch at the gate instead: the gate fires on an empty list, the user
+    directs the fix in prose, and a user-directed fix is not an ungated route,
+    so no tracker entry is due.
+
+    Both halves are pinned because neither implies the other. Drop the first
+    and the gate has nothing to present, so "it does not fire" is the natural
+    reading and the ungated dispatch is back. Drop the second and the dispatch
+    that follows looks ungated, so Trigger C's single-site claim is false in
+    this skill while its own sentence still says otherwise.
+
+    `QUO_EXECUTE`-only: fix mode sends a zero-path blocker to its Analyst
+    re-dispatch, so it has no free-text branch to exempt.
+    """
+    part_d = routing_parts(QUO_EXECUTE)["d"]
+    assert EXECUTE_ZERO_PATH_GATE_FIRES in part_d, (
+        f"{QUO_EXECUTE}: part (d) no longer says the gate fires on a zero-path "
+        "blocker with an empty per-path list — a gate with nothing to present "
+        "reads as a gate that does not fire, and the dispatch after it is "
+        "ungated with no Trigger C site to record it"
+    )
+    assert EXECUTE_USER_DIRECTED_IS_NOT_UNGATED in part_d, (
+        f"{QUO_EXECUTE}: part (d) no longer exempts a user-directed fix from "
+        f"Trigger C, so {TRIGGER_C_FIRING_SITE!r} is false in this skill while "
+        "Trigger C still claims it"
+    )
+
+
+def test_scope_bounding_gate_always_offers_a_blocker_the_base_pair():
+    """Part (c) never presents a `blocker` with fewer than two real choices.
+
+    The Defer-with-narrowing branch is conditional, so without a floor a
+    blocker whose conditions do not both hold reaches a gate holding one
+    choice — a dispatch wearing a gate's clothes, which asks the user to
+    ratify what was going to happen anyway. The pair itself is per-skill (fix
+    mode routes a wrong-directive blocker back to the Analyst; execute mode has
+    no Analyst and offers `Cancel` — stop the run and re-plan) but the floor is
+    the shared rule, so the lead is checked in both and the members per file.
+
+    Each skill's no-`Cancel` presentation rule is checked here too, because it
+    is the negative half of that same per-skill split and the two halves have
+    to agree: execute mode withholds `Cancel` from the `suggestion` / `nit` set
+    *because* a blocker's base pair contains it, while fix mode withholds it
+    from the gate outright *because* no choice set there has one. Pin the base
+    pair without its matching withholding rule and a skill can end up denying a
+    blocker the `Cancel` its own floor guarantees.
+    """
+    for relpath in ORCHESTRATORS:
+        part_c = routing_parts(relpath)["c"]
+        assert BASE_PAIR_LEAD in part_c, (
+            f"{relpath}: part (c) no longer guarantees a `blocker` the base "
+            "pair, so its choice set can collapse to one"
+        )
+        assert BASE_PAIR_MEMBERS[relpath] in part_c, (
+            f"{relpath}: part (c)'s base pair is no longer "
+            f"{BASE_PAIR_MEMBERS[relpath]!r}"
+        )
+        assert SCOPE_GATE_NO_CANCEL_RULE[relpath] in part_c, (
+            f"{relpath}: part (c)'s no-`Cancel` rule is no longer "
+            f"{SCOPE_GATE_NO_CANCEL_RULE[relpath]!r} — it now scopes the "
+            "withholding to a set that contradicts this skill's own base pair"
+        )
+
+
+def test_scope_bounding_gate_adds_defer_only_when_both_conditions_hold():
+    """A `blocker`'s third choice requires a mechanism AND an out-of-scope case.
+
+    Either condition alone still shelves a blocker. A mechanism that serves the
+    unit's own stated defect cannot be narrowed away without leaving that
+    defect partly unfixed, and a path that introduces no mechanism has nothing
+    to hand to a follow-up Issue — so an `or` here, or a single condition,
+    reopens the route the severity rule exists to close.
+    """
+    for relpath in ORCHESTRATORS:
+        part_c = routing_parts(relpath)["c"]
+        assert DEFER_THIRD_CHOICE_LEAD in part_c, (
+            f"{relpath}: part (c) no longer gates a `blocker`'s "
+            "`Defer to follow-up Issue` on *both* conditions holding"
+        )
+        for condition in DEFER_CONDITIONS:
+            assert condition in part_c, (
+                f"{relpath}: part (c)'s Defer branch no longer states the "
+                f"condition {condition!r}"
+            )
+        assert DEFER_ROW_INDEPENDENCE_ANTECEDENT in part_c, (
+            f"{relpath}: part (c)'s Defer branch no longer names the "
+            "pairing-as-recommended-default that the row-independence sentence "
+            "below it says 'It' refers to — that sentence now qualifies "
+            "whatever happens to precede it"
+        )
+        assert DEFER_ROW_INDEPENDENCE in part_c, (
+            f"{relpath}: part (c)'s Defer branch no longer says it applies "
+            "whichever row fired the gate on a `blocker`, so it reads as row-2 "
+            "only — and a blocker whose needed fix path introduces a mechanism "
+            "is denied the branch on a row-3 or row-4 fire"
+        )
+
+
+def test_the_narrowing_coverage_guard_is_stated_at_both_gates():
+    """Neither gate lets a narrowing buy the deferral with the stated defect.
+
+    The narrowing is what makes a blocker deferral legitimate, so the guard on
+    what a narrowing may cost is the whole of the branch's safety: narrow far
+    enough and every blocker becomes deferrable, which is the severity rule
+    read backwards. Both gates need their own copy because part (d) opens the
+    Defer route on part (c)'s conditions but presents its own choice set — a
+    reader working part (d) need never read part (c)'s paragraph.
+    """
+    for relpath in ORCHESTRATORS:
+        parts = routing_parts(relpath)
+        for letter in ("c", "d"):
+            assert NARROWING_COVERAGE_GUARD in parts[letter], (
+                f"{relpath}: part ({letter}) no longer states that a narrowing "
+                "may never reduce coverage of the stated defect, so a blocker "
+                "can be deferred by narrowing the defect itself out of scope"
+            )
+
+
+def test_the_blocker_deferral_files_the_follow_up_issue_before_the_narrowing():
+    """The follow-up Issue is filed first, and the narrowing dispatched after.
+
+    Part (f) forbids shipping the narrowing when the filing failed, and that
+    rule is only enforceable while the narrowing has not shipped yet. Reverse
+    the order and the failure branch arrives after the fact: the change has
+    already been narrowed, the deferred design has no ticket carrying it, and
+    what remains is a quietly reduced fix with no record of the reduction.
+    """
+    for relpath in ORCHESTRATORS:
+        part_c = routing_parts(relpath)["c"]
+        assert DEFER_FILE_FIRST in part_c, (
+            f"{relpath}: part (c) no longer pairs the deferral with the "
+            "narrowing and files the follow-up Issue first"
+        )
+        assert DEFER_FILE_FIRST_ORDER in part_c, (
+            f"{relpath}: part (c) no longer holds the narrowing's dispatch "
+            "until `/quo-file-issue` has returned an Issue ID, so part (f)'s "
+            "failure branch arrives after the narrowing already shipped"
+        )
+
+
+def test_routing_decision_gate_marks_exactly_one_choice_recommended():
+    """Part (d) resolves the collision between its two `(Recommended)` rules.
+
+    Part (d) marks the Step-1 pick Recommended, and a `blocker` whose Defer
+    branch is open gets that choice marked too — two rules, both firing on the
+    same question. A gate that renders two `(Recommended)` choices recommends
+    nothing, and does it at the one gate whose whole job is to surface a
+    decision the orchestrator would not make alone. Both ends of the sentence
+    are pinned: the precedence half without the exactly-one half states which
+    marker wins but not that the loser is withheld.
+    """
+    for relpath in ORCHESTRATORS:
+        part_d = routing_parts(relpath)["d"]
+        assert ROUTING_GATE_MARKER_PRECEDENCE in part_d, (
+            f"{relpath}: part (d) no longer gives the blocker Defer branch's "
+            "`(Recommended)` precedence over the per-path marker, so a gate can "
+            "render two recommended choices"
+        )
+        assert ROUTING_GATE_EXACTLY_ONE_MARKER in part_d, (
+            f"{relpath}: part (d) no longer states that exactly one choice "
+            "carries `(Recommended)`, so withholding it from the other choices "
+            "reads as optional"
+        )
+
+
+def test_fix_issue_analyst_redispatch_sweeps_in_flight_lanes_before_phase_a():
+    """The Analyst re-dispatch clears the writer lanes that would wedge the Engineer.
+
+    Part (g)'s Engineer-dispatch precondition forbids a fresh Engineer while
+    any writer, reviewer, or PM task for the Issue is `pending` or
+    `in_progress` — and this choice can fire from a review phase where several
+    are. Re-entering Phase A without the sweep therefore does not fail loudly;
+    it waits on tasks whose findings were raised against the directive the
+    re-dispatch just superseded. The two ends have no shared carrier: part (c)
+    specifies the sweep, and Section 3's Approve branch is where it has to
+    actually run, which is a different section of the file.
+
+    Each end is asserted **against its own section**, not against the whole
+    file, because "these two things are in different places" is the entire
+    contract here. A file-wide `in` check passes just as happily when both ends
+    have been collapsed into part (c) — leaving the Approve branch with no
+    instruction to run the sweep, which is precisely the half-landed shape this
+    pins against.
+
+    Fix mode only — `/quo-execute` has no Analyst, and offers `Cancel` in its
+    place.
+    """
+    part_c = routing_parts(QUO_FIX_ISSUE)["c"]
+    approve_branch = heading_section(
+        read(QUO_FIX_ISSUE), ANALYST_APPROVE_BRANCH_HEADING
+    )
+    assert ANALYST_REDISPATCH_SWEEP_SPEC in part_c, (
+        f"{QUO_FIX_ISSUE}: part (c)'s Analyst re-dispatch no longer requires "
+        "the Issue's open TaskList tasks to be closed out before Phase A "
+        "re-entry"
+    )
+    assert ANALYST_REDISPATCH_SWEEP_ORDERING in approve_branch, (
+        f"{QUO_FIX_ISSUE}: `{ANALYST_APPROVE_BRANCH_HEADING}` no longer runs the "
+        "Analyst re-dispatch's in-flight-lane sweep, so the sweep is specified "
+        "in part (c) and executed nowhere"
+    )
+    assert ANALYST_REDISPATCH_SPEC_POINTER in approve_branch, (
+        f"{QUO_FIX_ISSUE}: `{ANALYST_APPROVE_BRANCH_HEADING}` no longer points "
+        "at part (c) as the sweep's specification, so the two copies can drift "
+        "into listing different task prefixes"
+    )
+    assert ANALYST_REDISPATCH_SWEEP_SURVIVES_REVISE in approve_branch, (
+        f"{QUO_FIX_ISSUE}: `{ANALYST_APPROVE_BRANCH_HEADING}` no longer carries "
+        "the sweep obligation across Revise iterations — read as applying only "
+        "to an Approve of the re-dispatched Analyst's first return, a Revise "
+        "before Approving skips the sweep entirely, and part (g)'s precondition "
+        "then wedges the next Engineer on lanes nothing will clear"
+    )
+    for clause in ANALYST_REDISPATCH_DISCARD_SCOPE:
+        assert clause in part_c, (
+            f"{QUO_FIX_ISSUE}: part (c)'s Analyst re-dispatch no longer carries "
+            f"{clause[:60]!r}… — the discard collapses back onto the sweep, and "
+            "findings with no TaskList task of their own (the gate-firing "
+            "return's siblings, and lanes that landed before the sweep) get "
+            "routed against the superseded directive"
+        )
+
+
+def test_fix_issue_supersession_spares_defer_tasks_banked_at_an_earlier_approve():
+    """Supersession clears a rejected iteration's `defer-*` tasks, and only those.
+
+    The `defer-*` ledger is the Analyst lane's only inter-session carrier for
+    refinements the Engineer will not implement this Issue. Nothing downstream
+    rebuilds it — Section 7.5's Step 1 enumerates only tasks still active, and
+    its Step 0 walks only the latest Analyst block — so a task cleared here is
+    a refinement lost outright, silently, with no surface that reports it.
+
+    That makes the width of the rule load-bearing rather than a nicety. Stated
+    as "a re-dispatch supersedes the prior block", it clears the tasks banked
+    at an **earlier Approve** too: an approval that still stands, whose
+    refinements the re-fired Analyst was never briefed on (it is briefed on the
+    reviewer's finding), so its block may legitimately be `None` and there is
+    nothing to re-create them from. Every banked refinement would be destroyed
+    at the first re-fire. The narrow rule turns on why an iteration is stale —
+    a Revise chain's iterations were rejected in favour of the next, an
+    Approve's was not — so both halves are pinned: the clearing sentence alone
+    is the over-wide rule this replaced.
+
+    The third route into the approval moment is pinned with them because the
+    rules are written against it. A re-fire from part (c)/(d) is the only route
+    on which an earlier Approve's tasks can already exist; drop it from the
+    approval-moment sentence and the surviving rules govern a case the
+    paragraph no longer says it handles.
+
+    Fix mode only — `/quo-execute` has no Analyst and no deferred-refinements
+    block.
+    """
+    section = heading_section(read(QUO_FIX_ISSUE), DEFERRED_REFINEMENTS_HEADING)
+    assert DEFERRED_REFINEMENTS_THIRD_ROUTE in section, (
+        f"{QUO_FIX_ISSUE}: the deferred-refinements consumption no longer names "
+        "the part (c)/(d) re-fire among the Approve routes that consume the "
+        "block — the one route on which an earlier Approve's `defer-*` tasks "
+        "can already exist, which is what the supersession rules are about"
+    )
+    for rule in DEFERRED_REFINEMENTS_SUPERSESSION_RULES:
+        assert rule in section, (
+            f"{QUO_FIX_ISSUE}: the deferred-refinements consumption no longer "
+            f"carries {rule!r} — without both halves the rule reads wide enough "
+            "to clear the `defer-*` tasks banked at an earlier Approve, "
+            "destroying every banked refinement at the first re-fire with "
+            "nothing downstream able to recover them"
+        )
+
+
+def test_the_blocker_narrowing_is_dispatched_directly_not_through_step_2():
+    """The narrowing bypasses Step 2 rather than looping back through it.
+
+    A narrowing is narrower than the smallest internally-consistent complete
+    fix by construction — that is what makes it a narrowing — so re-entering
+    Step 2 with it matches row 4 and routes it straight back to the gate that
+    just produced it. Stated once, this is the same terminality the non-blocker
+    soft fix already carries; left unstated, the gate's own answer re-enters
+    the gate.
+    """
+    for relpath in ORCHESTRATORS:
+        assert NARROWING_DISPATCHED_DIRECTLY in routing_parts(relpath)["c"], (
+            f"{relpath}: part (c) no longer dispatches a `blocker`'s narrowing "
+            "directly, so the narrowing re-enters Step 2, matches row 4, and "
+            "routes back to this same gate"
         )
 
 
@@ -1268,29 +2263,35 @@ def test_shelving_choice_descriptions_never_mention_a_blocker():
         )
 
 
-def test_defer_recommended_default_applies_only_to_non_blocker_findings():
-    """The mechanism row's Defer default is qualified to non-`blocker` findings.
+def test_defer_recommended_default_holds_at_every_severity_with_one_qualification():
+    """The mechanism row's Defer default now reaches a `blocker` too, conditionally.
 
-    Defer is the *recommended* answer when a chosen path builds machinery the
-    ticket never asked for. Left unqualified, that recommendation points at a
-    choice a blocker is not allowed to reach, which is a direct contradiction of
-    the severity rule two paragraphs above it.
+    Defer is the recommended answer when a chosen path builds machinery the
+    ticket never asked for, and that reasoning does not weaken at `blocker`
+    severity — what changes is *what ships alongside* the deferral (a narrowing
+    rather than a soft fix) and *whether the choice exists at all*. Both halves
+    have to be stated: qualified to non-blockers it recommends nothing on the
+    severity that most needs the recommendation, and stated flatly at every
+    severity it recommends a choice the coverage guard may have withheld.
 
-    The qualifier is only meaningful while there is a recommendation for it to
-    qualify, so the two shared clauses of the same paragraph are pinned here
-    too: the recommendation itself, and the verbatim-handoff sentence that is
-    what makes deferring cost a round rather than the reviewer's sketched
-    design. They are pinned as clauses rather than as a whole-paragraph mirror
-    because the copies legitimately diverge on the blocker exclusion — fix mode
-    withholds the choice from a gate that still fires, execute mode does not
-    fire the gate at all.
+    The recommendation itself and the verbatim-handoff sentence are pinned in
+    the same test because the qualification is only meaningful while there is a
+    recommendation for it to qualify. They are pinned as clauses rather than as
+    a whole-paragraph mirror because the copies still name each skill's own
+    surrounding structure.
     """
     for relpath in ORCHESTRATORS:
         default_paragraph = paragraph_starting(relpath, MECHANISM_DEFAULT_LEAD)
-        assert NON_BLOCKER_QUALIFIER in default_paragraph, (
-            f"{relpath}: the mechanism-row Defer default is no longer qualified "
-            f"to {NON_BLOCKER_QUALIFIER} findings, so it recommends a choice a "
-            "blocker cannot take"
+        assert MECHANISM_DEFAULT_SEVERITY_SCOPE in default_paragraph, (
+            f"{relpath}: the mechanism-row Defer default no longer holds at "
+            "every severity with one qualification on a `blocker` — it either "
+            "excludes the severity the recommendation matters most on, or "
+            "recommends a blocker a choice unconditionally"
+        )
+        assert MECHANISM_DEFAULT_COVERAGE_WITHHOLDING in default_paragraph, (
+            f"{relpath}: the mechanism-row default no longer says there is no "
+            "choice to mark when the coverage guard withholds `Defer`, so it "
+            "recommends a choice the severity rule already took off the table"
         )
         assert MECHANISM_DEFAULT_RECOMMENDATION in default_paragraph, (
             f"{relpath}: the mechanism-row paragraph no longer names "
@@ -1305,48 +2306,246 @@ def test_defer_recommended_default_applies_only_to_non_blocker_findings():
         )
 
 
-def test_tracker_triggers_a_and_b_are_unreachable_for_a_blocker():
-    """The two shelving triggers say no blocker entry can exist under them.
+def test_tracker_trigger_b_is_unreachable_for_a_blocker_unconditionally():
+    """Trigger B records an accepted limitation, which no blocker can reach.
 
-    Triggers A and B are the tracker writes for Defer and Accept. They are the
-    downstream record of the choices the severity rule withholds, so each has to
-    carry the same exclusion — otherwise the tracker still describes a shape the
-    gates can no longer produce, and PHASE 2's contract-violation check reads as
-    guarding against nothing.
+    Trigger B is the downstream record of the choice part (c) withholds
+    outright, so it carries the same exclusion — otherwise the tracker still
+    describes a shape the gates can no longer produce, and PHASE 2's
+    contract-violation check reads as guarding against nothing. The
+    "unconditionally" is pinned with the clause: it is the only thing
+    distinguishing this exclusion from Trigger A's conditional one, and the two
+    triggers sit two paragraphs apart.
     """
     for relpath in ORCHESTRATORS:
-        for trigger in ("**Trigger A — ", "**Trigger B — "):
-            paragraph = paragraph_starting(relpath, trigger)
-            assert TRIGGER_BLOCKER_CLAUSE in paragraph, (
-                f"{relpath}: {trigger.strip('* ')} no longer states it is "
-                "unreachable for a `blocker`-severity finding"
-            )
+        paragraph = paragraph_starting(relpath, "**Trigger B — ")
+        assert TRIGGER_B_UNREACHABLE in paragraph, (
+            f"{relpath}: Trigger B no longer states it is unreachable for a "
+            "`blocker`-severity finding *unconditionally*, so the tracker can "
+            "record an accepted blocker"
+        )
 
 
-def test_post_completion_phase_2_challenges_a_deferred_or_accepted_blocker():
-    """PHASE 2 emits a shelved blocker as a `blocker`-severity challenge.
+def test_tracker_trigger_a_reaches_a_blocker_only_with_a_narrowing_record():
+    """Trigger A is the one tracker write a blocker can reach, and it is qualified.
+
+    A blocker's Defer branch ships a narrowing rather than one of the
+    reviewer's other paths, so its entry has nothing in the "which enumerated
+    path shipped as the soft fix" slot unless the narrowing goes there. That
+    record is not bookkeeping: it is the only artifact distinguishing a
+    legitimate Defer-with-narrowing from the contract violation both PHASE 2
+    and the PM's tracker check hunt for, and an entry without it is
+    indistinguishable from a shelved blocker.
+
+    The heading is pinned alongside because it was widened to "either gate"
+    when part (d)'s Defer branch was made to fire this same trigger. A heading
+    still naming one gate leaves part (d)'s deferrals with no stated tracker
+    write at all.
+    """
+    for relpath in ORCHESTRATORS:
+        paragraph = paragraph_starting(relpath, "**Trigger A — ")
+        assert paragraph.startswith(TRIGGER_A_HEADING), (
+            f"{relpath}: Trigger A's heading is not {TRIGGER_A_HEADING!r} — a "
+            "heading naming one gate leaves the other gate's Defer branch with "
+            "no stated tracker write"
+        )
+        assert TRIGGER_A_BLOCKER_REACHABILITY in paragraph, (
+            f"{relpath}: Trigger A no longer scopes a `blocker` entry to the "
+            "Defer-with-narrowing branch, so it reads as recording any blocker "
+            "deferral the gates might produce"
+        )
+        assert TRIGGER_A_NARROWING_RECORD in paragraph, (
+            f"{relpath}: Trigger A no longer requires the narrowing record on a "
+            "`blocker` entry, so a legitimate deferral and a contract violation "
+            "write the same entry"
+        )
+        assert TRIGGER_A_NONE_DID_SCOPE in paragraph, (
+            f"{relpath}: Trigger A no longer scopes its `none did` slot to every "
+            "deferral that ships nothing — scoped to the single-path case "
+            "alone, a multi-path deferral at the routing-decision gate records "
+            "a soft fix that never shipped"
+        )
+        assert TRIGGER_A_ZERO_PATH_FIELD in paragraph, (
+            f"{relpath}: Trigger A no longer says what the paths field holds "
+            "when the reviewer enumerated nothing, so a zero-path deferral's "
+            "entry is written with that field unspecified while `Rationale` "
+            "already has a rule for the same case"
+        )
+
+
+def test_scope_bounding_gate_states_which_trigger_a_blocker_can_reach():
+    """Part (c) names the trigger split from the gate end, not just the tracker end.
+
+    The tracker's triggers say what they record; the gate says what it can
+    produce. Both ends are needed — a reader routing a blocker at part (c) has
+    no reason to open the tracker section, and would otherwise learn only from
+    the trigger paragraphs that one of the two shelving records is reachable
+    and the other is not.
+    """
+    for relpath in ORCHESTRATORS:
+        part_c = routing_parts(relpath)["c"]
+        assert SCOPE_GATE_TRIGGER_SPLIT in part_c, (
+            f"{relpath}: part (c) no longer states that Trigger A is reachable "
+            "for a `blocker` on the Defer-with-narrowing branch, so the gate "
+            "and the tracker describe different sets of producible entries"
+        )
+
+
+def test_scope_bounding_gate_reconciles_its_defer_bullet_for_a_blocker():
+    """Part (c) disposes of its Defer bullet's non-blocker clauses before the bullet.
+
+    Both gates present one `Defer to follow-up Issue` bullet, written for the
+    `suggestion` / `nit` case, and both must reconcile it against the blocker
+    branch. This is part (c)'s half; `ROUTING_GATE_BLOCKER_PAIRING` is part
+    (d)'s, and it is anchored the same way and for the same reason.
+
+    The anchor is the **blocker-summary paragraph**, not part (c) at large,
+    because ordering is the contract: the reconciliation exists to qualify the
+    bullet *before* a reader reaches it, exactly as the mechanical
+    shelving-bullet guard requires of the severity rule itself. A sentence
+    sitting anywhere in part (c) satisfies a part-wide check — including below
+    the bullet it corrects, where an orchestrator assembling the choice has
+    already passed it and acted on the unqualified text. That position is
+    asserted outright rather than left to the anchor, so the guard states the
+    ordering it depends on instead of inheriting it from today's layout.
+
+    Note the anchor is *not* part (c)'s severity lead, the way part (d)'s is.
+    The two parts are shaped differently: part (d) states its severity rule as
+    one paragraph, while part (c) opens with a one-line lead, hangs the blocker
+    choice set off it as sub-bullets, and closes with this summary paragraph.
+
+    The third clause is why this is not merely tidy. The first two produce
+    contradictions, which a careful reader notices and resolves. The soft-fix
+    identification produces something worse — a *followable* instruction: ship
+    "the most complete of the enumerated paths that remain". Followed on a
+    blocker, that dispatches a path the severity rule never authorised while
+    the narrowing the branch requires goes out undispatched, and the run looks
+    normal throughout.
+    """
+    for relpath in ORCHESTRATORS:
+        summary = paragraph_starting(relpath, SCOPE_GATE_BLOCKER_SUMMARY_LEAD)
+        assert SCOPE_GATE_DEFER_BULLET_RECONCILIATION in summary, (
+            f"{relpath}: part (c)'s blocker-summary paragraph no longer "
+            "reconciles the `Defer to follow-up Issue` bullet's closing clauses "
+            "with the blocker branch — its never-invent-a-narrowing prohibition "
+            "then reads as forbidding the very narrowing the branch requires, "
+            "and its soft-fix identification reads as directing a leftover "
+            "enumerated path to ship in the narrowing's place"
+        )
+
+        part_c = routing_parts(relpath)["c"]
+        reconciliation_at = part_c.index(SCOPE_GATE_DEFER_BULLET_RECONCILIATION)
+        defer_bullets = [
+            offset
+            for offset, line in enumerate(part_c.splitlines())
+            if line.startswith(DEFER_BULLET)
+        ]
+        assert len(defer_bullets) == 1, (
+            f"{relpath}: expected exactly one {DEFER_BULLET!r} line in part (c), "
+            f"found {len(defer_bullets)}"
+        )
+        defer_at = part_c.index(DEFER_BULLET)
+        assert reconciliation_at < defer_at, (
+            f"{relpath}: part (c)'s reconciliation sits at offset "
+            f"{reconciliation_at}, below the `Defer to follow-up Issue` bullet "
+            f"at {defer_at} — an orchestrator assembling that choice reads the "
+            "bullet's non-blocker clauses and acts on them before reaching the "
+            "sentence that withdraws them"
+        )
+
+
+def test_post_completion_phase_2_challenges_all_three_blocker_violation_shapes():
+    """PHASE 2 catches every shape a shelved blocker can take, at `blocker` severity.
 
     This is the backstop for the whole severity rule: the gates should never
-    produce such an entry, so if one exists the run already violated the
+    produce any of these entries, so if one exists the run already violated the
     contract, and the post-completion reviewer is the last reader positioned to
     say so. Emitting it below `blocker` severity would let it be dispositioned
     as a nit.
+
+    Three shapes, not one, because the Defer route is now conditional rather
+    than closed. An accepted blocker is the flat violation; a deferral with no
+    narrowing record is the deferral that shelved rather than narrowed; and a
+    deferral whose narrowing left the stated defect partly unfixed is the one
+    that *looks* legitimate — it carries a record, and the record is the
+    evidence against it. Dropping the third leaves the branch's only real
+    failure mode uncovered.
     """
     for relpath in ORCHESTRATORS:
         phase_2 = phase_block(relpath, 2)
-        assert (
-            "is a contract violation — a blocker can be neither deferred nor "
-            "accepted" in phase_2
-        ), (
-            f"{relpath}: PHASE 2 no longer names a deferred-or-accepted blocker "
-            "tracker entry as a contract violation"
-        )
-        assert (
-            "Emit it as a `[compromise-challenge]` finding at `blocker` "
-            "severity, never lower." in phase_2
-        ), (
+        for shape in PHASE_2_VIOLATION_SHAPES:
+            assert shape in phase_2, (
+                f"{relpath}: PHASE 2 no longer names {shape!r} among the "
+                "tracker-entry shapes that are a contract violation"
+            )
+        assert PHASE_2_CHALLENGE_SEVERITY in phase_2, (
             f"{relpath}: PHASE 2 no longer pins the severity of the "
-            "deferred-blocker challenge at `blocker`"
+            "shelved-blocker challenge at `blocker`"
+        )
+
+
+def test_the_phase_2_violation_class_is_routed_past_the_recovery_gates():
+    """The post-completion step-7 exclusion describes the same class PHASE 2 emits.
+
+    PHASE 2's output is the one `[compromise-challenge]` class with nothing to
+    recover — the entry records a choice the gates should never have produced —
+    so it is dispositioned by the generic Fix / File / Skip gate alone. That
+    exclusion is stated by naming the class and enumerating its shapes, which
+    makes it a second reader of PHASE 2's violation set: a shape added to
+    PHASE 2 and not here arrives at a recovery gate written for a class it is
+    not in, and one dropped here silently sends the whole class through a
+    fourth gate the step forbids inventing.
+    """
+    for relpath in ORCHESTRATORS:
+        text = read(relpath)
+        assert RECOVERY_GATE_EXCLUDED_CLASS in text, (
+            f"{relpath}: the post-completion recovery-gate step no longer names "
+            "PHASE 2's contract-violation class as the one with no recovery gate"
+        )
+        assert RECOVERY_GATE_EXCLUDED_SHAPES in text, (
+            f"{relpath}: the recovery-gate exclusion no longer enumerates the "
+            "same three violation shapes PHASE 2 emits, so the two ends "
+            "describe different classes"
+        )
+
+
+def test_the_file_issue_failure_bullet_withholds_the_narrowing_on_a_blocker():
+    """Part (f) attaches a consequence to part (c)'s file-first ordering.
+
+    Filing first is only enforceable if something happens when the filing
+    fails. This bullet is that something: the narrowing has not shipped yet, so
+    withholding it is still possible, and a blocker whose follow-up Issue never
+    got filed is a blocker with neither a fix nor a ticket carrying the
+    deferred design. Without the bullet the ordering rule reads as a
+    preference — and the bullet's own earlier text said a blocker could never
+    reach it at all, which is the reading this branch made false.
+    """
+    for relpath in ORCHESTRATORS:
+        assert FILE_ISSUE_FAILURE_REACHES_A_BLOCKER in routing_parts(relpath)["f"], (
+            f"{relpath}: part (f)'s `/quo-file-issue` failure bullet no longer "
+            "says a `blocker` can reach it, or no longer withholds the "
+            "narrowing when the filing failed"
+        )
+
+
+def test_the_tracker_rationale_field_spec_describes_the_narrowing_record():
+    """Both statements of the `Rationale` field say what a blocker deferral puts there.
+
+    Trigger A writes the narrowing record into `Rationale`; the field spec is
+    what every reader of the tracker — PHASE 2, the PM's check, the close-out's
+    render step — consults for what that field holds. A spec that describes
+    only the ungated-pick and user-reason cases leaves the record looking like
+    free-form commentary rather than the artifact those three readers test
+    against. The spec is stated twice per skill (the entry template's
+    placeholder and the five-fields prose), so both carriers are counted.
+    """
+    for relpath in ORCHESTRATORS:
+        occurrences = read(relpath).count(TRACKER_RATIONALE_NARROWING_CLAUSE)
+        assert occurrences == TRACKER_RATIONALE_CARRIERS, (
+            f"{relpath}: expected {TRACKER_RATIONALE_CARRIERS} statements of the "
+            "`Rationale` field spec naming a blocker deferral's narrowing "
+            f"record (the entry template and the five-fields prose), found "
+            f"{occurrences}"
         )
 
 
@@ -1372,6 +2571,19 @@ def test_pm_never_annotates_a_blocker_with_a_deferral_destination():
     ), (
         f"{AGENT_PM}: the prohibition on annotating a blocker with a deferral "
         "destination is gone"
+    )
+    assert PM_BLOCKER_DESTINATION_RATIONALE in text, (
+        f"{AGENT_PM}: the blocker-destination rule no longer says *why* the "
+        "PM's channel cannot carry a deferral the gates now can — that the "
+        "gates pair one with a dispatched narrowing and a tracker entry, and a "
+        "`defer-*` ledger entry pairs it with nothing. Unexplained, the rule "
+        "reads as an asymmetry to be corrected rather than a design"
+    )
+    assert PM_BLOCKER_NOT_THE_PMS_TO_SHELVE in text, (
+        f"{AGENT_PM}: the blocker-destination rule's closing instruction no "
+        "longer routes the outcome to the gates — if it has gone back to "
+        "asserting the blocker must be fixed in this scope, it contradicts the "
+        "Defer-with-narrowing branch both gates now carry"
     )
 
 
@@ -1402,6 +2614,49 @@ def test_pm_reports_a_shelved_blocker_tracker_entry_as_a_blocker_finding():
     )
 
 
+def test_pm_requires_a_blocker_narrowing_to_still_cover_the_stated_defect():
+    """The PM reads the narrowing record against the defect, not just for its presence.
+
+    A blocker deferral is legitimate only when the narrowing that shipped with
+    it still covers the unit's stated defect — narrow past that and the
+    deferral has bought itself the very defect the blocker named. Checking only
+    that a record exists passes every such entry, which makes the record a
+    formality rather than the thing that distinguishes a legitimate deferral
+    from a shelved blocker. The PM is the earliest of the three readers of this
+    guard (the gates set it, PHASE 2 catches it after the run) and the only one
+    dispatched while a lane is still open to fix it.
+    """
+    assert PM_NARROWING_MUST_COVER_THE_DEFECT in read(AGENT_PM), (
+        f"{AGENT_PM}: the tracker check no longer requires a blocker's "
+        "narrowing to still cover the unit's stated defect, so any deferral "
+        "carrying a record at all reads as legitimate"
+    )
+
+
+def test_pm_names_an_already_resolved_tracker_entry_in_one_line():
+    """A violation the diff under review has already fixed is reported, not re-raised.
+
+    The tracker is append-only and this check reads it without amending it, so
+    an entry stays on the file after the deferred blocker has been re-opened
+    and addressed. Re-emitted as a `blocker` finding, that entry sends the
+    orchestrator routing a fix path for work already sitting in the tree the PM
+    is reading — a round spent on nothing, repeated every pass. The one-line
+    treatment is the same one the bullet gives an earlier unit's entries.
+    """
+    text = read(AGENT_PM)
+    assert PM_RESOLVED_ENTRY_ONE_LINE in text, (
+        f"{AGENT_PM}: the tracker check no longer distinguishes an entry the "
+        "diff under review has already resolved, so it re-raises a fixed "
+        "violation as a `blocker` finding once per pass"
+    )
+    assert PM_TRACKER_IS_READ_ONLY in text, (
+        f"{AGENT_PM}: the tracker check no longer states that it reads the "
+        "entry without amending it — the natural next move on a stale entry is "
+        "to correct it, which rewrites the run's only record of a routing "
+        "decision underneath PHASE 2, which reads the same file afterwards"
+    )
+
+
 def test_both_orchestrators_pass_the_tracker_path_to_their_pm():
     """The PM's tracker check is reachable only if the dispatch supplies a path.
 
@@ -1427,17 +2682,26 @@ def test_both_orchestrators_pass_the_tracker_path_to_their_pm():
 
 
 # --------------------------------------------------------------------------
-# Part (d)'s `Cancel` — routed through the shared aborted-unit close-out
+# Every routing-gate `Cancel` — routed through the shared aborted-unit close-out
 # --------------------------------------------------------------------------
 
 
 def test_routing_gate_cancel_routes_through_the_aborted_close_out():
-    """Part (d)'s `Cancel` exits through the shared close-out, not by hand.
+    """Every `Cancel` at a routing gate exits through the shared close-out.
 
     The pre-fix `Cancel` returned to the batch directly, skipping the
     `aborted-*` marker sweep, the deferral-hygiene gate, and the boundary
     state-externalization checkpoint. Naming the close-out is what makes all
     abort routes behave identically.
+
+    Execute mode has a **second** producer — part (c)'s `Cancel`, in a
+    `blocker`'s base pair — and it needs the same pin from the gate end. The
+    close-out's router sentence claims that branch, but a claim from one end is
+    not a route: the bullet the orchestrator actually reads when assembling the
+    choice is part (c)'s, and a bullet that stops the run without naming the
+    close-out skips the same three steps the pre-fix `Cancel` did. Part (c)'s
+    bullet is nested under the base-pair sub-list, so it is matched on the
+    stripped line rather than at column zero.
     """
     for relpath in ORCHESTRATORS:
         cancel_bullets = [
@@ -1455,6 +2719,27 @@ def test_routing_gate_cancel_routes_through_the_aborted_close_out():
             "the deferral-hygiene gate, and the boundary checkpoint"
         )
 
+    # Execute mode's second producer, in part (c)'s base pair.
+    part_c_cancels = [
+        line.lstrip()
+        for line in routing_parts(QUO_EXECUTE)["c"].splitlines()
+        if line.lstrip().startswith("- **Cancel**")
+    ]
+    assert len(part_c_cancels) == 1, (
+        f"{QUO_EXECUTE}: expected exactly one `Cancel` choice bullet in part "
+        f"(c)'s blocker base pair, found {len(part_c_cancels)}"
+    )
+    # Matched on the heading alone, not on a `Route through` prefix: part (c)'s
+    # bullet names the close-out mid-sentence ("route through ..."), where part
+    # (d)'s opens with it. The contract is that the bullet names the close-out,
+    # not that the two bullets are phrased alike.
+    assert f"`{CLOSE_OUT_HEADING[QUO_EXECUTE]}`" in part_c_cancels[0], (
+        f"{QUO_EXECUTE}: part (c)'s `Cancel` no longer names "
+        f"`{CLOSE_OUT_HEADING[QUO_EXECUTE]}` — the close-out claims this branch "
+        "from its own end, but the bullet the orchestrator reads would end the "
+        "run without the marker sweep, the checkpoint, or the resume command"
+    )
+
 
 def test_the_aborted_close_out_counts_the_routing_gate_cancel_among_its_routers():
     """Each close-out's lead sentence enumerates the routing gate's `Cancel`.
@@ -1468,6 +2753,19 @@ def test_the_aborted_close_out_counts_the_routing_gate_cancel_among_its_routers(
     the part that goes stale silently: adding a router and forgetting to
     recount leaves a sentence that says "Two branches" above a list of three,
     and a reader who trusts the number stops reading at the second.
+
+    What this buys, stated exactly: a change-detector over the count word plus
+    **two of the three** routers each sentence names. It does not verify that
+    the sentence lists as many routers as it counts. Each close-out names three;
+    `CANCEL_ROUTER_PHRASE` and `THIRD_ROUTER_PHRASE` cover two of them.
+
+    One acknowledged gap, not covered anywhere in this module: the
+    Reconcile-step unexplained-movement gate's **Abort this Issue** / **Abort
+    this unit** choice is unpinned. Verified by deletion — removing it from
+    either close-out's router sentence leaves every guard here passing, count
+    word intact, over a list of two. It is the one router this Issue did not
+    touch, so pinning it was declined rather than overlooked; the note exists so
+    the next reader does not mistake this guard for a completeness check.
     """
     for relpath in ORCHESTRATORS:
         close_out = heading_section(read(relpath), CLOSE_OUT_HEADING[relpath])
@@ -1491,6 +2789,76 @@ def test_the_aborted_close_out_counts_the_routing_gate_cancel_among_its_routers(
             "routing-decision gate's `Cancel` among the branches that route to "
             "it"
         )
+        assert THIRD_ROUTER_PHRASE[relpath] in router_lines[0], (
+            f"{relpath}: `{CLOSE_OUT_HEADING[relpath]}`'s router sentence no "
+            f"longer names {THIRD_ROUTER_PHRASE[relpath]!r}. This guard covers "
+            f"two of the three routers the sentence lists, not the count "
+            "itself — so recount the sentence by reading it, rather than "
+            "trusting that a passing suite means the list is complete"
+        )
+
+
+def test_execute_checkpoint_invoker_note_counts_the_same_routers():
+    """The checkpoint's invoker note and the close-out agree on how many enter it.
+
+    Execute mode states the close-out's entering-branch count in two places:
+    the close-out's own router sentence, and the boundary checkpoint's note
+    listing the invokers that sit outside Section 4.2's branches. Both were
+    "two" before part (c) grew its `Cancel`. The count is derived from the same
+    constant the close-out's guard uses, so the two ends cannot be updated
+    apart: recount one and this fails until the other follows.
+    """
+    word = CLOSE_OUT_ROUTER_COUNT_WORD[QUO_EXECUTE].lower()
+    assert f"All {word} of that close-out's entering branches" in read(QUO_EXECUTE), (
+        f"{QUO_EXECUTE}: the Epic-boundary checkpoint's invoker note no longer "
+        f"counts {word} entering branches for "
+        f"`{CLOSE_OUT_HEADING[QUO_EXECUTE]}` — it and the close-out's own "
+        "router sentence now disagree on how many branches reach the checkpoint"
+    )
+
+
+def test_execute_close_out_bridges_its_two_cancel_branches():
+    """One sentence makes execute's `Cancel`-branching prose cover both gates.
+
+    Execute mode grew a second `Cancel` producer at part (c), but the
+    close-out's own steps — which scope to sweep, whether an `aborted-*` marker
+    is open, how the checkpoint resolves scope, what the Progress entry says,
+    what the stop message names — were all written naming "a routing-gate
+    `Cancel`", meaning part (d)'s. Rather than editing each of those sites to
+    enumerate two branches, the close-out states the equivalence once. That
+    makes this sentence load-bearing in a way its brevity hides: delete it and
+    every one of those steps reads as specified for the other branch, so part
+    (c)'s `Cancel` reaches a close-out with no defined behavior at any step.
+
+    Execute-only. `/quo-fix-issue` has a single routing-gate `Cancel` (its part
+    (c) offers the Analyst re-dispatch in that slot), so there is no
+    equivalence for it to state.
+    """
+    close_out = heading_section(read(QUO_EXECUTE), CLOSE_OUT_HEADING[QUO_EXECUTE])
+    assert EXECUTE_CANCEL_EQUIVALENCE in close_out, (
+        f"{QUO_EXECUTE}: `{CLOSE_OUT_HEADING[QUO_EXECUTE]}` no longer states "
+        "that its two `Cancel` branches behave identically, so every step "
+        "phrased as 'a routing-gate `Cancel`' stops covering part (c)'s"
+    )
+
+
+def test_execute_bee_scope_abort_sweep_clears_the_gate_task():
+    """Execute's Bee-scope abort sweep names the `gate-*` task explicitly.
+
+    That scope's sweep is expressed by borrowing Section 5's Bee-level TaskList
+    close-out, whose enumeration is `*-<bee-id>` names only — and a gate task is
+    named `gate-askuserquestion-<short-suffix>`, which matches none of them. So
+    a `Cancel` fired at the Bee-level review would strand the very gate task
+    that produced it `pending`, where part (g)'s Clause 2 does not look for it
+    but the next session's boundary checkpoint does. The per-Task scope needs no
+    such addition: its sweep already enumerates the gate task.
+    """
+    close_out = heading_section(read(QUO_EXECUTE), CLOSE_OUT_HEADING[QUO_EXECUTE])
+    assert EXECUTE_BEE_SCOPE_GATE_SWEEP in close_out, (
+        f"{QUO_EXECUTE}: `{CLOSE_OUT_HEADING[QUO_EXECUTE]}`'s Bee-scope sweep no "
+        "longer names the `gate-*` task, so a `Cancel` at the Bee-level review "
+        "leaves its own gate task `pending`"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -1722,16 +3090,19 @@ def test_checkpoint_gap_test_defers_to_trigger_c_on_which_picks_need_an_entry():
         )
 
 
-def test_tracker_absent_render_note_counts_a_composed_pick_as_appending():
-    """The render step's rarity note counts composed picks among the appends.
+def test_tracker_absent_render_note_states_when_an_ungated_pick_appends():
+    """The render step's rarity note agrees with Trigger C on when an entry is due.
 
     The note explains why an absent tracker file is now uncommon, which is what
-    stops a reader from treating "no file" as the expected state. A composed
-    pick always appends — Trigger C's carve-out never reaches it — so omitting
-    it from the note understates how often an entry is due.
+    stops a reader from treating "no file" as the expected state. Its condition
+    has to be Trigger C's — a pick among two or more paths, with the
+    lone-`trivial-tweak` carve-out as the only ungated route that appends
+    nothing — or the note either understates how often an entry is due or
+    describes a write Trigger C does not make.
     """
     for relpath in ORCHESTRATORS:
         assert TRACKER_ABSENT_RENDER_CLAUSE in read(relpath), (
-            f"{relpath}: the tracker-absent render note no longer counts a "
-            "composed pick among the ungated picks that append an entry"
+            f"{relpath}: the tracker-absent render note no longer states "
+            "Trigger C's own condition for when an ungated pick appends an "
+            "entry"
         )
