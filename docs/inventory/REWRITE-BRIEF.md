@@ -46,7 +46,18 @@ D4. **Context guard**: when no gauge producer is configured (helper reports `mis
 D5. **Post-completion diff scope** (both skills): `git diff <pre-run-sha>` (working tree against the pre-run
     commit) plus untracked files from `git ls-files --others --exclude-standard`; changes no ticket body asks
     for are reported as likely pre-existing or unticketed in-run edits, as an inference.
-D6. **Inter-Epic interaction checkpoint** is dispatched to the PM (delegate mode), never run by the orchestrator.
+D6. **Inter-Epic interaction checkpoint**: the orchestrator still runs the mechanical half itself (`git log` over
+    the Epic's commits; compute the overlap-file list from the manifest's prior-Epic commit). The judgment half
+    (contract drift, resource compounding, symmetric-change gaps) is dispatched to the EXISTING code-reviewer
+    role with scope = the Epic's commit range plus the overlap-file list; its findings route through the normal
+    routing table. Delete the checkpoint's bespoke "dispatch an Engineer to fix it" branch. Rationale: the
+    orchestrator that just watched both Epics is the wrong reader for an interaction check, the step has no
+    artifact and is the easiest to narrate, and under Mode 1 (fresh session per Epic) the "context is fresh"
+    argument for Director-run is void. This is a simplification, not a delegate-mode purity rule.
+D6a. **Delegate mode is a means, not a principle.** State once in each body: the orchestrator performs
+    mechanical steps that produce a tool artifact directly (git queries, manifest reads/writes, bees status
+    flips, helper invocations); it dispatches every step that is a judgment over file contents or a review.
+    Do not write "stay in delegate mode" as a bare imperative anywhere.
 D7. **Post-completion reviewer prompt skeleton** lives once, in `skills/quo-execute/references/post-completion-prompt.md`,
     with two parameters (diff scope, unit noun); both skills read it.
 D8. **Destination label** is the single literal `addressed-now` in `agents/pm.md`, `agents/analyst.md`, and both skills.

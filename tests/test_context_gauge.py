@@ -405,7 +405,7 @@ def test_tunable_constants():
     # either is a deliberate re-calibration of the guard (and of the arithmetic
     # documented beside them in the helper), never an incidental edit — so this
     # test is meant to fail and force that decision to be made explicitly.
-    assert mod.STOP_THRESHOLD_PERCENT == 50
+    assert mod.STOP_THRESHOLD_PERCENT == 75
     assert mod.FRESHNESS_WINDOW_SECONDS == 1200
     # Turn-scale window (>= 15 min): an accidental revert to the old 120-second
     # value fails loudly here, not just at the exact-equality pin above.
@@ -2883,9 +2883,9 @@ def test_cli_read_requires_session_id(tmp_path):
 def test_cli_stop_threshold_emits_the_constant(tmp_path):
     # One invocation yields the threshold integer on stdout, exit 0. The value is
     # compared to `mod.STOP_THRESHOLD_PERCENT` symbolically — never a bare literal
-    # 50 — so the seam and the single-definition-site tunable stay pinned together:
+    # 75 — so the seam and the single-definition-site tunable stay pinned together:
     # a future retune of the constant moves this assertion with it, and the
-    # value-is-50 pin lives once in `test_tunable_constants`.
+    # value-is-75 pin lives once in `test_tunable_constants`.
     res = _run(["stop-threshold"], env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0, res.stderr
     # Parse to an int rather than asserting a byte-exact string: the Task pins only

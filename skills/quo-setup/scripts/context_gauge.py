@@ -383,16 +383,17 @@ from typing import Optional  # `Optional[...]` only; no PEP 604 unions — see b
 
 
 # Stop point, as a percentage of the context window, for a consumer deciding
-# whether to begin another unit of work. Arithmetic behind the value: the
-# harness begins auto-compacting near ~83% of the window, and a single large
-# unit of work can consume roughly 25-30% of it. That 25-30% figure is an
-# unverified working estimate, NOT a measured or enforced budget — nothing in
-# the workflow measures per-unit consumption. Stopping at 50 keeps 50 + ~30
-# under ~83; raising the stop point to 55 fails that same arithmetic
-# (55 + 30 = 85 > 83), which is why 50 is the highest safe value. This is the
-# single definition site of the tunable: consumers read it here rather than
-# re-deriving it.
-STOP_THRESHOLD_PERCENT = 50
+# whether to begin another unit of work. Operator-set to 75 (2026-09-09). The
+# earlier value of 50 was derived for a smaller window: auto-compact onset near
+# ~83% minus a ~25-30% per-unit estimate. On the current 1M-token window the
+# auto-compact buffer sits at the very top of the window, and the
+# Issue-boundary state-externalization checkpoint (plus any per-lane handoff
+# file) makes a mid-unit compaction survivable, so starting another unit at up
+# to 75% is acceptable. The per-unit figure remains an unverified working
+# estimate, NOT a measured or enforced budget — nothing in the workflow measures
+# per-unit consumption. This is the single definition site of the tunable:
+# consumers read it here rather than re-deriving it.
+STOP_THRESHOLD_PERCENT = 75
 
 # How recently the gauge must have been written for its reading to be trusted.
 # Freshness is judged from the gauge file's modification time — there is no
