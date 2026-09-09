@@ -8,7 +8,7 @@ The orchestrator dispatches one fresh `general-purpose` reviewer with this promp
 |---|---|---|
 | `<pre-run-sha>` | the manifest's `**Pre-session SHA:**` field | the manifest's `**Pre-Bee SHA:**` field |
 | `<unit-noun>` | `fix` | `Bee` |
-| `<spec-source>` | `the issue body, or bodies in batch mode — read each via bees show-ticket --ids <id>. Issue IDs in this session: <issue-id-1> <issue-id-2> ...` | `the Bee body — read it via bees show-ticket --ids <bee-id>. The parent Epic/Task bodies are secondary spec sources; consult them via bees show-ticket --ids <epic-id-1> <task-id-1> ... only when the diff vs. the Bee body is ambiguous.` |
+| `<spec-source>` | `the issue body, or bodies in batch mode — read each via bees show-ticket --ids <id>. Issue IDs in this session: <issue-id-1> <issue-id-2> ...` | `the Bee body — read it via bees show-ticket --ids <bee-id>. The parent Epic/Task bodies are secondary spec sources; consult them via bees show-ticket --ids <epic-id-1> <task-id-1> ... (IDs resolved from the Bee's Epic children and their Task children) only when the diff vs. the Bee body is ambiguous.` |
 | `<compromise-tracker-path>` | the manifest's `**Compromise tracker:**` field, passed as a path, never as inlined contents | the same |
 
 The diff scope is the same in both skills: `git diff <pre-run-sha>` (the working tree against the pre-run commit, no `..HEAD`) plus every untracked file `git ls-files --others --exclude-standard` lists.
