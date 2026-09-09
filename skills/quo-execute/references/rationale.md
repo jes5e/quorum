@@ -56,6 +56,9 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - Without a receiver for a movement report the orchestrator would mark the writer complete and dispatch a reviewer over tests or docs the writer never finished.
 - The writer's own lane closes because its Agent has exited; the owed redelivery becomes an obligation in the manifest because an obligation only in conversation does not survive compaction.
 - Re-dispatching a writer into a still-moving diff reproduces the abort, so the mover's lane and its review round close first.
+- The two writers detect different things, and the receiver should not overstate either: the Test Writer stops on any changed hash in its `## Source paths to fingerprint` set, a moved `HEAD`, or a path that no longer hashes.
+- The Doc Writer's trigger is narrower: it stops when the material it is documenting appears to have moved, such as a file it read no longer matching its prose.
+- Do not read a Doc Writer's silence as a clean-tree attestation over every source path.
 - A Test Writer's discrimination experiment is the mover most easily misread as an external edit; its `## Perturbations` list is what attributes it.
 - The unexplained-movement gate exists because a blind re-dispatch loop into a tree something else is editing is the failure it prevents.
 - `Wait` re-fires only on the operator's reply because a sibling lane's completion notification is a normal tick and must not re-fire the gate.

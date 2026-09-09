@@ -18,6 +18,11 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - The reviewer's `[introduces-mechanism]` tag on a fix path is the primary signal for row 2: a tagged path routes to gate (c) with no further judgment.
 - Orchestrator-side detection is the fallback, used only when no tag is present: read the fix path's own description against that definition and route it the same way.
 
+## (a) Pick, then route — the split
+
+- Whether a gate fires is decided deterministically by the table; which path is picked when no gate fires is the orchestrator's own judgment.
+- The pick precedes the route because rows 2–5 test properties of the chosen path, not of the finding.
+
 ## Under-enumerated findings
 
 - The pick at Step 1 is always one of the paths the reviewer enumerated.
@@ -50,6 +55,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - Dispatch the narrowing directly, not by re-entering Step 2 with it, because Step 2 would match row 4 and route it straight back to this gate.
 - The direct-dispatch terminality is one rule with the soft-fix rule: it applies to a blocker's narrowing and to a non-blocker's soft fix alike.
 - When the Defer-with-narrowing branch is open, mark the choice `(Recommended)` even on a `blocker`.
+- When the coverage guard withholds `Defer` because the narrowing would leave the stated defect partly unfixed, there is no choice to mark `(Recommended)`, even on a row-2 fire.
 - The blocker Defer branch applies whichever row fired the gate — 2, 3, or 4 — because condition (i) tests the fix path the finding needs, not the chosen path.
 - A `suggestion` or `nit` keeps the narrower rule: its Defer default is row-2 only.
 - The gate fires for a `blocker` like any other finding; the base pair is a real decision, three choices when the Defer-with-narrowing branch is open.
