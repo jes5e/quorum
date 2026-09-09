@@ -27,11 +27,11 @@ Post-resolution working list:
 ```
 
 9. The display is informational only: no `AskUserQuestion`, no ability to re-order. A user unhappy with the order presses `Ctrl-C` and re-runs with corrected positional order.
-10. Record each filing in the manifest's `## Lanes` as a lane named `file-from-url-<n>`, `<n>` the 1-based index of the URL token in the argument list; mark it closed when `issue_ticket_id` is captured or the token is dropped.
+10. Record each filing in the manifest's `## Lanes` as the lane `file-from-url-<n>` — a row with role `file-from-url`, scope `<n>` (the 1-based index of the URL token in the argument list), and round `1`; mark it `closed` when `issue_ticket_id` is captured or the token is dropped.
 11. Continue at the up-front validation pass. The dropped-token count is cumulative across this procedure and that pass; only when no valid token remains after both does the run exit with an error. On the single-URL path a dropped URL leaves the list empty and that rule fires.
 
 ## Notes
 
 - Each `/quo-file-issue` structured return is a hand-off marker, not a signal that this run has terminated.
 - In-place substitution preserves the user's order because an Issue filed from an earlier URL may be a prerequisite of a later token.
-- The index, not the URL, discriminates the `file-from-url-<n>` lane because a URL may be long, may repeat after dedupe, or may contain reserved characters.
+- The index, not the URL, is the `file-from-url-<n>` row's scope because a URL may be long, may repeat after dedupe, or may contain reserved characters.
