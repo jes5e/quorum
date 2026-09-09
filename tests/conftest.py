@@ -38,11 +38,23 @@ CONTEXT_GAUGE = "skills/quo-setup/scripts/context_gauge.py"
 # cross-file contract the suite pins.
 QUO_EXECUTE = "skills/quo-execute/SKILL.md"
 QUO_FIX_ISSUE = "skills/quo-fix-issue/SKILL.md"
+QUO_BREAKDOWN_EPIC = "skills/quo-breakdown-epic/SKILL.md"
 QUO_ENGINEER_REVIEW = "skills/quo-engineer-review/SKILL.md"
 QUO_TEST_WRITER_REVIEW = "skills/quo-test-writer-review/SKILL.md"
 QUO_DOC_WRITER_REVIEW = "skills/quo-doc-writer-review/SKILL.md"
 QUO_SPEC_REVIEW = "skills/quo-spec-review/SKILL.md"
 QUO_PLAN = "skills/quo-plan/SKILL.md"
+QUO_FILE_ISSUE = "skills/quo-file-issue/SKILL.md"
+
+# Shipped reference files the two orchestrators read on demand. The shared
+# ones live under quo-execute and are sibling-resolved by quo-fix-issue.
+REF_ROUTING = "skills/quo-execute/references/routing.md"
+REF_POST_COMPLETION_PROMPT = "skills/quo-execute/references/post-completion-prompt.md"
+REF_COMPROMISE_TRACKER = "skills/quo-execute/references/compromise-tracker.md"
+REF_CONTEXT_GUARD = "skills/quo-execute/references/context-guard.md"
+REF_RATIONALE = "skills/quo-execute/references/rationale.md"
+REF_URL_RESOLUTION = "skills/quo-fix-issue/references/url-resolution.md"
+REF_GITHUB_CLOSE = "skills/quo-fix-issue/references/github-close.md"
 
 AGENTS_DIR = REPO_ROOT / "agents"
 
@@ -98,21 +110,41 @@ def heading_section(text, heading):
     that was renamed or duplicated would otherwise silently yield an empty or
     over-long slice, and every assertion made against that slice would go
     vacuous rather than fail.
+
+    Lines inside fenced code blocks are never headings: the orchestrator
+    bodies embed manifest and tracker templates whose fenced contents start
+    with `##`, and a slicer that honored those would cut a section short.
     """
     level = len(heading) - len(heading.lstrip("#"))
     lines = text.splitlines()
-    starts = [i for i, line in enumerate(lines) if line.strip() == heading]
+    headings = _heading_lines(lines)
+    starts = [i for i in headings if lines[i].strip() == heading]
     assert len(starts) == 1, (
         f"expected exactly one {heading!r} heading, got {len(starts)}"
     )
     start = starts[0]
     end = len(lines)
-    for j in range(start + 1, len(lines)):
+    for j in headings:
+        if j <= start:
+            continue
         match = re.match(r"^(#{1,6}) ", lines[j])
         if match and len(match.group(1)) <= level:
             end = j
             break
     return "\n".join(lines[start:end])
+
+
+def _heading_lines(lines):
+    """Indices of markdown heading lines that sit outside fenced code blocks."""
+    indices = []
+    in_fence = False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence and re.match(r"^#{1,6} ", line):
+            indices.append(i)
+    return indices
 
 
 def routing_section(text):

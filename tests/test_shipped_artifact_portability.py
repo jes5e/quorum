@@ -129,6 +129,25 @@ def test_no_shipped_artifact_cites_a_repo_only_doc_section():
     )
 
 
+def test_reference_files_are_inside_the_scanned_shipped_tree():
+    """The orchestrators' `references/*.md` ship and are scanned like SKILL.md.
+
+    `skills/<name>/references/` is copied by the same `cp -r skills/*` the
+    install procedure runs, so a dangling repo-only citation there dangles on
+    a fresh install exactly as one in a SKILL.md would. This pins that the
+    shipped-tree enumerator sees every reference file, so the guard above
+    cannot silently stop covering them.
+    """
+    scanned = {p.relative_to(REPO_ROOT).as_posix() for p in shipped_artifacts()}
+    references = sorted(
+        p.relative_to(REPO_ROOT).as_posix()
+        for p in (REPO_ROOT / "skills").glob("*/references/*.md")
+    )
+    assert references, "no reference files found under skills/*/references/"
+    missing = [r for r in references if r not in scanned]
+    assert not missing, f"reference files not scanned by shipped_artifacts(): {missing}"
+
+
 def test_contract_key_tails_are_allowlisted_not_flagged():
     """The two legitimate contract-key tails must NOT be flagged.
 
