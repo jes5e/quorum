@@ -507,3 +507,18 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 - Emitting the machinery-introduction tag from the test and doc review lanes. Only code review emits it today; on the other lanes the orchestrator reads the fix path's description itself, which is the sole route to the gate there rather than a redundant one.
 - Letting the orchestrator write a fix path the reviewer did not offer. It was tried during the run and removed: picking from the reviewer's list keeps a routing change to routing, and an incomplete list is surfaced at a gate instead — reaching the end-of-run review only when the answer at that gate left a record, which deferring to a follow-up Issue or accepting the limitation does and "fix it properly" does not. Whether the orchestrator should ever compose its own path is filed as a separate decision (`b.kxx`).
 - Eliminating review rounds by analysing blast radius before implementation starts. That is tracked as a sibling change; this one decides how findings are routed once a reviewer has produced them.
+
+### Feature: Review loops have no termination on nit-severity findings; nits batch into one final implementer pass and never reopen a lane
+
+**What.** A review round whose only findings are `nit`s with trivial fixes no longer costs another full writer round plus another cold review. `/quo-fix-issue` and `/quo-execute` fold such nits into whatever implementer round a weightier finding already forces, and when only such nits remain they apply them in one final pass for that lane and move on, noting the count on the summary's **Reviews** line as applied without re-review. Blockers and suggestions still loop to clean exactly as before, so does a nit whose fix is deeper than a trivial tweak, and a nit whose fix would need a user decision still goes to the gate.
+
+**Why.** Three runs on 2026-09-08 — two on this repo and one on a Python service — spent the majority of their review rounds on comment and docstring wording, each fresh cold pass finding the next nit, because the loop's exit condition read as "clean at every severity." The nit fixes were still reviewed, by the whole-diff post-completion pass, so the extra rounds bought nothing.
+
+**Acceptance criteria.**
+
+- A reviewer return whose findings are all `nit`s with `trivial-tweak` fix paths closes its lane after one implementer pass with no further reviewer round in that lane.
+- Every nit applied that way is counted on the summary's **Reviews** line as applied without re-review, and never appears under **Ignored Review Feedback**, which is reserved for work left undone.
+- `blocker`- and `suggestion`-severity findings loop exactly as before; so does a `nit` whose chosen fix path is deeper than `trivial-tweak`, and a `nit` whose chosen fix path would fire a routing gate still does.
+- The three review skills keep `nit` as an importance tag and tell reviewers not to promote an item to `suggestion` merely to buy another round.
+
+**Out of scope.** Any cap on rounds at any severity, and any narrowing of what a cold pass reads.
