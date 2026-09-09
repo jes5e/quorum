@@ -112,7 +112,7 @@ The orchestrator performs mechanical steps that produce a tool artifact directly
 4. When any URL token is present, run the URL-resolution reference's procedure; it substitutes each resolved `issue_ticket_id` in place.
 5. Validate the post-resolution list with `bees show-ticket --ids <id1> <id2> ...`. Drop any ID that does not exist, is not in the `issues` hive, or is not `open`, report it, and continue with the valid subset. Only when no token remains valid after URL resolution and this pass does the run exit with an error.
 6. Write the run-state manifest (Section 2).
-7. For each Issue in order, validate it: `bees show-ticket --ids "<issue-id>"`; status must be `open`; every `up_dependencies` entry must be `done`, batch-looked-up with `bees show-ticket --ids <dep-id-1> <dep-id-2> <...>`; no `up_dependencies` means unblocked. If blocked, print the blocking IDs and titles; in batch mode skip to the next Issue; in single mode exit with `Cannot start Issue. It is blocked by: [list]`. Issues have only `open` and `done`; set no status here.
+7. **Take the next Issue in order and validate it** (the Issue boundary returns here): `bees show-ticket --ids "<issue-id>"`; status must be `open`; every `up_dependencies` entry must be `done`, batch-looked-up with `bees show-ticket --ids <dep-id-1> <dep-id-2> <...>`; no `up_dependencies` means unblocked. If blocked, print the blocking IDs and titles; in batch mode skip to the next Issue; in single mode exit with `Cannot start Issue. It is blocked by: [list]`. Issues have only `open` and `done`; set no status here.
 
 ### Tick
 
@@ -227,7 +227,7 @@ Follow the review skills' routing trailer literally — `**Your next tool use MU
 **After each Issue.** When every finding is dispositioned and no lane at this Issue is `open`:
 
 1. Re-read the status with `bees show-ticket --ids <issue-id>` and run `bees update-ticket --ids <issue-id> --status done` only if it is not already `done`.
-2. Run the `Format` command from `## Build Commands` — the only rung the orchestrator runs, never the test suite, and with the Bash `timeout` parameter when long.
+2. Run the `Format` command from `## Build Commands` — the only rung the orchestrator runs, never the test suite, and with the Bash `timeout` parameter (max `600000` ms) when long; past that, `Bash(run_in_background: true)` and wait for the completion notification.
 3. Run `git status`; stage agent-reported files plus formatting changes to files this Issue's agents touched. Resolve the in-repo Issues hive path with `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive issues` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive issues`) and when it prints one run `git add <emitted-issues-path>/<issue-id>`. **Do NOT blindly `git add -A`**.
 4. Commit once with subject `Fix issue: <title> (<issue-id>)`, e.g. `Fix issue: Tighten dispatch contract gap (b.abc)`. **NEVER push to remote — committing only.** Record the commit SHA under `**Progress:**`.
 5. Mark every lane and `aborted-*` obligation at this Issue `closed`. Output:
@@ -245,7 +245,7 @@ Follow the review skills' routing trailer literally — `**Your next tool use MU
 ```
 
 - `**Doc Sync**` confirms the PM's verdict — a deep review or `no spec drift surface to review for this Issue` — and, when the body carried `## Doc divergence noted`, that the Doc Writer consumed it; the orchestrator performs no doc edit itself.
-- `**Second-order effects**` is unconditional: collect every Phase A Code Reviewer return and the PM Final report's `### Second-order effects` with its `#### <invocation scope>` sub-blocks, render bullets verbatim, keep the sub-block labels the relaying source supplied and attribute each Code Reviewer block by round, de-duplicate exact repeats, and render `None identified.` when every source said `No second-order effects identified.` or none ran; when a source's return is no longer readable, render the sources in hand and say that source's narrative is unavailable post-compaction.
+- `**Second-order effects**` is unconditional and is narrative, not routing input — it never holds a lane open, never becomes a finding, and is never re-ranked or merged into the `**Reviews**` line: collect every Phase A Code Reviewer return and the PM Final report's `### Second-order effects` with its `#### <invocation scope>` sub-blocks, render bullets verbatim, keep the sub-block labels the relaying source supplied and attribute each Code Reviewer block by round, de-duplicate exact repeats, and render `None identified.` when every source said `No second-order effects identified.` or none ran; when a source's return is no longer readable, render the sources in hand and say that source's narrative is unavailable post-compaction.
 - `**Accepted compromises**`: `Read` the tracker at the manifest's path — this surface only reads the tracker, never writes it. When it has `## Compromise <n>` entries render one bullet per entry with `Finding (verbatim)`, `Decision`, `Rationale`, and `Follow-up Issue`, never `Fix paths surfaced by reviewer`, all entries in full, prefaced by `N compromises were accepted during this run:` when more than ten; otherwise omit the line.
 - Record every PM-deferred item annotated `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` as a `defer-*` obligation now.
 
@@ -332,7 +332,7 @@ When this section is complete, proceed to Section 13.
 
 Entered from **Abort this Issue**, from the Analyst gate's `Cancel`, or from gate (d)'s `Cancel`. A definition, not a step; run it only when a branch names it. The Issue ends without a fix landing: no commit, the Issue stays `open`.
 
-1. Mark `closed` every lane and `aborted-*` obligation at this Issue, recording the abort reason in each `aborted-*` obligation's detail. An in-flight sibling lane cannot be terminated; mark it `closed` anyway and discard its late return.
+1. Mark `closed` every lane and `aborted-*` obligation at this Issue, recording the abort reason in each `aborted-*` obligation's detail. An in-flight sibling lane cannot be terminated; mark it `closed` anyway, note in the abort's `aborted-*` obligation detail that it was in flight so a resuming session re-checks its work instead of trusting ticket state (on a gate `Cancel`, which opens no obligation, step 3's uncommitted-paths list is that record), and discard its late return.
 2. Run the deferral-hygiene gate (Section 9), then the checkpoint (Section 8) on its aborted path with `**Progress:**` `<issue-id>: aborted — no commit; Issue left open`.
 3. Run `git status --porcelain` and branch on mode. Single mode, or batch exhausted: name the aborted Issue and the uncommitted paths, then (batch exhausted only) the batch-close deferral-hygiene firing (Section 9), then Section 11 over whatever landed. A next Issue remains: **STOP the run here** — name the aborted Issue, the uncommitted paths, and the resume command `/quo-fix-issue <remaining-ids>` or `/quo-fix-issue all`; do not run the context guard; exit. `Ctrl-C` remains the unconditional run-level abort.
 
