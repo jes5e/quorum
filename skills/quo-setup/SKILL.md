@@ -848,7 +848,7 @@ python "<bees-setup-base-dir>\scripts\context_gauge.py" write-opt-out
 
 #### What the opt-out marker means
 
-The opt-out marker lives at `<tempdir>/.quorum/context-guard-opt-out` (on POSIX, `/tmp/.quorum/context-guard-opt-out`; on Windows, `%TEMP%\.quorum\context-guard-opt-out`). Its existence suppresses only the boundary stop that fires when **no reading is being published** — it does NOT suppress a genuine over-threshold stop when a reading *is* present, so an operator who opts out still stops when a real reading crosses the threshold. To re-enable the offer and the missing-reading guard, remove that file — there is no command to undo the opt-out, by design; just delete the named file.
+The opt-out marker lives at `<tempdir>/.quorum/context-guard-opt-out` (on POSIX, `/tmp/.quorum/context-guard-opt-out`; on Windows, `%TEMP%\.quorum\context-guard-opt-out`). Its existence suppresses only `/quo-breakdown-epic`'s boundary stop that fires when **no reading is being published** — `/quo-execute` and `/quo-fix-issue` do not read the marker and continue unguarded on a missing reading either way — and it does NOT suppress a genuine over-threshold stop when a reading *is* present, so an operator who opts out still stops when a real reading crosses the threshold. To re-enable the offer and `/quo-breakdown-epic`'s missing-reading guard, remove that file — there is no command to undo the opt-out, by design; just delete the named file.
 
 #### Troubleshooting
 

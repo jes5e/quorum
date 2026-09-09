@@ -181,9 +181,10 @@ restore is possible), `new_command`, `preserved_status_line_keys`, `self_check`,
 
 Writes the persistent opt-out marker (creating the gauge directory if absent),
 prints its path, and exits `0`. Idempotent: a repeated run rewrites the same
-content and reports the same path. The marker suppresses only the boundary
-guard's missing-reading hard-stop — never a genuine over-threshold stop — and
-deleting the file re-enables the guard. There is NO removal subcommand by
+content and reports the same path. The marker suppresses only
+`/quo-breakdown-epic`'s missing-reading hard-stop (`/quo-execute` and
+`/quo-fix-issue` do not read it) — never a genuine over-threshold stop — and
+deleting the file re-enables that guard. There is NO removal subcommand by
 design: this helper never deletes anything, so opting back in is a manual file
 delete, not a command.
 
@@ -203,11 +204,12 @@ Opt-out marker
 A persistent marker an operator writes to run unguarded. Its mere EXISTENCE is
 the signal — the contents are advisory only and are never parsed. The name and
 location are a cross-skill contract, so both the writer and the boundary guard
-that reads it name the same file. What the marker suppresses is narrow: only the
-missing-reading hard-stop (the stop that fires when no trustworthy reading is
-available). It does NOT suppress a genuine over-threshold stop — an operator who
-opts out of the missing-reading guard still stops when a real reading crosses the
-threshold. `inspect-statusline` reports the path and whether it exists; it never
+that reads it name the same file. What the marker suppresses is narrow: only
+`/quo-breakdown-epic`'s missing-reading hard-stop (the stop that fires when no
+reading is being published); `/quo-execute` and `/quo-fix-issue` do not read the
+marker and continue unguarded on a missing reading either way. It does NOT
+suppress a genuine over-threshold stop — an operator who opts out still stops
+when a real reading crosses the threshold. `inspect-statusline` reports the path and whether it exists; it never
 creates it.
 
 Higher-precedence settings

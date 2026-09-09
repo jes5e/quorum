@@ -583,7 +583,6 @@ SHARED_GATE_LABELS = {
     "post-completion disposition": ["**Fix in this session**", "**File as issue tickets**", "**Skip**"],
     "SR-6.7": ["`File follow-up Issue to revisit the depth decision`", "`Accept the misjudgment and proceed`", "`Pause to discuss`"],
     "SR-4.6": ["`File follow-up Issue to surface the missing path`", "`Accept the under-enumeration and proceed`", "`Pause to discuss`"],
-    "context guard": ["**Stop here**", "**Proceed without the guard (this run)**"],
 }
 
 

@@ -1,6 +1,6 @@
 # Context-window boundary guard reference — what the guard reads, why it stops, and the gauge contract
 
-This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The guard's steps, its branch table, and its gate live in the invoking skill's body; this file carries the reasoning and the gauge-file contract an operator needs to configure a producer.
+This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The guard's steps, its branch table, and its stop live in the invoking skill's body; this file carries the reasoning and the gauge-file contract an operator needs to configure a producer.
 
 ## What the guard is, and is not
 
@@ -21,6 +21,11 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The guard's 
 - The session id is read first and evaluated before anything else happens, mirroring the session-effort check, so that no gate is opened before the reading is in hand.
 - The session id must be trimmed of trailing whitespace or a newline, because a trailing newline fails the helper's `--session-id` charset validation.
 - An unset session id is the one silent-skip path, the unsupported-CLI carve-out; it matches how an unset `CLAUDE_EFFORT` is treated.
+
+## Why an over-threshold reading stops unconditionally
+
+- Usage only grows within a session, so a reading at or above the threshold is always a genuine stop.
+- The guard offers no proceed option there: a human override at that point is exactly the risk the guard exists to remove, and the run is at a clean boundary where a fresh session costs nothing.
 
 ## Why `stale` and errors stop
 
