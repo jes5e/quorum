@@ -543,7 +543,6 @@ REFERENCE_ANCHORS = {
         "`created`",
         "`reused-existing`",
         "Post-resolution working list:",
-        "`file-from-url-<n>`",
     ],
     REF_GITHUB_CLOSE: [
         "`git log --reverse --format=%h -F --grep='(<issue-id>)' <pre-session-sha>..HEAD`",
