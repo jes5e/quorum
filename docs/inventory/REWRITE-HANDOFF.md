@@ -25,6 +25,8 @@ Round 6 returned 1 blocker (the SDD's standing `## Orchestration in execution sk
 
 Round 7 returned 1 blocker (the SDD/PRD pointer sweep the SDD entry claimed complete was not — ~35 statements in dated feature entries still pointed at pre-rewrite section numbers or described the retired `file-from-url-<n>` class; all de-numbered or annotated, and the claim now describes exactly what was done), 1 suggestion (an in-flight sibling lane closed by an abort is noted in the `aborted-*` obligation detail), 5 nits (Bash `timeout` ceiling `600000` ms and the background path on the orchestrator's `Format` run; Mode 2 takes the recommended Epic outright; fix's second-order bullet carries the narrative-not-routing clause; run-start step 7 named as the per-Issue entry; the SDD's D3 sentence counts eight rows). All fixed in the following commit.
 
+Round 8 returned no blockers: 1 suggestion (Mode 1 **Stop here** now records `**Next unit:** none`) and 4 nits (exec attributes Code Reviewer second-order blocks by review site; four last doc pointers; the boundary checkpoint prunes closed lane/obligation rows and rendered `## Rounds` rows so the manifest stays a snapshot; CLAUDE.md's exemption drops the retired deterministic-filename comparison). All fixed in the following commit.
+
 Prompt shape for each further round: scope `main..HEAD`, read the brief and inventory first, D1–D12 final, criteria A1–A9, role-play both runs, return findings in the review-skill shape plus an A1–A9 PASS/FAIL checklist. Loop until a pass returns nothing above a `trivial-tweak` nit. No round cap.
 
 ## Judgment calls the reviewer and operator should know about

@@ -215,7 +215,7 @@ quorum exists as an alternative to [Apiary](https://github.com/gabemahoney/apiar
   ```
 - One bullet per fixed Issue whose `reference_materials[*].resolver == "github-issue"`. Bullets are emitted in the run's fixed-issue iteration order (single-issue mode: one bullet; list / `all` mode: bullets in fixed-list order). When a single fixed Issue carries multiple `github-issue` entries in `reference_materials`, one bullet is emitted per matching entry, in array order.
 - The entire recommendation block is suppressed on runs where every fixed Issue's `reference_materials` is null/empty or carries only non-`github-issue` resolvers (`linear-issue`, `url`, etc.).
-- Issues that were skipped (per Section 2's blocked-issue handling in batch mode) or never reached (e.g., upfront validation soft-failed) do not contribute bullets.
+- Issues that were skipped (per the run-start blocked-issue handling in batch mode) or never reached (e.g., upfront validation soft-failed) do not contribute bullets.
 - The recommendation block is informational console output — the user is not asked to confirm via `AskUserQuestion`; the orchestrator emits the block and yields.
 - The skill never invokes `gh issue close` itself. The block is pure recommendation; no `gh` auth assumption is baked into the workflow.
 
