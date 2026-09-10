@@ -29,6 +29,8 @@ Round 8 returned no blockers: 1 suggestion (Mode 1 **Stop here** now records `**
 
 Round 9 returned 1 blocker (the round-5 tick-level foreign-manifest rewrite overwrote the `**Unit scope:**` tell and had no source for the pre-run SHA or tracker path — now rewrites only run-owned fields and stops when an un-derivable one is needed), 3 suggestions (the abandoned Analyst gate clears `## Open gate`; two stale `HEAD~N` sentences in the SDD; sentences over 40 words after line 150 split), 4 nits (Bee-level reviews name both entry paths; Bee pick and Epic pick split into two bullets; `**Context guard:**` enum narrowed to `no reading | <integer>%` with no write on the silent-skip path; close-out step 5 says it is bookkeeping only). All fixed in the following commit.
 
+Round 10 returned 1 blocker (exec run start had no arm for zero workable Epics, so an all-done or all-blocked Bee could not reach the Bee-level reviews or exit — now the third arm of step 6, with a `not captured (no workable Epic)` mode value for the blocked case), 1 suggestion (the foreign-manifest rewrite also empties `## Lanes`, `## Obligations`, `## Rounds`, `## Open gate`), 3 nits (the FX-DEFC-18 / FX-HYG-10 conflict recorded in the SDD; the doc-writing guide's manifest-fronted claim scoped to after the manifest write; the SDD's body-size sentence). All fixed in the following commit.
+
 Prompt shape for each further round: scope `main..HEAD`, read the brief and inventory first, D1–D12 final, criteria A1–A9, role-play both runs, return findings in the review-skill shape plus an A1–A9 PASS/FAIL checklist. Loop until a pass returns nothing above a `trivial-tweak` nit. No round cap.
 
 ## Judgment calls the reviewer and operator should know about

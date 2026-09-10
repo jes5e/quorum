@@ -80,7 +80,7 @@ none
 - `## Rounds` holds one row per lane (scope and role) carrying the count of `trivial-tweak` nits applied in that lane's final implementer pass without a further reviewer round (Section 7); `round` in `## Lanes` counts dispatches, `## Rounds` counts nits.
 - `## Open gate` names the gate about to fire, its scope, and its choice labels verbatim, or `none`.
 - The manifest carries lane phase and obligations; an earlier rule forbade the manifest a lane-phase field, and that rule is withdrawn.
-- Validate the manifest before trusting any field: its `**Unit scope:**` must match this run's batch. A manifest naming other Issues is treated as absent: trust no field in it. Rewrite `**Unit scope:**`, `**Isolation strategy:**`, `**Progress:**`, and `**Next unit:**` from this run's own state; when `**Pre-session SHA:**` or `**Compromise tracker:**` is needed and this run's value is no longer readable, stop and tell the user rather than guessing.
+- Validate the manifest before trusting any field: its `**Unit scope:**` must match this run's batch. A manifest naming other Issues is treated as absent: trust no field in it. Rewrite `**Unit scope:**`, `**Isolation strategy:**`, `**Progress:**`, and `**Next unit:**` from this run's own state, and empty `## Lanes`, `## Obligations`, `## Rounds`, and `## Open gate`; when `**Pre-session SHA:**` or `**Compromise tracker:**` is needed and this run's value is no longer readable, stop and tell the user rather than guessing.
 
 ## 3. After a compaction
 
