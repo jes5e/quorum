@@ -209,8 +209,8 @@ that reads it name the same file. What the marker suppresses is narrow: only
 reading is being published); `/quo-execute` and `/quo-fix-issue` do not read the
 marker and continue unguarded on a missing reading either way. It does NOT
 suppress a genuine over-threshold stop — an operator who opts out still stops
-when a real reading crosses the threshold. `inspect-statusline` reports the path and whether it exists; it never
-creates it.
+when a real reading crosses the threshold. `inspect-statusline` reports the
+path and whether it exists; it never creates it.
 
 Higher-precedence settings
 --------------------------
@@ -1491,7 +1491,7 @@ def main() -> int:
 
     subparsers.add_parser(
         "write-opt-out",
-        help="write the persistent opt-out marker that suppresses the missing-reading stop",
+        help="write the persistent opt-out marker that suppresses /quo-breakdown-epic's missing-reading stop",
     )
 
     subparsers.add_parser(
