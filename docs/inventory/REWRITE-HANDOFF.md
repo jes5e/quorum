@@ -35,6 +35,8 @@ Round 11 returned 1 blocker (the foreign-manifest rewrite left the foreign SHA a
 
 Round 12 returned no blockers: 1 suggestion (the re-derivation bullet now checks for an `open` analyst lane before dispatching and resumes the ladder only after the gate is answered), 2 nits ("Five forms"; checkpoint verification (a) qualified for a run that completed no Epic), plus one dated SDD sentence annotated. All fixed in the following commit.
 
+Round 13 returned no blockers: 2 suggestions (the Epic flip and branch classification wait for the inter-Epic reviewer's findings to be dispositioned; the checkpoint's invocation guard names run-start step 6 and no longer claims a branch classification precedes every call), 3 nits (the design-question rung uses the re-derivation shape when the prior proposal is unreadable; the Bee-level `**Reviews**` slot attributes by review site; remaining over-40-word sentences split). All fixed in the following commit.
+
 Prompt shape for each further round: scope `main..HEAD`, read the brief and inventory first, D1–D12 final, criteria A1–A9, role-play both runs, return findings in the review-skill shape plus an A1–A9 PASS/FAIL checklist. Loop until a pass returns nothing above a `trivial-tweak` nit. No round cap.
 
 ## Judgment calls the reviewer and operator should know about
