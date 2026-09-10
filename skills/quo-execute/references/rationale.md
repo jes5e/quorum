@@ -80,7 +80,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - The commit subject's parenthesised ticket-ID token is a contract, not style: the boundary checkpoint and, in `/quo-fix-issue`, the GitHub close block both `--grep` for it.
 - The close-out status flip is idempotent because a worker occasionally flips the status itself.
 - The Issue type has only `open` and `done`, so there is no in-flight status to set; the manifest's `## Lanes` carries the in-flight signal.
-- `Format` is the only rung the orchestrator runs before commit; the implementer lanes already validated, and re-running the suite wastes minutes per unit.
+- `Format` is the only rung the orchestrator runs before commit on its own initiative; the implementer lanes already validated, and re-running the suite wastes minutes per unit. The one exception is a target project whose CLAUDE.md requires a test run before a commit — then the orchestrator runs `Full test` too.
 
 ## Boundary checkpoint
 

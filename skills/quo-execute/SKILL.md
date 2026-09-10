@@ -6,13 +6,13 @@ argument-hint: "[<bee-id> | <epic-id>]"
 
 ## 1. Preconditions
 
-Before anything else, verify the host repo is configured for quorum. **Hard-fail** with `Run /quo-setup first.` plus a one-line note of what is missing if any item below is absent. Do not improvise commands or guess paths.
+Before anything else, verify the host repo is configured for quorum. **Hard-fail** with `Run /quo-setup first.` plus a one-line note of what is missing if any item below is absent. Do not improvise commands or guess paths. In a fresh worktree or clone, `bees list-hives` can report no hives even though `.bees/` is committed; `/quo-setup`'s fast path re-registers them, and that is the expected remedy rather than a defect.
 
 - The seven custom subagent types are registered in this session: `engineer`, `test-writer`, `doc-writer`, `pm`, `code-reviewer`, `test-reviewer`, `doc-reviewer`. Custom subagents load at session start; a fresh install needs a Claude Code restart or `/agents` to hot-reload. Verification rides on the first dispatch: an `Agent type '<name>' not found` error from the Agent tool for any of the seven STOPS the run with `Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.` Never fall back to `general-purpose` as a substitute for a missing role, never skip the dispatch, never improvise a substitute role.
 - The Plans hive is colonized: `bees list-hives` includes a hive whose `normalized_name` is `plans`.
 - The Specs hive is colonized: `bees list-hives` includes a hive whose `normalized_name` is `specs`. If absent, hard-fail with `Run /quo-setup first. — Specs hive is not colonized for this repo. Re-run /quo-setup to add the Specs hive without disturbing existing hives (Plans, Issues).`
 - CLAUDE.md contains a `## Documentation Locations` section; roles read doc paths from it by exact key.
-- CLAUDE.md contains a `## Build Commands` section with all five keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`; roles read commands from it by exact key.
+- CLAUDE.md contains a `## Build Commands` section with all five keys: `Compile/type-check`, `Format`, `Lint`, `Narrow test`, `Full test`; roles read commands from it by exact key. `Compile/type-check` may be present with an empty value; the other four must be non-empty.
 
 ## 2. Run-state manifest
 
@@ -132,7 +132,7 @@ Each tick is event-driven, never clock-driven, and has three phases.
 
 Dispatch every role as `Agent(subagent_type=<role>, run_in_background=true, prompt=…)`. Never use `Agent(name=...)`, never reuse an Agent across scopes, never `SendMessage` between roles; the diff is the handoff. Subagents cannot spawn subagents, so every dispatch originates here. Before each dispatch add an `open` lane row with `dispatched: no`; set `dispatched: yes` when the call returns; the `## Lanes` rule (Section 2) governs an `open` row already there.
 
-Read the ticket via `bees show-ticket --ids <ticket-id>` and embed the body **verbatim** as a quoted block; never paraphrase or clean up identifier spellings. Framing prose around the block is fine, and it MUST NOT loosen the dispatched role's lane as `agents/<role>.md` states it. Surface the Plan Bee `title` verbatim to the Doc Writer. Pass the PM the Task ID, the completed Subtask IDs, the Grandparent Bee ID (on a Bee-scoped re-dispatch: the Bee ID and the Bee-level diff range in place of the Task and Subtask IDs), `<scoped-marker-resolver-path>` resolved as `<this skill's base directory>/../quo-breakdown-epic/scripts/scoped_marker_resolver.py` (PowerShell `<this skill's base directory>\..\quo-breakdown-epic\scripts\scoped_marker_resolver.py`), and `<compromise-tracker-path>` — the path, never the contents. Give every reviewer its scope: a diff range, a ticket ID, or both.
+Read the ticket via `bees show-ticket --ids <ticket-id>` and embed the body **verbatim** as a quoted block; never paraphrase or clean up identifier spellings. Framing prose around the block is fine, and it MUST NOT loosen the dispatched role's lane as `agents/<role>.md` states it. Surface the Plan Bee `title` verbatim to the Doc Writer. Pass the PM the Task ID, the completed Subtask IDs, and the Grandparent Bee ID (on a Bee-scoped re-dispatch: the Bee ID and the Bee-level diff range in place of the Task and Subtask IDs). Also pass `<scoped-marker-resolver-path>` resolved as `<this skill's base directory>/../quo-breakdown-epic/scripts/scoped_marker_resolver.py` (PowerShell `<this skill's base directory>\..\quo-breakdown-epic\scripts\scoped_marker_resolver.py`) and `<compromise-tracker-path>` — the path, never the contents. Give every reviewer its scope: a diff range, a ticket ID, or both.
 
 | Heading | Source | Recipients | Fixed empty line |
 |---|---|---|---|
@@ -145,7 +145,7 @@ Read the ticket via `bees show-ticket --ids <ticket-id>` and embed the body **ve
 
 ## 6. Gates
 
-Every `AskUserQuestion` this skill fires is a gate. A gate is a manifest `Write` that fills `## Open gate` with the gate's name, scope, and choice labels verbatim, followed by `AskUserQuestion` in the same turn. This contract substitutes for the two-step gate contract a dispatched skill's routing trailer prescribes. The run-start gates that precede the manifest write — session effort, the pick gate that precedes it, and isolation — fire `AskUserQuestion` directly; the `## Open gate` discipline begins at the manifest write.
+Every `AskUserQuestion` this skill fires is a gate. A gate is a manifest `Write` that fills `## Open gate` with the gate's name, scope, and choice labels verbatim, followed by `AskUserQuestion` in the same turn. This is the gate contract a dispatched skill's routing trailer names for this skill, in place of the two-step contract it names for other callers. The run-start gates that precede the manifest write — session effort, the pick gate that precedes it, and isolation — fire `AskUserQuestion` directly; the `## Open gate` discipline begins at the manifest write.
 
 Do not narrate a gate; fire both calls. Gates are multi-choice only; never add fake free-text options duplicating the auto-appended `Type something.` / `Chat about this` slot. Evaluate a gate's condition before writing `## Open gate`. When the answer is consumed and the branch entered, rewrite `## Open gate` to `none`. Never end a turn with `## Open gate` filled but no question fired.
 
@@ -169,7 +169,7 @@ Do not narrate a gate; fire both calls. Gates are multi-choice only; never add f
 
 The re-dispatch is the next round at the same scope and carries the "how far I got" detail. A normal deliverable from the re-dispatched lane closes the obligation; a second abort refreshes the same obligation's detail, never opens another.
 
-**Engineer-dispatch precondition.** Never dispatch an Engineer while a `## Lanes` row is `open` for a role and scope the applicable clause names. Clause 1 (per-Task site): `test-writer` or `doc-writer` at any Subtask of that Task (resolve a Subtask's parent with `bees show-ticket --ids <subtask-id>`), or `pm` at that Task. Clause 2 (Bee-level site): `test-writer` or `doc-writer` at any scope in the Bee, `code-reviewer`, `test-reviewer`, `doc-reviewer`, or `pm` at any scope. Resolve any `open` row per the `## Lanes` rule (Section 2), then re-check. An `aborted-*` obligation never blocks an Engineer round. The forward per-Subtask fan-out is exempt; only re-dispatch rounds are ordered.
+**Engineer-dispatch precondition.** Never dispatch an Engineer while a `## Lanes` row is `open` for a role and scope the applicable clause names. Clause 1 (per-Task site): `test-writer` or `doc-writer` at any Subtask of that Task (resolve a Subtask's parent with `bees show-ticket --ids <subtask-id>`), or `pm` at that Task. Clause 2 (Bee-level site): `test-writer` or `doc-writer` at any scope in the Bee, `code-reviewer`, `test-reviewer`, `doc-reviewer`, or `pm` at any scope. Resolve any `open` row per the `## Lanes` rule (Section 2), then re-check. An `aborted-*` obligation never blocks an Engineer round. The forward per-Subtask fan-out is exempt; only re-dispatch rounds are ordered. The rule is symmetric on re-dispatch rounds: never dispatch a writer, reviewer, or PM while an Engineer lane is `open` at a scope the applicable clause names — disjoint files do not exempt it.
 
 ## 7. Routing discipline
 
@@ -190,7 +190,7 @@ Each finding carries a severity tag, exactly one of `blocker` / `suggestion` / `
 | 5 | The chosen path's depth tag is `re-architect` | Routing-decision gate (d) |
 | 6 | Otherwise | Dispatch the chosen path, no gate |
 
-Row 6 dispatches a fresh implementer per Section 5 with the chosen path in full and appends a Trigger C entry (Section 10) in the same block, except when the finding's only path is `trivial-tweak`.
+Row 6 dispatches a fresh implementer per Section 5 with the chosen path in full and appends a Trigger C entry (Section 10) in the same block. The one exception is a finding for which the reviewer enumerated exactly one path and it is `trivial-tweak`; a pick among two or more paths is always recorded, even when every path is shallow.
 
 **(c) Scope-bounding gate.** Fires on rows 2, 3, and 4, and whenever the orchestrator would otherwise scope-bound a finding. The question carries the finding verbatim plus one line naming the entry condition.
 
@@ -222,7 +222,7 @@ Follow the review skills' routing trailer literally — `**Your next tool use MU
 **After each Task.** When the Task's Subtasks are `done` and every finding is dispositioned:
 
 1. Mark the Task `status=done` (flip doc Subtasks on the Doc Writer's behalf).
-2. Run the `Format` command from `## Build Commands` — the only rung the orchestrator runs, never the test suite, and with the Bash `timeout` parameter (max `600000` ms) when long; past that, `Bash(run_in_background: true)` and wait for the completion notification.
+2. Run the `Format` command from `## Build Commands`; it is the only rung the orchestrator runs on its own initiative. Also run the `Full test` command from `## Build Commands` when the target project's CLAUDE.md requires a test run before a commit. Give either command the Bash `timeout` parameter (max `600000` ms) when long; past that, `Bash(run_in_background: true)` and wait for the completion notification.
 3. Run `git status`; stage agent-reported files plus formatting changes to files this Task's agents touched. Resolve the in-repo Plans hive path with `python3 "<this skill's base directory>/scripts/hive_commit.py" resolve-hive-paths --hive plans` (PowerShell `python "<this skill's base directory>\scripts\hive_commit.py" resolve-hive-paths --hive plans`) and stage it when it prints one. **Do NOT blindly `git add -A`**.
 4. Commit once with subject `Plan <bee-id>, Epic N, Task M — <task title> (<task-id>)` (the `N` and `M` ordinals come from the ticket titles; omit `Plan <bee-id>, ` for a standalone Epic). **NEVER push to remote — committing only.**
 5. Mark every lane and `aborted-*` obligation at this Task's scopes `closed` — bookkeeping only; a returned Agent has already exited and there is no shutdown to perform. Output:
@@ -316,7 +316,7 @@ One markdown file per run at `<tempdir>/.quorum/compromises-<YYYYMMDD-HHMM>-<sho
 |---|---|---|---|---|
 | **Trigger A — Defer to follow-up Issue at either gate.** | immediately after `/quo-file-issue` returns, before the soft-fix or narrowing dispatch | `User picked Defer to follow-up Issue` | which remaining path shipped, or none did; on a `blocker` the narrowing record | the new Issue ID |
 | **Trigger B — Accept the limitation at the scope-bounding gate.** | immediately after the answer, before continuing without a fix; unreachable for a `blocker` | `User picked Accept the limitation` | the user's reason | `none` |
-| **Trigger C — ungated route (the orchestrator's own path pick).** | in the same block as a row-6 dispatch; nothing when the only path is `trivial-tweak` | `Orchestrator picked path (x) — highest-quality` | the orchestrator's one-line reason, not a rule name | `none` |
+| **Trigger C — ungated route (the orchestrator's own path pick).** | in the same block as a row-6 dispatch; nothing when exactly one path was enumerated and it is `trivial-tweak` | `Orchestrator picked path (x) — highest-quality` | the orchestrator's one-line reason, not a rule name | `none` |
 | **Trigger D — post-completion override, covering BOTH override gates (SR-6.7 / SR-4.6).** | `Accept …` → append a new entry immediately after the pick; `File …` → update the originating Trigger C entry's `Follow-up Issue` in place, or append when none exists (SR-4.6); `Pause to discuss` → no write | `User overrode auto-route after post-completion challenge (depth misjudgment)` (SR-6.7) or `User accepted under-enumeration after post-completion challenge` (SR-4.6) | the reviewer's challenge text | the new Issue ID on `File …` |
 
 ## 11. Post-completion review
@@ -329,7 +329,7 @@ Scope: `git diff <pre-bee-sha>` (the working tree against the pre-Bee commit) pl
 4. Otherwise fire the disposition gate: `Post-completion review found [N] issues. How would you like to handle them?` Options: **Fix in this session**, **File as issue tickets**, **Skip**. Recommend `Fix in this session` when a PHASE 2 contract-violation `blocker` is present; that class has no recovery gate.
 5. For each PHASE 3 or PHASE 4 `[compromise-challenge]`, in the reviewer's emission order, fire its recovery gate before or alongside the disposition. **SR-6.7 ungated-route recovery gate.** Choices: `File follow-up Issue to revisit the depth decision` — `/quo-file-issue` via the Skill tool with the finding and the tracker entry, then Trigger D's in-place update; `Accept the misjudgment and proceed` — Trigger D append; `Pause to discuss` — stop and discuss; the user re-issues a choice. **SR-4.6 under-enumeration recovery gate.** Choices: `File follow-up Issue to surface the missing path`; `Accept the under-enumeration and proceed`; `Pause to discuss`; same branch behavior.
 6. Dispose per the answer:
-   - **Fix in this session**: per-unit rules apply with `postcomp-<n>` as the unit, `<n>` the finding's 1-based index: lanes at scope `postcomp-<n>`, the movement rung, the Engineer-dispatch precondition across every `postcomp-*` scope, part (g) ordering within a finding, independent findings concurrent. An abort of a post-completion lane closes its rows here and continues this section; it never enters Section 12. When every lane is `closed` and no `aborted-*` obligation at a `postcomp-*` scope is `open`, commit.
+   - **Fix in this session**: per-unit rules apply with `postcomp-<n>` as the unit, `<n>` the finding's 1-based index: lanes at scope `postcomp-<n>`, the movement rung, and part (g) ordering within a finding; independent findings run concurrently. The Engineer-dispatch precondition holds across every `postcomp-*` scope: a writer, reviewer, or PM lane waits for every `open` Engineer lane regardless of file overlap. An abort of a post-completion lane closes its rows here and continues this section; it never enters Section 12. When every lane is `closed` and no `aborted-*` obligation at a `postcomp-*` scope is `open`, commit.
    - **File as issue tickets**: `/quo-file-issue` per finding; report the IDs.
    - **Skip**: continue.
 

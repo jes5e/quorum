@@ -14,7 +14,8 @@ Rewrite from scratch (clean-room; do not edit down, write new):
 
 Keep unchanged unless a decision below names them:
 - all eight `agents/*.md` role files (one exception: trim `agents/pm.md`'s 1,600-word paragraph; unify the
-  destination label per D8), all helper scripts and their unit tests, the review and planning skills, README,
+  destination label per D8), all helper scripts and their unit tests, the review and planning skills (one
+  post-validation exception: the review skills' trailer, per the D9 amendment), README,
   the contract keys in `## Documentation Locations` / `## Build Commands`, the hive vocabulary.
 - Frontmatter `name`/`description` of both skills (mis-invocation risk).
 
@@ -63,6 +64,11 @@ D7. **Post-completion reviewer prompt skeleton** lives once, in `skills/quo-exec
 D8. **Destination label** is the single literal `addressed-now` in `agents/pm.md`, `agents/analyst.md`, and both skills.
 D9. **Severity bounds the loop** (b.bix) ships as written in the current bodies, byte-identical in both, and the
     carve-out stays in the three review skills' routing trailer (do not touch those skills).
+    *Amended 2026-09-10, after the first validation run:* the carve-out is unchanged, but the trailer and the
+    Step-4 prose governing it in the three review skills were made caller-conditional — they name the calling
+    skill's gate contract (manifest-fronted for these two skills; two-step `TaskCreate` for other callers)
+    instead of prescribing the two-step contract outright. `docs/sdd.md` D9 records the same deviation. A cold
+    review must not report that edit as a §1 / D9 violation.
 D10. **Every recommendation in DECISIONS.md cards 2–12 is accepted.** Where a card says "simplify", the rule set
     is preserved and the prose is not; where it says "move to reference", the rule moves to a shipped reference
     file; where it says "cut", only the named item is cut (doc-verification section → one bullet; TEST rungs 1–4
