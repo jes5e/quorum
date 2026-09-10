@@ -654,7 +654,7 @@ Wait for the Agent's completion notification before proceeding.
 
 ##### Surface the findings and gate the user choice
 
-When the Agent returns, parse the verdict trailer line (`Plan-review verdict: <value>`) and use it to shape a one-or-two-sentence prose preamble before surfacing the findings, mirroring the preamble-by-verdict pattern in `/quo-fix-issue` Section 3:
+When the Agent returns, parse the verdict trailer line (`Plan-review verdict: <value>`) and use it to shape a one-or-two-sentence prose preamble before surfacing the findings, mirroring the preamble-by-verdict pattern at `/quo-fix-issue`'s Analyst gate:
 
 - **`approve`** — "The fresh-eyes plan reviewer found the plan coherent and well-decomposed. Findings below are acknowledge-and-proceed-grade. Review follows:"
 - **`revise-recommended`** — "The fresh-eyes plan reviewer flagged one or more `blocker` findings against the plan. Read carefully before deciding how to proceed. Review follows:"

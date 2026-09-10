@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Stage and commit the on-disk changes a deferral-hygiene Encode branch produced.
 
-The deferral-hygiene gate shared by `/quo-execute` (Section 6.5),
-`/quo-fix-issue` (Section 7.5), and `/quo-breakdown-epic` (Section 6.5) lets a
+The deferral-hygiene gate shared by `/quo-execute` and `/quo-fix-issue` (their
+`## 9. Deferral hygiene`) and `/quo-breakdown-epic` (Section 6.5) lets a
 user route deferred items into an existing ticket body via
 `bees update-ticket --body-file`. Those updates persist new on-disk changes in
 the relevant hive's per-ticket directory (and, when the user routed an Encode to
@@ -40,7 +40,7 @@ Pure query — performs NO `git add`, NO `git commit`, NO mutation whatsoever.
 Resolves the named hive(s) via the shared `bees list-hives` + repo-root
 machinery, tests each for in-repo membership, and prints each IN-REPO hive's
 absolute path to stdout, one per line. The three per-ticket commit steps in
-`/quo-execute` (Section 4.1), `/quo-fix-issue` (Section 7), and
+`/quo-execute` and `/quo-fix-issue` (their `## 8. Per-unit close-out`) and
 `/quo-breakdown-epic` (Section 6) call this mode to learn which hive path to
 `git add` alongside their judgement-selected source files, replacing the
 forbidden inline `bees list-hives | python3 -c '...'` + `git rev-parse` + `case`
