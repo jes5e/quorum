@@ -2,10 +2,11 @@
 id: b.8ub
 type: bee
 title: '/quo-fix-issue: Section 3 Cancel says no defer-* tasks come from the Analyst block, but 7.5 Step 0 banks them on the aborted path'
-status: open
-created_at: '2026-09-08T17:46:35.021942'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-08T17:46:35.021942'
+status: done
+schema_version: '0.1'
 guid: 8ubusg8oxsjza8rsbta7ygfoy193whac
 ---
 
@@ -41,3 +42,6 @@ Surfaced by the b.nn8 post-completion code review (round 14) while re-reading th
 - b.nn8 (landed): rewrote the surrounding paragraph; made Section 3's gate re-fireable mid-run.
 - b.pdq (landed): origin of the shared aborted-Issue close-out and the Step 0 aborted-path note.
 
+## Resolution (2026-09-10)
+
+Resolved by the clean-room orchestrator rewrite merged at `b611786`, not by a `/quo-fix-issue` run. The rewrite resolved the `FX-DEFC-18` / `FX-HYG-10` conflict in the hygiene direction: the Analyst gate's `Cancel` now routes through `#### Aborted-Issue close-out`, whose deferral-hygiene step treats the Analyst's `### Deferred refinements` block as a hygiene surface whenever the Analyst ran, and the "travel with the next Analyst pass" sentence no longer exists in `skills/quo-fix-issue/SKILL.md`. One rule remains. `docs/sdd.md`'s D10/D11 note records the choice. Confirmed against the body at `d736ff8` during the post-rewrite validation triage; closed without a dedicated fix commit.

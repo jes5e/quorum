@@ -48,3 +48,9 @@ Item 1 was surfaced by the b.nn8 Doc Writer and confirmed by the Doc Reviewer an
 - b.nn8 (landed): made the tracker a routine resident.
 - b.bq4 (landed): the shipped-artifact doc-reference review criterion this item falls under.
 
+## Partial resolution (2026-09-10)
+
+Item 1 landed with the clean-room orchestrator rewrite merged at `b611786`: neither `skills/quo-fix-issue/SKILL.md` nor `skills/quo-execute/SKILL.md` carries the "reproduced from the SDD Data models …" phrase any more (the tracker entry shape now lives in the shipped `references/compromise-tracker.md` and the in-body Section 10, with no `docs/*` pointer). Confirmed by grep at `d736ff8`.
+
+Items 2 and 3 remain open as of `d736ff8`: this repo's `CLAUDE.md` scratch-file paragraph still illustrates "what nothing recreates" with the manifest and the opt-out marker only, and `docs/sdd.md`'s Epic-boundary checkpoint entry still says "the five paths that invoke it". The suggested test extension for non-path-shaped prose references is also not done.
+
