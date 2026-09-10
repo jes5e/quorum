@@ -27,6 +27,8 @@ Round 7 returned 1 blocker (the SDD/PRD pointer sweep the SDD entry claimed comp
 
 Round 8 returned no blockers: 1 suggestion (Mode 1 **Stop here** now records `**Next unit:** none`) and 4 nits (exec attributes Code Reviewer second-order blocks by review site; four last doc pointers; the boundary checkpoint prunes closed lane/obligation rows and rendered `## Rounds` rows so the manifest stays a snapshot; CLAUDE.md's exemption drops the retired deterministic-filename comparison). All fixed in the following commit.
 
+Round 9 returned 1 blocker (the round-5 tick-level foreign-manifest rewrite overwrote the `**Unit scope:**` tell and had no source for the pre-run SHA or tracker path — now rewrites only run-owned fields and stops when an un-derivable one is needed), 3 suggestions (the abandoned Analyst gate clears `## Open gate`; two stale `HEAD~N` sentences in the SDD; sentences over 40 words after line 150 split), 4 nits (Bee-level reviews name both entry paths; Bee pick and Epic pick split into two bullets; `**Context guard:**` enum narrowed to `no reading | <integer>%` with no write on the silent-skip path; close-out step 5 says it is bookkeeping only). All fixed in the following commit.
+
 Prompt shape for each further round: scope `main..HEAD`, read the brief and inventory first, D1–D12 final, criteria A1–A9, role-play both runs, return findings in the review-skill shape plus an A1–A9 PASS/FAIL checklist. Loop until a pass returns nothing above a `trivial-tweak` nit. No round cap.
 
 ## Judgment calls the reviewer and operator should know about

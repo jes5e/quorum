@@ -50,7 +50,7 @@ New-Item -ItemType Directory -Force -Path "$env:TEMP\.quorum" | Out-Null
 - **Isolation strategy:** <branch created: <name> | current branch: <name> | worktree: <path>>
 - **Pre-Bee SHA:** <pre-bee-sha>
 - **Compromise tracker:** <tempdir>/.quorum/compromises-<YYYYMMDD-HHMM>-<short-suffix>.md
-- **Context guard:** <not run | no reading | <integer>% at <epic-id>>
+- **Context guard:** <no reading | <integer>% at <epic-id>>
 - **Progress:**
   - <epic-id>: done — last commit <sha>
 - **Next unit:** <next-epic-id | none>
@@ -73,14 +73,14 @@ none
 
 - `**Pre-Bee SHA:**` is captured once, here, with `git rev-parse HEAD` (identical on POSIX and PowerShell); Section 11 reads it back from this file.
 - `**Compromise tracker:**` records the tracker's full path including its random `<short-suffix>`, generated here per Section 10; recording the path does not create the file.
-- `**Context guard:**` starts at `not run` and is rewritten only by the guard (Section 8); its percentage is an operator-facing record, not a routing input.
+- `**Context guard:**` is written only by the guard (Section 8); omit the line until then. Its percentage is an operator-facing record, not a routing input.
 - `**Progress:**` carries one line per finished unit in the order worked: `<epic-id>: done — last commit <sha>`; `<epic-id>: aborted mid-Epic at <task-id> — last commit <sha>`; `<epic-id>: aborted at the inter-Epic checkpoint — last commit <sha>`; or `<bee-id>: Bee-level review aborted — <what stopped it>`. Never overwrite a legitimately-`done` Epic entry with an aborted one.
 - `## Lanes` holds one row per dispatched Agent: `role` is the subagent type, `scope` is the Subtask, Task, Epic, or Bee ID it works (`postcomp-<n>` for a post-completion lane), `round` is the 1-based dispatch count for that role at that scope, `dispatched` is `no` until the `Agent(...)` call returns and `yes` after, and `status` is `open` or `closed`. A lane is `closed` when its Agent is gone — a completion notification was processed, a movement report was received, or the run ended — whether or not its work shipped. An `open` row with `dispatched: yes` will notify — wait for it; an `open` row with `dispatched: no` has no Agent behind it — dispatch it now or mark it `closed`; a row that is absent or whose `dispatched` value is unreadable reads as `no`. Never dispatch a role at a scope that already has an `open` row for it.
 - `## Obligations` holds one row per owed action: kind `defer-*` (id `defer-<n>`, detail = one-line description plus destination), and kind `aborted-*` (id `aborted-<role>`, detail = the writer's "how far I got" report). Status is `open` or `closed`. Detail is informational; routing reads only kind, scope, and status.
 - `## Rounds` holds one row per lane (scope and role) carrying the count of `trivial-tweak` nits applied in that lane's final implementer pass without a further reviewer round (Section 7); `round` in `## Lanes` counts dispatches, `## Rounds` counts nits.
 - `## Open gate` names the gate about to fire, its scope, and its choice labels verbatim, or `none`.
 - The manifest carries lane phase and obligations; an earlier rule forbade the manifest a lane-phase field, and that rule is withdrawn.
-- Validate the manifest before trusting any field: its `**Unit scope:**` must name this run's Bee. A manifest naming another unit is treated as absent — rewrite it from this run's Bee and Epic set before trusting any field.
+- Validate the manifest before trusting any field: its `**Unit scope:**` must name this run's Bee. A manifest naming another unit is treated as absent: trust no field in it. Rewrite `**Unit scope:**`, `**Isolation strategy:**`, `**Progress:**`, and `**Next unit:**` from this run's own state and `**Multi-Epic run mode:**` as `not captured` (the Epic boundary recaptures it); when `**Pre-Bee SHA:**` or `**Compromise tracker:**` is needed and this run's value is no longer readable, stop and tell the user rather than guessing.
 
 ## 3. After a compaction
 
@@ -126,7 +126,7 @@ Each tick is event-driven, never clock-driven, and has three phases.
 - **Per-Task PM.** When every Subtask of a Task is `done` and no `aborted-*` obligation at that Task's Subtask scopes is `open`, dispatch a fresh PM Agent at Task scope. The PM's Final report drives the routing table (Section 7); findings routed from it take Clause 1 of part (g).
 - **Per-Task close-out.** When the Task's findings are all dispositioned, run Section 8.
 - **Epic boundary.** When every Task of the Epic is `done`, run the inter-Epic interaction checkpoint, flip the Epic, classify the next branch, and run the boundary checkpoint (all in Section 8).
-- **Bee-level reviews.** When every Epic is `done`, dispatch up to three concurrent reviewer Agents at Bee scope: `Agent(subagent_type="code-reviewer", run_in_background=true)` if any Engineer ran, `Agent(subagent_type="test-reviewer", run_in_background=true)` if any Test Writer ran, `Agent(subagent_type="doc-reviewer", run_in_background=true)` if any Doc Writer ran. Follow each review skill's routing trailer literally. Re-dispatch implementers and, when needed, a PM at Bee scope; you may choose NOT to spawn the PM on a minor iteration. Findings routed from this site take Clause 2 of part (g). The loop has not closed while any Bee-scoped `aborted-*` obligation is `open`. When the loop closes and every Bee-scoped lane is `closed`, proceed to Section 11.
+- **Bee-level reviews.** Entered from the Epic boundary — when every Epic is `done`, or on a Mode 1 **Stop here** — dispatch up to three concurrent reviewer Agents at Bee scope: `Agent(subagent_type="code-reviewer", run_in_background=true)` if any Engineer ran, `Agent(subagent_type="test-reviewer", run_in_background=true)` if any Test Writer ran, `Agent(subagent_type="doc-reviewer", run_in_background=true)` if any Doc Writer ran. Follow each review skill's routing trailer literally. Re-dispatch implementers and, when needed, a PM at Bee scope; you may choose NOT to spawn the PM on a minor iteration. Findings routed from this site take Clause 2 of part (g). The loop has not closed while any Bee-scoped `aborted-*` obligation is `open`. When the loop closes and every Bee-scoped lane is `closed`, proceed to Section 11.
 
 ## 5. Dispatch shape
 
@@ -150,7 +150,8 @@ Every `AskUserQuestion` this skill fires is a gate. A gate is a manifest `Write`
 Do not narrate a gate; fire both calls. Gates are multi-choice only; never add fake free-text options duplicating the auto-appended `Type something.` / `Chat about this` slot. Evaluate a gate's condition before writing `## Open gate`. When the answer is consumed and the branch entered, rewrite `## Open gate` to `none`. Never end a turn with `## Open gate` filled but no question fired.
 
 - **Session effort.** Read `printenv CLAUDE_EFFORT` (PowerShell `Write-Output $env:CLAUDE_EFFORT`). If empty, non-zero, or not one of `low` / `medium` / `high` / `xhigh` / `max`, skip silently. The floor is `medium`; the order is `low` < `medium` < `high` < `xhigh` < `max`; compare against the floor, never for equality. At or above: no gate, no output. Strictly below: question text: ``This session is running at `effort=<current>`, below the `medium` floor this skill is tuned for. This skill delegates implementation rather than producing work itself, but it still owns ticket state, dispatch ordering, gate handling and the review loop.`` then a blank line then `Subagent effort is pinned per role and is NOT affected by this setting.` Options: **Proceed anyway** — continue; **Let me change it first** — exit cleanly without dispatching anything; the user runs `/model` and re-invokes.
-- **Bee pick.** Fires when several Bees are workable; one option per Bee. **Epic pick.** Fires from Section 4 step 6 when several Epics are workable: present the unblocked candidate Epics, one option per Epic, recommending the one with the fewest downstream dependencies.
+- **Bee pick.** Fires at run-start step 2, before the manifest write, when several Bees are workable; one option per Bee.
+- **Epic pick.** Fires from Section 4 step 6, after the manifest write, when several Epics are workable: present the unblocked candidate Epics, one option per Epic, recommending the one with the fewest downstream dependencies.
 - **Isolation.** Two scenarios. **Scenario A — Already in a worktree** whose directory name matches the Bee (e.g. `b_Wx7` for `b.Wx7`): proceed, no action. **Scenario B — On an existing branch in the main repo**: fire the gate. The question states the current working directory, the current branch name, and that option 1 creates a local branch only (no remote push). Options: **Create a feature branch (Recommended)** — create `bee/<bee-id>` from HEAD and work there; **Work on current branch** — commit to the checked-out branch and tell the user its name; **Set up a worktree instead** — offered only when `/bees-worktree-add` is installed; advise running it and exit without working.
 - **Run mode.** Question: `How should this run handle multiple Epics? (You will not be asked again this run.)` Options: **Stop after each Epic** — Mode 1; **Work through all Epics** — Mode 2. Capture once for the run.
 - **Inter-Epic continuation** (Mode 1 only). Question: `Epic <just-completed-epic-id> is done. Continue with the next logical Epic?` Options: **Continue** — checkpoint, guard, then the next Epic; **Stop here** — checkpoint with next unit `none`, then the Bee-level reviews.
@@ -224,7 +225,7 @@ Follow the review skills' routing trailer literally — `**Your next tool use MU
 2. Run the `Format` command from `## Build Commands` — the only rung the orchestrator runs, never the test suite, and with the Bash `timeout` parameter (max `600000` ms) when long; past that, `Bash(run_in_background: true)` and wait for the completion notification.
 3. Run `git status`; stage agent-reported files plus formatting changes to files this Task's agents touched. Resolve the in-repo Plans hive path with `python3 "<this skill's base directory>/scripts/hive_commit.py" resolve-hive-paths --hive plans` (PowerShell `python "<this skill's base directory>\scripts\hive_commit.py" resolve-hive-paths --hive plans`) and stage it when it prints one. **Do NOT blindly `git add -A`**.
 4. Commit once with subject `Plan <bee-id>, Epic N, Task M — <task title> (<task-id>)` (the `N` and `M` ordinals come from the ticket titles; omit `Plan <bee-id>, ` for a standalone Epic). **NEVER push to remote — committing only.**
-5. Mark every lane and `aborted-*` obligation at this Task's scopes `closed`. Output:
+5. Mark every lane and `aborted-*` obligation at this Task's scopes `closed` — bookkeeping only; a returned Agent has already exited and there is no shutdown to perform. Output:
 
 ```markdown
 ## Task [N] of [total] Complete: [task-title]
@@ -240,7 +241,11 @@ One of:
 - Final Task, moving on to Final Reviews
 ```
 
-- `**Second-order effects**` is unconditional and is narrative, not routing input — it never holds a lane open and never becomes a finding: collect the PM Final report's `### Second-order effects` with its `#### <invocation scope>` sub-blocks, render bullets verbatim, keep the sub-block labels the relaying source supplied and attribute each Code Reviewer block by its review site, de-duplicate exact repeats, and render `None identified.` when every source said `No second-order effects identified.` or none ran; when a source's return is no longer readable, render the sources in hand and say that source's narrative is unavailable post-compaction.
+- `**Second-order effects**` is unconditional and is narrative, not routing input: it never holds a lane open and never becomes a finding.
+  - Collect the PM Final report's `### Second-order effects` with its `#### <invocation scope>` sub-blocks (at Bee scope, every Bee-scoped and Epic-boundary Code Reviewer return too).
+  - Render bullets verbatim; keep the sub-block labels the relaying source supplied and attribute each Code Reviewer block by its review site; de-duplicate exact repeats.
+  - Render `None identified.` when every source said `No second-order effects identified.` or none ran.
+  - When a source's return is no longer readable, render the sources in hand and say that source's narrative is unavailable post-compaction.
 - Record every PM-deferred item annotated `defer-to-existing-ticket-body: <ticket-id>` or `defer-to-new-Issue` as a `defer-*` obligation now.
 
 **Epic boundary.** When every Task of the Epic is `done`:
@@ -255,7 +260,13 @@ One of:
 
 A definition, not a step; run it only where a branch above, or Section 12, calls for it, always after the branch classification above has resolved. It verifies that every load-bearing fact lives in a durable carrier and refreshes them; it does not clear, compact, or reclaim context, and must never be narrated as if it did.
 
-1. Verify: (a) the just-completed Epic and its Tasks and Subtasks read `done` in bees; (b) `git log --oneline <previous-epic-last-commit>..HEAD` shows one commit per completed Task, plus any inter-Epic interaction-fix commits; (c) `Read` the tracker at the manifest's `**Compromise tracker:**` path and confirm every compromise accepted this Epic has an entry — an absent file is a gap only when an entry was owed; (d) every `## Lanes` row from this Epic is `closed` and `## Open gate` reads `none`; (e) the manifest's `**Unit scope:**` names this Bee. Fix any gap now. On the aborted path at mid-Epic scope, (a) and (b) invert: confirm the statuses the abort left and count only completed Tasks' commits; at Epic-boundary scope only the Epic's own status inverts — it stays `in_progress` while its Tasks are `done` and committed; at Bee-level scope nothing inverts. When the run started with every Epic `done`, skip (a)–(d) and verify only that the placeholders were resolved.
+1. Verify:
+   - (a) the just-completed Epic and its Tasks and Subtasks read `done` in bees;
+   - (b) `git log --oneline <previous-epic-last-commit>..HEAD` shows one commit per completed Task, plus any inter-Epic interaction-fix commits;
+   - (c) `Read` the tracker at the manifest's `**Compromise tracker:**` path and confirm every compromise accepted this Epic has an entry — an absent file is a gap only when an entry was owed;
+   - (d) every `## Lanes` row from this Epic is `closed` and `## Open gate` reads `none`;
+   - (e) the manifest's `**Unit scope:**` names this Bee.
+   Fix any gap now. On the aborted path at mid-Epic scope, (a) and (b) invert: confirm the statuses the abort left and count only completed Tasks' commits. At Epic-boundary scope only the Epic's own status inverts — it stays `in_progress` while its Tasks are `done` and committed. At Bee-level scope nothing inverts. When the run started with every Epic `done`, skip (a)–(d) and verify only that the placeholders were resolved.
 2. Rewrite the manifest per Section 2: the Epic's `**Progress:**` line and `**Next unit:**`; prune `## Lanes` and `## Obligations` to rows still `open`, and `## Rounds` to rows not yet rendered on a summary line.
 3. Re-read, do not recall, at every dispatch in the next Epic: `bees show-ticket` the ticket and `Read` the manifest. If a needed fact is not in a carrier, write it into one before dispatching.
 
@@ -263,7 +274,7 @@ A definition, not a step; run it only where a branch above, or Section 12, calls
 
 Runs only on the two continuing paths (Mode 1 **Continue**, Mode 2 auto-continue), after the checkpoint and before the next Epic. Rationale and the gauge contract live in the context-guard reference (Section 3). The resume command is `/quo-execute <bee-id>`.
 
-1. Read `printenv CLAUDE_CODE_SESSION_ID` (PowerShell `Write-Output $env:CLAUDE_CODE_SESSION_ID`); trim trailing whitespace. Unset or empty → skip silently, record `**Context guard:** not run`.
+1. Read `printenv CLAUDE_CODE_SESSION_ID` (PowerShell `Write-Output $env:CLAUDE_CODE_SESSION_ID`); trim trailing whitespace. Unset or empty → skip silently.
 2. Obtain the threshold: `python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" stop-threshold` (PowerShell `python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" stop-threshold`). Never restate the number in prose.
 3. Read: `python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" read --session-id <trimmed-session-id>` (PowerShell `python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py" read --session-id <trimmed-session-id>`).
 4. Branch. Integer ≥ threshold → record `<integer>% at <epic-id>`, then STOP: report the percentage, state the run is at a clean boundary with every carrier on disk, name the resume command, and exit the skill. Integer < threshold → record `<integer>% at <epic-id>`, continue. `no-reading` → record `no reading`, continue. `stale`, non-zero exit, or empty stdout → STOP: report that the producer appears stalled or the reading is untrustworthy, recommend a fresh session with the resume command, exit. `missing` → record `no reading`, continue silently, whether or not `<tempdir>/.quorum/context-guard-opt-out` exists.
@@ -330,7 +341,7 @@ When this section is complete, proceed to Section 9, then Section 13.
 
 Entered from **Abort this unit** or from `Cancel` at either routing gate. A definition, not a step; run it only when a branch names it. The run stops without the unit advancing.
 
-1. Mark `closed` every lane and `aborted-*` obligation at the aborted scope — the Task and its Subtask scopes on a mid-Epic abort, the Epic scope on an inter-Epic-checkpoint abort, every Bee scope on a Bee-level abort — recording the abort reason in each `aborted-*` obligation's detail. An in-flight sibling lane cannot be terminated; mark it `closed` anyway and note in the abort's `aborted-*` obligation detail that it was in flight, so a resuming session re-checks its work instead of trusting ticket state (on a routing-gate `Cancel`, which opens no obligation, step 3's uncommitted-paths list is that record).
+1. Mark `closed` every lane and `aborted-*` obligation at the aborted scope — the Task and its Subtask scopes on a mid-Epic abort, the Epic scope on an inter-Epic-checkpoint abort, every Bee scope on a Bee-level abort — recording the abort reason in each `aborted-*` obligation's detail. An in-flight sibling lane cannot be terminated; mark it `closed` anyway. Note in the abort's `aborted-*` obligation detail that it was in flight, so a resuming session re-checks its work instead of trusting ticket state; on a routing-gate `Cancel`, which opens no obligation, step 3's uncommitted-paths list is that record.
 2. Run the checkpoint (Section 8) on its aborted path with `**Progress:**` `<epic-id>: aborted mid-Epic at <task-id> — last commit <sha>`, `<epic-id>: aborted at the inter-Epic checkpoint — last commit <sha>`, or `<bee-id>: Bee-level review aborted — <what stopped it>`, and next unit `none`.
 3. Run `git status --porcelain`. Tell the user which Subtask and Task, which inter-Epic-checkpoint finding, or which Bee-level lane or review site and finding, the run stopped in; name the uncommitted paths; name the resume command `/quo-execute <bee-id>`; exit. Do not run the context guard here. `Ctrl-C` remains the unconditional run-level abort.
 
@@ -338,7 +349,7 @@ Entered from **Abort this unit** or from `Cancel` at either routing gate. A defi
 
 1. Show the user every reviewer finding you ignored and fire the ignored-feedback action gate; tracker entries never appear in that display — they surface only under `**Accepted compromises**`. Demonstrate each Acceptance Criterion or say how to validate it, and fire the sign-off gate. Fire the Bee-done gate; on `"No, we have more work to do"` stop here.
 2. Re-query the Epics with `bees execute-freeform-query --query-yaml 'stages:\n  - [parent=<bee-id>, type=t1]\nreport: [title, ticket_status]'`. If any is not `done`, abort with `Cannot mark Bee complete — Epics <ids> are still <status>. Run /quo-breakdown-epic and /quo-execute on them first.`; never bulk-flip. Otherwise `bees update-ticket --ids <bee-id> --status done`.
-3. Print the summary. `**Second-order effects**` is unconditional, rendered from every Bee-scoped and Epic-boundary Code Reviewer return and any Bee-scoped PM as in Section 8. `**Accepted compromises**` is rendered only when the tracker has `## Compromise <n>` entries — `Read` it at the manifest's path; this surface only reads the tracker, never writes it: one bullet per entry with `Finding (verbatim)`, `Decision`, `Rationale`, and `Follow-up Issue`, never `Fix paths surfaced by reviewer`, all entries in full, prefaced by `N compromises were accepted during this run:` when more than ten. Run `git status --porcelain` and add the uncommitted sentence only when it lists something.
+3. Print the summary. `**Second-order effects**` is unconditional, rendered from every Bee-scoped and Epic-boundary Code Reviewer return and any Bee-scoped PM as in Section 8. `**Accepted compromises**` is rendered only when the tracker has `## Compromise <n>` entries; `Read` it at the manifest's path — this surface only reads the tracker, never writes it. Render one bullet per entry with `Finding (verbatim)`, `Decision`, `Rationale`, and `Follow-up Issue`, never `Fix paths surfaced by reviewer`, all entries in full, prefaced by `N compromises were accepted during this run:` when more than ten. Run `git status --porcelain` and add the uncommitted sentence only when it lists something.
 
 ```markdown
 ## Bee Execution Complete: [bee-title]
