@@ -241,7 +241,7 @@ One of:
 - Final Task, moving on to Final Reviews
 ```
 
-- `**Second-order effects**` is unconditional and is narrative, not routing input: it never holds a lane open and never becomes a finding.
+- `**Second-order effects**` is unconditional and is narrative, not routing input: it never holds a lane open, never becomes a finding, and is never re-ranked or merged into the `**Reviews**` line.
   - Collect the PM Final report's `### Second-order effects` with its `#### <invocation scope>` sub-blocks (at Bee scope, every Bee-scoped and Epic-boundary Code Reviewer return too).
   - Render bullets verbatim; keep the sub-block labels the relaying source supplied and attribute each Code Reviewer block by its review site; de-duplicate exact repeats.
   - Render `None identified.` when every source said `No second-order effects identified.` or none ran.

@@ -6,8 +6,8 @@ Repo-only document; nothing here ships. Read `REWRITE-BRIEF.md` first; this file
 
 - Worktree: `/workspaces/worktrees/quorum-rewrite`, branch `rewrite/orchestrators`, based on `main` at `17ea50d`. Never merged; `main` untouched.
 - Commits: `3048c28` (bodies, reference files, role-file edits, breakdown-epic label rename, test suite) and `a26f922` (CLAUDE.md `## Working on the orchestrator skills`, test-writing guide scope, SDD Feature entry). The commit adding this note is the handoff commit (`git log -1 --oneline -- docs/inventory/REWRITE-HANDOFF.md`).
-- Suite: `python -m pytest tests/` → 475 passed (was 559; six prose-pin modules deleted, structural module added). Lint clean.
-- Line counts: `skills/quo-execute/SKILL.md` 323, `skills/quo-fix-issue/SKILL.md` 303. Reference files: 850 lines total across seven files.
+- Suite: `python -m pytest tests/` → 474 passed (was 559; six prose-pin modules deleted, structural module added; one guard-gate label case retired in round 5). Lint clean.
+- Line counts at loop close: `skills/quo-execute/SKILL.md` 368, `skills/quo-fix-issue/SKILL.md` 351. Reference files: seven, under `skills/quo-execute/references/` and `skills/quo-fix-issue/references/`.
 
 ## Review loop status
 
@@ -37,7 +37,9 @@ Round 12 returned no blockers: 1 suggestion (the re-derivation bullet now checks
 
 Round 13 returned no blockers: 2 suggestions (the Epic flip and branch classification wait for the inter-Epic reviewer's findings to be dispositioned; the checkpoint's invocation guard names run-start step 6 and no longer claims a branch classification precedes every call), 3 nits (the design-question rung uses the re-derivation shape when the prior proposal is unreadable; the Bee-level `**Reviews**` slot attributes by review site; remaining over-40-word sentences split). All fixed in the following commit.
 
-Prompt shape for each further round: scope `main..HEAD`, read the brief and inventory first, D1–D12 final, criteria A1–A9, role-play both runs, return findings in the review-skill shape plus an A1–A9 PASS/FAIL checklist. Loop until a pass returns nothing above a `trivial-tweak` nit. No round cap.
+Round 14 returned nothing above a `trivial-tweak` nit — **the review loop is closed.** Its three nits (exec's second-order lead carries the never-merged-into-Reviews clause; this note's stale counts and the quo-file-issue disposition; the SDD's D10/D11 note records the deleted overview) were applied in one final pass with no further review round, per **Severity bounds the loop**.
+
+Prompt shape used for each round (kept for any future structural change): scope `main..HEAD`, read the brief and inventory first, D1–D12 final, criteria A1–A9, role-play both runs, return findings in the review-skill shape plus an A1–A9 PASS/FAIL checklist. Loop until a pass returns nothing above a `trivial-tweak` nit. No round cap.
 
 ## Judgment calls the reviewer and operator should know about
 
@@ -50,7 +52,7 @@ Prompt shape for each further round: scope `main..HEAD`, read the brief and inve
 7. **Edits outside the brief's keep-list, forced by the rewrite itself (round 1):** README's three context-guard sentences now describe D4's behaviour; the seven numeric `Section N` pointers in `agents/engineer.md`, `agents/test-writer.md`, `agents/code-reviewer.md`, and the three review skills' routing trailers were replaced by the anchors they meant (no other text in those files changed). The review skills' two-step `TaskCreate` prescription itself was left alone (D9); each body's Section 6 lead now says the manifest-fronted contract substitutes for it.
 8. **D9 as landed:** the pre-rewrite **Severity bounds the loop** paragraph is restored verbatim with three D1-forced substitutions (`defer-*` task → obligation, twice; conversation-carried nit count → manifest `## Rounds`, per lane). `## Rounds` gained a `role` column (inconsistency 13).
 9. **Exec ordering restored to the inventory:** the deferral-hygiene gate fires after Section 11 and before Section 13 (was before Section 11); the Epic-boundary checkpoint no longer waits on the hygiene gate or checks the `defer-*` ledger; the aborted close-out no longer runs the hygiene gate.
-10. **Known follow-ups not done:** `/quo-breakdown-epic` still uses the TaskList-fronted two-step gate contract and TaskList `defer-*` ledger (out of the brief's scope); CLAUDE.md `## AskUserQuestion usage` was qualified rather than rewritten; `skills/quo-file-issue/SKILL.md` lines ~443/458 cite a `/quo-fix-issue` "Section 6 close-out" that was already wrong before the rewrite (pre-existing; file, do not fix here).
+10. **Known follow-ups not done:** `/quo-breakdown-epic` still uses the TaskList-fronted two-step gate contract and TaskList `defer-*` ledger (out of the brief's scope); CLAUDE.md `## AskUserQuestion usage` was qualified rather than rewritten; README's scratch-directory paragraph still describes the manifest's contents as only the run mode and Issue batch (a docs-lane follow-up); `docs/doc-writing-guide.md`'s `aborted-*` paragraph still closes with a name-class instruction for what is now an `## Obligations` kind value (docs-lane follow-up). The `skills/quo-file-issue/SKILL.md` "Section 6 close-out" pointers were fixed on this branch in round 2.
 
 ## Structural shape (both bodies)
 
