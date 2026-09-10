@@ -261,7 +261,7 @@ One of:
 A definition, not a step; run it only where a branch above, or Section 12, calls for it, always after the branch classification above has resolved. It verifies that every load-bearing fact lives in a durable carrier and refreshes them; it does not clear, compact, or reclaim context, and must never be narrated as if it did.
 
 1. Verify:
-   - (a) the just-completed Epic and its Tasks and Subtasks read `done` in bees;
+   - (a) the just-completed Epic — when this run completed one — and its Tasks and Subtasks read `done` in bees;
    - (b) `git log --oneline <previous-epic-last-commit>..HEAD` shows one commit per completed Task, plus any inter-Epic interaction-fix commits;
    - (c) `Read` the tracker at the manifest's `**Compromise tracker:**` path and confirm every compromise accepted this Epic has an entry — an absent file is a gap only when an entry was owed;
    - (d) every `## Lanes` row from this Epic is `closed` and `## Open gate` reads `none`;

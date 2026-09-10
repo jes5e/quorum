@@ -33,6 +33,8 @@ Round 10 returned 1 blocker (exec run start had no arm for zero workable Epics, 
 
 Round 11 returned 1 blocker (the foreign-manifest rewrite left the foreign SHA and tracker path in place while erasing the `**Unit scope:**` tell — now the stop fires first when this run's values are unreadable, otherwise every field is rewritten from this run's state), 3 suggestions (the inter-Epic reviewer gets the three check definitions inline; four SDD sentences annotated; the inventory-less `not captured (no workable Epic)` value dropped along with the dead "or drafted" disjunct), 5 nits (Bee-level reviews name all three entries; part (g) Clause 2 cell names the inter-Epic reviewer; over-40-word sentences split; helper docstring wrap and CLI help scoped; the sweep is now stated in the dispatch prompt). All fixed in the following commit.
 
+Round 12 returned no blockers: 1 suggestion (the re-derivation bullet now checks for an `open` analyst lane before dispatching and resumes the ladder only after the gate is answered), 2 nits ("Five forms"; checkpoint verification (a) qualified for a run that completed no Epic), plus one dated SDD sentence annotated. All fixed in the following commit.
+
 Prompt shape for each further round: scope `main..HEAD`, read the brief and inventory first, D1–D12 final, criteria A1–A9, role-play both runs, return findings in the review-skill shape plus an A1–A9 PASS/FAIL checklist. Loop until a pass returns nothing above a `trivial-tweak` nit. No round cap.
 
 ## Judgment calls the reviewer and operator should know about
