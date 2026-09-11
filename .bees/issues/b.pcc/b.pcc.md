@@ -45,3 +45,14 @@ Prerequisites: b.sb7 has landed (it edits `/quo-breakdown-epic`'s Encode prose a
 
 Surfaced when the operator asked (2026-09-10) whether other skills needed the orchestrators' treatment, and confirmed (2026-09-11) when it emerged that no repo sets `CLAUDE_CODE_ENABLE_TODO_TOOLS`. Related: the rewrite handoff note's known follow-up "/quo-breakdown-epic still TaskList-fronted"; the companion ticket b.7ib for `/quo-plan`.
 
+## Evidence from the prose-size research (2026-09-11)
+
+A cold research agent measured every shipped artifact and classified the four largest unrewritten files by paragraph. Findings that bear on this rewrite:
+
+- Growth: `quo-breakdown-epic` went from 2,839 words at the initial commit to 18,108 (6.4x) over 51 commits, the same curve the two orchestrators followed before their rewrite (8.5x and 4.1x). The rewrite deleted 40% of the orchestrators' prose outright and moved 19% to reference files with no coverage loss by the brief's D12 criterion.
+- Bucket estimate for this body (±5 points): executable instruction 47%; rationale 17%; counter-anchor prose 16% (55 "do not", 9 "MUST NOT", 14 "never"; the `general-purpose` fallback prohibition stated three times); duplication 14% (the two-step `TaskCreate` → `AskUserQuestion` preamble restated ten times at ~70 words each; the subagent precondition stated three times; base-directory resolution explained four times; the no-delete scratch note three times); OS-paired snippets 3%; templates 3%.
+- Section hot spots against the rewritten equivalents: Section 1.5 manifest 1,579 words (rewritten ~600, of which ~1,000 here is a collision-case essay with one 480-word bullet); Section 6.5 deferral hygiene 1,919 words (rewritten ~450 for the identical Steps 0–3 plus Fix / File / Encode plus helper commit); Section 7 checkpoint plus guard 2,288 words (rewritten ~480). Section 4's TaskList section is 713 words of machinery the orchestrators abandoned under D1.
+- Every checkpoint carries a ~100-word "does not clear, compact, or reclaim context" disclaimer against a claim the file no longer makes.
+
+Estimated cuttable with no behavior change: ~7,000 words; movable to references: a further ~2,000. The guard is the one section where convergence is a design change rather than a trim (D4's silent-continue was scoped to the two orchestrators, and `quo-setup` names this skill's four-option gate as the opt-out marker's only consumer), so the inventory must decide it explicitly.
+

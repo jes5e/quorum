@@ -30,3 +30,14 @@ Same process as the companion `/quo-breakdown-epic` ticket (b.pcc), sequenced af
 
 Surfaced alongside the `/quo-breakdown-epic` ticket when the operator asked whether other skills needed the orchestrators' treatment. `/quo-setup` (891 lines) was considered and excluded: it is a linear wizard with no loop, no repeating gate, and no TaskList dependence; its length is the two bootstrap skeletons and per-OS snippets. The role files were excluded: `agents/pm.md` is the heaviest at 256 lines and could take the rationale-to-reference treatment later, but it has no loop of its own and was deliberately kept and trimmed in the rewrite.
 
+## Evidence from the prose-size research (2026-09-11)
+
+A cold research agent measured every shipped artifact and classified the four largest unrewritten files by paragraph. Findings that bear on this rewrite:
+
+- Growth: `quo-plan` went from 1,909 words at the initial commit to 14,174 (7.4x) over 49 commits, the steepest curve in the repo.
+- Bucket estimate (±5 points): executable instruction 53%; rationale 11%; counter-anchor prose 10% ("Future maintainers must not tighten…" twice; pre-commitment lines); duplication 11% (the two-step gate preamble seven times plus twelve `gate-askuserquestion-<short-suffix>` mentions; Step 5g is a 1,600-word near-copy of `quo-breakdown-epic` Section 6.5; the gate-task naming bullet duplicated); OS-paired snippets 5%; templates and examples 10%.
+- Section hot spots: Step 5e fresh-eyes plan review 2,907 words, whose embedded reviewer prompt carries three trailer shapes differing only in where `(Recommended)` sits (~450 words for ~150 of information); Step 4c 1,683; Step 5a 1,406; Step 5g 1,600.
+- Step 7's commit snippets are multi-line shell with `$(...)`, `case`, and pipes on both OSes, violating this repo's single-literal-command etiquette, for a job `hive_commit.py resolve-hive-paths --hive plans|specs` already performs for three sibling skills.
+
+Estimated cuttable with no behavior change: ~5,000 words; movable to references: a further ~1,500. Sequence after b.pcc so the two planning-side bodies share one manifest and gate shape and one deferral-hygiene text instead of two near-copies.
+
