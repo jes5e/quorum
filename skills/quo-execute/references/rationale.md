@@ -77,7 +77,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 ## Close-out and commit
 
 - `git add -A` is forbidden because other agents or processes may have in-flight changes in the working tree.
-- The commit subject's parenthesised ticket-ID token is a contract, not style: the boundary checkpoint and, in `/quo-fix-issue`, the GitHub close block both `--grep` for it.
+- The commit subject's parenthesised ticket-ID token is a contract, not style: in `/quo-fix-issue`, the boundary checkpoint and the GitHub close block both `--grep` for it.
 - The close-out status flip is idempotent because a worker occasionally flips the status itself.
 - The Issue type has only `open` and `done`, so there is no in-flight status to set; the manifest's `## Lanes` carries the in-flight signal.
 - `Format` is the only rung the orchestrator runs before commit on its own initiative; the implementer lanes already validated, and re-running the suite wastes minutes per unit. The one exception is a target project whose CLAUDE.md requires a test run before a commit — then the orchestrator runs `Full test` too.
@@ -85,7 +85,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 ## Boundary checkpoint
 
 - The unit boundary is where the run is most re-derivable: the unit is `done` and committed, or deliberately left `open` with no commit, and either pair is the durable record.
-- The ranged `--grep` over `<pre-run-sha>..HEAD` is load-bearing in both directions: a bare `git log -1` may inspect a later `Encode deferral:` commit, and an unscoped `--grep` may match a same-token commit from an earlier run.
+- In `/quo-fix-issue`, the ranged `--grep` over `<pre-session-sha>..HEAD` is load-bearing in both directions: a bare `git log -1` may inspect a later `Encode deferral:` commit, and an unscoped `--grep` may match a same-token commit from an earlier run.
 - An absent tracker is not by itself a gap: a unit whose only ungated route hit Trigger C's lone-`trivial-tweak` carve-out is correctly entry-less.
 - The checkpoint does not clear, compact, or reclaim context and must never be narrated as if it did.
 - The per-unit consumption figure some earlier text quoted was an unverified working estimate; nothing measures it, and no rule depends on it.

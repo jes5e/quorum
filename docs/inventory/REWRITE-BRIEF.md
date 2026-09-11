@@ -14,8 +14,8 @@ Rewrite from scratch (clean-room; do not edit down, write new):
 
 Keep unchanged unless a decision below names them:
 - all eight `agents/*.md` role files (one exception: trim `agents/pm.md`'s 1,600-word paragraph; unify the
-  destination label per D8), all helper scripts and their unit tests, the review and planning skills (one
-  post-validation exception: the review skills' trailer, per the D9 amendment), README,
+  destination label per D8), all helper scripts and their unit tests, the review and planning skills (the
+  post-validation exceptions are enumerated in the D9 amendment), README,
   the contract keys in `## Documentation Locations` / `## Build Commands`, the hive vocabulary.
 - Frontmatter `name`/`description` of both skills (mis-invocation risk).
 
@@ -67,8 +67,23 @@ D9. **Severity bounds the loop** (b.bix) ships as written in the current bodies,
     *Amended 2026-09-10, after the first validation run:* the carve-out is unchanged, but the trailer and the
     Step-4 prose governing it in the three review skills were made caller-conditional — they name the calling
     skill's gate contract (manifest-fronted for these two skills; two-step `TaskCreate` for other callers)
-    instead of prescribing the two-step contract outright. `docs/sdd.md` D9 records the same deviation. A cold
-    review must not report that edit as a §1 / D9 violation.
+    instead of prescribing the two-step contract outright. `docs/sdd.md` D9 records the same deviation. After the
+    second validation run the selectivity paragraph that closes each skill's `### Step 3` (in `quo-doc-writer-review`,
+    the trailing selectivity prose after the output-shape blocks) gained one severity-calibration sentence
+    (a fix that changes neither what a true statement asserts nor what it causes a reader to do is a `nit`, not a
+    `suggestion`). The same run added, to
+    `quo-engineer-review`'s Step 2 implicit-contract check, a pending-not-false carve-out for a comment citing a test
+    that a relayed `## Blast radius` tests kind-group or an `## Engineer's completeness evidence` entry dispositions to
+    the Test Writer lane. A cold review must not report any of these three edits as a §1 / D9 violation.
+    *Body-level deviations from the inventory, same run:* (i) at the Phase C site in `/quo-fix-issue` and the Bee-level
+    site in `/quo-execute`, no implementer is dispatched for a finding until every concurrent reviewer (and, in execute,
+    PM) lane at that scope has returned — a writer-direction ordering rule the Engineer-dispatch precondition
+    (`FX-ENGPRE-1` / `EX-EDP-11`, which constrain only the Engineer direction) does not carry; (ii) the post-completion
+    commit (`F7-129` / `E5-181`, which say only "commit") now carries the subject `Post-completion review fixes for <unit>`, unparenthesised so the `(<ticket-id>)`
+    token still marks per-unit commits only; `/quo-fix-issue`'s form additionally names the id source (`**Unit scope:**`)
+    because its `<issue-ids>` is plural where `/quo-execute`'s `<bee-id>` is not — a sanctioned Tier-2 divergence. (Its `Format` rung and staging are not deviations: §4 item 12 and the
+    rationale reference already make every per-unit rule reusable at `postcomp-<n>` scope.) A cold review must not
+    report either as an A2 violation.
 D10. **Every recommendation in DECISIONS.md cards 2–12 is accepted.** Where a card says "simplify", the rule set
     is preserved and the prose is not; where it says "move to reference", the rule moves to a shipped reference
     file; where it says "cut", only the named item is cut (doc-verification section → one bullet; TEST rungs 1–4

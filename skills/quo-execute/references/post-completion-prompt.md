@@ -123,8 +123,10 @@ review; they each have lane-specific scope rules that make them wrong for a
 final generalist sweep.
 
 Return findings as a numbered list. Tag EVERY finding with exactly one of
-`[compromise-challenge]` (a challenge to an accepted compromise, from
-PHASE 2/3/4) / `[design]` (a solution-quality concern) / `[defect]` (a
+`[compromise-challenge]` (a challenge to an accepted compromise; its first
+line MUST name the phase that raised it — `PHASE 2`, `PHASE 3`, or
+`PHASE 4` — because the orchestrator routes recovery gates on that
+label) / `[design]` (a solution-quality concern) / `[defect]` (a
 discrete defect), PLUS the severity tag (`blocker` / `suggestion` / `nit`),
 PLUS the per-fix-path depth tag and the enumerated fix paths from the
 in-flight emission contract. The depth tag is informative here: this

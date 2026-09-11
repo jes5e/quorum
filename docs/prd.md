@@ -402,7 +402,7 @@ The run-start prompt that offered to downgrade "support roles" (Doc Writer, PM, 
 
 **Acceptance criteria.**
 
-- `/quo-fix-issue` dispatches an Issue's lanes in three ordered phases — Engineer looping with the Code Reviewer until clean, then the Test Writer (when tests need changing) and Doc Writer (always) once, then the Test Reviewer, Doc Reviewer, and PM — and never dispatches an Engineer while a writer, a reviewer, or the PM for that Issue is still working.
+- `/quo-fix-issue` dispatches an Issue's lanes in three ordered phases — Engineer looping with the Code Reviewer until clean, then the Test Writer (when the approved directive calls for a test change or the source diff names a non-test path) and Doc Writer (always) once, then the Test Reviewer, Doc Reviewer, and PM — and never dispatches an Engineer while a writer, a reviewer, or the PM for that Issue is still working.
 - A review finding whose fix changes source re-enters the Engineer loop in both execution skills, and only the invalidated writer lanes are re-run afterwards. A finding confined to a writer's own lane re-dispatches that writer alone.
 - `/quo-execute`'s forward per-Subtask fan-out remains concurrent; only its review re-dispatch path is ordered.
 - Code review emits a second-order-effects section on every review, clean ones included, covering first-party dependencies as well as the primary package; anything actionable in it is also emitted as a numbered finding. The per-issue, per-Task, and end-of-run summaries each carry a **Second-order effects** field, which is rendered even when nothing was found.

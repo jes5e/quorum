@@ -145,7 +145,7 @@ Each work item should be:
 NOTE: It is expected that many times you will return no important issues.
 This is OK. Don't feel obliged to report things. Only report if there is something important.
 
-**When invoked from `/quo-execute` or `/quo-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you keep reporting trivial-but-not-important items each pass, you create an infinite loop. Be selective. If you have nothing important, say so. Severity is importance, independent of depth: tag `nit` for an item worth fixing that nothing depends on being fixed before the next round. The orchestrator applies a `nit` whose chosen fix path is a `trivial-tweak` without another review round; promoting such an item to `suggestion` merely to buy one, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the severity scale.
+**When invoked from `/quo-execute` or `/quo-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you keep reporting trivial-but-not-important items each pass, you create an infinite loop. Be selective. If you have nothing important, say so. Severity is importance, independent of depth: tag `nit` for an item worth fixing that nothing depends on being fixed before the next round. The orchestrator applies a `nit` whose chosen fix path is a `trivial-tweak` without another review round; promoting such an item to `suggestion` merely to buy one, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the severity scale. A fix that changes neither what a true statement asserts nor what it causes a reader to do is a `nit`, not a `suggestion`.
 
 ### Step 4: Generate Work Item List
 

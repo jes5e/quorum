@@ -2,10 +2,11 @@
 id: b.ag8
 type: bee
 title: 'Relay the Analyst''s Blast radius and Policy decisions to the remaining consumers: /quo-engineer-review callers, Phase B writers, writer-review skills'
-status: open
-created_at: '2026-09-08T17:34:44.749573'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-08T17:34:44.749573'
+status: open
+schema_version: '0.1'
 guid: ag8hyuh6uj8jdhb1spyuo37rhut42nd4
 ---
 
@@ -41,4 +42,12 @@ Land both gaps in one pass — they touch the same relay sites and the same test
 ## Background and rationale
 
 Both gaps were surfaced by `/quo-engineer-review` during b.q3f's Phase A (rounds 1 and 5) and deferred at the orchestrator's routing gate under the operator's rule that a fix adding a new relay heading or check category is a follow-up Issue carrying the reviewer's sketched design, not work for the current Issue. Related: b.q3f (landed) — the producer and the fix-mode source-lane chain; b.eid (open) — plan-path producer and execute-mode consumers; b.nn8 (concurrent) — the `introduces-mechanism` reviewer tag and routing-table rewrite, unrelated to these relays.
+
+## Amendment (2026-09-10) — third consumer gap, from the second validation run of the rewritten `/quo-fix-issue`
+
+**Gap 3 — the Test Writer receives nothing from the approved directive.** On the b.zi3 run in the Event Consumer Service repo, the Analyst's `### Policy decisions this change implies` added unit pins the Issue body had declared unnecessary. Phase B dispatched the Test Writer on the basis of that directive (the body alone does not decide), yet `/quo-fix-issue` §5 forbids writers the directive, so no sanctioned channel carried the required tests to the writer. The orchestrator improvised by pointing the Test Writer at the Engineer's diff, whose new comments cited the pins.
+
+This is the same relay shape as Gap 2 (Blast radius to the Phase B writers): the Test Writer needs the directive's test items, and the Doc Writer needs the ratified decisions. Land it on the same relay heading rather than a third one. **Heading-name collision to resolve here:** Gap 1 above sketches `## Policy decisions`; Issue b.sb7's in-progress branch introduces `## Ratified decisions` to the Doc Writer carrying the same section plus the Blast radius invariant lines. Pick one name for the writer-bound relay and record the choice in both tickets before either lands.
+
+Interim mitigation landing with this change: §4 Phase B now names the source of "when tests need changing" (the approved directive, or a non-empty `## Source paths to fingerprint` heading — omitted when Phase A was empty), and the engineer-review skill treats a comment citing a test that the relayed `## Blast radius` tests kind-group or the Engineer's completeness evidence dispositions to the Test Writer lane as pending rather than false (the Code Reviewer never receives the directive itself — that is Gap 1, still open).
 

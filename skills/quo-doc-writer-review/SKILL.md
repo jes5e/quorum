@@ -161,7 +161,7 @@ No documentation issues found. README and architecture docs are up to date!
 
 NOTE: It is OK to return "no issues found". Only return issues if they are very important.
 
-**When invoked from `/quo-execute` or `/quo-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you never return "no issues found", the workflow goes into an infinite loop. Be selective — return real gaps, not nice-to-haves. Severity is importance, independent of depth: tag `nit` for an item worth fixing that nothing depends on being fixed before the next round. The orchestrator applies a `nit` whose chosen fix path is a `trivial-tweak` without another review round; promoting such an item to `suggestion` merely to buy one, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the severity scale.
+**When invoked from `/quo-execute` or `/quo-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you never return "no issues found", the workflow goes into an infinite loop. Be selective — return real gaps, not nice-to-haves. Severity is importance, independent of depth: tag `nit` for an item worth fixing that nothing depends on being fixed before the next round. The orchestrator applies a `nit` whose chosen fix path is a `trivial-tweak` without another review round; promoting such an item to `suggestion` merely to buy one, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the severity scale. A fix that changes neither what a true statement asserts nor what it causes a reader to do is a `nit`, not a `suggestion`.
 **Important**
 - Docs are wrong
 - Readme is missing information the user needs to use the app
