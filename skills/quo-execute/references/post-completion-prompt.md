@@ -129,9 +129,10 @@ line MUST name the phase that raised it — `PHASE 2`, `PHASE 3`, or
 label) / `[design]` (a solution-quality concern) / `[defect]` (a
 discrete defect), PLUS the severity tag (`blocker` / `suggestion` / `nit`),
 PLUS the per-fix-path depth tag and the enumerated fix paths from the
-in-flight emission contract. The depth tag is load-bearing here: every
-finding this sweep emits is a gate candidate regardless of depth, and a
-`nit`'s depth decides whether its fix is read by a reviewer lane. Preserve the `file:line` +
+in-flight emission contract. Every finding this sweep emits is a gate
+candidate regardless of depth; whether its fix is then read by a reviewer
+lane depends on what the fix changes (code, tests, or text), not on this
+tag. Preserve the `file:line` +
 severity shape — the new tags are additive to it. If clean, return exactly
 "no issues found".
 ```

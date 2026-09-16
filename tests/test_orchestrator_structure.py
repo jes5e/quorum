@@ -26,6 +26,7 @@ import pytest
 from conftest import (
     AGENT_ANALYST,
     AGENT_CODE_REVIEWER,
+    AGENT_DOC_WRITER,
     AGENT_ENGINEER,
     AGENT_PM,
     AGENT_TEST_WRITER,
@@ -145,7 +146,7 @@ def test_tier1_tick_skeleton_is_byte_identical():
     assert fix_yield and fix_yield == exe_yield
 
 
-ROUNDS_HEADER_ROW = "| scope | review | classification | decision | nits applied without re-review | residuals applied without re-review |"
+ROUNDS_HEADER_ROW = "| scope | review | classification | decision | text fixes applied without re-review |"
 
 
 def test_tier1_rounds_template_and_bullet_are_byte_identical():
@@ -221,6 +222,7 @@ def test_divergence_table_is_present_identically_in_both_bodies():
         "| Filing-failure re-prompt `Cancel` |",
         "| Part (g) code-review rung |",
         "| Close-out target on `Cancel` / abort |",
+        "| Escalation target for the premise check and the earned-chain escalation |",
     ]
     for body in BODIES.values():
         assert_present(rows, heading_section(body, ROUTING_SECTION_HEADING), "routing section")
@@ -306,22 +308,25 @@ SHARED_ANCHORS = [
     "**(g) Re-dispatch ordering when a fix path changes source.**",
     "`[introduces-mechanism]`",
     "`[preferred]`",
-    "`N nits applied without re-review`",
+    "`N text fixes applied without re-review`",
     "`count unavailable post-compaction`",
-    "`N rounds (earned/late/variance/unavailable = a/b/c/d)`",
-    "`N residuals applied without re-review`",
-    "`descriptions unavailable post-compaction`",
+    "`N rounds (earned/late/text/unavailable = a/b/c/d)`",
     "(Engineer → Code Reviewer, Test Writer → Test Reviewer, Doc Writer → Doc Reviewer) at scope `postcomp-<n>`",
     "one slot per reviewer lane, in the slot format of Section 8",
-    "**Residual clause.**",
+    "`Kinds changed:`",
+    "**Hold set by kind.**",
+    "**Apply, never defer, text findings.**",
+    "**Premise check.**",
+    "**Earned-chain escalation.**",
     "**Exit decision per round.**",
+    "`Premise check: premise-holds`",
+    "`Premise check: premise-false`",
     "`another round`",
+    "`to the Analyst`",
     "`close — clean`",
-    "`close — nits only`",
-    "`close — residual`",
+    "`close — text`",
     "`earned`",
     "`late`",
-    "`variance`",
     "`clean`",
     "`unavailable post-compaction`",
     "**Your next tool use MUST address these findings now.**",
@@ -637,6 +642,7 @@ def test_execute_only_gate_labels_are_verbatim():
         "**Stop after each Epic**",
         "**Work through all Epics**",
         "**Continue**",
+        "**Stop the unit**",
         "**Abort this unit**",
         "`\"Are you ready to mark this Bee as done?\"`",
         "`\"Yes, mark as done\"`",
@@ -667,7 +673,10 @@ def test_decision_enum_values_are_verbatim_in_both_bodies():
 
 CONTRACT_SURFACES = [
     ("## Design question", [AGENT_ENGINEER], [QUO_FIX_ISSUE]),
-    ("## Files changed", [AGENT_ENGINEER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("## Files changed", [AGENT_ENGINEER, AGENT_TEST_WRITER, AGENT_DOC_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("Kinds changed:", [AGENT_ENGINEER, AGENT_TEST_WRITER, AGENT_DOC_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("## Premise check", [QUO_FIX_ISSUE], [AGENT_ANALYST]),
+    ("Premise check: premise-false", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Source paths to fingerprint", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_TEST_WRITER]),
     ("## Perturbations", [AGENT_TEST_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Engineer's completeness evidence", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM, AGENT_CODE_REVIEWER]),

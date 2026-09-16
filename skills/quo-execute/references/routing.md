@@ -8,16 +8,23 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - `blocker` — what is there is wrong: a false statement, a failing or broken behavior, a violated contract. Test: someone acting on the current state is misled or fails.
 - `suggestion` — true and working as far as it goes, but a reader or the code will go wrong in a case it does not cover. Test: the fix changes what the text asserts or what the code does.
 - `nit` — true and complete; the fix makes it better. Test: the fix changes neither what is asserted nor what happens. Behavior-preserving refactors and wording are nits, at any depth.
-- The review skills carry the same three tests with worked examples. The orchestrator reads the tags and applies only the `nit` test itself, inside the residual clause of **Severity bounds the loop**; it never promotes a `nit`.
+- The review skills carry the same three tests with worked examples. The orchestrator reads the tags as given and never re-grades a finding; what it judges is the kind of the fix, below.
+
+## Kinds of change
+
+- Every implementer return names the kinds its change touched: `code` — any source change other than comments, including a behavior-preserving refactor; `tests` — test files; `contract-text` — text a client or operator relies on: API and on-the-wire protocol comments, README and getting-started docs, runbooks, changelog entries, architecture statements; `comments` — internal comments and docstrings.
+- The kind decides whether a further reviewer round follows (**Severity bounds the loop**): `code` and `tests` earn a cold confirming pass; `contract-text` earns one read, at most one per lane; `comments` earn none and are read by the post-completion sweep.
+- The orchestrator confirms the line is plausible against the files the return lists — adding a kind a listed file plainly requires, never removing one, and treating a missing or unreadable report as `code` — so an unreported change gets more review, not less. A comment edit inside a source file cannot be told from a code edit by its path; the implementer's report is the guard there, and the sweep the backstop.
 
 ## What "highest-quality" means
 
-- The highest-quality fix path is the smallest change under which the code compiles, the tests pass, and every surface agrees with the invariant this unit's ticket names.
-- Internal consistency across surfaces counts, not merely local correctness.
-- Total-system complexity counts against a path.
-- Effort is never the tiebreaker between paths of equal completeness.
+- The pick is the smallest enumerated path that fully fixes the stated defect as the finding describes it.
+- A deeper path is taken only when every shallower one leaves that defect partly unfixed; that is row 4's test, applied to the pick.
+- Preventing recurrence, centralizing, or restructuring is not a fuller fix of the defect. Such a path is recorded as a `defer-to-new-Issue` refinement carrying the reviewer's sketch, never picked in-run.
+- Internal consistency across every surface that states the invariant still counts: a path that fixes the defect in one place and leaves a sibling surface asserting the old behavior is partial.
+- Effort is a legitimate tiebreaker between paths that both fully fix the defect.
 - "Adds a mechanism" is a reason to route to gate (c), not a reason to build.
-- For a docs- or prose-only change set, "compiles and the tests pass" degenerates to "every surface that states the invariant states it consistently".
+- For a docs- or prose-only change set, "fully fixes" means every surface that states the invariant states it consistently.
 
 ## What "introduces a mechanism" means
 
@@ -81,7 +88,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 ## Gate (d) — the `(Recommended)` marker
 
 - The `(Recommended)` marker goes on the path the orchestrator chose at Step 1; gate (d) asks the user to ratify or override a pick already made.
-- When `[preferred]` marks a narrowing and a fuller path is the smallest internally-consistent complete change, mark the fuller path Recommended and state in its description that the reviewer preferred the other path.
+- When the reviewer's `[preferred]` path is shallower than the pick, and the pick is deeper only because the shallower path leaves the defect partly unfixed, say so in the Recommended choice's description.
 - On a row-1 entry no Step-1 pick was possible, so no path is marked Recommended.
 - When a `blocker`'s Defer-with-narrowing branch is open at gate (d), `Defer to follow-up Issue` takes the marker and every other choice is left unmarked, so exactly one choice carries it.
 - Each per-path choice's description includes that path's depth tag, for example `re-architect` or `refactor-locally`.
@@ -104,7 +111,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 ## (g) Re-dispatch ordering — the rationale
 
 - Dispatching the Engineer and a writer in the same round hands the writer a diff the pending code review is about to rewrite, forcing the writer's work to be redone.
-- The one elision is the final pass that ships only `trivial-tweak` nit paths and residuals: the code-review rung is the round **Severity bounds the loop** suppresses, so the affected writer follows that Engineer directly.
+- The one elision is a final pass that ships only text: the code-review rung is the round **Severity bounds the loop** suppresses, so the affected writer follows that Engineer directly.
 - A finding whose chosen fix path changes no source file carries no ordering constraint; re-dispatch that single writer lane alone.
 - Part (g) governs the review-finding re-dispatch path only; in `/quo-execute` the forward per-Subtask fan-out stays concurrent by design.
 
@@ -115,7 +122,9 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - **Why gate (c) offers no `Cancel` to a `suggestion` or `nit`.** Scope-bounding is a per-finding decision and a `Cancel` there would be ambiguous; the user retains `Ctrl-C` for run-level abort.
 - **Why accepting a blocker is unreachable.** Accepting a blocker ships the blocker.
 - **Why the deferral and its narrowing are one decision.** An entry recording only the deferral cannot distinguish a soft-fixed finding from an unfixed one.
-- **Why `Severity bounds the loop` gives up nothing.** The cold pass that raised a `trivial-tweak` nit already read the text it corrects, and the fix is a `trivial-tweak` by the reviewer's own tag. A residual `suggestion` is one whose fix asserts and does nothing new, by the reviewer's own path description, on text a prior pass at that lane already read and no implementer pass at that lane since was dispatched to change. The post-completion review reads the whole diff, nit fixes and residuals included.
+- **Why `Severity bounds the loop` re-reviews by kind and not by tag.** A cold pass over a code or test change can catch a fix that broke something adjacent; a cold pass over a comment fix can only re-read a sentence, and the post-completion review reads every sentence once at the end. The first full-run cost ledger showed five consecutive full-diff reviewer rounds confirming one-line comment fixes, and a sweep that found nothing wrong with the one such fix applied unreviewed. Client-facing text gets one read because a wrong sentence there misleads a user; internal comments get the sweep because the next engineer fixes them on their own pass.
+- **Why, in a skill with a design authority, a contradicting finding goes there first.** A reviewer finding that contradicts the approved design or a prior clean pass is either a real gap in the design or a false premise; dispatching an implementer settles neither, and on a false premise it starts a cascade of fixes to a bug that does not exist. One design-side read answers it. A skill with no design authority to consult routes the finding normally.
+- **Why two consecutive earned rounds escalate.** Each earned round means the previous fix introduced a defect; two in a row means the implementer is patching without the rule that would make the fix right. Where a design authority exists it supplies that rule; where none does, the operator decides at the escalation gate, not another implementer.
 - **Why the exit decision is written before it is acted on.** The `## Rounds` row is the only durable record of which lanes closed on what, for the summary and the audit trail. Writing it before the re-dispatch or the final pass borrows the manifest-write-then-act shape the gates use, but the row carries decisions and counts, never the findings. A compaction between the decision and the action therefore costs the pass itself: the resumed orchestrator finds no clean return to stop on, dispatches a fresh cold pass, and that round's decision rewrites the row.
 - **Why "Follow the trailer literally".** The review skills' routing trailer is the authoritative prescription; the surrounding prose is reference context, not a rule to recall from memory.
 - **Why the Engineer's return with `## Design question` is not a completion.** The Engineer stops rather than invent an unenumerated mechanism, so the diff on disk is partial by construction.

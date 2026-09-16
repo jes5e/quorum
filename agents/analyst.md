@@ -42,7 +42,7 @@ This subagent always runs cold. Each dispatch is a single-shot analysis against 
 
 ## Structured-output contract (Analyst → orchestrator)
 
-Return the analysis as a single markdown response with the following shape. The orchestrator surfaces the body of the proposal to the user as prose and consumes the trailer for routing.
+On a Design Proposal dispatch, return the analysis as a single markdown response with the following shape; the premise-check dispatch (below) has its own return. The orchestrator surfaces the body of the proposal to the user as prose and consumes the trailer for routing.
 
 ```
 ## Design Proposal for <issue-id>
@@ -107,11 +107,15 @@ The trailer line `Analyst verdict: <…>` is a **load-bearing framing signal** t
 
 ## Short-circuit conditions
 
-The Analyst always returns the Design Proposal shape above — there is no exit short-circuit. Edge cases land in the verdict:
+On a Design Proposal dispatch the Analyst always returns the shape above — there is no exit short-circuit; the premise-check dispatch below is the other dispatch shape, with its own return. Edge cases land in the verdict:
 
 - **Trivial mechanical fix** (a rename, a one-line typo, a config tweak the body specifies exactly): return `recommend-as-stated` with a short Recommended approach (if the sweep does surface a distinct concern to split out, the fix was not trivial after all — the scope-split rule applies and the verdict is at least `recommend-with-refinements`). The Analyst still runs — but the proposal converges cheaply and the user-side gate approves cheaply. `### Blast radius` and `### Policy decisions this change implies` **still emit** — they are unconditional — and on a trivial fix they converge cheaply too: typically one invariant enumerated from one or two search patterns (a rename still runs both spellings per **Choosing patterns** above), and the fixed `None — the recommendation leaves no policy question open.` line. Cheap convergence is what the trivial case promises; skipping the two sections is not, because "swept and found nothing" and "never swept" must stay distinguishable at the gate.
 - **`reference_materials` URL unreachable**: surface the failure in Upstream-fetch status. If the body alone is enough to converge on a recommendation, do so and pick the matching verdict; if the upstream content is load-bearing for the decision, return `escalate-to-user` so the orchestrator can ask the user how to proceed.
 - **Genuine design ambiguity**: return `escalate-to-user` with the open question(s) framed clearly in Why and the candidate approaches enumerated in Alternatives considered.
+
+## Premise-check dispatch
+
+When the dispatch prompt carries the heading `## Premise check` with a reviewer finding, do not produce a full Design Proposal. Read the finding against the codebase, the approved proposal it contradicts, and any prior reviewer return the prompt relays, and return, as the first line, exactly `Premise check: premise-holds` or `Premise check: premise-false`, then a one-line reason, then any `### Blast radius` entries the finding changes, or `None`. Omit the `Analyst verdict:` trailer; the orchestrator fires no gate on this return. A chain dispatch — the Revise shape carrying a sequence of findings and fixes under `## Prior proposal and user feedback` — is a full Revise pass, not a premise check.
 
 ## Lane discipline (what the Analyst does NOT do)
 

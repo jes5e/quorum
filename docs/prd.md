@@ -524,7 +524,7 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 
 **Out of scope.** Any cap on rounds at any severity, and any narrowing of what a cold pass reads.
 
-**Superseded in part (2026-09-16).** The fourth acceptance criterion ("keeps `nit` as an importance tag") is superseded by the consequence-defined scale in the feature below; the other three stand.
+**Superseded (2026-09-16).** The fourth acceptance criterion ("keeps `nit` as an importance tag") is superseded by the consequence-defined scale in the next feature; the first three criteria, and the out-of-scope line's "any narrowing of what a cold pass reads", are superseded by the proportional-review feature (Issue `b.vtw`), which holds a lane by the kind of the fix rather than by severity and depth.
 
 ### Feature: Consequence-defined severity and a per-round review-loop exit decision recorded in the manifest
 
@@ -541,3 +541,22 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 - A post-completion `blocker` or `suggestion` fix, or a `nit` fix deeper than `trivial-tweak`, is read by the reviewer lane its implementer maps to; a `trivial-tweak` `nit` fix is not; the post-completion close-out prints a **Reviews** line.
 
 **Out of scope.** Any change to the depth vocabulary or the routing table; any round cap; any narrowing of what a cold pass reads (a `nit` deeper than `trivial-tweak` still holds its lane); per-phase timings; `/quo-spec-review`'s own severity ladder and the planning skills that read it.
+
+**Superseded in part (2026-09-16).** The residual clause, the tag-keyed hold set, the `## Rounds` residual and nit columns, the **Reviews**-line render string `N rounds (earned/late/variance/unavailable = a/b/c/d)`, and the out-of-scope line's "a `nit` deeper than `trivial-tweak` still holds its lane" are replaced by the feature below after the first validation run showed the clause unable to fire; the classification, the manifest write-before-act, and the consequence-defined severity for routing stand.
+
+### Feature: Proportional review, Batch A — re-review by the kind of the fix, smallest complete fix, escalate instead of patching
+
+**What.** Every review finding is applied, whatever its severity. Whether a further reviewer round follows is decided by what the fix changed, which the implementer reports and the orchestrator checks against the diff: a code or test change gets a cold confirming pass; text a client or operator relies on gets one confirming read per lane; internal comments get the post-completion sweep. The orchestrator picks the smallest fix path that fully fixes the stated defect, and files recurrence prevention or restructuring as a follow-up rather than building it in-run. A finding that contradicts the approved design goes to the Analyst for a premise check before any implementer is dispatched, and two consecutive rounds in which a fix introduced a new defect send the chain to the Analyst instead of a third implementer; in execute mode, which has no Analyst, that chain is put to the operator with a continue-or-stop choice. There is no round-count gate: a lane runs while code or test findings are real and closes when they stop. In fix mode the PM reviews traceability and scope only, since dedicated lanes already reviewed the code and the docs.
+
+**Why.** The first full-run cost ledger (Issue b.yvu): 37 dispatches and 4.36M tokens over four and a half hours for a change that was correct at the Engineer's first pass. Five consecutive full-diff review rounds confirmed one-line comment fixes; one false-premise finding routed straight to an Engineer cost 1.09M tokens; two refactor picks over reviewer-preferred one-liners cost about 500k. The rules produced that cost by design; this feature changes the design.
+
+**Acceptance criteria.**
+
+- Every implementer return carries `Kinds changed:`; a lane re-reviews only after a `code` or `tests` change, reads a `contract-text` change once per lane, and closes after a `comments`-only change. Text findings are always applied and never deferred.
+- The Step-1 pick is the smallest enumerated path that fully fixes the stated defect; a deeper path is picked only when every shallower one leaves the defect partly unfixed.
+- In fix mode, a finding that contradicts the approved design, or a PM finding that contradicts a prior clean code review, is answered by the Analyst's premise check before any implementer runs; a `premise-false` finding dispatches nothing and is listed under **Ignored Review Feedback**. Execute mode has no design authority to consult, so such a finding routes normally there.
+- Two consecutive `earned` rounds on a lane escalate to the Analyst (fix mode) or to the operator's continue-or-stop gate (execute mode); no gate fires on round count alone.
+- In `/quo-fix-issue` the PM invokes neither `/quo-engineer-review` nor `/quo-doc-writer-review`.
+- Validation: a b.yvu-class Issue completes in at most 12 dispatches, 1.8M subagent tokens, and 3 code-review rounds, with no production-relevant regression the previous loop would have caught.
+
+**Out of scope.** The pipeline classes, confirming-pass checklist, relay by path, required-statements enumeration, cost ledger, and `--unattended` mode (Batch B of Issue b.vtw); the depth vocabulary and the routing table's rows.

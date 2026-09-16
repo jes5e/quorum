@@ -97,6 +97,15 @@ D9. **Severity bounds the loop** (b.bix) ships as written in the current bodies,
     `references/post-completion-prompt.md`'s depth sentence says the tag is load-bearing rather than informative,
     because Section 11 now reads a `nit`'s depth to decide whether its fix gets a reviewer lane. A cold review must
     not report any of these as a §1 / D9 / A2 violation.
+    *Amended 2026-09-16 (Issue `b.vtw`, Batch A):* **Severity bounds the loop** now holds a lane by the kind of the
+    fix (`code` / `tests` earn a cold confirming pass; `contract-text` one read per lane; `comments` the sweep), read
+    from a new implementer return line `Kinds changed:` checked against the same return's `## Files changed`; the
+    residual clause and the depth-keyed hold are gone; Step 1 picks the smallest path that fully fixes the stated
+    defect; a premise check (fix mode only) and an earned-chain escalation route to the Analyst (fix) or the
+    operator's two-choice escalation gate (**Continue** / **Stop the unit**, execute only), per a new divergence-table
+    row; no gate fires on round count; the PM invokes no in-flight review skill in fix mode, and at Bee scope
+    skips only the one whose Bee-level reviewer lane ran. `## Rounds` is `scope | review | classification | decision | text fixes applied without re-review`. A
+    cold review must not report any of these as a §1 / D9 / A2 violation.
 D10. **Every recommendation in DECISIONS.md cards 2–12 is accepted.** Where a card says "simplify", the rule set
     is preserved and the prose is not; where it says "move to reference", the rule moves to a shipped reference
     file; where it says "cut", only the named item is cut (doc-verification section → one bullet; TEST rungs 1–4
@@ -104,6 +113,11 @@ D10. **Every recommendation in DECISIONS.md cards 2–12 is accepted.** Where a 
 D11. **All 33 inconsistencies** in DECISIONS.md `## Inconsistencies to resolve` are resolved as proposed there.
 D12. **Nothing reduces review coverage**: no round caps, no lane skipped, no narrowing of what a cold pass reads,
     blockers never accepted, human overrides only where they exist today.
+    *Amended 2026-09-16 (Issue `b.vtw`):* review coverage is proportional to the kind of the fix. Code and test
+    fixes keep a cold confirming pass over the whole diff and behavior blockers are never accepted by the
+    orchestrator; contract text gets one confirming read per lane; comments are read by the post-completion sweep;
+    no gate fires on round count, and an earned chain escalates to the design authority. The operator's principle: doing it right may cost
+    more; polishing text with fresh full-diff reviewers is not doing it right.
 
 ## 4. Shape of each body (target ≤ 500 lines, hard cap 550)
 
