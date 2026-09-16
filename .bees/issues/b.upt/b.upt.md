@@ -38,3 +38,7 @@ Depth stays where it is, on each fix path. With consequence-defined levels the o
 
 Scope: the three review skills' severity paragraphs and examples, the `**Severity bounds the loop**` paragraph in both bodies, the exit-decision manifest write. One designed change, not three appended sentences.
 
+## Status (2026-09-16)
+
+The planning-chain run has happened (its report is on b.7ib) and the operator has reset direction to fix-issue-first, so this ticket no longer waits on anything: the next action is to write its full design for operator review, then implement on the operator's go. The chain run's cost data corroborates the rationale — roughly 25 gates answered, about 9 carrying a real choice — though that run's own defects belong to the planning rewrite (b.7ib), not here. Scope stays `/quo-fix-issue`, `/quo-execute`, and the three review skills.
+
