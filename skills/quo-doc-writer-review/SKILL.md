@@ -113,7 +113,7 @@ Return specific, actionable items as numbered list. **Always append a routing tr
 
 Each finding here carries tags along two orthogonal dimensions (the trailer still collapses to two shapes — findings-present versus clean — rather than `/quo-spec-review`'s three, because the trailer routing here keys off presence-of-findings, not off severity):
 
-- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *how important fixing-at-all is*.
+- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *the consequence of leaving the finding as it stands* — the three ordered tests in the selectivity paragraph below the output shapes.
 - A **depth** dimension carried *per fix path* — every finding enumerates one or more fix paths, and each fix path carries its own depth tag: `trivial-tweak` / `refactor-locally` / `re-architect`. Depth describes *what fixing costs* (the size of the change a given fix path entails).
 
 The two dimensions are orthogonal: a `blocker` might be fixable by a `trivial-tweak`, and a `nit` might only be addressable by a `re-architect` — knowing one tells you nothing about the other, which is why both are emitted. (The depth tags are emitted here for downstream consumers; no routing rule in this skill consumes them yet.)
@@ -123,12 +123,13 @@ Line shapes — emit findings exactly in this form:
 - finding line: `` <n>. `<severity>` <one or more fix-path lines> — <description> `` — the severity tag is backticked; the `<n>.` is the work-item number; the fix-path line(s) sit between the severity tag and the ` — <description>`.
 - fix-path line: `(<letter>) [depth:<trivial-tweak|refactor-locally|re-architect>] <description of that fix path>` — lettered `(a)`, `(b)`, … and indented under the finding when there is more than one. A finding with a single fix path emits one fix-path line; a finding with multiple viable fix paths emits one lettered line per path. The shape is uniform whether the reviewer enumerated 1 path or 4, which simplifies the orchestrator's parser. Optionally append the fixed keyword `[preferred]` immediately after the `[depth:<...>]` token (and before the path description) on **at most one** fix-path line per finding, when you hold a genuine preference among the enumerated paths — `(<letter>) [depth:<...>] [preferred] <description>`; emit it on no more than one path, and only when a preference is real. It is meaningful only for multi-path findings — a single-path finding has no preference to express, so marking it there is harmless but discouraged. When no path carries `[preferred]`, that is fully valid — the consumer makes its own pick either way, and `[preferred]` is only an input to it.
 
-Worked examples covering every depth bucket, plus both single-path and multi-path emission:
+Worked examples covering every severity level and every depth bucket, plus both single-path and multi-path emission:
 
 ```markdown
-1. `nit` (a) [depth:trivial-tweak] Remove the stale `--legacy-flag` mention from the README Commands table — single fix path, a one-line deletion.
-2. `suggestion` (a) [depth:refactor-locally] Consolidate the three near-duplicate "Getting Started" snippets in README.md into a single Quick Start section and link the others to it — confined to one doc.
-3. `blocker`
+1. `blocker` (a) [depth:trivial-tweak] Remove the `--legacy-flag` row from the README Commands table — the flag no longer exists; a user running it fails.
+2. `suggestion` (a) [depth:trivial-tweak] Add the required `API_TOKEN` variable to the README Configuration section — everything stated is true, but a first run without it fails and nothing says so; the fix changes what the text asserts.
+3. `nit` (a) [depth:refactor-locally] Consolidate the three near-duplicate "Getting Started" snippets in README.md into a single Quick Start section and link the others to it — every statement stays true and complete; confined to one doc.
+4. `blocker`
    (a) [depth:trivial-tweak] [preferred] Add the missing `new-command` usage line to the README Quick Start so the documented workflow is runnable.
    (b) [depth:re-architect] Reorganize the README around task-based workflows so command coverage is structurally guaranteed rather than maintained by hand. — multi-path finding: the cheap local fix and the durable structural fix are both viable; the orchestrator/user chooses.
 ```
@@ -141,12 +142,13 @@ Then use these trailer phrasings verbatim:
 ## Documentation Review Work Items
 
 1. `blocker` (a) [depth:trivial-tweak] Add the `new-command` usage line to the README Quick Start — the documented workflow is currently not runnable as written.
-2. `suggestion`
-   (a) [depth:trivial-tweak] Flip Component X's status line to "Implemented" in the architecture docs:289.
+2. `blocker`
+   (a) [depth:trivial-tweak] Flip Component X's status line to "Implemented" in the architecture docs:289 — the line is false as it stands.
    (b) [depth:refactor-locally] Replace the hand-maintained status column with a generated table so the architecture doc can't drift from the code again. — multi-path finding: the cheap edit fixes today's staleness; the refactor prevents recurrence.
-3. `nit` (a) [depth:trivial-tweak] Remove the deprecated `old-cmd` row from the README Commands section.
+3. `suggestion` (a) [depth:trivial-tweak] Add the required `API_TOKEN` variable to the README Configuration section — a first run without it fails and nothing says so.
+4. `nit` (a) [depth:trivial-tweak] Reword the Quick Start intro so its two sentences do not repeat each other — nothing asserted changes.
 
-**Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Doc Writer Agent to address them and re-invoke this skill on the updated docs — unless no finding is above `nit` severity and every nit's chosen fix path is a `trivial-tweak` (one `suggestion` or `blocker` anywhere in the list means re-invoke), in which case apply them in one implementer pass and do not re-invoke (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so no gate contract applies on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the calling skill's gate contract applies — a manifest `Write` filling `## Open gate` then `AskUserQuestion` in the same turn for `/quo-fix-issue` and `/quo-execute`; the two-step `TaskCreate` → `AskUserQuestion` contract for other callers. If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
+**Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Doc Writer Agent to address them and re-invoke this skill on the updated docs — unless every finding is either a `nit` whose chosen fix path is a `trivial-tweak` or a `suggestion` the calling orchestrator's exit decision records as a residual (its chosen fix meets the `nit` test, a prior cold pass at this lane accepted the text it targets, and no implementer pass at this lane since was dispatched to change it; a `blocker` anywhere in the list means re-invoke), in which case apply them in one implementer pass and do not re-invoke (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so no gate contract applies on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the calling skill's gate contract applies — a manifest `Write` filling `## Open gate` then `AskUserQuestion` in the same turn for `/quo-fix-issue` and `/quo-execute`; the two-step `TaskCreate` → `AskUserQuestion` contract for other callers. If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
 
 **Shape 2 — No findings** (clean review):
@@ -161,13 +163,13 @@ No documentation issues found. README and architecture docs are up to date!
 
 NOTE: It is OK to return "no issues found". Only return issues if they are very important.
 
-**When invoked from `/quo-execute` or `/quo-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you never return "no issues found", the workflow goes into an infinite loop. Be selective — return real gaps, not nice-to-haves. Severity is importance, independent of depth: tag `nit` for an item worth fixing that nothing depends on being fixed before the next round. The orchestrator applies a `nit` whose chosen fix path is a `trivial-tweak` without another review round; promoting such an item to `suggestion` merely to buy one, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the severity scale. A fix that changes neither what a true statement asserts nor what it causes a reader to do is a `nit`, not a `suggestion`.
+**When invoked from `/quo-execute` or `/quo-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you never return "no issues found", the workflow goes into an infinite loop. Be selective — return real gaps, not nice-to-haves. Severity is consequence, independent of depth, judged in order with the first match winning: `blocker` — what is there is wrong (a false statement, a broken behavior, a violated contract); test: someone acting on the current state is misled or fails. `suggestion` — true and working as far as it goes, but a reader or the code will go wrong in a case it does not cover; test: the fix changes what the text asserts or what the code does. `nit` — true and complete, and this makes it better; test: the fix changes neither; behavior-preserving refactors and wording are nits at any depth. The orchestrator holds a lane open for a `blocker`, a `suggestion`, or a `nit` whose chosen fix path is deeper than `trivial-tweak`, and applies a `trivial-tweak` `nit` without another review round; promoting a `nit` to `suggestion` merely to buy a round, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the scale.
 **Important**
-- Docs are wrong
-- Readme is missing information the user needs to use the app
+- Docs are wrong — a `blocker`
+- Readme is missing information the user needs to use the app — a `suggestion`
 **Not Important**
-- Formatting issues
-- Grammar
+- Formatting issues — a `nit`, when raised at all
+- Grammar — a `nit`, when raised at all
 
 **Work item quality:**
 - Be specific: include file, section, line number when possible

@@ -145,6 +145,17 @@ def test_tier1_tick_skeleton_is_byte_identical():
     assert fix_yield and fix_yield == exe_yield
 
 
+ROUNDS_HEADER_ROW = "| scope | review | classification | decision | nits applied without re-review | residuals applied without re-review |"
+
+
+def test_tier1_rounds_template_and_bullet_are_byte_identical():
+    for name, text in BODIES.items():
+        assert ROUNDS_HEADER_ROW in text, f"{name} lacks the ## Rounds header row"
+    fix = bullet_lines(heading_section(FIX, "## 2. Run-state manifest"), "- `## Rounds`")
+    exe = bullet_lines(heading_section(EXE, "## 2. Run-state manifest"), "- `## Rounds`")
+    assert fix and fix == exe
+
+
 def test_tier1_movement_rung_closing_rules_are_byte_identical():
     tail = (
         'The re-dispatch is the next round at the same scope and carries the "how far I got" detail. '
@@ -297,6 +308,22 @@ SHARED_ANCHORS = [
     "`[preferred]`",
     "`N nits applied without re-review`",
     "`count unavailable post-compaction`",
+    "`N rounds (earned/late/variance/unavailable = a/b/c/d)`",
+    "`N residuals applied without re-review`",
+    "`descriptions unavailable post-compaction`",
+    "(Engineer → Code Reviewer, Test Writer → Test Reviewer, Doc Writer → Doc Reviewer) at scope `postcomp-<n>`",
+    "one slot per reviewer lane, in the slot format of Section 8",
+    "**Residual clause.**",
+    "**Exit decision per round.**",
+    "`another round`",
+    "`close — clean`",
+    "`close — nits only`",
+    "`close — residual`",
+    "`earned`",
+    "`late`",
+    "`variance`",
+    "`clean`",
+    "`unavailable post-compaction`",
     "**Your next tool use MUST address these findings now.**",
     "**Your next tool use MUST advance the workflow.**",
     "`addressed-now`",

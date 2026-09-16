@@ -522,3 +522,21 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 - The three review skills keep `nit` as an importance tag and tell reviewers not to promote an item to `suggestion` merely to buy another round.
 
 **Out of scope.** Any cap on rounds at any severity, and any narrowing of what a cold pass reads.
+
+**Superseded in part (2026-09-16).** The fourth acceptance criterion ("keeps `nit` as an importance tag") is superseded by the consequence-defined scale in the feature below; the other three stand.
+
+### Feature: Consequence-defined severity and a per-round review-loop exit decision recorded in the manifest
+
+**What.** The three review skills define `blocker` / `suggestion` / `nit` by consequence, each with a one-line test applied in order: `blocker` — what is there is wrong; `suggestion` — true but a reader or the code goes wrong in a case it does not cover; `nit` — true and complete, the fix only makes it better. `/quo-fix-issue` and `/quo-execute` read those tags as evidence: a lane still loops on a `blocker`, a `suggestion`, or a `nit` deeper than `trivial-tweak`, and the orchestrator may close a `suggestion` without another round only when its fix meets the `nit` test, sits on text a prior cold pass at that lane already accepted, and no implementer pass at that lane since was dispatched to change that text. Each round's exit decision, and a classification of every round after the first as earned, late, variance, clean, or unavailable post-compaction, is written to the run-state manifest before the orchestrator acts on it and rendered on the summary's **Reviews** line. A post-completion fix of `blocker` or `suggestion` severity, or a `nit` fix deeper than `trivial-tweak`, is read by exactly one reviewer lane.
+
+**Why.** Two validation runs of the rewritten orchestrators showed reviewers tagging pure wording fixes as `suggestion` (three times in one run), each buying a fresh cold reviewer, and one run paid five extra doc rounds and two extra test rounds on a single unstated question — whether a post-completion suggestion owes a reviewer pass. "Importance" as a severity definition conflated "wrong as it stands" with "worth doing"; consequence separates them, and the exit decision becomes a reading of the tags rather than a re-grade.
+
+**Acceptance criteria.**
+
+- Each of the three review skills states the three consequence tests and carries one worked example per level; the shipped examples that changed level under the tests (a behavior-preserving refactor tagged `suggestion`; a stale flag tagged `nit`) are corrected.
+- A `blocker` never closes a lane without a later cold pass or a no-fix-lands disposition; the residual clause applies to `suggestion`s only and never at a lane's first round.
+- Every exit decision is written to the manifest's `## Rounds` row before the re-dispatch, final implementer pass, or lane close it names; the row survives compaction and a missing row renders `count unavailable post-compaction`.
+- The **Reviews** line renders `N rounds (earned/late/variance/unavailable = a/b/c/d)` for a lane that ran more than once, never folding a round whose classification a compaction lost into the clean remainder, and the nit and residual counts with each residual's description.
+- A post-completion `blocker` or `suggestion` fix, or a `nit` fix deeper than `trivial-tweak`, is read by the reviewer lane its implementer maps to; a `trivial-tweak` `nit` fix is not; the post-completion close-out prints a **Reviews** line.
+
+**Out of scope.** Any change to the depth vocabulary or the routing table; any round cap; any narrowing of what a cold pass reads (a `nit` deeper than `trivial-tweak` still holds its lane); per-phase timings; `/quo-spec-review`'s own severity ladder and the planning skills that read it.

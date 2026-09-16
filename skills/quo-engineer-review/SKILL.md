@@ -168,7 +168,7 @@ Each work item should be:
 NOTE: It is expected that many times you will return no important issues.
 This is OK. Don't feel obliged to report things. Only report if there is something important.
 
-**When invoked from `/quo-execute` or `/quo-fix-issue`** specifically: keep in mind that the team-lead agent will loop back with fixes and re-invoke this skill. If you keep reporting trivial-but-not-important items each pass, you create an infinite loop. Be selective. If you have nothing important, say so. Severity is importance, independent of depth: tag `nit` for an item worth fixing that nothing depends on being fixed before the next round. The orchestrator applies a `nit` whose chosen fix path is a `trivial-tweak` without another review round; promoting such an item to `suggestion` merely to buy one, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the severity scale. A fix that changes neither what a true statement asserts nor what it causes a reader to do is a `nit`, not a `suggestion`.
+**When invoked from `/quo-execute` or `/quo-fix-issue`** specifically: keep in mind that the team-lead agent will loop back with fixes and re-invoke this skill. If you keep reporting trivial-but-not-important items each pass, you create an infinite loop. Be selective. If you have nothing important, say so. Severity is consequence, independent of depth, judged in order with the first match winning: `blocker` — what is there is wrong (a false statement, a broken behavior, a violated contract); test: someone acting on the current state is misled or fails. `suggestion` — true and working as far as it goes, but a reader or the code will go wrong in a case it does not cover; test: the fix changes what the text asserts or what the code does. `nit` — true and complete, and this makes it better; test: the fix changes neither; behavior-preserving refactors and wording are nits at any depth. The orchestrator holds a lane open for a `blocker`, a `suggestion`, or a `nit` whose chosen fix path is deeper than `trivial-tweak`, and applies a `trivial-tweak` `nit` without another review round; promoting a `nit` to `suggestion` merely to buy a round, or demoting a `suggestion` to `nit` merely to close a lane, is not a legitimate use of the scale.
 
 ### Step 4: Generate Work Item List
 
@@ -176,7 +176,7 @@ Output a simple numbered list directly in your response. **Always append a routi
 
 Each finding here carries tags along two orthogonal dimensions (the trailer still collapses to two shapes: findings-present versus clean):
 
-- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *how important fixing-at-all is*.
+- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *the consequence of leaving the finding as it stands* — the three ordered tests in Step 3.
 - A **depth** dimension carried *per fix path* — every finding enumerates one or more fix paths, and each fix path carries its own depth tag: `trivial-tweak` / `refactor-locally` / `re-architect`. Depth describes *what fixing costs* (the size of the change a given fix path entails).
 
 The two dimensions are orthogonal: a `blocker` might be fixable by a `trivial-tweak`, and a `nit` might only be addressable by a `re-architect` — knowing one tells you nothing about the other, which is why both are emitted. (The depth tags are emitted here for downstream consumers; no routing rule in this skill consumes them yet.)
@@ -189,16 +189,17 @@ Line shapes — emit findings exactly in this form:
 
 **Convergence brief.** When you enumerate fix paths, prefer the **smallest change that makes the change set internally consistent** — internal consistency across every surface that states the invariant, not merely local correctness; total-system complexity counts against a path. And **tag any finding whose fix requires new machinery** with `[introduces-mechanism]` on the path(s) that need it. A review that reaches for new machinery on every finding generates a fresh round per mechanism; the tag is how a needed mechanism gets deferred deliberately instead of built by default.
 
-Worked examples covering every depth bucket, plus both single-path and multi-path emission:
+Worked examples covering every severity level and every depth bucket, plus both single-path and multi-path emission:
 
 ```markdown
-1. `nit` (a) [depth:trivial-tweak] Remove the commented-out code block — single fix path, trivially deletable.
-2. `suggestion` (a) [depth:refactor-locally] Extract the duplicated parsing logic into a private helper — refactor confined to one module.
-3. `blocker`
+1. `blocker` (a) [depth:trivial-tweak] Correct the `parse_rows()` docstring: it says empty input raises, but the function returns `[]` — a caller relying on it is misled; wrong as it stands.
+2. `suggestion` (a) [depth:refactor-locally] Bound the retry loop in `fetch_with_retry()` — correct for today's callers, but a stalled upstream spins forever; the fix changes what the code does.
+3. `nit` (a) [depth:refactor-locally] Extract the duplicated parsing in `load_a()` / `load_b()` into a private helper — behavior-preserving: neither what the code does nor what any comment asserts changes. The tag says nice-to-have; the depth says a cold pass still reads the restructure.
+4. `blocker`
    (a) [depth:trivial-tweak] Add a guard clause that rejects the null input at the call site.
    (b) [depth:re-architect] [preferred] Thread an explicit non-null type through the data-flow layer so the null can never reach here. — multi-path finding: the cheap local fix and the durable structural fix are both viable; the orchestrator/user chooses.
-4. `suggestion`
-   (a) [depth:trivial-tweak] Correct the stale comment so it describes what the function actually rejects.
+5. `blocker`
+   (a) [depth:trivial-tweak] Correct the stale comment so it describes what the function actually rejects — the comment is false as it stands.
    (b) [depth:refactor-locally] [preferred] [introduces-mechanism] Add a dedicated validation-error type and raise it from every call site, so the rejection is enforced rather than described — new error type, not enumerated by the unit's approved design. Both tokens on one line, in the canonical order.
 ```
 
@@ -215,8 +216,9 @@ Worked examples covering every depth bucket, plus both single-path and multi-pat
 2. `blocker`
    (a) [depth:trivial-tweak] Add an inline format check at the cache.py:45 endpoint.
    (b) [depth:refactor-locally] Route the endpoint through the shared input-validation helper so the check is centralized. — Add input validation to cache.py:45 endpoint.
-3. `suggestion` (a) [depth:refactor-locally] Extract helper functions — Refactor process_transactions() in llm_categorizer.py:120; function is 60 lines.
-4. `nit` (a) [depth:trivial-tweak] Remove commented-out code in llm_categorizer.py:200-210.
+3. `suggestion` (a) [depth:trivial-tweak] Give the new credential cache in cache.py:72 a TTL — correct for current callers, but a rotated credential is served stale until restart; the fix changes what the code does.
+4. `nit` (a) [depth:refactor-locally] Extract helper functions — Refactor process_transactions() in llm_categorizer.py:120; function is 60 lines, behavior unchanged.
+5. `nit` (a) [depth:trivial-tweak] Remove commented-out code in llm_categorizer.py:200-210.
 
 ### Second-order effects
 
@@ -224,7 +226,7 @@ Worked examples covering every depth bucket, plus both single-path and multi-pat
 - Renaming the `user.id` span attribute to `user.ref` changes an externally-observable label; dashboards and alert rules keying on the old name are outside this diff. Emitted as work item 2 above.
 - The retry wrapper added in cache.py is confined to an idempotent read and introduces no new failure surface — recorded here for the audit trail, no work item.
 
-**Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Engineer Agent to address them and re-invoke this skill on the updated diff — unless no finding is above `nit` severity and every nit's chosen fix path is a `trivial-tweak` (one `suggestion` or `blocker` anywhere in the list means re-invoke), in which case apply them in one implementer pass and do not re-invoke (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so no gate contract applies on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the calling skill's gate contract applies — a manifest `Write` filling `## Open gate` then `AskUserQuestion` in the same turn for `/quo-fix-issue` and `/quo-execute`; the two-step `TaskCreate` → `AskUserQuestion` contract for other callers. If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
+**Your next tool use MUST address these findings now.** Judge whether the work item set must be addressed (per the orchestrator's review-loop discipline). If yes, dispatch a fresh Engineer Agent to address them and re-invoke this skill on the updated diff — unless every finding is either a `nit` whose chosen fix path is a `trivial-tweak` or a `suggestion` the calling orchestrator's exit decision records as a residual (its chosen fix meets the `nit` test, a prior cold pass at this lane accepted the text it targets, and no implementer pass at this lane since was dispatched to change it; a `blocker` anywhere in the list means re-invoke), in which case apply them in one implementer pass and do not re-invoke (Agent dispatch is itself a tool call — no `AskUserQuestion` gate fires, so no gate contract applies on this lane). If the orchestrator's judgment instead routes to a user gate (escalating a contested finding, asking how to handle an ignored set), the calling skill's gate contract applies — a manifest `Write` filling `## Open gate` then `AskUserQuestion` in the same turn for `/quo-fix-issue` and `/quo-execute`; the two-step `TaskCreate` → `AskUserQuestion` contract for other callers. If no, carry the ignored items into the final/Bee-level summary so they remain visible. Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.
 ```
 
 **Shape 2 — No findings** (clean review):

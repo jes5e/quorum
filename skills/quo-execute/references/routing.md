@@ -2,6 +2,14 @@
 
 This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries the definitions, edge-case shims, and rationale behind the routing table those skills keep in their bodies. Nothing here fires a gate; every gate, its question text, and its choice labels live in the invoking skill's body. Read this file before routing a finding when the routing section is no longer in view, and never route from a summary of it.
 
+## Severity levels
+
+- Severity is consequence, orthogonal to depth. Apply the three tests in order; the first match wins.
+- `blocker` — what is there is wrong: a false statement, a failing or broken behavior, a violated contract. Test: someone acting on the current state is misled or fails.
+- `suggestion` — true and working as far as it goes, but a reader or the code will go wrong in a case it does not cover. Test: the fix changes what the text asserts or what the code does.
+- `nit` — true and complete; the fix makes it better. Test: the fix changes neither what is asserted nor what happens. Behavior-preserving refactors and wording are nits, at any depth.
+- The review skills carry the same three tests with worked examples. The orchestrator reads the tags and applies only the `nit` test itself, inside the residual clause of **Severity bounds the loop**; it never promotes a `nit`.
+
 ## What "highest-quality" means
 
 - The highest-quality fix path is the smallest change under which the code compiles, the tests pass, and every surface agrees with the invariant this unit's ticket names.
@@ -96,7 +104,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 ## (g) Re-dispatch ordering — the rationale
 
 - Dispatching the Engineer and a writer in the same round hands the writer a diff the pending code review is about to rewrite, forcing the writer's work to be redone.
-- The one elision is the final `trivial-tweak` nit pass: the code-review rung is the round **Severity bounds the loop** suppresses, so the affected writer follows that Engineer directly.
+- The one elision is the final pass that ships only `trivial-tweak` nit paths and residuals: the code-review rung is the round **Severity bounds the loop** suppresses, so the affected writer follows that Engineer directly.
 - A finding whose chosen fix path changes no source file carries no ordering constraint; re-dispatch that single writer lane alone.
 - Part (g) governs the review-finding re-dispatch path only; in `/quo-execute` the forward per-Subtask fan-out stays concurrent by design.
 
@@ -107,7 +115,8 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - **Why gate (c) offers no `Cancel` to a `suggestion` or `nit`.** Scope-bounding is a per-finding decision and a `Cancel` there would be ambiguous; the user retains `Ctrl-C` for run-level abort.
 - **Why accepting a blocker is unreachable.** Accepting a blocker ships the blocker.
 - **Why the deferral and its narrowing are one decision.** An entry recording only the deferral cannot distinguish a soft-fixed finding from an unfixed one.
-- **Why `Severity bounds the loop` gives up nothing.** The cold pass that raised a `trivial-tweak` nit already read the text it corrects, the fix is a `trivial-tweak` by the reviewer's own tag, and the post-completion review reads the whole diff, nit fixes included.
+- **Why `Severity bounds the loop` gives up nothing.** The cold pass that raised a `trivial-tweak` nit already read the text it corrects, and the fix is a `trivial-tweak` by the reviewer's own tag. A residual `suggestion` is one whose fix asserts and does nothing new, by the reviewer's own path description, on text a prior pass at that lane already read and no implementer pass at that lane since was dispatched to change. The post-completion review reads the whole diff, nit fixes and residuals included.
+- **Why the exit decision is written before it is acted on.** The `## Rounds` row is the only durable record of which lanes closed on what, for the summary and the audit trail. Writing it before the re-dispatch or the final pass borrows the manifest-write-then-act shape the gates use, but the row carries decisions and counts, never the findings. A compaction between the decision and the action therefore costs the pass itself: the resumed orchestrator finds no clean return to stop on, dispatches a fresh cold pass, and that round's decision rewrites the row.
 - **Why "Follow the trailer literally".** The review skills' routing trailer is the authoritative prescription; the surrounding prose is reference context, not a rule to recall from memory.
 - **Why the Engineer's return with `## Design question` is not a completion.** The Engineer stops rather than invent an unenumerated mechanism, so the diff on disk is partial by construction.
 - **Prose-adherence fragility.** These gates inherit a prose-adherence fragility that the manifest-write-then-ask contract narrows but does not close; it is an execution-time risk, not something this text fixes.

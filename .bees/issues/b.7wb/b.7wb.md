@@ -46,7 +46,7 @@ The per-phase timings this ticket asks for answer "where does wall-clock go". Th
 - **late** — the round found a pre-existing defect the first round should have caught. A reviewer-coverage problem, not a round-count problem.
 - **variance** — the round found only wording or presentation items on text a previous round accepted unchanged. This is the waste.
 
-The run summary's **Reviews** line renders, per slot, `N rounds (earned/late/variance = a/b/c)` beside the existing nit count. The classification is the orchestrator's judgment over the reviewer's findings list, made at the moment it already routes those findings, so it adds no dispatch and no gate.
+The run summary's **Reviews** line renders, per slot, `N rounds (earned/late/variance/unavailable = a/b/c/d)` (the fourth slot counts rounds whose classification a compaction lost) beside the existing nit count. The classification is the orchestrator's judgment over the reviewer's findings list, made at the moment it already routes those findings, so it adds no dispatch and no gate.
 
 **Why this shape.** Round count alone cannot distinguish a lane that converged on real defects from one paying a fresh reviewer for reviewer-to-reviewer wording variance. The b.zi3 report recorded three suggestion-tagged wording fixes at roughly 100K tokens each; the sixteen-round hand-edit batch scored roughly one third variance, with almost every earned round tracing to two edits made without enumerating their cases or readers. The shipped `**Severity bounds the loop**` rule holds a lane open for any `suggestion`; whether it needs an exit clause for variance rounds (the hand-edit process in this repo adopted one on 2026-09-11: a wording-only round on twice-accepted text closes the lane with residuals recorded) is a decision to make on this data, not on one run.
 
@@ -54,3 +54,6 @@ The run summary's **Reviews** line renders, per slot, `N rounds (earned/late/var
 
 **Mechanism note.** The classification is a new column on an existing summary line and a new judgment at an existing routing moment; it introduces no state the manifest does not already carry per lane and no name class. If the design review judges even that too much, the fallback is to classify rounds after the fact from the run's review transcripts, which the run summary already links.
 
+## Status (2026-09-16)
+
+The per-lane round classification asked for in the amendment above (earned / late / variance, plus `clean` for a confirming pass that raised nothing lane-holding) landed through Issue `b.upt` as the `classification` column of the manifest's `## Rounds` section and the `N rounds (earned/late/variance/unavailable = a/b/c/d)` (the fourth slot counts rounds whose classification a compaction lost) rendering on the **Reviews** line. Phase timings remain this ticket's open scope.

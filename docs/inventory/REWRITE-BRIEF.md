@@ -84,6 +84,19 @@ D9. **Severity bounds the loop** (b.bix) ships as written in the current bodies,
     because its `<issue-ids>` is plural where `/quo-execute`'s `<bee-id>` is not — a sanctioned Tier-2 divergence. (Its `Format` rung and staging are not deviations: §4 item 12 and the
     rationale reference already make every per-unit rule reusable at `postcomp-<n>` scope.) A cold review must not
     report either as an A2 violation.
+    *Amended 2026-09-16 (Issue `b.upt`):* the "ships as written … do not touch those skills" clause is superseded.
+    **Severity bounds the loop** is now a lead sentence plus seven one-rule bullets (still byte-identical in both
+    bodies); severity is defined by consequence with one ordered test per level (in `references/routing.md`
+    `## Severity levels` and the three review skills' selectivity paragraphs and worked examples); a residual clause
+    lets the orchestrator close a `suggestion` whose fix meets the `nit` test on text a prior pass at that lane
+    accepted; the per-round exit decision is written to `## Rounds` (new columns `classification`, `decision`,
+    `residuals applied without re-review`) before it is acted on; and Section 11's `Fix in this session` states which
+    reviewer lane reads a post-completion fix and prints a `**Reviews**` line at its close-out. The depth bound
+    and the `trivial-tweak` batching are unchanged; part (g)'s elision sentence (and its `routing.md` rationale)
+    now names the residuals the final pass may ship alongside `trivial-tweak` nits, and
+    `references/post-completion-prompt.md`'s depth sentence says the tag is load-bearing rather than informative,
+    because Section 11 now reads a `nit`'s depth to decide whether its fix gets a reviewer lane. A cold review must
+    not report any of these as a §1 / D9 / A2 violation.
 D10. **Every recommendation in DECISIONS.md cards 2–12 is accepted.** Where a card says "simplify", the rule set
     is preserved and the prose is not; where it says "move to reference", the rule moves to a shipped reference
     file; where it says "cut", only the named item is cut (doc-verification section → one bullet; TEST rungs 1–4
