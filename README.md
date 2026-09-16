@@ -160,7 +160,7 @@ The **Specs** hive (display name `Specs`, normalized name `specs`) holds Spec Be
 
 ## Recommended session settings
 
-**Subagent effort is pinned per role and is not affected by your session setting.** Every role quorum dispatches carries its own model and reasoning effort in the frontmatter of its `agents/<role>.md` file, and those pins override the session effort rather than inheriting from it — a role pinned at `high` runs at `high` whether you launched at `low` or at `xhigh`. Roles run at `high` minimum, with the two adversarial roles one tier higher. You don't need to think about it.
+**Subagent effort is pinned per role and is not affected by your session setting.** Every role quorum dispatches carries its own model and reasoning effort in the frontmatter of its `agents/<role>.md` file, and those pins override the session effort rather than inheriting from it — a role pinned at `high` runs at `high` whether you launched at `low` or at `xhigh`. Roles run at `high` minimum, with the Analyst one tier higher. You don't need to think about it.
 
 What your session setting *does* govern is the skill you invoke and the orchestration it runs. Recommendations below, covering every skill you invoke yourself — the three orchestrator-only reviewers (`/quo-engineer-review`, `/quo-test-writer-review`, `/quo-doc-writer-review`) are omitted deliberately, since they never run as your session:
 

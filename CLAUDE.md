@@ -144,7 +144,7 @@ Pinned per role in `agents/<role>.md` frontmatter (`model` + `effort`) and honor
 | Role | Model | Effort |
 |---|---|---|
 | Analyst (`agents/analyst.md`) | Opus (always) | `xhigh` |
-| Code Reviewer (`agents/code-reviewer.md`) | Opus (always) | `xhigh` |
+| Code Reviewer (`agents/code-reviewer.md`) | Opus (always) | `high` |
 | Engineer (`agents/engineer.md`) | Opus (always) | `high` |
 | Product Manager (`agents/pm.md`) | Opus (always) | `high` |
 | Test Writer (`agents/test-writer.md`) | Opus (always) | `high` |
@@ -152,9 +152,9 @@ Pinned per role in `agents/<role>.md` frontmatter (`model` + `effort`) and honor
 | Doc Writer (`agents/doc-writer.md`) | Opus (always) | `high` |
 | Doc Reviewer (`agents/doc-reviewer.md`) | Opus (always) | `high` |
 
-The tiering rule: every role that produces or reviews work runs at `high` minimum, and the two adversarial roles run at `xhigh` — the Analyst, which diagnoses root cause before any implementation, and the Code Reviewer, which hunts for what no test covers. `xhigh` everywhere was rejected on wall-clock; effort helps most on open-ended search and diagnosis and least on well-specified mechanical work.
+The tiering rule: every role that produces or reviews work runs at `high` minimum, and the Analyst — which diagnoses root cause before any implementation — runs at `xhigh`. The Code Reviewer also ran at `xhigh` until 2026-09-16, when the first full-run cost ledger (Issue `b.vtw`) showed its `xhigh` rounds at roughly twice the wall clock of the `high` reviewers with no gain in completeness (two `late` rounds followed an `xhigh` first pass); it now runs at `high`. `xhigh` everywhere was rejected on wall-clock; effort helps most on open-ended search and diagnosis and least on well-specified mechanical work.
 
-**Reviewer invariant: never pin a reviewer below the role it reviews.** A gate weaker than the work it inspects is not a gate. The invariant holds across the table today — Engineer `high` / Code Reviewer `xhigh`, Test Writer `high` / Test Reviewer `high`, Doc Writer `high` / Doc Reviewer `high` — and must be preserved by any future retune. Raising an implementer's tier without at least matching it on that implementer's reviewer is a defect, not a tuning choice.
+**Reviewer invariant: never pin a reviewer below the role it reviews.** A gate weaker than the work it inspects is not a gate. The invariant holds across the table today — Engineer `high` / Code Reviewer `high`, Test Writer `high` / Test Reviewer `high`, Doc Writer `high` / Doc Reviewer `high` — and must be preserved by any future retune. Raising an implementer's tier without at least matching it on that implementer's reviewer is a defect, not a tuning choice.
 
 **"Always Opus" fixes the tier, not the version.** Frontmatter `model: opus` pins the model *tier*; the *version* tracks the operator's session — a session on Opus 4.8 dispatches workers on Opus 4.8, a session on Opus 5 dispatches Opus 5. Don't read "always Opus" as a claim that a specific Opus version is pinned anywhere in this repo.
 

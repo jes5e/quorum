@@ -348,6 +348,7 @@ The run-start prompt that offered to downgrade "support roles" (Doc Writer, PM, 
 **Acceptance criteria.**
 
 - All eight `agents/<role>.md` files pin both model and effort: Analyst and Code Reviewer at `xhigh`, Engineer, PM, Test Writer, Test Reviewer, Doc Writer, and Doc Reviewer at `high`, with `model: opus` unchanged on every one. No reviewer is pinned below the role it reviews.
+  - *Superseded in part (2026-09-16):* the Code Reviewer moved to `high` on run evidence (Issue `b.vtw`); the Analyst is the one role above `high`. The invariant still holds.
 - The run-start Opus/Sonnet prompt is gone from `/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic`, along with every downstream reference to the operator's model choice; `model: opus` on the Doc Writer, PM, and Doc Reviewer is unconditional.
 - Those same three skills fire a session-effort gate only when the session is strictly below their floor (`medium`, `medium`, `high` respectively), and are otherwise silent. The gate offers exactly two paths — proceed, or exit to change the setting — and states that subagent effort is pinned and unaffected. When the session effort cannot be read, the gate is skipped.
 - No other skill gains a run-start prompt. `/quo-plan`, `/quo-status`, and `/quo-file-issue` are unchanged.

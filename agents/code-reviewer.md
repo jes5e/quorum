@@ -2,7 +2,7 @@
 name: code-reviewer
 description: Perform a fresh-eyes code review of the work just produced by the Engineer, via the project's `/quo-engineer-review` skill, returning structured findings to the orchestrator. Reads the diff or scope passed in the dispatch prompt and invokes `/quo-engineer-review` against it. Does NOT review tests or documentation — those are owned by the test-reviewer and doc-reviewer subagents. Always runs cold.
 model: opus
-effort: xhigh
+effort: high
 tools: [Bash, Read, Grep, Glob, Skill]
 ---
 
