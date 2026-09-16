@@ -41,3 +41,21 @@ A cold research agent measured every shipped artifact and classified the four la
 
 Estimated cuttable with no behavior change: ~5,000 words; movable to references: a further ~1,500. Sequence after b.pcc so the two planning-side bodies share one manifest and gate shape and one deferral-hygiene text instead of two near-copies.
 
+## Evidence from the first planning-chain validation run (2026-09-16, event_consumer_service)
+
+`/quo-plan` → `/quo-breakdown-epic` ran with `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`; the TaskList tools worked once enabled. The agent's skill-text defect list, recorded here as rewrite input rather than patched (the operator decided 2026-09-16 not to hand-edit a body slated for clean-room rewrite):
+
+1. Step 5g says the gate contract applies at every gate but its list omits the Step 0a distill gate and the Step 3 scope gate.
+2. The Step 3 scope gate fires on identical content to the Step 0a distill gate; the second answer is predetermined.
+3. `quo-write-prd` 3a then 6 and `quo-write-sdd` 4a then 7: on the inline path the draft gate and the final-body gate bracket only a file write, so the second is predetermined; the "not a duplicate" claim holds only on the solo path. Fired six times in one run.
+4. Step 4b: the writers' findings payload is the only revise path; a one-line trivial-tweak costs a full writer invocation with two gates. Reviewer depth tags are never routed on. (The orchestrators' b.bix nit-batching rule never reached the planning side.)
+5. Step 4c revise loop step 4: cross-document findings go to both writers regardless of which document the chosen fix path targets.
+6. `quo-write-sdd`: "Explore dispatch runs on every invocation" vs the findings text's "re-dispatching where appropriate".
+7. Step 5a detection query uses `report: [ticket_id, title, reference_materials]`, which the bees CLI rejects; `quo-file-issue` Sub-step A.1 already documents the limitation.
+8. Step 5e time-budget short-circuit still routes blocker fixes through full writer re-invocations; no direct-edit path.
+9. The plan reviewer suggested a cross-hive dependency edge the CLI rejects (an Epic cannot depend on a Bee); the reviewer prompt should say a release gate is prose.
+10. Ordering: spec review runs before Epics exist, substance review after; the substance reviewer reopens PRD/SDD, which triggers a capped spec re-run, which can reopen the PRD again. Proposed: substance review on PRD and SDD before Epics, a short decomposition check after.
+11. `/quo-file-issue` Step 4 commits mid-run; Step 7 does not anticipate an inline filing commit.
+
+Cost observation: ~25 gates answered, ~9 carrying a real choice. Two compounding causes: two gates per writer invocation with no lightweight edit path, and three real first-draft design errors the plan reviewer correctly caught, each fix then paying full writer cost. The rewrite's decisions should give the planning loop the orchestrators' cost controls (one gate per real decision, trivial-tweak findings applied without re-invocation, routing by fix-path target) and settle the review ordering (item 10).
+
