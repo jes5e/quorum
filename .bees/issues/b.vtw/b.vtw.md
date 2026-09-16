@@ -1,0 +1,167 @@
+---
+id: b.vtw
+type: bee
+title: 'Proportional review: pipeline shape follows the delta class re-evaluated every round; confirmation keyed to consequence (behavior gets a cold pass, contract text one end-of-lane read, comments the sweep); literal smallest-fix pick rule; premise check, earned-chain escalation, and a lane stop gate; PM traceability-only in fix mode; relay by path; native cost ledger; unattended mode — replaces quality-over-cost as the loop''s principle (b.yvu evidence: 37 dispatches, 4.36M tokens for a change correct at Engineer round 1)'
+parent: null
+reference_materials: null
+created_at: '2026-09-16T19:25:18.270242'
+status: open
+schema_version: '0.1'
+guid: vtwwerz29n7y8f6jwec7fqm6hncmwpbi
+---
+
+## Description
+
+Quorum's review loop has no cost term. Every rule in it pushes toward more review and none says "enough": quality over cost, effort never the tiebreaker, a dispatch settles nothing until a cold pass reads it, false text is a `blocker`, every round a fresh full-diff reviewer at `xhigh`, the PM re-reviews source Phase A already cleared, and a pick rule that rewards depth. Each rule answered a real failure; together they make a correct change cost millions of tokens on prose. This Issue replaces the principle and restructures the loop so review effort is spent in proportion to the consequence of being wrong, the pipeline shape follows the size of the change (re-evaluated every round), and a run that is going wrong is stopped by a rule rather than by a human noticing the bill.
+
+This supersedes `b.upt`'s decision H3 (false text is a `blocker` that holds the lane) and its residual clause, keeps `b.upt`'s `## Rounds` classification and per-round write, absorbs `b.7d5` (the row gains a reader), and lands the per-dispatch cost record `b.7wb` asked for. It also withdraws the 2026-08-17 operator instruction ("quality is our highest priority and we don't care about saving tokens") as a routing principle; the operator withdrew it on 2026-09-16.
+
+## Evidence
+
+The first `/quo-fix-issue` run on the `b.upt` scale (`event_consumer_service` Issue `b.yvu`, 2026-09-16), a one-servicer feature with a proto bump, tests, and docs:
+
+- 37 dispatches, 4,355,764 subagent tokens, 4h27m wall clock. Code review 9 rounds / 1.29M tokens; Engineer 11 rounds / 720k.
+- The feature was correct on every reachable request shape at Engineer round 1. Nothing after it changed production behavior.
+- Code rounds 2–4 (`late`, `late`, `clean`) each found one missing client-facing caveat in the proto comments; all three were in the Issue body, and the directive had reduced them to one clause. One caveat per ~150k pass.
+- The PM's Phase C `blocker` contradicted the Analyst's Blast radius and Code Reviewer round 1 (it cited a test that mocks out the guard). It routed to the Engineer ungated (trivial-tweak path, row 6). The Engineer's refactor changed nothing reachable, and its new comments started a cascade: Code rounds 5–9, all `blocker`, all prose, each a true statement about the previous round's comments. 1.09M tokens for one behavior-neutral refactor and five prose passes.
+- Two Step-1 picks of `refactor-locally` over the reviewer's `[preferred]` `trivial-tweak` at Phase C round 2 bought two writer passes and two reviewer rounds (~500k) for a helper split and a table.
+- The residual clause fired zero times in fifteen review rounds: a true `suggestion`'s fix changes an assertion by definition, so condition (i) can only catch a mis-tag.
+- Operator override mid-run: one comment fix applied with no confirming pass; the post-completion sweep read it and raised nothing. Five text findings left unapplied under a second override; the sweep said to apply them (one-clause edits). The correct rule is apply-without-round, never defer.
+- Six gates were self-approved because the run was unattended; one (following the Issue body over the Analyst's fold-in recommendation) was a real choice and fed both the cascade and a release-gate risk.
+- Relay bloat: `## Blast radius` (~1,500 words) inline in 14 dispatches; every Engineer completeness list verbatim in every reviewer dispatch; reviewer rounds cost 114k–171k regardless of the delta's size.
+- A clean run with every lane closing at round one still costs nine dispatches and ~1.45M tokens (Analyst, Engineer, Code Reviewer, both writers, both reviewers, PM, sweep). A plain session plus one fresh-eyes review costs 200k–400k. The floor, not only the churn, is the problem.
+
+Full ledger and round table are in the run's report; the round classification landed by `b.upt` is what made this measurable.
+
+## The principle
+
+Quorum exists to ship a change that is correct in production, tested so regressions are caught, and documented so a user or operator can act on it, with as little human attention as possible and at a cost proportional to the change. The measure of a run is those three outcomes plus cost and time. Review effort follows the consequence of being wrong: code behavior and test outcomes get a cold confirming pass and blockers-never-accepted; text a client or operator relies on gets one read at the end of its lane; internal comments get fixed and left to the post-completion sweep. Between fix paths that both fully fix the stated defect, the smaller one is picked; effort is a legitimate tiebreaker there. Recurrence prevention and structural improvement are follow-up Issues, never in-run picks. Doing the right thing may cost more; polishing text to perfection with fresh full-diff reviewers is not the right thing.
+
+## The changes
+
+### C1. The review shape follows the class of the delta, re-evaluated every round
+
+**Rule.** The orchestrator classifies a `text` Issue from its body before any dispatch; for every other Issue the Analyst's proposal carries one line `Change class: <small-code | feature>` (definitions below). Round one of every lane takes its shape from that class. Every re-dispatch after the first takes its shape from the class of the delta the previous implementer pass produced, which the implementer reports in its return as one line `Kinds changed: <behavior | tests | contract-text | comments>` (one or more), and which the orchestrator checks against `git diff --stat` since that lane's last round — a mechanical check, never a reading of file contents.
+
+**Classes and shapes.**
+
+- `text` — the change touches no code behavior and no test outcome: docs, comments, proto comments, changelog. The orchestrator classifies this case itself from the Issue body before any dispatch (a judgment over ticket text, which it already makes when it validates the Issue), so no Analyst runs. Pipeline: one Doc Writer (or Engineer for source-file comments), then one reviewer read of the whole diff; no Test Writer, no PM, no sweep. If the writer's `Kinds changed` reports `behavior` or `tests`, the class was wrong: the orchestrator re-classifies as `small-code`, dispatches the Analyst, and the run continues from there with the writer's diff on disk. Target: ≤ 2 dispatches, ≤ 250k subagent tokens, ≤ 20 minutes — the operator's hand run of b.ban (one implementer session plus one 109k-token reviewer, 12m36s, three real corrections) is the baseline this must match.
+- `small-code` — a bounded code change with no new mechanism per the Analyst's definition. Pipeline: Analyst, Engineer → Code Reviewer under the loop bound in C3, Test Writer → Test Reviewer, Doc Writer → one end-of-lane Doc Reviewer read; PM traceability-only (C6); sweep. No Bee-level or second PM pass.
+- `feature` — anything else. The full pipeline as today, under C2–C7.
+
+**Per-round re-evaluation.** After any implementer pass whose `Kinds changed` is only `comments`, or only `contract-text`, the lane's next review is the C3 shape for that kind, whatever the Issue's class. A lane whose last two implementer passes were both text-only is closed at the next text-only finding: the fix is applied in one final pass and no reviewer round is dispatched. A lane whose delta is `behavior` or `tests` gets its confirming pass regardless of the Issue's class.
+
+**Cases.** (i) Inputs: the Analyst's class line (transcript, relayed into the manifest as `**Change class:**`), the implementer's `Kinds changed` line (transcript), `git diff --stat` since the lane's last round (git). (ii) Missing or malformed `Kinds changed` → derive from `git diff --stat`: only files the project's CLAUDE.md `## Documentation Locations` names or `.md` / proto-comment-only hunks → `contract-text`; test paths → `tests`; otherwise `behavior` (fail toward more review). (iii) Compaction: the class line lives in the manifest; the `Kinds changed` line is re-derived from git, so nothing is lost. (iv) Empty delta (implementer changed nothing) → no review round; the lane closes. (v) Dirty tree at run start → the diff base is the lane's last round, not HEAD, so pre-existing dirt is not classified. (vi) The PM in-flight site (`/quo-execute` per-Task): the per-Task PM's review is the code-review rung there and keeps C3's hold set; its shape is not re-evaluated by kind because it reviews a whole Task. (vii) Post-completion lanes: a `postcomp-<n>` fix is classified by its own `Kinds changed`; a `comments` fix gets no reviewer lane; `contract-text` gets one read; `behavior`/`tests` gets the mapped reviewer once.
+
+### C2. The pick rule becomes literal
+
+**Rule.** At Step 1, pick the smallest enumerated path that fully fixes the stated defect as the finding describes it. Take a deeper path only when every shallower path leaves that defect partly unfixed (row 4's test). A path that also prevents recurrence, centralizes, or restructures is not a fuller fix of the defect; when a reviewer proposes one, the pick is the shallower path and the deeper one is a `defer-to-new-Issue` refinement carrying the reviewer's sketch, recorded once, never dispatched in-run. `[preferred]` on the shallower path is confirmation, not a narrowing to override. Effort is a legitimate tiebreaker between paths that both fully fix the defect.
+
+**Readers.** `routing.md` `## What "highest-quality" means` (rewritten: the six bullets become the rule above), `## Gate (d) — the (Recommended) marker` (the "when `[preferred]` marks a narrowing take the fuller path" bullet is deleted), both bodies' `**(a) Pick the path, then route on it.** **Step 1 — pick.**` sentence (Tier 1), `agents/pm.md` (no change; its triage is by severity), `docs/sdd.md` routing feature, the operator memory that encoded 2026-08-17 (already revised).
+
+### C3. Confirmation proportional to consequence; apply, never defer
+
+**Rule (replaces `b.upt`'s H3 and residual clause; keeps its `## Rounds` classification).** Severity keeps its consequence definition and its routing role (what must be fixed before shipping; `blocker` never accepted). What earns a further reviewer round is the kind of the fix, from the implementer's `Kinds changed`:
+
+- `behavior` or `tests` → one cold confirming pass at the lane (the existing "a dispatch settles nothing until a later cold pass has read its result" rule, now scoped to these kinds). A `blocker` here is never accepted.
+- `contract-text` (README, runbooks, proto and API comments, SDD statements a person acts on, changelog) → applied; read once by the lane's reviewer after the lane's first fix pass, together with everything else that lane changed. Findings from that confirming read are applied in one final implementer pass and the lane closes; no third read. A text lane is therefore at most two reviewer reads: the hunt and one confirmation.
+- `comments` (internal comments, docstrings, internal prose) → applied in the lane's final implementer pass; read by the post-completion sweep; no round.
+
+Findings of any severity whose fix is text are applied, never deferred: the b.yvu override that deferred five one-clause fixes to a follow-up Issue was the wrong disposition and the sweep said so. `## Rounds` keeps `classification` and `decision`; the residual columns and the residual clause are removed; `nits applied without re-review` becomes `text fixes applied without re-review` (count). Part (g)'s elision applies to any final pass that ships only text fixes.
+
+**Cases.** (i) A `blocker` on `behavior` → unchanged from today. (ii) A `blocker` on `contract-text` (a false sentence in the README) → applied in the writer's next pass; the lane's end-of-lane read confirms it; no dedicated round. (iii) A `blocker` on `comments` → applied; sweep. (iv) A mixed pass (`behavior` + `comments`) → one confirming pass reads both. (v) First round → the hold set is by kind from the start; round 1 is the hunt (C5). (vi) Compaction → `Kinds changed` re-derived from git per C1(ii). (vii) The reviewer cannot tag kind; the implementer's return and git do. (viii) Post-completion → C1(vii).
+
+**What gets less attention, named.** A one-line code fix still gets its cold pass. A false client-facing sentence gets one read at the end of its lane instead of one per fix. A false internal comment gets the sweep instead of a lane pass. The b.yvu data: the one comment fix shipped that way drew no finding from the sweep.
+
+### C4. Stop rules that route to the Analyst or to the operator
+
+Three new routing conditions, each with its inputs enumerated; none dispatches an implementer.
+
+- **Premise check.** A `blocker` or `suggestion` whose claim contradicts the approved directive's `### Blast radius` or `### Policy decisions this change implies`, or contradicts any prior clean Code Reviewer return that covered the same site (the PM has no lane rounds of its own, so its findings are checked against the Code Reviewer's returns), routes to the Analyst (the Revise shape carrying the finding verbatim) before any implementer. The Analyst returns `premise-holds` (route the finding normally) or `premise-false` with the reason; a `premise-false` finding is recorded under **Ignored Review Feedback** with the Analyst's reason and dispatches nothing. Inputs: the directive (manifest carries its path; relayed inline at round 1), prior returns at the lane (transcript; when unreadable, the check does not fire and the finding routes normally — fail toward review, not toward dispatch). The orchestrator judges "contradicts" over the finding text and the directive text, never over file contents.
+- **Earned-chain escalation.** When a lane's `## Rounds` row shows two consecutive `earned` classifications, the next action is an Analyst re-dispatch carrying the chain (findings and fixes since the chain's first finding), not another Engineer. The Analyst revises the directive or names the missing rule; the Engineer's next dispatch carries it. Inputs: the `## Rounds` row (manifest); the chain (transcript; when unreadable, the Analyst re-derives from the diff per the existing re-derivation shape).
+- **Lane stop gate.** A lane reaching its fourth round, or a run crossing an operator-set token budget (argument `--budget <tokens>`; no default), fires a gate before the dispatch: question `Lane <slot> at <scope> is about to start round <n> (run: <dispatches> dispatches, <tokens> subagent tokens). How should it proceed?`, choices `Continue`, `Send the chain to the Analyst`, `Close the lane: apply text fixes, file the rest`. In unattended mode (C7) the default is `Send the chain to the Analyst` when the last two rounds are `earned`, else `Close the lane: apply text fixes, file the rest`; `Continue` is never the unattended default. This is a gate, not a cap: it asks, it does not skip.
+
+### C5. Cheaper dispatches
+
+- **One hunt, then confirmations.** A lane's first review is the open-ended pass. Every later review is a confirming pass: it still sees the whole diff, but its dispatch prompt names the previous implementer's `Kinds changed` and `## Files changed` and asks two questions only — is the fix correct, and did it falsify anything adjacent. The review skills gain a `## Confirming pass` input heading that switches their checklist to those two questions.
+- **Effort.** Role frontmatter pins effort statically and the `Agent` tool has no per-dispatch override, so per-round effort needs a decision (H3 below). Default proposal: `code-reviewer` moves to `high`; the reviewer invariant holds (Engineer is `high`); the Analyst stays `xhigh`. Evidence: `xhigh` round one did not buy completeness in b.yvu (two `late` rounds followed), and round cost did not fall with delta size.
+- **Relay by path after round one.** `## Blast radius` and `## Engineer's completeness evidence` are relayed inline on a lane's first dispatch and by path thereafter, written once to `<tempdir>/.quorum/blast-radius-<unit-id>.md` and `<tempdir>/.quorum/completeness-<unit-id>-r<n>.md` under the scratch-file convention (never deleted; deterministic names keyed on the unit and round, a documented exception like the manifest's). The dispatch table's "never as a file path" cells become "inline on the first dispatch, by path after". Reviewer skills read the path. Second-order bullets are rendered de-duplicated across rounds. Depends on the scratch root outliving a dispatch, which it does within a run in every environment; the cross-container fix is environmental.
+- **Required statements enumerated before Engineer round one.** The Analyst's `### Recommended approach` gains a required sub-list `Required statements:` — every client- or operator-facing statement the change must make (proto comments, README, runbook, changelog), each traced to the body — or the fixed line `None — the change makes no client- or operator-facing statement.` The Engineer and Doc Writer dispatches relay it; the reviewers verify the diff against it and report a gap as one finding, the completeness-evidence pattern applied to text. This is the fix for b.yvu rounds 2–4.
+
+### C6. One review per artifact per cycle
+
+In fix mode the PM does spec traceability, scope, and the tracker check only; it does not invoke `/quo-engineer-review` (Phase A's Code Reviewer has read the source to clean) or `/quo-doc-writer-review` (the Doc Reviewer lane runs in Phase C). Its time-budget short-circuit becomes moot in fix mode. In execute mode the per-Task PM keeps its in-flight `/quo-engineer-review` because that site has no Code Reviewer (Clause 1). `agents/pm.md` gains the mode split in its in-flight orchestration bullet; both bodies' Section 4 Phase C / per-Task PM text names it.
+
+### C7. Cost visible; unattended mode
+
+- **Cost ledger, native.** The manifest gains `**Cost:** dispatches <n>; subagent tokens <t>` rewritten from each completion notification's usage, plus a `## Ledger` section with one row per dispatch (role, scope, round, tokens, tool uses, duration). Every per-unit summary's **Reviews** line is followed by `**Cost**: <dispatches> dispatches, <tokens> subagent tokens, <wall clock>`. This lands the per-dispatch half of `b.7wb`; phase timings within a dispatch remain out of scope.
+- **Unattended mode.** Argument `--unattended`. Gates whose answer is determined by prior context self-approve and are logged in the summary under `**Gates self-approved**`; gates that carry a real choice stop the run with the resume command, exactly as the context guard does. Determined, by gate: isolation (create the recommended branch); Analyst gate when the verdict is `recommend-as-stated` or `recommend-with-refinements` with no scope-split recommendation (Approve); routing (c)/(d) when a `(Recommended)` choice exists (take it); deferral hygiene (take the annotations); post-completion disposition when no `blocker` is present (`File as issue tickets`); SR-6.7 / SR-4.6 (`Accept ... and proceed`). Real choice, stop: Analyst verdict `recommend-different-approach` or `escalate-to-user`, or any scope-split recommendation (b.yvu's decision 3 was this case); routing (d) with no `(Recommended)`; post-completion with a `blocker`; the C4 lane stop gate (takes its unattended default instead of stopping, as stated there); unexplained movement. Attended runs are unchanged.
+
+## Case enumeration for the new routing inputs (summary)
+
+| Input | Source | Compaction | Empty / missing | Fail direction |
+|---|---|---|---|---|
+| `Change class` | Analyst return → manifest field | survives | Analyst omitted it → `feature` | more review |
+| `Kinds changed` | implementer return, checked vs `git diff --stat` | re-derived from git | omitted → derive from git; no diff → lane closes | `behavior` when unsure |
+| Premise contradiction | finding text vs directive text / prior clean return | prior return unreadable → check does not fire | no directive (execute mode: Subtask body) → check against the body | route normally |
+| Consecutive `earned` | `## Rounds` row | survives | row missing → no escalation | none (gate at round 4 still fires) |
+| Lane round count / budget | `## Lanes` round, `**Cost:**` | survive | no budget set → round rule only | gate fires |
+| Gate determinacy | the gate's own inputs | n/a | unreadable → real choice (stop) | stop |
+
+## Reader sweep (every changed literal or semantic)
+
+- `**Severity bounds the loop.**` block (Tier 1, both bodies §7): hold set by kind; residual clause removed; `## Rounds` columns `classification | decision | text fixes applied without re-review`; render literal `N text fixes applied without re-review`; `N rounds (earned/late/variance/unavailable = a/b/c/d)` unchanged. Readers: both bodies §2 template and bullet, §7, §8 templates, execute §13, `routing.md` rationale index, `tests/test_orchestrator_structure.py` anchors (`N residuals applied without re-review`, `**Residual clause.**` removed; new anchors added), `docs/sdd.md` (b.upt feature marked superseded in part; new feature), `docs/prd.md`, `REWRITE-BRIEF.md` D9 and D12 amendments, `b.upt` (status note), `b.7d5` (closed by the `## Rounds` reader in C4), `b.7wb` (per-dispatch half landed).
+- Step 1 pick sentence (Tier 1) and `routing.md` `## What "highest-quality" means`, `## Gate (d)` marker bullet: C2. Readers: `docs/sdd.md` routing feature; the review skills' `**Convergence brief.**` paragraph (already says smallest change; unchanged).
+- New manifest fields `**Change class:**`, `**Cost:**`, section `## Ledger`: both bodies §2 (template, bullets, foreign-manifest reset list), §8 checkpoint prune rule (ledger rows are never pruned within a run), `docs/sdd.md` D1, tests (`## Ledger` anchor).
+- New return lines `Change class:` (Analyst) and `Kinds changed:` (Engineer, Test Writer, Doc Writer): `agents/analyst.md` structured-output contract; `agents/engineer.md` changed-file bullet; `agents/test-writer.md`, `agents/doc-writer.md` return sections; both bodies §5 dispatch table (new rows); `tests/test_orchestrator_structure.py` `CONTRACT_SURFACES`.
+- New Analyst sub-list `Required statements:` and fixed line: `agents/analyst.md`; both bodies §5 (relay row: Engineer, Doc Writer, Code Reviewer, Doc Reviewer); the three review skills (a list-gap check); `agents/pm.md` (relay).
+- New review-skill input heading `## Confirming pass`: three review skills (checklist switch); both bodies §5 dispatch shape; `agents/code-reviewer.md`, `test-reviewer.md`, `doc-reviewer.md` (pass-through).
+- New Analyst return values `premise-holds` / `premise-false`: `agents/analyst.md` (a `## Premise check` dispatch shape and return line); both bodies §4 (Design-question rung gains the premise route), §6 (no gate), §7 (routing table row 0: premise check precedes Step 1 for findings meeting the condition); tests.
+- New gate `Lane stop` with its three labels: both bodies §6 and §7; `tests/test_orchestrator_structure.py` `SHARED_GATE_LABELS`; `docs/sdd.md`.
+- New arguments `--unattended`, `--budget <tokens>`: both bodies §4 run start (argument parsing), §6 (determinacy table), §13 (`**Gates self-approved**`); README skill table and usage; `docs/prd.md`.
+- Relay-by-path cells: both bodies §5 dispatch table; `agents/pm.md` and `agents/code-reviewer.md` relay bullets ("verbatim" → "inline on the first dispatch, by path after"); the three review skills (read the path); CLAUDE.md `## Scratch-file convention` (two new documented deterministic-name exceptions); README scratch-dir paragraph.
+- PM fix-mode split: `agents/pm.md` in-flight orchestration bullet and time-budget bullet; both bodies §4 (fix: Phase C PM text; execute: per-Task PM text unchanged); `docs/sdd.md`.
+- Effort pin (H3): `agents/code-reviewer.md` frontmatter; CLAUDE.md `## Model assignment in execution skills` table and reviewer-invariant paragraph; README effort paragraph; `docs/sdd.md` effort feature.
+- Governance text: CLAUDE.md `## Working on the orchestrator skills` cold-review bullet (behavior findings earn a round; text findings are applied — align with C3); the operator memories (already revised 2026-09-16); `REWRITE-BRIEF.md` D12 ("nothing reduces review coverage" → "review coverage is proportional to consequence as this Issue defines it").
+
+## Files and sections touched
+
+Shipped: `skills/quo-fix-issue/SKILL.md` (§2, §4, §5, §6, §7, §8, §11, §13), `skills/quo-execute/SKILL.md` (same), `skills/quo-execute/references/routing.md`, `skills/quo-execute/references/post-completion-prompt.md` (depth sentence already load-bearing; add `Kinds changed`), `skills/quo-engineer-review/SKILL.md`, `skills/quo-test-writer-review/SKILL.md`, `skills/quo-doc-writer-review/SKILL.md` (`## Confirming pass`, required-statements gap check), `agents/analyst.md`, `agents/engineer.md`, `agents/test-writer.md`, `agents/doc-writer.md`, `agents/pm.md`, `agents/code-reviewer.md` (frontmatter, relay bullet), `agents/test-reviewer.md`, `agents/doc-reviewer.md`. Repo-only: `tests/test_orchestrator_structure.py`, `docs/sdd.md`, `docs/prd.md`, `docs/inventory/REWRITE-BRIEF.md`, `CLAUDE.md` (scratch exceptions, model table, cold-review bullet), `README.md` (arguments, effort, scratch dir), tickets `b.upt`, `b.7d5`, `b.7wb`.
+
+Line budget: both bodies are at 365 / 382 against the 550 cap; C1, C4, and C7 add sections' worth of text. The batch may need to move the §6 gate definitions' rationale to `references/rationale.md` to stay under 500. State the count in the commit.
+
+## Coverage accounting
+
+Less attention than today, stated: a false client-facing sentence is read once at the end of its lane rather than once per fix; a false internal comment is read by the sweep rather than by its lane; re-rounds are confirming passes at `high` (pending H3) with a two-question checklist rather than open-ended hunts at `xhigh`; the PM in fix mode no longer re-reviews source and docs that dedicated lanes reviewed; a `text`-class Issue gets one reviewer and no sweep. Unchanged: every behavior or test fix gets a cold confirming pass over the whole diff; behavior blockers are never accepted; the sweep reads everything for `small-code` and `feature`; the Analyst runs on every Issue; human overrides are the existing gates plus one new one that asks rather than skips. Named residual risks: a mis-reported `Kinds changed` (the git cross-check is the guard); a `text`-class misjudgment by the Analyst (the implementer's `Kinds changed` = `behavior` re-escalates the shape); a confirming pass missing an adjacent defect the hunt would have found (the sweep is the backstop).
+
+## Validation plan and targets
+
+Two `/quo-fix-issue` runs in `event_consumer_service` after the batch lands and the container is rebuilt, both with `--unattended` and the report-collecting prompt plus the cost ledger:
+
+1. **A `text`-class Issue** (b.ban-shaped: several one-clause doc edits). Baseline: the operator's hand run of b.ban in a plain session with one fresh-eyes review (wall clock and reviewer tokens recorded). Target: ≤ 3 dispatches, ≤ 350k subagent tokens, every edit applied, the end-of-lane read finding no error of fact the hand run's reviewer found.
+2. **A `small-code` or `feature` Issue** of b.yvu's shape. Baseline: b.yvu — 37 dispatches, 4.36M tokens, 4h27m, code review 9 rounds. Target: ≤ 12 dispatches, ≤ 1.8M tokens, code review ≤ 3 rounds, and no production-relevant regression that the b.yvu pipeline would have caught (judged by the sweep and the operator's read of the diff).
+
+Measures: the native ledger; `## Rounds` classification per lane; every premise-check and earned-chain escalation with its outcome; every gate self-approved and every stop; every text fix applied without a round and what the end-of-lane read or sweep said about it. Miss either target and the design is wrong in a way to name, not to tune.
+
+## Decisions for operator confirmation
+
+1. **Pipeline classes and their lane sets (C1).** Confirm the three classes and that `text` runs no Test Writer, no PM, and no sweep.
+2. **Contract text gets one end-of-lane read, not per-fix confirmation (C3).** Confirm; this is the H3 reversal made precise.
+3. **Effort (C5).** Per-dispatch effort cannot be overridden and a second reviewer role file is new machinery. Options: (a) `code-reviewer` to `high` (default proposal; invariant holds); (b) keep `xhigh` and accept round cost; (c) add `code-reviewer-confirm` at `high` as a ninth role. Recommend (a).
+4. **PM traceability-only in fix mode (C6).** Confirm removing its in-flight engineer and doc reviews there.
+5. **Lane stop gate at round four and the unattended defaults (C4, C7).** Confirm the threshold and that `Continue` is never the unattended default.
+6. **Unattended-mode determinacy table (C7).** Confirm which gates count as determined; in particular that an Analyst scope-split recommendation is always a real choice (b.yvu's decision 3).
+7. **Relay by path after round one (C5)** and the two new deterministic scratch names. Confirm.
+8. **Sequencing — two batches, A first.** Batch A is the loop: C2 (pick rule), C3 (confirmation by kind), C4 (premise check, earned-chain escalation, lane stop gate), C6 (PM traceability-only in fix mode) — Section 7, Section 4, the routing reference, pm.md, the review skills' trailer, and their readers. These are internally coupled and land together; on b.yvu's ledger they remove the 1.09M cascade, the 500k of over-deep picks, and every prose confirming round, taking 37 dispatches to roughly 15. Batch B is C1 (delta-classed pipeline), C5 (confirming-pass heading, relay by path, required statements), and C7 (ledger, `--unattended`) — new inputs, headings, and arguments. Each batch runs under the rules it ships: round one the hunt, round two a confirming pass, stop and ask at round three; the Code Reviewer pin is `high` for both (H3, landed 2026-09-16). Validate after A on a b.yvu-class Issue against the ≤ 12 / 1.8M target, then land B and validate the text-class target against the b.ban baseline.
+
+## Relation to open tickets
+
+- `b.upt`: superseded in part (H3, residual clause); its classification, `## Rounds` write-before-act, consequence-defined severity for routing, and worked examples stand.
+- `b.7d5`: absorbed — C4's earned-chain escalation and lane stop gate read the `## Rounds` row, giving it the reader it lacked.
+- `b.7wb`: per-dispatch ledger landed by C7; phase timings within a dispatch remain its scope.
+- b.yvu report defects: 1 → C1/C5; 2 → C3; 3 → C4; 4 → C5; 5 → both bodies §5 (writers receive the directive's test and doc decisions as a relayed `## Design decisions for writers` block — folded into C5's relay row); 6 → C3; 7 → C5; 8 → C2; 9 → C3/C7 (`## Rounds` decision values gain `held: operator`, `re-opened`); 10 → C7 (a Trigger E `Operator override` tracker entry); 11 → environment (container bind mount) plus a README caveat; 12, 13 → filed separately as a submodule-aware close-out Issue; 14 → C7; 15 → cosmetic, in the batch.
+
+## Self-review amendments (2026-09-16)
+
+Applied before operator review, since no second session reviewed this ticket: (1) the `text` class dispatches no Analyst and is classified by the orchestrator from the body, with re-escalation on a `behavior`/`tests` `Kinds changed`; its target is the b.ban hand baseline (≤ 2 dispatches, ≤ 250k, ≤ 20 min). (2) A text lane is at most two reviewer reads — the hunt and one confirmation — and the confirmation's findings are applied without a further round. (3) The premise check compares a PM finding against prior clean Code Reviewer returns, since the PM has no lane rounds. (4) Two batches: A = C2/C3/C4/C6 (the loop), B = C1/C5/C7; A first, validated on a b.yvu-class Issue before B. Also recorded: decision H3 landed on 2026-09-16 as its own commit — `code-reviewer` effort `high`, Analyst stays `xhigh`, invariant intact.
+
