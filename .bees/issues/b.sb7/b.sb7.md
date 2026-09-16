@@ -179,3 +179,15 @@ The live_edit CLAUDE.md invariant section (one-line rules with SDD section point
 - `agents/analyst.md` line 9 names a "Validate-Issue gate" the rewritten `/quo-fix-issue` body does not have.
 - `docs/sdd.md` in this repo is a per-feature ledger over the cap; migrate last (follow-up 12b).
 
+## Operator decision — validation deferral and sequencing (2026-09-16)
+
+`/quo-fix-issue` is the product needed now. `/quo-execute`, `/quo-plan`, and `/quo-breakdown-epic` are slated for clean-room rewrites (b.pcc, b.7ib); general patching and validation of those paths are deferred until then. `/quo-execute` has not been run since the orchestrator rewrite and will not be run until execute matters again.
+
+**b.sb7 implementation scope is unchanged:** build every item in this ticket, including the `/quo-execute` `## Ratified decisions` row, Doc Writer recipient on `## Source paths to fingerprint`, and Encode-destination change. These edits remain required because the two bodies mirror and the rewrite inherits them.
+
+**Item 11 validation is amended:** run `/quo-fix-issue` on the migrated event_consumer_service; skip the pre-merge `/quo-execute` run. b.sb7 may merge on fix-mode validation alone. The execute-mode validation is **deferred, not dropped**, and remains owed when execute is next validated. This also supersedes the earlier requirement to await the current rebuild's plan → breakdown → execute validation chain.
+
+**Sequencing:** do not start implementation until the operator says go. Then branch from main as it stands at that time → items 1–9 → migrate event_consumer_service per item 10 → fix-mode validation → merge → remaining migrations and follow-ups as specified above.
+
+b.upt (review-loop exit rule and consequence-defined severity scale) is currently being designed for operator review and is planned to land before b.sb7 starts, so b.sb7 validation uses the new loop. This is an operator-selected order, not a dependency: b.sb7 and b.upt are independent, and the operator may put b.sb7 first.
+
