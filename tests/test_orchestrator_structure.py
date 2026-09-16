@@ -322,7 +322,7 @@ SHARED_ANCHORS = [
     "`Premise check: premise-holds`",
     "`Premise check: premise-false`",
     "`another round`",
-    "`to the Analyst`",
+    "`to the escalation target`",
     "`close — clean`",
     "`close — text`",
     "`earned`",
