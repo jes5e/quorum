@@ -2,10 +2,11 @@
 id: b.7d5
 type: bee
 title: 'Give the manifest''s ## Rounds exit decision a post-compaction reader: a row whose decision names an action that has not landed re-dispatches the reviewer instead of trusting the counts (one-tick window; follow-up to b.upt)'
-status: open
-created_at: '2026-09-16T13:42:32.942251'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-16T13:42:32.942251'
+status: done
+schema_version: '0.1'
 guid: 7d5vgjx5b3mc5ique3k3uj6z5v47rumj
 ---
 
@@ -29,3 +30,6 @@ A design item, not a fix-now sentence: it adds a reader to a manifest section an
 
 Surfaced by the fourth cold round of the `b.upt` implementation batch (2026-09-16) as a `suggestion` whose fix path (b) was judged new machinery and deferred here, with path (a), the narrowed rationale claim, applied in that batch. Sequenced after `b.upt`'s validation run in a code repository, which is the first run that will produce `## Rounds` rows at all.
 
+## Status (2026-09-16) — done, absorbed by b.vtw Batch A
+
+The `## Rounds` row gained readers without the dedicated post-compaction reader sketched above. Batch A of Issue `b.vtw` (commit `cf4b27e` and its round-5 follow-ups) makes the row a routing input: the earned-chain escalation reads two consecutive `earned` classifications and routes the chain to the escalation target instead of another implementer; the `decision` column's `to the escalation target` value marks an in-flight premise check or escalation so a resumed orchestrator can tell that Analyst (or operator-gate) dispatch from a Design Proposal one; and the hold-set rule rewrites a `close — text` row to `another round` when the final pass returns `code` or `tests`. The one-tick window this ticket described remains as documented behavior: a compaction between the row write and the action costs one extra cold round, never coverage, and the `routing.md` rationale bullet states that honestly. The design-item alternative (a new column or an implementer-lane-presence rule) was weighed in the Batch A rounds and not built; the reader the row needed arrived through the escalation rule instead.
