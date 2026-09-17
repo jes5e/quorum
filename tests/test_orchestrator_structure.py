@@ -294,6 +294,7 @@ SHARED_ANCHORS = [
     "`**Cost:**`",
     "**Late-chain enumeration.**",
     "`close — enumerated`",
+    "`enumerated`",
     "`## Site enumeration requested`",
     "`## Confirming pass`",
     "`Confirming pass: <n> fixes checked`",
