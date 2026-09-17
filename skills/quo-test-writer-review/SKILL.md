@@ -131,6 +131,8 @@ This is one of the most common and damaging issues in test suites. Be aggressive
   - Any `except` clause in a test that no longer parses cleanly after a format/lint pass — verify the original parenthesized form was preserved.
   Note: this check applies only when the change touches Python test source. Skip for non-Python test diffs.
 
+**Stale-comment sweep.** If you find a test comment, docstring, or module header the change made false, read every comment in every touched test file and report all substantiated inaccuracies in the same pass; distinguish newly introduced inaccuracies from pre-existing ones, and report a source or documentation inaccuracy you notice as its own item naming the lane that owns it, so it stays on the record instead of being handed to the Test Writer. Do not stop after the first stale comment — one stale comment per round is the cascade shape.
+
 **New-mechanism site enumeration.** When the relayed `## Blast radius` names a mechanism with lifecycle legs, or the source the tests pin introduces new machinery (a cache, an index, a state machine, a retry or fallback path), enumerate its sites — hooks, branches, error paths — and state for each whether a changed or existing test would fail if it were removed. Report every unpinned site in ONE finding that lists them, so the Test Writer closes the class in one pass rather than one site per round.
 
 ### Step 3: Prioritize and Filter
