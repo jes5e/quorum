@@ -571,7 +571,7 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 
 **Acceptance criteria.**
 
-- A fix round at a scope resumes the lane's implementer by name; a fresh implementer appears only after an Analyst-gate revision or an escalation-gate **Continue**, a name `ListAgents` does not list, a failed send, or a ledger total above 600,000 tokens for that implementer at that scope.
+- A fix round at a scope resumes the lane's implementer by name; a fresh implementer appears only after an Analyst-gate revision or an escalation-gate **Continue**, a name `ListAgents` does not list, a failed send, or a ledger total above 600,000 tokens for that name since its latest row marked `fresh` (every non-resume dispatch marks its row; a completion whose dispatch is not known fresh leaves the mark off and at worst retires the agent early).
 - Every review after a lane's first carries `## Confirming pass` and its return opens with `Confirming pass: <n> fixes checked`; a return without that line is recorded as a full pass.
 - Two consecutive `late` rounds on any lane produce an enumerated confirming pass, one implementer pass, and the decision `close — enumerated`, with a `code` fix from that pass still owing its confirming pass.
 - The Test Writer and Doc Writer receive `## Blast radius` and `## Design decisions for writers`; the Analyst emits `### Decisions for writers` unconditionally.

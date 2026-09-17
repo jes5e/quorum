@@ -120,7 +120,7 @@ D12. **Nothing reduces review coverage**: no round caps, no lane skipped, no nar
     more; polishing text with fresh full-diff reviewers is not doing it right.
     *Amended 2026-09-17 (Issue `b.vtw`, Batch B1):* implementers are named `<role>-<scope>` and resumed for their fix
     rounds (fresh after a directive revision, a missing name, a failed send, or a 600,000-token ledger total); reviewers
-    stay cold. Every review after a lane's first is a `## Confirming pass` answering two questions over the whole diff,
+    stay cold. Every review after a lane's first, and every `postcomp-*` reviewer, is a `## Confirming pass` answering two questions over the whole diff,
     opening with `Confirming pass: <n> fixes checked`. Two consecutive `late` rounds run an enumerated confirming pass,
     one implementer pass, and `close — enumerated`; `tests` and text gaps closed there are read by the sweep, a `code`
     fix still owes its confirming pass. Writers receive `## Blast radius` and `## Design decisions for writers`; the Doc

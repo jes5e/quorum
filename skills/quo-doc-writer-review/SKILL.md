@@ -191,7 +191,7 @@ Run this section, and only this section, when the invocation carries `## Confirm
 1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described. A fix that does not is a finding again, at its original severity, with its fix paths.
 2. **Did the pass falsify anything adjacent?** For every file in the pass's `## Files changed`, check the other statements, examples, and cross-references that depend on what changed, and report what the pass broke or left stale. Do not hunt beyond that: a pre-existing gap the pass did not touch is out of scope here — the post-completion review reads the whole diff.
 
-When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every statement the unit's change must make — the sites the relayed `## Design decisions for writers` and the `## Blast radius` docs groups name — state for each whether it is present and true, and report every gap as ONE finding that lists the sites.
+When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every statement the unit's change must make — the sites the relayed `## Design decisions for writers` and the `## Blast radius` docs groups name, or, when neither was relayed, the statements the changed source and the ticket body require — state for each whether it is present and true, and report every gap as ONE finding that lists the sites.
 
 Output in section 6's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
 
