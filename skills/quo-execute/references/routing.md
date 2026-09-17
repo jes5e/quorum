@@ -20,7 +20,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 
 - The pick is the smallest enumerated path that fully fixes the stated defect as the finding describes it.
 - A deeper path is taken only when every shallower one leaves that defect partly unfixed; that is row 4's test, applied to the pick.
-- Preventing recurrence, centralizing, or restructuring is not a fuller fix of the defect. Such a path is recorded as a `defer-to-new-Issue` refinement carrying the reviewer's sketch, never picked in-run.
+- A deeper path that changes code the stated defect does not touch — recurrence prevention, centralizing, restructuring — is not a fuller fix of the defect; it is recorded as a `defer-to-new-Issue` refinement carrying the reviewer's sketch, never picked in-run. A `[preferred]` deeper path that covers, in the same artifact, a class of sites the finding names is the complete fix of that defect, not recurrence prevention.
 - Internal consistency across every surface that states the invariant still counts: a path that fixes the defect in one place and leaves a sibling surface asserting the old behavior is partial.
 - Effort is a legitimate tiebreaker between paths that both fully fix the defect.
 - "Adds a mechanism" is a reason to route to gate (c), not a reason to build.

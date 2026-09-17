@@ -57,3 +57,8 @@ The run summary's **Reviews** line renders, per slot, `N rounds (earned/late/var
 ## Status (2026-09-16)
 
 The per-lane round classification asked for in the amendment above (earned / late / variance, plus `clean` for a confirming pass that raised nothing lane-holding) landed through Issue `b.upt` as the `classification` column of the manifest's `## Rounds` section and the `N rounds (earned/late/variance/unavailable = a/b/c/d)` (the fourth slot counts rounds whose classification a compaction lost) rendering on the **Reviews** line. Phase timings remain this ticket's open scope.
+
+## Status (2026-09-17) — per-dispatch ledger landed
+
+The per-dispatch half of this ticket landed through Issue `b.vtw` Batch B1: the run-state manifest names a companion ledger file (`**Ledger:**`) and a `**Cost:**` line; every Agent completion notification appends a row (role, scope, round, tokens, tool uses, duration) and rewrites the totals; per-unit summaries print a `**Cost**` line and the run's final output adds wall clock from `**Run started (UTC):**`. Per-phase timings within a dispatch, and per-unit wall clock, remain this ticket's open scope.
+

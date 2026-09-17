@@ -64,6 +64,8 @@ AGENT_DOC_WRITER = "agents/doc-writer.md"
 AGENT_ENGINEER = "agents/engineer.md"
 AGENT_PM = "agents/pm.md"
 AGENT_TEST_WRITER = "agents/test-writer.md"
+AGENT_TEST_REVIEWER = "agents/test-reviewer.md"
+AGENT_DOC_REVIEWER = "agents/doc-reviewer.md"
 
 # The one section both orchestrators carry that defines how review findings are
 # routed. More than one prose-contract module slices it, so the heading and the

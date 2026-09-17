@@ -560,3 +560,24 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 - Validation: a b.yvu-class Issue completes in at most 12 dispatches, 1.8M subagent tokens, and 3 code-review rounds, with no production-relevant regression the previous loop would have caught.
 
 **Out of scope.** The pipeline classes, confirming-pass checklist, relay by path, required-statements enumeration, cost ledger, and `--unattended` mode (Batch B of Issue b.vtw); the depth vocabulary and the routing table's rows.
+
+**Superseded in part (2026-09-17).** The confirming-pass checklist and the cost ledger named out of scope above landed in Batch B1 (next feature); the pipeline classes, relay by path, required statements, and `--unattended` remain Batch B2.
+
+### Feature: Proportional review, Batch B1 — warm implementers, confirming passes, a late-chain stop, and a native cost ledger
+
+**What.** The Engineer, Test Writer, or Doc Writer that wrote a change is the one that fixes what its reviewer found: fix rounds resume the same agent with its context intact, and a fresh one is dispatched only when the design was revised, the agent is gone, or its accumulated context passes a bound. Reviewers stay fresh. Every review after a lane's first asks two questions only — is each fix correct, did it break anything next to it — instead of hunting the whole diff again, and says so in a fixed first line. When a lane's reviewer has twice in a row found a pre-existing gap the first review missed, the next review enumerates every site the change introduced and reports the gaps as one list, one pass closes them, and the lane ends. The Test Writer and Doc Writer receive the design's site list and its decisions for them. The Doc Writer receives the diff as a file. Findings that contradict the design go to the Analyst together, and the rest of the round waits. Post-completion text fixes for one implementer are one pass, not one per finding. Every run records what each dispatch cost and prints the total.
+
+**Why.** The b.ot3 validation run (2026-09-17): 38 dispatches, 5.59M tokens, seven hours. The test lane alone took 11 dispatches and 1.8M tokens, five of them open-ended reviews that each found one more unpinned hook, with no rule to stop them. Every fix round paid a fresh implementer to re-read what the previous one already knew. Five post-completion text fixes cost five dispatches. The Test Writer never saw the fifteen tests the Analyst had said were owed.
+
+**Acceptance criteria.**
+
+- A fix round at a scope resumes the lane's implementer by name; a fresh implementer appears only after an Analyst-gate revision or an escalation-gate **Continue**, a name `ListAgents` does not list, a failed send, or a ledger total above 600,000 tokens for that implementer at that scope.
+- Every review after a lane's first carries `## Confirming pass` and its return opens with `Confirming pass: <n> fixes checked`; a return without that line is recorded as a full pass.
+- Two consecutive `late` rounds on any lane produce an enumerated confirming pass, one implementer pass, and the decision `close — enumerated`, with a `code` fix from that pass still owing its confirming pass.
+- The Test Writer and Doc Writer receive `## Blast radius` and `## Design decisions for writers`; the Analyst emits `### Decisions for writers` unconditionally.
+- The Doc Writer receives `## Engineer's diff (path)`.
+- Post-completion findings whose fixes are text or trivial are dispatched as one pass per implementer role.
+- The manifest names a ledger file and a `**Cost:**` line; every completion appends a ledger row; per-unit summaries carry `**Cost**` and the run's final output adds wall clock.
+- Validation on a mid-size code Issue: a resumed implementer round costs under half of its first pass, the test lane closes in at most three reviewer rounds, post-completion runs at most three dispatches.
+
+**Out of scope.** Delta classes, relay by path, required statements, `--unattended` (Batch B2); the severity collapse (de-proceduralization); per-unit wall clock.

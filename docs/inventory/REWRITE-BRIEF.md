@@ -118,6 +118,15 @@ D12. **Nothing reduces review coverage**: no round caps, no lane skipped, no nar
     orchestrator; contract text gets one confirming read per lane; comments are read by the post-completion sweep;
     no gate fires on round count, and an earned chain escalates to the design authority. The operator's principle: doing it right may cost
     more; polishing text with fresh full-diff reviewers is not doing it right.
+    *Amended 2026-09-17 (Issue `b.vtw`, Batch B1):* implementers are named `<role>-<scope>` and resumed for their fix
+    rounds (fresh after a directive revision, a missing name, a failed send, or a 600,000-token ledger total); reviewers
+    stay cold. Every review after a lane's first is a `## Confirming pass` answering two questions over the whole diff,
+    opening with `Confirming pass: <n> fixes checked`. Two consecutive `late` rounds run an enumerated confirming pass,
+    one implementer pass, and `close — enumerated`; `tests` and text gaps closed there are read by the sweep, a `code`
+    fix still owes its confirming pass. Writers receive `## Blast radius` and `## Design decisions for writers`; the Doc
+    Writer receives `## Engineer's diff (path)`. The manifest carries `**Ledger:**` (a companion file) and `**Cost:**`.
+    The "no warmed Agent" premise of the original dispatch decision is withdrawn: the harness resumes a completed
+    background Agent by name. A cold review must not report any of these as a §1 / D9 / D12 / A2 violation.
 
 ## 4. Shape of each body (target ≤ 500 lines, hard cap 550)
 
