@@ -237,7 +237,7 @@ Row 6 dispatches the implementer per Section 5 — a resume at a scope it alread
 
 | Divergence | `/quo-fix-issue` | `/quo-execute` |
 |---|---|---|
-| Approved-design source for "introduces a mechanism" | the approved directive from the Analyst gate — `### Recommended approach`, `### Blast radius`, and `### Policy decisions this change implies` | the Subtask body, its parent Task body, and the PRD/SDD the Plan Bee's `reference_materials` resolves to, or the Plan Bee body when null/empty; after an Analyst gate's Approve at the scope, the revision it appended to the Subtask body |
+| Approved-design source for "introduces a mechanism" | the approved directive from the Analyst gate — `### Recommended approach`, `### Blast radius`, and `### Policy decisions this change implies` | the Subtask body, its parent Task body, and the PRD/SDD the Plan Bee's `reference_materials` resolves to, or the Plan Bee body when null/empty; after an Analyst gate's Approve at the scope, the revision it appended to that scope's ticket |
 | Gate (d) `Cancel` semantics | ends the current Issue; Section 12's mode branch decides the run | ends the run via Section 12 |
 | Part (g) code-review rung | the Code Reviewer, one clause | Clause 1: the per-Task PM's in-flight `/quo-engineer-review` pass; Clause 2: the Bee-level Code Reviewer, or at the Epic boundary the inter-Epic reviewer |
 | Close-out target on `Cancel` / abort | `#### Aborted-Issue close-out` | `#### Aborted-run close-out` |

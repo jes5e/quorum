@@ -71,7 +71,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - The `### Deferred refinements` block is stripped from the surfaced prose because it is orchestrator plumbing for the deferral-hygiene gate, not design content.
 - A Revise re-dispatch quotes the prior proposal in full, including its `### Deferred refinements`, so the revising Analyst carries each deferral forward or drops it explicitly.
 - `defer-*` obligations from an earlier Approve survive a later re-fire because that approval still stands; clearing them would destroy every banked refinement.
-- The Design Proposal has no durable carrier in `/quo-fix-issue` by design, and an execute revision has none until its Approve appends it to the Subtask body; re-deriving through the Analyst is the only honest recovery, because a proposal reconstructed from a summary is a guess.
+- The Design Proposal has no durable carrier in `/quo-fix-issue` by design, and an execute revision has none until its Approve appends it to its scope's ticket; re-deriving through the Analyst is the only honest recovery, because a proposal reconstructed from a summary is a guess.
 - An Engineer's `## Design question` means the proposal's `### Blast radius` missed a mechanism; it is a revision of the proposal, not a new decision point.
 
 ## Close-out and commit
