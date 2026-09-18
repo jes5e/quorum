@@ -89,7 +89,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 
 - The `(Recommended)` marker goes on the path the orchestrator chose at Step 1; gate (d) asks the user to ratify or override a pick already made.
 - When the reviewer's `[preferred]` path is shallower than the pick, and the pick is deeper only because the shallower path leaves the defect partly unfixed, say so in the Recommended choice's description.
-- On a row-1 entry the pick's depth is unreadable, so no path is marked Recommended; the user picks among the paths as emitted.
+- On a row-1 entry reached through the chosen path's missing or malformed depth, no path is marked Recommended and the user picks among the paths as emitted; reached through a malformed severity tag alone, the Step-1 pick was made on a readable depth and keeps its marker.
 - When a `blocker`'s Defer-with-narrowing branch is open at gate (d), `Defer to follow-up Issue` takes the marker and every other choice is left unmarked, so exactly one choice carries it.
 - Each per-path choice's description includes that path's depth tag, for example `re-architect` or `refactor-locally`.
 - Zero-path fire (`/quo-execute` only): when the reviewer enumerated no fix path, the user's prose direction is dispatched per the dispatch shape as the fix; it is not an ungated route, so Trigger C writes nothing; when the user gives neither prose nor `Cancel`, re-fire the gate rather than inventing a dispatch.
