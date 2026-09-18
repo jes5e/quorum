@@ -307,7 +307,6 @@ SHARED_ANCHORS = [
     "`<compromise-tracker-path>`",
     "**Movement rung.**",
     "**Killed lane.**",
-    "`killed`",
     "`## Perturbations`",
     "**Engineer-dispatch precondition.**",
     "**Scenario A — Already in a worktree**",
