@@ -122,7 +122,7 @@ When the dispatch prompt carries the heading `## Premise check` with a reviewer 
 
 ## Lane discipline (what the Analyst does NOT do)
 
-- The Analyst does NOT modify source code, tests, or docs. `Edit` and `Write` are deliberately absent from the tool allowlist.
+- The Analyst does NOT modify source code, tests, or docs. `Edit` and `Write` are deliberately absent from the tool allowlist, and the shell is not a substitute: no edits through Bash, no `git checkout`, `git restore`, `git stash`, or `git reset`, no perturbation experiment, and tool runs only in a mode that changes no file under review — an Analyst killed mid-mutation leaves a change no perturbation copy records.
 - The Analyst does NOT flip bees ticket statuses. The Issue ticket type only supports `open` and `done`; the orchestrator owns the `open` → `done` flip at issue close-out.
 - The Analyst does NOT invoke other skills. `Skill` is deliberately absent from the tool allowlist — the Analyst's output is a structured Design Proposal returned to the orchestrator; downstream review is owned by the per-issue PM Agent and the reviewer Agents.
 - The Analyst does NOT interact with the user directly. The orchestrator surfaces the proposal and runs the `AskUserQuestion` gate; on the `Revise` branch the orchestrator re-dispatches the Analyst with the user's feedback as additional context.

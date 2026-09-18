@@ -17,6 +17,10 @@ The diff scope is the same in both skills: `git diff <pre-run-sha>` (the working
 
 ```
 You are an independent reviewer for a quorum <unit-noun> that was just shipped.
+You are read-only against the working tree: change no file, run no `git checkout`,
+`git restore`, `git stash`, or `git reset`, run no perturbation experiment, and run
+tools only in a mode that changes no file under review — a reviewer killed
+mid-mutation leaves a change no perturbation copy records.
 
 Scope: review the diff `git diff <pre-run-sha>` — no `..HEAD`, so it is the
 working tree as it stands against the pre-run commit — plus every untracked

@@ -130,9 +130,10 @@ D12. **Nothing reduces review coverage**: no round caps, no lane skipped, no nar
     *Amended 2026-09-18 (Issue `b.vtw`, b.sao must-do batch):* a **Killed lane** paragraph in both bodies' Section 6 (a kill opens an `aborted-*`
     obligation; every re-dispatch of a lane holding one is preceded by a source verification against the perturbation protocol's copies
     and the latest Engineer's diff file, restoring or stopping for the operator; the killed dispatch is a `## Lanes` row that decides
-    nothing in `## Rounds`; a killed implementer is re-dispatched against the current tree; the Issue and Task close-outs require no open
-    `aborted-*` obligation); a `killed` ledger `notes` value excluded from the `**Cost:**` count; reviewers read-only in their role
-    files; row 1 keyed on the chosen path; the ambiguity-refused send resent with a ref; post-completion groups resumed at the unit's
+    nothing in `## Rounds`; a killed implementer is re-dispatched against the current tree; a kill refreshes the same-role obligation already open at
+    that scope; the resume token increment is over zero when no non-killed row exists; the Issue, Task, and Epic-boundary close-outs
+    require no open `aborted-*` obligation); a `killed` ledger `notes` value excluded from the `**Cost:**` count; reviewers, the PM, and the Analyst read-only in their role
+    files (check-mode tool runs permitted); row 1 keyed on the chosen path; the ambiguity-refused send resent with a ref; post-completion groups resumed at the unit's
     implementer per part (g); `## Design decisions for writers` to the Test Reviewer; resumes relay only amended blocks; `fix/<id>`. A
     cold review must not report any of these as a §1 / D9 / D12 / A2 violation.
 
