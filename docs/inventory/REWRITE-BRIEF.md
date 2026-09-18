@@ -134,6 +134,12 @@ D12. **Nothing reduces review coverage**: no round caps, no lane skipped, no nar
     permitted); the Test Writer's scratch copy named for the file's repository-relative path; row 1 keyed on the chosen path; the ambiguity-refused send resent with a ref; post-completion groups resumed at the unit's
     implementer per part (g); `## Design decisions for writers` to the Test Reviewer; resumes relay only amended blocks; `fix/<id>`. A
     cold review must not report any of these as a §1 / D9 / D12 / A2 violation.
+    *Amended 2026-09-18 (Issue `b.vtw`, Batch B2a):* `/quo-execute` dispatches the Analyst on escalation — a design-question rung,
+    the premise check, and the earned-chain rung, all with the Revise shape against the Subtask, Task, and spec — and carries the
+    Analyst gate; the execute-only **Escalation** gate is gone; an approved revision is appended to the Subtask body under
+    `## Design revision (Analyst)`; the blocker gate sets are aligned across the two skills and the divergence table has four rows;
+    the `## Rounds` decision is `to the Analyst`; fix-issue's Phase C reviewers start as their own writer returns. A cold review must
+    not report any of these as a §1 / D3 / D9 / D12 / A2 violation.
 
 ## 4. Shape of each body (target ≤ 500 lines, hard cap 550)
 

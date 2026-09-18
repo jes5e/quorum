@@ -581,3 +581,5 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 - Validation on a mid-size code Issue: a resumed implementer round costs under half of its first pass, the test lane closes in at most three reviewer rounds, post-completion runs at most three dispatches.
 
 **Out of scope.** Delta classes, relay by path, required statements, `--unattended` (Batch B2); the severity collapse (de-proceduralization); per-unit wall clock.
+
+**Batch B2a (2026-09-18).** `/quo-execute` gains the Analyst as its escalation target: an Engineer's design question, a reviewer finding that contradicts the plan, or a code fix patched twice in a row goes to the Analyst, and the operator approves a reasoned revision instead of directing a fix in prose; an approved revision is appended to the Subtask body so later roles read it as the spec. `/quo-fix-issue`'s Phase C reviewers start as their own writer returns. The rest of B2 (the `text` class, relay by path, the decisions block covering Engineer-owned contract text, `--unattended`) is B2b.

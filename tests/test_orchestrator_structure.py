@@ -217,14 +217,9 @@ def test_tier2_context_guard_steps_match_modulo_unit_placeholder():
 def test_divergence_table_is_present_identically_in_both_bodies():
     rows = [
         "| Approved-design source for \"introduces a mechanism\" |",
-        "| Blocker base pair at gate (c) |",
-        "| `Cancel` at gate (c) |",
-        "| Gate (d) non-deferrable `blocker` set |",
         "| Gate (d) `Cancel` semantics |",
-        "| Filing-failure re-prompt `Cancel` |",
         "| Part (g) code-review rung |",
         "| Close-out target on `Cancel` / abort |",
-        "| Escalation target for the premise check and the earned-chain escalation |",
     ]
     for body in BODIES.values():
         assert_present(rows, heading_section(body, ROUTING_SECTION_HEADING), "routing section")
@@ -334,7 +329,7 @@ SHARED_ANCHORS = [
     "`Premise check: premise-holds`",
     "`Premise check: premise-false`",
     "`another round`",
-    "`to the escalation target`",
+    "`to the Analyst`",
     "`close — clean`",
     "`close — text`",
     "`earned`",
@@ -394,33 +389,11 @@ SHARED_ANCHORS = [
     "`Write-Output $env:CLAUDE_EFFORT`",
     "`git status --porcelain`",
     "`Ctrl-C`",
-]
-
-
-@pytest.mark.parametrize("name,text", list(BODIES.items()), ids=list(BODIES))
-def test_shared_rule_anchors_are_present(name, text):
-    assert_present(SHARED_ANCHORS, text, name)
-
-
-FIX_ANCHORS = [
     "`analyst`",
-    "`normalized_name` is `issues`",
-    "`run-state-quo-fix-issue-<repo-dir-name>.md`",
-    "`git rev-parse --show-toplevel`",
-    "**Pre-session SHA:**",
-    "`bees execute-freeform-query --query-yaml 'stages:\\n  - [type=bee, hive=issues, status=open]\\nreport: [title]'`",
-    "**URL token**",
-    "**ticket-ID token**",
-    "`Cannot start Issue. It is blocked by: [list]`",
     "**Analyst.**",
     "`Agent(subagent_type=analyst, run_in_background=true, prompt=…)`",
-    "**Phase A — source to clean.**",
-    "**Phase B — writers once, in parallel.**",
-    "**Phase C — remaining reviewers plus PM.**",
-    "**PM is the exception to the conditional-spawn rules.**",
     "**Design-question rung.**",
     "**Re-derivation shape.**",
-    "`No code issues found.`",
     "`## Design question`",
     "`## Prior proposal and user feedback`",
     "`## Authoritative design directive (from the Analyst gate)`",
@@ -434,6 +407,28 @@ FIX_ANCHORS = [
     "`escalate-to-user`",
     "`How should I proceed with this design proposal?`",
     "`Re-dispatch the Analyst with this finding`",
+]
+
+
+@pytest.mark.parametrize("name,text", list(BODIES.items()), ids=list(BODIES))
+def test_shared_rule_anchors_are_present(name, text):
+    assert_present(SHARED_ANCHORS, text, name)
+
+
+FIX_ANCHORS = [
+    "`normalized_name` is `issues`",
+    "`run-state-quo-fix-issue-<repo-dir-name>.md`",
+    "`git rev-parse --show-toplevel`",
+    "**Pre-session SHA:**",
+    "`bees execute-freeform-query --query-yaml 'stages:\\n  - [type=bee, hive=issues, status=open]\\nreport: [title]'`",
+    "**URL token**",
+    "**ticket-ID token**",
+    "`Cannot start Issue. It is blocked by: [list]`",
+    "**Phase A — source to clean.**",
+    "**Phase B — writers once, in parallel.**",
+    "**Phase C — remaining reviewers plus PM.**",
+    "**PM is the exception to the conditional-spawn rules.**",
+    "`No code issues found.`",
     "`\"no Engineer Agent will be dispatched for this Issue while you are running\"`",
     "`Fix issue: <title> (<issue-id>)`",
     "resolve-hive-paths --hive issues",
@@ -625,6 +620,7 @@ SHARED_GATE_LABELS = {
     "routing (d)": ["`Defer to follow-up Issue`", "`Cancel`"],
     "deferral hygiene": ["`Fix in this session`", "`File as issue tickets`", "`Encode in an existing ticket body`"],
     "post-completion disposition": ["**Fix in this session**", "**File as issue tickets**", "**Skip**"],
+    "analyst": ["**Approve & proceed to implementation (Recommended)**", "**Revise**", "**Cancel**"],
     "SR-6.7": ["`File follow-up Issue to revisit the depth decision`", "`Accept the misjudgment and proceed`", "`Pause to discuss`"],
     "SR-4.6": ["`File follow-up Issue to surface the missing path`", "`Accept the under-enumeration and proceed`", "`Pause to discuss`"],
 }
@@ -639,9 +635,6 @@ def test_shared_gate_choice_labels_are_verbatim_in_both_bodies(gate):
 def test_fix_issue_only_gate_labels_are_verbatim():
     labels = [
         "**Create a feature branch (Recommended for `all` mode and list mode)**",
-        "**Approve & proceed to implementation (Recommended)**",
-        "**Revise**",
-        "**Cancel**",
         "**Abort this Issue**",
     ]
     assert_present(labels, FIX, "quo-fix-issue")
@@ -654,7 +647,6 @@ def test_execute_only_gate_labels_are_verbatim():
         "**Stop after each Epic**",
         "**Work through all Epics**",
         "**Continue**",
-        "**Stop the unit**",
         "**Abort this unit**",
         "`\"Are you ready to mark this Bee as done?\"`",
         "`\"Yes, mark as done\"`",
@@ -684,27 +676,27 @@ def test_decision_enum_values_are_verbatim_in_both_bodies():
 # --- (e) contract-surface headings: emitter and consumer ------------------------------
 
 CONTRACT_SURFACES = [
-    ("## Design question", [AGENT_ENGINEER], [QUO_FIX_ISSUE]),
+    ("## Design question", [AGENT_ENGINEER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Files changed", [AGENT_ENGINEER, AGENT_TEST_WRITER, AGENT_DOC_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("Kinds changed:", [AGENT_ENGINEER, AGENT_TEST_WRITER, AGENT_DOC_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
-    ("## Premise check", [QUO_FIX_ISSUE], [AGENT_ANALYST]),
+    ("## Premise check", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_ANALYST]),
     ("Premise check: premise-false", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Source paths to fingerprint", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_TEST_WRITER]),
     ("## Perturbations", [AGENT_TEST_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Engineer's completeness evidence", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM, AGENT_CODE_REVIEWER]),
-    ("## Blast radius", [QUO_FIX_ISSUE], [AGENT_ENGINEER, AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_WRITER, AGENT_DOC_WRITER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER]),
-    ("### Blast radius", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
-    ("### Decisions for writers", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
-    ("## Design decisions for writers", [QUO_FIX_ISSUE, AGENT_ANALYST], [AGENT_TEST_WRITER, AGENT_DOC_WRITER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
+    ("## Blast radius", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_ENGINEER, AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_WRITER, AGENT_DOC_WRITER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER]),
+    ("### Blast radius", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("### Decisions for writers", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("## Design decisions for writers", [QUO_FIX_ISSUE, QUO_EXECUTE, AGENT_ANALYST], [AGENT_TEST_WRITER, AGENT_DOC_WRITER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
     ("## Engineer's diff (path)", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_DOC_WRITER]),
     ("## Confirming pass", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
     ("## Site enumeration requested", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
     ("Confirming pass: <n> fixes checked", [QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
-    ("None — the approach leaves no test or doc decision to the writers.", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
-    ("### Deferred refinements", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
-    ("### Policy decisions this change implies", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
-    ("Analyst verdict:", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
-    ("## Authoritative design directive", [QUO_FIX_ISSUE], [AGENT_ENGINEER]),
+    ("None — the approach leaves no test or doc decision to the writers.", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("### Deferred refinements", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("### Policy decisions this change implies", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("Analyst verdict:", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("## Authoritative design directive", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_ENGINEER]),
     ("### Second-order effects", [AGENT_PM, AGENT_CODE_REVIEWER, QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("no spec drift surface to review for this Issue", [AGENT_PM], [QUO_FIX_ISSUE]),
     ("**Your next tool use MUST address these findings now.**", [QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
@@ -716,8 +708,8 @@ CONTRACT_SURFACES = [
     ("<scoped-marker-resolver-path>", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM]),
     ("## Doc divergence noted", [QUO_FILE_ISSUE], [QUO_FIX_ISSUE]),
     ("No code issues found.", [QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE]),
-    ("No invariant added, removed, or weakened.", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
-    ("None — the recommendation leaves no policy question open.", [AGENT_ANALYST], [QUO_FIX_ISSUE]),
+    ("No invariant added, removed, or weakened.", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("None — the recommendation leaves no policy question open.", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
 ]
 
 
