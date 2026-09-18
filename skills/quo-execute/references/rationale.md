@@ -63,7 +63,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - The unexplained-movement gate exists because a blind re-dispatch loop into a tree something else is editing is the failure it prevents.
 - `Wait` re-fires only on the operator's reply because a sibling lane's completion notification is a normal tick and must not re-fire the gate.
 
-## Analyst gate and design directive (`/quo-fix-issue`)
+## Analyst gate and design directive (`/quo-fix-issue` on every Issue; `/quo-execute` on escalation)
 
 - Body-quality classification is a fragile heuristic: a body citing code paths may be a typo fix, and a one-sentence body may sit behind a rich upstream URL. Only the Analyst's codebase research is a reliable classification, so the Analyst is always dispatched.
 - The verdict preamble exists so a user meets a divergent recommendation already knowing it diverges, rather than discovering it by careful reading.
@@ -71,7 +71,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - The `### Deferred refinements` block is stripped from the surfaced prose because it is orchestrator plumbing for the deferral-hygiene gate, not design content.
 - A Revise re-dispatch quotes the prior proposal in full, including its `### Deferred refinements`, so the revising Analyst carries each deferral forward or drops it explicitly.
 - `defer-*` obligations from an earlier Approve survive a later re-fire because that approval still stands; clearing them would destroy every banked refinement.
-- The Design Proposal has no durable carrier by design; re-deriving it through the Analyst is the only honest recovery, because a proposal reconstructed from a summary is a guess.
+- The Design Proposal has no durable carrier in `/quo-fix-issue` by design, and an execute revision has none until its Approve appends it to the Subtask body; re-deriving through the Analyst is the only honest recovery, because a proposal reconstructed from a summary is a guess.
 - An Engineer's `## Design question` means the proposal's `### Blast radius` missed a mechanism; it is a revision of the proposal, not a new decision point.
 
 ## Close-out and commit
