@@ -43,7 +43,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - The pick at Step 1 is always one of the paths the reviewer enumerated.
 - When no enumerated path is the smallest internally-consistent complete change, pick the most complete of them anyway.
 - Step 2 then routes that pick: rows 2, 3, and 4 send it to gate (c), where `Fix properly now` dispatches the complete fix.
-- The exception is a finding whose depth tag is absent or malformed; row 1 sends it to gate (d), which has no `Fix properly now`, so the user picks among the paths as emitted.
+- The exception is a chosen path whose depth tag is absent or malformed; row 1 sends it to gate (d), which has no `Fix properly now`, so the user picks among the paths as emitted.
 - Either way the incomplete menu becomes visible in session: a gate fires where it otherwise would not have, and the user sees the menu it fired on.
 - A durable record of an incomplete menu reaches the post-completion review only via Trigger A (`Defer to follow-up Issue`) or Trigger B (`Accept the limitation`); `Fix properly now` writes none.
 - The orchestrator does not absorb an enumeration gap by writing a fix path of its own.
@@ -89,20 +89,20 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 
 - The `(Recommended)` marker goes on the path the orchestrator chose at Step 1; gate (d) asks the user to ratify or override a pick already made.
 - When the reviewer's `[preferred]` path is shallower than the pick, and the pick is deeper only because the shallower path leaves the defect partly unfixed, say so in the Recommended choice's description.
-- On a row-1 entry no Step-1 pick was possible, so no path is marked Recommended.
+- On a row-1 entry the pick's depth is unreadable, so no path is marked Recommended; the user picks among the paths as emitted.
 - When a `blocker`'s Defer-with-narrowing branch is open at gate (d), `Defer to follow-up Issue` takes the marker and every other choice is left unmarked, so exactly one choice carries it.
 - Each per-path choice's description includes that path's depth tag, for example `re-architect` or `refactor-locally`.
 - Zero-path fire (`/quo-execute` only): when the reviewer enumerated no fix path, the user's prose direction is dispatched per the dispatch shape as the fix; it is not an ungated route, so Trigger C writes nothing; when the user gives neither prose nor `Cancel`, re-fire the gate rather than inventing a dispatch.
 
 ## (e) Backwards-compatibility shim.
 
-- A finding emitted without a depth tag — a legacy reviewer emission, or a hand-authored finding from a future call site — MUST be treated as `re-architect` depth and routed to gate (d).
-- When the orchestrator cannot determine a finding's depth, it surfaces the decision to the user rather than dispatching its own pick ungated under row 6.
+- A chosen path emitted without a depth tag — a legacy reviewer emission, or a hand-authored finding from a future call site — MUST be treated as `re-architect` depth and routed to gate (d). Step 1 passes over a tagless or malformed path when a well-formed one fully fixes the defect, so this shim fires only when the pick itself is unreadable.
+- When the orchestrator cannot determine the chosen path's depth, it surfaces the decision to the user rather than dispatching its own pick ungated under row 6.
 - A PM emission that `agents/pm.md`'s tracker-check bullet designates a report note, not a finding, is exempt from this shim and from the malformed-tag bullet below; that bullet defines the shape.
 
 ## (f) Edge-case handling.
 
-- **Malformed tags.** When a severity tag is not exactly `blocker` / `suggestion` / `nit`, or a depth tag is not exactly `trivial-tweak` / `refactor-locally` / `re-architect`, treat the finding as `re-architect` depth per part (e) AND surface the parse failure to the user so the reviewer emission can be corrected.
+- **Malformed tags.** When the finding's severity tag is not exactly `blocker` / `suggestion` / `nit`, or the chosen path's depth tag is not exactly `trivial-tweak` / `refactor-locally` / `re-architect`, treat the finding as `re-architect` depth per part (e) AND surface the parse failure to the user so the reviewer emission can be corrected. A malformed path that Step 1 passed over for a well-formed complete one is surfaced the same way and fires no gate: the operator has nothing to decide, and a gate there costs a stop for a tag typo.
 - **Routing ambiguity.** If the routing table returns more than one decision, default to gate (d) and surface the ambiguity to the user.
 - **`/quo-file-issue` failure at the Defer gate.** When the user picks `Defer to follow-up Issue` at either gate but the inline filing fails or the user cancels inside it, MUST NOT silently ship the soft fix or no fix.
 - On a filing failure, surface it and re-prompt with the same gate's choices, so the user can re-attempt the defer, pick `Accept the limitation` where it exists (never on a `blocker`), pick a specific fix path explicitly, or cancel where that gate offers `Cancel`.
