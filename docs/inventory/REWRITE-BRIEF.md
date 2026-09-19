@@ -140,6 +140,14 @@ D12. **Nothing reduces review coverage**: no round caps, no lane skipped, no nar
     `## Design revision (Analyst)`; the blocker gate sets are aligned across the two skills and the divergence table has four rows;
     the `## Rounds` decision is `to the Analyst`; fix-issue's Phase C reviewers start as their own writer returns. A cold review must
     not report any of these as a §1 / D3 / D9 / D12 / A2 violation.
+    *Amended 2026-09-19 (Issue `b.vtw`, Batch B2b):* `/quo-fix-issue` classifies a docs- or comments-only Issue as `text` from the body and
+    runs one writer, that lane's reviewer, and no Analyst, Test Writer, PM, or post-completion sweep, re-escalating to the Analyst when the
+    writer's `Kinds changed` names `code` or `tests`; `### Decisions for writers` also carries the client- or operator-facing statements the
+    source must make, `## Design decisions for writers` reaches the Engineer and Code Reviewer, and `/quo-engineer-review` checks those
+    statements; fix-issue writes each proposal that reaches the Analyst gate to `proposal-<issue-id>-<short-suffix>.md`, recorded on the
+    manifest's `**Proposal:**` line, names it by path in the Revise shape, and reads it after a compaction instead of re-deriving (re-firing
+    the gate from it when `## Open gate` names the Analyst gate); the Section 5 scope-character-replacement clause is deleted. A cold review
+    must not report any of these as a §1 / D9 / D12 / A2 violation.
 
 ## 4. Shape of each body (target ≤ 500 lines, hard cap 550)
 

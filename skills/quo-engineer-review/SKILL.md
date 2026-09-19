@@ -154,6 +154,8 @@ Concrete shapes to look for (illustrative, not exhaustive):
 
 When the upstream list is supplied but no Engineer completeness evidence arrived, verify the diff against the upstream list alone, and handle the absent evidence under the missing-list rule above.
 
+**Statements the design assigns to source.** When the invocation carries `## Design decisions for writers`, the client- or operator-facing statements it says the source itself must carry — API and on-the-wire comments — are sites too: check each is present in the diff and true, and report every gap as ONE finding that lists them, so a missing statement is caught once rather than one per round. Its test and doc entries belong to other lanes and are not findings here.
+
 ### Step 3: Prioritize and Filter
 
 Focus on important issues only:
@@ -256,5 +258,5 @@ Run this section, and only this section, when the invocation carries `## Confirm
 
 When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every site the unit's change introduced — the sites the relayed `## Blast radius` and the pass's source files name, with the hooks, branches, and error paths of any new mechanism — state for each whether the code handles it, and report every gap as ONE finding that lists the sites.
 
-Relayed `## Engineer's completeness evidence` and `## Blast radius` lists still get their list checks. Output in Step 4's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
+Relayed `## Engineer's completeness evidence` and `## Blast radius` lists, and the source statements a relayed `## Design decisions for writers` names, still get their checks. Output in Step 4's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
 
