@@ -55,4 +55,7 @@ Sub-finding 1 was recorded by the Analyst at b.pdq's design gate as a genuine op
 - Building the Test Writer precondition inside b.pdq was rejected: b.pdq's approved directive kept the forward fan-out concurrent because the ticket graph already orders implementation before tests; adding a precondition there is a change to that documented property and belongs in its own review.
 - Ordering the whole per-Subtask fan-out (b.pdq's original item 4, read literally) was rejected in b.pdq and stays rejected here: cross-Task concurrency is a designed throughput property. The preconditions above are Task-scoped and touch only the two lanes that read a same-Task diff.
 - Making the working-tree `git diff --name-only HEAD` derivation primary (so the fingerprint set is always complete) was rejected: in execute mode that derivation sweeps sibling-Task edits into the set and makes the writer stop on legitimate concurrency.
+## Superseded by b.87t (2026-09-23)
+
+b.87t rebuilds `/quo-execute` around one Engineer per Task, run through fix-issue's Phase A → B → C ordering, and removes the per-Subtask forward fan-out both sub-findings come from: the per-Task code review becomes a dedicated Code Reviewer that closes before any writer runs, and the Test Writer's fingerprint set is the Task's Phase A union taken after Phase A closes. Do not work this ticket; it closes as moot when b.87t lands. It stays open until then because the gaps are real in the shipped body.
 
