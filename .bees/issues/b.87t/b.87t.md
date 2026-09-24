@@ -88,4 +88,9 @@ This supersedes `## Sequencing` and the b.pcc and b.7ib lines of `## Relation to
 - The rules this rewrite adds are recorded as an amendment to `docs/inventory/REWRITE-BRIEF.md` under A2, as the b.vtw batches did.
 - It replaces execute's bees query recipes with orientation, since their `'stages:
   - [...]'` form fails when run literally. It also states the Bash etiquette once in the body, as a goal, because the per-site wording that enforces it today goes.
+## After b.pcc and b.37n in the serial order (operator decision 2026-09-24)
+
+This ticket now runs after b.pcc and b.37n; the order is on b.vtw's `## Serial order` note. It supersedes the first paragraph of `## Order revised` ("in parallel with the planning track"). It is designed against the Tasks b.pcc produced for the smoke Bee, including the role marker b.pcc chose.
+
+**Validation:** execute the smoke Bee.
 

@@ -84,3 +84,11 @@ This note supersedes, where they conflict: the clean-room process in `## Suggest
   - Subtasks in the Mandatory Subtask Description Template, with statuses `drafted` → `ready`.
   - The Plan Bee's Scoped marker and `## Anticipated doc impact`, read as today.
   - The two items defined with b.87t (b.vtw).
+## After b.7ib in the serial order (operator decision 2026-09-24)
+
+This ticket now follows b.7ib; the order is on b.vtw's `## Serial order` note. It follows the gate and manifest shape b.7ib sets; where that differs from `## Minimal rewrite`'s "Gates stay fronted by the manifest write", b.7ib's shape wins. Its input is b.7ib's output contract; OpenSpec was not adopted, so that contract is the in-house one b.7ib records.
+
+It alone decides the Subtask role marker and whether it still emits "Verify the Task" Subtasks; b.87t consumes both. This supersedes the last bullet of `## Minimal rewrite` (items "defined with b.87t").
+
+**Validation:** break down the smoke Bee that b.7ib planned.
+

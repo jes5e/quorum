@@ -1,7 +1,7 @@
 ---
 id: b.7ib
 type: bee
-title: 'Minimal rewrite of /quo-plan and its three sub-skills (or OpenSpec front end) under the prose standard: no TaskList dependence, 250/350-line budget'
+title: 'Minimal in-house rewrite of /quo-plan and its three sub-skills under the prose standard: no TaskList dependence, 250/350-line budget'
 parent: null
 reference_materials: null
 created_at: '2026-09-11T01:15:20.509880'
@@ -77,3 +77,16 @@ This note supersedes, where they conflict: the clean-room process in `## Suggest
   - Epics titled `Epic N — <title>`, with statuses `drafted` / `ready` and `up_dependencies`.
   - `reference_materials` as one of: a `bees` entry naming a Spec Bee whose `t1=Doc` children are titled exactly `PRD` and `SDD`; a `file-path` entry; or null, meaning the Plan Bee body is the spec.
   - `## Anticipated doc impact` in the Plan Bee body.
+## First in the serial order; OpenSpec not adopted (operator decisions 2026-09-24)
+
+**OpenSpec decision: minimal in-house rewrite.** OpenSpec is not adopted as the front end. A minimal rewrite removes most of the maintenance burden that made OpenSpec attractive, while its costs would remain:
+- a Node 20 dependency for every user;
+- telemetry on by default;
+- an outside project whose command names have already changed once;
+- specs split between repo files and bees.
+
+The `## Minimal rewrite` section's "Settle OpenSpec first" bullet is settled, and its OpenSpec-importer clauses no longer apply. Its keep-the-cold-plan-reviewer clause still holds.
+
+**Order.** This ticket now runs first; the order is on b.vtw's `## Serial order` note. This supersedes "on the planning track after b.pcc" in `## Minimal rewrite`: b.pcc now follows the gate and manifest shape this rewrite sets, and consumes its output contract.
+
+**Validation.** Plan the smoke Bee: a small real feature the operator wants built, in a code repo, with at least two Epics. The Epics it produces are what b.pcc is validated on.

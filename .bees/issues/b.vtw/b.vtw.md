@@ -262,4 +262,20 @@ Then the smoke test of the whole new chain (at least two Epics), then the operat
 - `quo-breakdown-epic/scripts/scoped_marker_resolver.py` stays where it is; both execution skills resolve it from there.
 - The smoke test needs no `CLAUDE_CODE_ENABLE_TODO_TOOLS`, because both planning rewrites remove their TaskList dependence.
 - Whichever track finishes second rebases onto main and reconciles the files both touch (CLAUDE.md, `tests/test_orchestrator_structure.py`, README, `docs/sdd.md`).
+## Serial order (operator decision 2026-09-24, later the same day)
+
+This supersedes the order in `## Order and cross-track contracts (operator decisions 2026-09-24)` above. The operator's attention is limited for the next few days, so the work runs one item at a time. It follows the data flow, so each step is validated on the previous step's real output, and that per-step validation on one smoke Bee replaces the separate whole-chain smoke test.
+
+1. **Minimal in-house `/quo-plan` rewrite (b.7ib).** OpenSpec was considered and not adopted (operator decision, recorded on b.7ib). Validated by planning the smoke Bee: a small real feature the operator wants built, in a code repo, with at least two Epics.
+2. **Minimal `/quo-breakdown-epic` rewrite (b.pcc),** following the gate and manifest shape b.7ib sets. Validated by breaking down the smoke Bee.
+3. **Fix-mode PM receives the approved design (b.37n).** Validated on a small-code `/quo-fix-issue` run.
+4. **Rebuild `/quo-execute` (b.87t),** designed against the smoke Bee's real Tasks. Validated by executing the smoke Bee.
+5. **The operator's big feature, then b.sb7.** b.sb7 goes before the big feature instead if that repo already carries a large SDD. The severity collapse and the review skills' residual two-step-contract mentions follow b.sb7.
+
+The docs-only validation run of `/quo-fix-issue` is independent of this chain; the operator runs it whenever convenient.
+
+The constraints in that section still hold, read with "execute track" meaning b.37n and b.87t and "planning track" meaning b.7ib and b.pcc. Three changes:
+- b.pcc alone decides the Subtask role marker and whether breakdown still emits "Verify the Task" Subtasks; b.87t consumes what b.pcc emits.
+- The last bullet ("Whichever track finishes second rebases onto main…") no longer applies. Each item works on its own branch in its own worktree and merges before the next one starts.
+- The skills and role files are installed as live symlinks into the main checkout, so a merge to main deploys to every session at once.
 

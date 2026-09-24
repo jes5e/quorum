@@ -48,4 +48,7 @@ After the docs-only (text-class) validation run, which dispatches no PM and so d
 - **Sequencing:** this ticket no longer waits for the docs-only validation run; it starts the execute track now. It is still validated on the next small-code `/quo-fix-issue` run, before b.87t copies this PM relay into execute. The order is on b.vtw's 2026-09-24 note.
 - **Added:** replace fix-issue's bees query recipes (run start and tick) with orientation, remove their test anchors, and record the retired literals per `docs/inventory/REWRITE-BRIEF.md`'s 2026-09-24 amendment. The recipes' `'stages:
   - [...]'` form fails when run literally. Agents recover unaided, but this batch already edits fix-issue and the test file.
+## Third in the serial order (operator decision 2026-09-24)
+
+This ticket now runs after b.pcc and before b.87t; the order is on b.vtw's `## Serial order` note. It supersedes the Sequencing bullet of `## Order and one added item` ("starts the execute track now"). It is still validated on a small-code `/quo-fix-issue` run before b.87t copies its PM relay into execute.
 
