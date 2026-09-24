@@ -225,4 +225,13 @@ This ticket now follows b.37n, b.87t, b.87t's smoke Bee, and the operator's big 
 - **The relay reconciliation starts from b.37n.** When deciding whether `## Ratified decisions` merges into `## Design decisions for writers`, the fix-mode PM already receives the approved directive, `## Blast radius`, and `## Design decisions for writers`.
 - **The big feature runs before this lands**, so its Doc Writer uses the current `### Feature:` fold-in. If the feature's repo already carries a large SDD, the operator may choose to land this ticket between the smoke Bee and the big feature instead; decide at the smoke Bee's close.
 - **OpenSpec comparison (2026-09-23), for the record:** for quorum, this ticket's register (rules and their why, with one owner per fact, covering fix-issue's unplanned changes through the Analyst's policy decisions) was judged better than OpenSpec's living behavior specs, which keep the "what" and archive the "why" and update only through change folders. One option recorded for item 10: an incremental migration (archive the SDD, write the map, let the register fill from later work through the on-demand archive read) for repos whose SDD carries little that the admission test would keep; keep the full rebuild for live_edit.
+## Planning rewrites no longer wait on this ticket (operator decisions 2026-09-24)
+
+The minimal `/quo-breakdown-epic` and `/quo-plan` rewrites (b.pcc, b.7ib) now run before this ticket, and under CLAUDE.md `## How skill prose is written` they leave how docs are written to the doc-writer role. At this ticket's start:
+
+- **Item 3 applies unchanged.** `quo-setup` is not rewritten.
+- **Of item 6, check only the sites in** `quo-plan`, `quo-breakdown-epic`, `quo-write-sdd`, and `quo-spec-review` against the rewritten bodies; each may already be gone.
+- **The other item-6 sites stand:** `quo-plan-from-specs`, `quo-file-issue`, `quo-status`, and `hive_commit.py`.
+
+Position otherwise unchanged: after the big feature, or before it if that repo's SDD is already large.
 

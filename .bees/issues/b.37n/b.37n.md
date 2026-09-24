@@ -43,3 +43,9 @@ After the docs-only (text-class) validation run, which dispatches no PM and so d
 
 - b.sb7: its relay reconciliation (`## Ratified decisions` vs `## Design decisions for writers`) starts from the PM already holding the directive. Its 2026-09-19 note that the execute per-Task PM is not a recipient of `## Design decisions for writers` is addressed by the execute rewrite, whose Phase C PM mirrors this one.
 - Supporting evidence to collect, not blocking: premise checks fired on PM findings in recent fix-issue runs, especially `premise-false` returns. Each is this gap costing an Analyst dispatch. The same data feeds the separate question of whether the fix-mode PM earns its keep, which should be measured after this fix so the PM is judged on the right input.
+## Order and one added item (operator decisions 2026-09-24)
+
+- **Sequencing:** this ticket no longer waits for the docs-only validation run; it starts the execute track now. It is still validated on the next small-code `/quo-fix-issue` run, before b.87t copies this PM relay into execute. The order is on b.vtw's 2026-09-24 note.
+- **Added:** replace fix-issue's bees query recipes (run start and tick) with orientation, remove their test anchors, and record the retired literals per `docs/inventory/REWRITE-BRIEF.md`'s 2026-09-24 amendment. The recipes' `'stages:
+  - [...]'` form fails when run literally. Agents recover unaided, but this batch already edits fix-issue and the test file.
+

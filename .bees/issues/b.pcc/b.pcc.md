@@ -1,7 +1,7 @@
 ---
 id: b.pcc
 type: bee
-title: 'Rewrite /quo-breakdown-epic the way the two orchestrators were rewritten: inventory first, manifest-carried state, no TaskList dependence, 500-line target'
+title: 'Minimal rewrite of /quo-breakdown-epic under the prose standard: no TaskList dependence, 250/350-line budget, output contract shared with b.87t'
 parent: null
 reference_materials: null
 created_at: '2026-09-11T01:15:18.807870'
@@ -68,4 +68,19 @@ This ticket now follows b.37n, b.87t, b.87t's smoke Bee, the operator's big feat
 - **What execute consumes.** Rebuilt `/quo-execute` runs one Engineer per Task, given the Task body plus its Engineer Subtask bodies in dependency order; the Test Writer and Doc Writer each receive their own Subtask bodies; "Verify the Task" Subtasks are absorbed by the orchestrator's close-out; docs-only Tasks run as the text class. The emitted shape the prior note named (per-Subtask fingerprint sets, Subtask-level concurrency) is no longer what execute needs.
 - **Whether the Subtask layer earns its cost is this ticket's question**, answered from b.87t's smoke Bee and big-feature ledgers. Acceptance criteria are currently restated at four levels (PRD → Epic → Task → Subtask), each authored by a different agent in this skill; with Tasks as the execution unit, a thinner Subtask layer (or per-role work lists inside the Task body) may serve execute as well at lower breakdown cost.
 - **The chain-validation prerequisite is gone.** `/quo-execute` is validated by b.87t's smoke Bee against the current breakdown output, run under `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`, before this rewrite starts.
+## Minimal rewrite (operator decisions 2026-09-24)
 
+A minimal rewrite under CLAUDE.md `## How skill prose is written`, on the planning track. The order and the constraints shared with the execute track are on b.vtw's 2026-09-24 note.
+
+This note supersedes, where they conflict: the clean-room process in `## Suggested fix`; the 500-line target; the b.vtw writing rule and inputs (2)–(3) of the 2026-09-17 note; and the prerequisites (b.sb7 landed, chain validation). The 2026-09-23 question of whether the Subtask layer earns its cost moves to a follow-up after the smoke test and the big feature; this rewrite keeps the layer.
+
+- **Start from a failure inventory, not a rule inventory.** A rule survives when it is one of the standard's kinds, or its failure earns it.
+- **No TaskList dependence.** Gates stay fronted by the manifest write: it is a structural guard against the narrate-instead-of-do failure, which is not gone.
+- **Decide the context guard explicitly.** Its missing-reading gate is the only guard that reads the opt-out marker. Dropping that gate updates `/quo-setup`'s run-unguarded choice and CLAUDE.md's opt-out-marker exception in the same change.
+- **State the Bash etiquette once, as a goal,** since the per-site wording that enforces it today goes. Bees usage is orientation, not recipes.
+- **Budget:** 250-line target, 350-line hard cap, pinned by a test.
+- **Output contract execute consumes:**
+  - Tasks titled `Task N — <title>`, with `up_dependencies`.
+  - Subtasks in the Mandatory Subtask Description Template, with statuses `drafted` → `ready`.
+  - The Plan Bee's Scoped marker and `## Anticipated doc impact`, read as today.
+  - The two items defined with b.87t (b.vtw).

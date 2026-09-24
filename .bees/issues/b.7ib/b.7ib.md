@@ -1,7 +1,7 @@
 ---
 id: b.7ib
 type: bee
-title: 'Rewrite /quo-plan the way the two orchestrators were rewritten: inventory first, manifest-carried state, no TaskList dependence, 500-line target (after the breakdown-epic rewrite)'
+title: 'Minimal rewrite of /quo-plan and its three sub-skills (or OpenSpec front end) under the prose standard: no TaskList dependence, 250/350-line budget'
 parent: null
 reference_materials: null
 created_at: '2026-09-11T01:15:20.509880'
@@ -62,4 +62,18 @@ Cost observation: ~25 gates answered, ~9 carrying a real choice. Two compounding
 ## Prerequisites revised and new inputs (2026-09-17)
 
 The "chain validation has run" prerequisite is withdrawn for the same reason as on b.pcc: the operator decided (2026-09-17) that the plan → breakdown → execute chain runs once, *after* both planning rewrites, as `/quo-execute`'s first run. Order: b.vtw Batch B2 → b.sb7 (doc roles + orchestrators) → b.pcc → **this ticket** → chain validation. b.sb7's edits to this skill, `quo-plan-from-specs`, `quo-write-prd`, `quo-write-sdd`, and `quo-spec-review` (the `### Feature:` retirement, skeleton changes, hard-fail message, `## Anticipated doc impact`) fold into this rewrite rather than being made on the old body. The rewrite also consumes the writing rule on b.vtw (contracts literal, everything else a goal plus its reason) and the orchestrators' cost controls named in the evidence above, now landed as b.vtw Batches A and B1: the kind-keyed hold set, the smallest-complete-fix pick rule, confirming passes after a lane's first review, named implementers resumed for fix rounds, and the native ledger — the planning loop's "two gates per writer invocation with no lightweight edit path" is the same shape those fixed on the execution side. After this rewrite, the residual two-step `TaskCreate` → `AskUserQuestion` mentions in the three review skills, `quo-write-prd`, `quo-write-sdd`, and `quo-spec-review` are swept, since no caller will use that contract.
+## Minimal rewrite (operator decisions 2026-09-24)
 
+A minimal rewrite under CLAUDE.md `## How skill prose is written`, on the planning track after b.pcc. The order and the constraints shared with the execute track are on b.vtw's 2026-09-24 note.
+
+This note supersedes, where they conflict: the clean-room process in `## Suggested fix`; the 500-line target; the b.vtw writing rule; the prerequisites (b.sb7 landed, chain validation); and the folding of b.sb7's edits into this rewrite, which stay with b.sb7. The 2026-09-17 note's cost controls remain goals: one gate per real decision, trivial fixes applied without re-invoking a writer, and findings routed by where the fix lands.
+
+- **Scope:** `/quo-plan`, `quo-write-prd`, `quo-write-sdd`, and `quo-spec-review`, which all carry TaskList dependence. `/quo-plan-from-specs` has none and is out of scope.
+- **Settle OpenSpec first.** Either OpenSpec is the front end (a custom schema with no living `specs` artifact, plus a thin importer), or the skills are rewritten minimally. Either way, keep the cold plan reviewer: it caught three real design errors on 2026-09-16.
+- **Start from a failure inventory;** the 2026-09-16 defect list above is part of it. Gates only for real decisions.
+- **No TaskList dependence,** with gates fronted by a tool call as b.pcc records. Bash etiquette stated once, as a goal; bees usage as orientation.
+- **Budget:** 250-line target, 350-line hard cap for `/quo-plan`, plus a cap for each rewritten sub-skill, all pinned by a test.
+- **Output contract breakdown consumes** (an OpenSpec importer emits the same):
+  - Epics titled `Epic N — <title>`, with statuses `drafted` / `ready` and `up_dependencies`.
+  - `reference_materials` as one of: a `bees` entry naming a Spec Bee whose `t1=Doc` children are titled exactly `PRD` and `SDD`; a `file-path` entry; or null, meaning the Plan Bee body is the spec.
+  - `## Anticipated doc impact` in the Plan Bee body.

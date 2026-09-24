@@ -245,4 +245,21 @@ Candidates for the de-proceduralization list (delete-on-evidence, not a rewrite)
 ## Superseded in part by b.87t (operator decisions 2026-09-23)
 
 The "Order from here" above (must-do batch → rebuild → B2 → b.sb7 → b.pcc → b.7ib → chain validation → severity collapse) is replaced from b.sb7 onward. B2 has landed as B2a and B2b. Order now: docs-only (text-class) validation run, with the recent small-code `/quo-fix-issue` runs recorded against B2's small-code target → b.37n (fix-mode PM receives the Analyst directive) → b.87t (`/quo-execute` rebuilt as a plan-walker whose unit is the Task, each Task run through fix-issue's Phase A/B/C loop) → smoke Bee of at least two Epics → the operator's big feature → b.sb7 → b.pcc. The single chain validation after both planning rewrites no longer happens: `/quo-execute`'s first run is b.87t's smoke Bee, planned and broken down with the current bodies under `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`. b.7ib's position is open pending the OpenSpec-as-planning-front-end question. The severity collapse and the two-step-contract sweep follow as before. `--unattended`, planned for B2b, did not land; whether it is still wanted is open.
+## Order and cross-track contracts (operator decisions 2026-09-24)
+
+This supersedes the 2026-09-23 order above. It is the one place the work order and the constraints between the two tracks live; the other tickets point here.
+
+**Order.** Two tracks start now, with the prose standard (CLAUDE.md `## How skill prose is written`) committed, and run in parallel on separate branches. Neither waits for the docs-only validation run.
+- **Execute track:** fix-issue PM gets the approved design (b.37n, validated on a small-code `/quo-fix-issue` run) → rebuild `/quo-execute` around fix-issue's per-Task loop (b.87t).
+- **Planning track:** minimal `/quo-breakdown-epic` rewrite (b.pcc) → minimal `/quo-plan` and its three sub-skills, or OpenSpec as its front end (b.7ib).
+
+Then the smoke test of the whole new chain (at least two Epics), then the operator's big feature, then the new docs model (b.sb7) — or b.sb7 before the big feature if that repo already carries a large SDD. The severity collapse (amendment 7) and the review skills' residual two-step-contract mentions follow b.sb7.
+
+**Between the tracks:**
+- Breakdown's output contract (on b.pcc) holds across both. Two parts are defined by b.pcc and b.87t together before either implements: how a Subtask names its role (today execute infers it from the body), and whether breakdown still emits "Verify the Task" Subtasks now that execute's close-out absorbs them.
+- The execute track owns `agents/*.md`; the planning track does not edit them. The execute track keeps `agents/pm.md`'s Final report contract, its three destination annotations, and its ability to run the Spec Traceability Review that breakdown embeds in its PM dispatch.
+- Neither track changes the five run-state manifest lead statements. If breakdown drops its manifest, that change also removes breakdown from the mirror test and from CLAUDE.md's manifest-mirror criterion.
+- `quo-breakdown-epic/scripts/scoped_marker_resolver.py` stays where it is; both execution skills resolve it from there.
+- The smoke test needs no `CLAUDE_CODE_ENABLE_TODO_TOOLS`, because both planning rewrites remove their TaskList dependence.
+- Whichever track finishes second rebases onto main and reconciles the files both touch (CLAUDE.md, `tests/test_orchestrator_structure.py`, README, `docs/sdd.md`).
 

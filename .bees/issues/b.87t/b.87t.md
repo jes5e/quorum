@@ -4,10 +4,11 @@ type: bee
 title: Rebuild /quo-execute as a plan-walker whose unit is the Task, each Task run through fix-issue's Phase A/B/C loop; per-Epic boundary review replaces the Bee-level lanes and final sweep
 up_dependencies:
 - b.37n
-status: open
-created_at: '2026-09-23T11:35:59.951270'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-23T11:35:59.951270'
+status: open
+schema_version: '0.1'
 guid: 87tyy7m2wanqhcxu281y6dugrrzbt5tz
 ---
 
@@ -80,4 +81,11 @@ Readers known now (extend in the enumeration):
 ## Open
 
 - **Per-Task PM vs once per Epic.** Decide after b.37n: measure how often the fix-mode PM's traceability findings lead to a real fix. If rarely, the execute PM runs at the Epic boundary instead, saving one dispatch per Task.
+## Order revised (operator decisions 2026-09-24)
+
+This supersedes `## Sequencing` and the b.pcc and b.7ib lines of `## Relation to open tickets`. This ticket runs on the execute track after b.37n, in parallel with the planning track, and the smoke test follows both. The order and the cross-track constraints are on b.vtw's 2026-09-24 note.
+
+- The rules this rewrite adds are recorded as an amendment to `docs/inventory/REWRITE-BRIEF.md` under A2, as the b.vtw batches did.
+- It replaces execute's bees query recipes with orientation, since their `'stages:
+  - [...]'` form fails when run literally. It also states the Bash etiquette once in the body, as a goal, because the per-site wording that enforces it today goes.
 
