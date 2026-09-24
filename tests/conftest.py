@@ -44,6 +44,8 @@ QUO_TEST_WRITER_REVIEW = "skills/quo-test-writer-review/SKILL.md"
 QUO_DOC_WRITER_REVIEW = "skills/quo-doc-writer-review/SKILL.md"
 QUO_SPEC_REVIEW = "skills/quo-spec-review/SKILL.md"
 QUO_PLAN = "skills/quo-plan/SKILL.md"
+QUO_WRITE_PRD = "skills/quo-write-prd/SKILL.md"
+QUO_WRITE_SDD = "skills/quo-write-sdd/SKILL.md"
 QUO_FILE_ISSUE = "skills/quo-file-issue/SKILL.md"
 
 # Shipped reference files the two orchestrators read on demand. The shared

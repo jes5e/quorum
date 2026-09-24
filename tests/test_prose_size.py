@@ -23,7 +23,7 @@ from conftest import REPO_ROOT, read, shipped_artifacts
 # Raise an entry in the same commit that grows its file, with the growth's
 # reason recorded; lower it when the file shrinks.
 CAPS = {
-    "CLAUDE.md": 4472,
+    "CLAUDE.md": 4531,
     "skills/quo-breakdown-epic/SKILL.md": 18423,
     "skills/quo-doc-writer-review/SKILL.md": 3139,
     "skills/quo-engineer-review/SKILL.md": 6472,
@@ -37,14 +37,14 @@ CAPS = {
     "skills/quo-fix-issue/SKILL.md": 12539,
     "skills/quo-fix-issue/references/github-close.md": 382,
     "skills/quo-fix-issue/references/url-resolution.md": 525,
-    "skills/quo-plan/SKILL.md": 14460,
+    "skills/quo-plan/SKILL.md": 2989,
     "skills/quo-plan-from-specs/SKILL.md": 3236,
-    "skills/quo-setup/SKILL.md": 9722,
-    "skills/quo-spec-review/SKILL.md": 4982,
+    "skills/quo-setup/SKILL.md": 9748,
+    "skills/quo-spec-review/SKILL.md": 850,
     "skills/quo-status/SKILL.md": 730,
     "skills/quo-test-writer-review/SKILL.md": 3780,
-    "skills/quo-write-prd/SKILL.md": 5871,
-    "skills/quo-write-sdd/SKILL.md": 7689,
+    "skills/quo-write-prd/SKILL.md": 899,
+    "skills/quo-write-sdd/SKILL.md": 1072,
     "agents/analyst.md": 4996,
     "agents/code-reviewer.md": 1309,
     "agents/doc-reviewer.md": 676,

@@ -527,7 +527,7 @@ This subsection runs **only if** the PRD or SDD (or both) were skipped during th
 Then offer three options via AskUserQuestion:
 
 1. **Bootstrap baseline docs now** *(recommended for established projects with existing code)* — I'll explore your codebase, ask you a few short questions about the project's purpose, and produce starter `docs/prd.md` and `docs/sdd.md`.
-2. **Defer** — `/quo-plan` will offer to create docs seeded from your first feature's scope when you plan something new. Best for greenfield projects with little or no code yet.
+2. **Defer** — re-running `/quo-setup` offers the bootstrap again once there is code to describe; meanwhile `/quo-plan` keeps each feature's PRD and SDD as tickets. Best for greenfield projects with little or no code yet.
 3. **Skip permanently — body-as-spec** — I won't create any docs. Each Plan Bee body becomes the spec for that feature. Each Issue Bee body is the spec for that issue. Works for one-off features or throwaway projects, but does not accumulate a project-level spec across features.
 
 #### Detect repo state before showing the question
@@ -535,7 +535,7 @@ Then offer three options via AskUserQuestion:
 Run a quick heuristic to decide what the question should default to:
 
 - **Established project** (more than ~3 source files in the repo, or a non-trivial README, or any of: existing test directory, existing CI config, existing manifest like `Cargo.toml` / `package.json` / `go.mod` / `pyproject.toml` with declared dependencies) → option 1 ("Bootstrap baseline docs now") is the default and recommended option.
-- **Near-greenfield** (empty repo, hello-world only, no real source) → skip the bootstrap question entirely. Tell the user: "This looks like a new/empty project. `/quo-plan` will offer to create your initial PRD/SDD seeded from your first feature's scope. No bootstrap to do here." Skip ahead to Build Commands.
+- **Near-greenfield** (empty repo, hello-world only, no real source) → skip the bootstrap question entirely. Tell the user: "This looks like a new/empty project, so there is no code to bootstrap docs from. Re-run `/quo-setup` once there is; meanwhile `/quo-plan` keeps each feature's PRD and SDD as tickets." Skip ahead to Build Commands.
 
 #### If the user picks option 1 (Bootstrap)
 
@@ -610,8 +610,8 @@ user could perform.>
 
 ## Per-feature scope
 
-<Empty section header for now. Each /quo-plan invocation that produces
-docs adds a "### Feature: <title>" subsection here.>
+<Empty section header for now. The post-implementation Doc Writer adds a
+"### Feature: <title>" subsection here as each feature ships.>
 ```
 
 Write `docs/sdd.md` with this skeleton, filling in from Step A (codebase exploration). On greenfield (we won't get here per the skip-rule above, but if for any reason we do): leave sections as stub placeholders. On established projects, populate as much as the codebase reveals:
@@ -646,8 +646,8 @@ mark as "(not yet documented)".>
 
 ## Per-feature design
 
-<Empty section header for now. Each /quo-plan invocation that produces
-docs adds a "### Feature: <title>" subsection here.>
+<Empty section header for now. The post-implementation Doc Writer adds a
+"### Feature: <title>" subsection here as each feature ships.>
 ```
 
 ##### Step D: Show drafts and apply
@@ -661,7 +661,7 @@ If applied, write the files to disk and update the `## Documentation Locations` 
 After the bootstrap completes, leave the user with this note:
 
 > The docs you just bootstrapped are starter content. They'll grow incrementally as you use the workflow:
-> - **`/quo-plan`** for new features adds a "Feature: <title>" subsection to both `docs/prd.md` and `docs/sdd.md`.
+> - **`/quo-plan`** keeps each new feature's PRD and SDD as tickets; once the feature ships, the Doc Writer adds a "Feature: <title>" subsection to both `docs/prd.md` and `docs/sdd.md`.
 > - **`/quo-fix-issue`** for bug fixes that change documented behavior updates the relevant section.
 > - **`/quo-execute`** Doc Writer keeps the architecture sections in sync with what the Engineer actually built.
 >
@@ -669,7 +669,7 @@ After the bootstrap completes, leave the user with this note:
 
 #### If the user picks option 2 (Defer)
 
-Don't bootstrap. Continue to Build Commands. Make sure CLAUDE.md `## Documentation Locations` has empty values for PRD and Internal architecture docs (so a future `/quo-plan` invocation will detect missing docs and offer Path 2 there).
+Don't bootstrap. Continue to Build Commands. Make sure CLAUDE.md `## Documentation Locations` has empty values for PRD and Internal architecture docs (so a later `/quo-setup` run detects the missing docs and re-offers the bootstrap).
 
 #### If the user picks option 3 (Skip permanently — body-as-spec)
 
