@@ -278,4 +278,5 @@ The constraints in that section still hold, read with "execute track" meaning b.
 - b.pcc alone decides the Subtask role marker and whether breakdown still emits "Verify the Task" Subtasks; b.87t consumes what b.pcc emits.
 - The last bullet ("Whichever track finishes second rebases onto main…") no longer applies. Each item works on its own branch in its own worktree and merges before the next one starts.
 - The skills and role files are installed as live symlinks into the main checkout, so a merge to main deploys to every session at once.
+**Correction (operator, 2026-09-24):** each item works on its own branch in the main checkout, not in a separate worktree directory, so its session keeps the repo's memory and session history. The checked-out branch is live, because the skills are symlinks into that checkout. That's acceptable because the skill being rewritten isn't in use elsewhere, and it lets each item be validated on its branch before merging.
 
