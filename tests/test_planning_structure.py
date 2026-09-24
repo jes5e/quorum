@@ -10,7 +10,7 @@ to, never a prose sentence:
   (d) the output contract `/quo-breakdown-epic` and the PM read;
   (e) the writer inline contract shared by `/quo-plan` and the two writers;
   (f) the two reviewers' finding and verdict lines, and the SDD subsections
-      the plan path's reviewers and breakdown key on.
+      the plan path's reviewers key on.
 """
 
 import pytest
@@ -77,15 +77,20 @@ PLAN_GATE_LABELS = [
     "**Approve over blockers**",
     "`Fix in this session`", "`File as issue tickets`", "`Encode in an existing ticket body`",
     "**In a fresh session, break down now** (Recommended)",
-    "**In a fresh session, execute now**",
     "**Continue in this session: break down now**",
-    "**Continue in this session: execute now**",
     "**Review first**", "**Done for now**",
 ]
 
 
 def test_plan_gate_labels_are_verbatim():
     assert_present(PLAN_GATE_LABELS, PLAN, "quo-plan")
+
+
+def test_next_steps_gate_fits_one_askuserquestion():
+    # AskUserQuestion takes 2-4 options per question; a longer list cannot be asked as written.
+    after = PLAN.split("Fire the next-steps gate:", 1)[1]
+    choices = [line for line in after.splitlines() if line.startswith("- **")]
+    assert 2 <= len(choices) <= 4, choices
 
 
 @pytest.mark.parametrize("body", [PRD, SDD], ids=["quo-write-prd", "quo-write-sdd"])

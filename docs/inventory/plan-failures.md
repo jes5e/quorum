@@ -519,6 +519,8 @@ Every TaskList use in the four bodies goes: P30, P49, P62, P79, P82, P93, P94 (t
 - `/quo-engineer-review:183`, `/quo-test-writer-review:162`, `/quo-doc-writer-review:118` (out of scope): say severity is "backticked the way `/quo-spec-review`'s findings are". That is false today, and becomes true when spec review switches to backticks (R55).
 - `/quo-test-writer-review:160`, `/quo-doc-writer-review:116` (out of scope): cite "`/quo-spec-review`'s three" trailer shapes, which R52 removes. One-clause reader repair ("…rather than `/quo-spec-review`'s severity-keyed output"). Edited only as reader repair.
 - `/quo-breakdown-epic:731` (out of bounds): cites "`/quo-plan` Step 4b" as the inline-Skill precedent. Ticket note for b.pcc.
+- `/quo-breakdown-epic:228` and `agents/pm.md:26` (out of bounds): still attribute null `reference_materials` to "Plan Bees authored via `/quo-plan` for features without a separate PRD/SDD", which CLAUDE.md `## Hives and status vocabulary` no longer says. Ticket note for b.pcc.
+- `/quo-plan-from-specs:25,54` and `docs/sdd.md:30` (out of bounds or outside this change): still say `/quo-plan` adds feature sections to cumulative docs, false since b.31f. `/quo-plan-from-specs`'s next-steps gate (`:234–238`) lists five choices, one past `AskUserQuestion`'s four. Ticket note for the plan-from-specs owner.
 - `/quo-file-issue:77,167` (outside the four-skill scope): the lockstep note and the mandatory-sections contrast. Edited only as reader repair.
 - `/quo-setup` `:14`, `:530`, `:538`, `:613`/`:649`, `:664`, `:672`, `:892–897`: the stale `/quo-plan` descriptions from Checkpoint 1.
 - CLAUDE.md:
@@ -682,3 +684,27 @@ No second round was run on the inventory. Every fix is an inventory edit or a pr
   - **Cancel with open obligations.** Instead of routing them through deferral hygiene, the Cancel sentence now reports them: one goal clause, since the failure was predicted.
   - **Unchanged by the re-triage:** the round-1 post-approval `Fix in this session` route through the solo writer (a relay between agents), and the `escalate-to-user` recommendation precedence.
   - **Result:** `/quo-plan` is 227 lines and 3,110 words; the growth over the draft's 2,989 is the kept contract fixes.
+- **Overseer's correction to the re-triage (2026-09-24): F12 holds wherever the run can end.** Deferrals vanishing at a session end is F12, observed in b.dgq, so its earned rule is not a predicted-failure clause. "Cancel reports open deferrals" does not meet it, because a chat report is not durable. The re-triage's removal of "Start fresh carries obligations" was wrong for the same reason. Both are replaced by one sentence on the existing deferral-hygiene step, with no new state or mechanism: "However the run ends (completion, Cancel, or Start fresh over an unfinished run), open deferrals go through deferral hygiene first." This supersedes the re-triage's "Cancel with open obligations" entry. Readers: `skills/quo-plan/SKILL.md` §3 and the `docs/sdd.md` b.7ib entry.
+- **Cold round 5 (2026-09-24, on the re-triaged text; two reviewers, contracts/fidelity and executability, under the evidence bar).** 17 findings, 3 of them behavior, none a blocker; one executability finding and the contracts finding 1 are the same defect. Each fix restructures or replaces existing text.
+  - **Behavior:**
+    - **The next-steps gate had six choices.** `AskUserQuestion` takes 2–4 options per question, so the gate could not be asked as written; it was inherited from the base. The two execute-now choices are gone, because `/quo-execute` exits at once on a Bee whose Epics are all `drafted` (its Epic query step). Four choices remain: **In a fresh session, break down now** (Recommended), **Continue in this session: break down now**, **Review first**, **Done for now**. A structure test now pins the 2–4 bound.
+    - **The Revise relay dropped the picked fix path** (a gap between agents). `/quo-plan` picks a path, but the `findings:` relay carried only the finding lines, and the writers treat those as required fixes. The relay now carries each finding line with the fix-path line picked for it, in `/quo-plan` §7 and both writers' `findings:` placeholders; the approval gate shows the pick too.
+    - **The solo writers' gates lost the blocker recommendation** (A1 partial on W45/D51, SV23, and O4). They now mark **Revise** (Recommended) when a `blocker` is open, as `/quo-plan` does.
+  - **Wording, applied:**
+    - the precondition reads "lacks either the `plans` or the `specs` hive";
+    - the manifest phase is set as each section starts;
+    - the collision "two repos whose directories share a name" is restored as a statement, in `/quo-plan` §2 and the doc-writing guide, since the convention requires each manifest to state its accepted collisions (the re-triage dropped it with the removed machinery, but the collision itself remained);
+    - the Spec Bee title match is stated as a goal instead of a normalization recipe;
+    - Epic N is "its 1-based position in the draft", the base's meaning;
+    - the writers' return fields are named exactly (`prd_status` / `sdd_status`);
+    - the plan reviewer is dispatched as "a `general-purpose` agent in the background", not a spelled-out tool call;
+    - staging names "the in-repo hive paths the helper prints";
+    - the writers keep "a copy of the prior body and status", the overseer's sentence with its misreading removed;
+    - the SDD's claim that breakdown cites the two subsections is dropped, since no breakdown text reads them yet (b.eid items 3–4);
+    - the writers' 43-word Choices sentences are split;
+    - `docs/prd.md` (resume "reconciling with bees") and `docs/sdd.md` (word total) are corrected.
+  - **Carried to ticket notes** (out of bounds here): see §8.
+  - **Caps raised, with reasons:**
+    - `/quo-plan` 3,109 → 3,141: the F12 sentence (observed failure), the fix-path relay (a gap between agents), and the restored collision statement (a contract), net of the two removed choices;
+    - `quo-write-prd` 942 → 962 and `quo-write-sdd` 1,131 → 1,141: the fix-path relay (a gap between agents) and the restored blocker recommendation (a lost inventory survivor).
+  - **Exit rule:** three behavior findings earn a fresh cold round. It should cover only this round's fixes and the F12 correction.

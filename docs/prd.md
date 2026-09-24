@@ -629,7 +629,7 @@ The inline PRD and SDD writers no longer gate. Spec review and the cold plan rev
 - The output is unchanged for downstream skills: a `ready` Plan Bee whose `reference_materials` is `[{"value":"<spec-bee-id>","resolver":"bees"}]`; a `ready` Spec Bee with `ready` children titled `PRD` and `SDD`; `drafted` Epics titled `Epic N — <title>` with Epic-to-Epic `up_dependencies`; and `## Anticipated doc impact` in the Plan Bee body.
 - A cancelled run leaves no Plan Bee or Epics, and its Spec Bee and children stay `drafted`.
 - `/quo-plan` never changes an approved (`ready`) Spec Bee. A re-plan whose title matches one creates a new Spec Bee; `/quo-write-prd <spec-bee-id>` and `/quo-write-sdd <spec-bee-id>` revise an approved spec in place.
-- An interrupted run resumes from its run-state manifest without duplicating a ticket.
+- An interrupted run resumes from its run-state manifest, reconciling it with bees before acting.
 - A `trivial-tweak` finding is applied without re-invoking a writer.
 - Solo `/quo-write-prd` and `/quo-write-sdd` end at one approval gate after their own spec review.
 - The SDD carries `### Mechanism lifecycle` and `### Policy decisions this design implies`.
