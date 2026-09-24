@@ -910,7 +910,7 @@ Wiring `Cancel` in exposed a keying assumption. Both close-outs and every site t
 
 **Flow.** `/quo-plan` checks the Plans and Specs hives up front, then:
 1. Agrees the scope, distilled from the conversation when it carries one, and writes it to a scope file.
-2. Reuses or creates the Spec Bee.
+2. Reuses a still-`drafted` Spec Bee for the same feature, or creates one. An approved (`ready`) Spec Bee is never reused or changed by `/quo-plan`, because existing Plan Bees may read it and the writers would overwrite it before any gate; revising an approved spec in place is the solo writers' job.
 3. Invokes the two writers inline, in sequence, with the scope file.
 4. Drafts the Plan Bee body and the Epics to a plan-draft file.
 5. Runs `/quo-spec-review` and a cold, read-only plan reviewer on that one state, then fires one plan-approval gate.

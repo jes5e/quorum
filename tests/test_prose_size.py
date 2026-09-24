@@ -37,7 +37,7 @@ CAPS = {
     "skills/quo-fix-issue/SKILL.md": 12539,
     "skills/quo-fix-issue/references/github-close.md": 382,
     "skills/quo-fix-issue/references/url-resolution.md": 525,
-    "skills/quo-plan/SKILL.md": 2989,
+    "skills/quo-plan/SKILL.md": 3033,
     "skills/quo-plan-from-specs/SKILL.md": 3236,
     "skills/quo-setup/SKILL.md": 9748,
     "skills/quo-spec-review/SKILL.md": 850,

@@ -57,7 +57,7 @@ Gates fire only where the user holds the decision:
 
 - **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?`; choices **Resume** (continue from the recorded phase) and **Start fresh** (overwrite the manifest; tickets already created stay as they are).
 - **Scope** — choices **Approve**, **Revise**, **Cancel** (Section 4).
-- **Spec Bee reuse**, only when a candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee anyway`, `Cancel` (Section 5).
+- **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee anyway`, `Cancel` (Section 5).
 - **Plan approval**, once per review round — choices **Approve**, **Approve over blockers**, **Revise**, **Cancel** (Section 8).
 - **Deferral hygiene**, only when obligations are open — choices `Fix in this session`, `File as issue tickets`, `Encode in an existing ticket body` (Section 10).
 - **Next steps** — Section 10.
@@ -78,7 +78,7 @@ Fire the scope gate, showing the scope. **Approve** moves to Section 5. **Revise
 
 ## 5. Spec Bee and specs
 
-**Spec Bee.** A re-run for the same feature must reuse its Spec Bee, because a duplicate fragments the PRD and SDD silently. Query the `specs` hive's Bees and compare titles after normalizing: lowercase, whitespace collapsed, surrounding punctuation trimmed. On a match, or a near match you cannot rule out, fire the Spec Bee reuse gate. `Reuse existing Spec Bee` takes its ID. When it is `ready`, set it back to `drafted` for this run so that no unapproved spec reads as ready. `Create a new Spec Bee anyway` falls through to creating one. `Cancel` stops the run. With no candidate, create a `bee` in the `specs` hive, status `drafted`, titled with the feature title, with a two-to-three-sentence body from the scope; the PRD and SDD content belongs in its children, never in this body. Record the ID.
+**Spec Bee.** A re-run for the same unfinished feature must reuse its Spec Bee, because a duplicate fragments the PRD and SDD silently. Query the `specs` hive's Bees and compare titles after normalizing: lowercase, whitespace collapsed, surrounding punctuation trimmed. Only a `drafted` Spec Bee is a candidate. A `ready` one holds approved specs that existing Plan Bees may read, and the writers would overwrite them before any gate, so never reuse or change it. When a `ready` Spec Bee matches, say so and create a new one; revising an approved spec in place is the solo writers' job (`/quo-write-prd <spec-bee-id>`, `/quo-write-sdd <spec-bee-id>`). On a `drafted` match, or a near match you cannot rule out, fire the Spec Bee reuse gate. `Reuse existing Spec Bee` takes its ID. `Create a new Spec Bee anyway` falls through to creating one. `Cancel` stops the run. Otherwise create a `bee` in the `specs` hive, status `drafted`, titled with the feature title, with a two-to-three-sentence body from the scope; the PRD and SDD content belongs in its children, never in this body. Record the ID.
 
 **Writers.** Invoke `/quo-write-prd`, then `/quo-write-sdd`, through the Skill tool, never in parallel, since both add children to one Spec Bee. Pass each the same `args`:
 
