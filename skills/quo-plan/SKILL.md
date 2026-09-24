@@ -48,7 +48,7 @@ The manifest holds the run's values that live nowhere else on disk, so a compact
 none
 ```
 
-**After a compaction**, trust the manifest over any summary: re-read it and the tickets it names, and continue from its phase. When `## Open gate` names a gate with no answer recorded, ask it again from what the section records; with an answer recorded, finish the work that answer calls for. **On resume** after a stopped session, also continue from the phase: a gate the stopped run left open is asked again after redoing the step that produced it (for plan approval, the round's reviews).
+**After a compaction or on resume**, trust the manifest over any summary: re-read it and the tickets it names, and continue from its phase. A gate record with an answer means finish the work that answer calls for. A gate record with no answer means ask it again; on resume after a stopped session, first redo the step that produced it (for plan approval, the round's reviews), because what it showed may be stale.
 
 A crash can land between a create and its record. So at phase `approved`, before creating a ticket the manifest does not list, check whether it already exists and record a match instead of creating a second. For the Plan Bee, look for a `drafted` one whose `reference_materials` names this run's Spec Bee. For an Epic, look for one with the same title under the recorded Plan Bee.
 
@@ -58,14 +58,14 @@ A gate is the manifest `Write` that fills `## Open gate` with the gate's name, q
 
 Gates fire only where the user holds the decision:
 
-- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?` **Resume** continues from the recorded phase. **Start fresh** overwrites the manifest but carries over its open `## Obligations` rows; tickets already created stay as they are.
+- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?` It shows the stopped run's `## Open gate` record, so writing this gate keeps that record. **Resume** continues from the recorded phase and applies Section 2's rule to that record. **Start fresh** overwrites the manifest but carries over its open `## Obligations` rows; tickets already created stay as they are.
 - **Scope** — choices **Approve**, **Revise**, **Cancel** (Section 4).
 - **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee anyway`, `Cancel` (Section 5).
 - **Plan approval**, once per review round — choices **Approve**, **Approve over blockers**, **Revise**, **Cancel** (Section 8).
 - **Deferral hygiene**, only when obligations are open — choices `Fix in this session`, `File as issue tickets`, `Encode in an existing ticket body` (Section 10).
 - **Next steps** — Section 10.
 
-A `Cancel` at any gate first routes any open `## Obligations` rows through deferral hygiene (Section 10), then sets `**Phase:** complete`, reports what exists, and stops. Nothing is ever written to the Plans hive before plan approval, so a cancelled run leaves no Plan Bee to clean up.
+A `Cancel` at any gate sets `**Phase:** complete`, fires the deferral-hygiene gate over any open `## Obligations` rows, reports what exists, and stops. Nothing is ever written to the Plans hive before plan approval, so a cancelled run leaves no Plan Bee to clean up.
 
 ## 4. Scope
 
@@ -200,7 +200,7 @@ Set `**Phase:** created`.
 
 **Deferral hygiene.** Set `**Phase:** handoff`. When `## Obligations` has no open row, print `Deferral hygiene: no deferred items.` Otherwise list the open rows and fire the deferral-hygiene gate. The user can route different items differently by writing that in the free-text slot.
 
-- `Fix in this session` — do the work now. The specs are approved by now, so a spec change goes through the solo writer: invoke `/quo-write-prd <spec-bee-id>` or `/quo-write-sdd <spec-bee-id>` through the Skill tool with no other `args`. It reviews and gates the change, and the row closes on its **Approve**.
+- `Fix in this session` — do the work now. A spec change goes through the solo writer: invoke `/quo-write-prd <spec-bee-id>` or `/quo-write-sdd <spec-bee-id>` through the Skill tool with no other `args`. It reviews and gates the change, and the row closes on its **Approve**.
 - `File as issue tickets` — invoke `/quo-file-issue` through the Skill tool with the item as its description.
 - `Encode in an existing ticket body` — append a `## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)` section to one of this run's Plans- or Specs-hive tickets, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -Format 'yyyy-MM-dd HH:mm'` (PowerShell).
 
