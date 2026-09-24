@@ -661,3 +661,24 @@ No second round was run on the inventory. Every fix is an inventory edit or a pr
   - **Resume versus kept answers.** Section 2's compaction and resume sentences merge into one rule keyed on whether the gate record has an answer. The Resume gate shows the stopped run's `## Open gate` record, so writing it keeps that record under the general gate definition, with no new mechanism.
   - **Cancel inherited Section 10's `handoff` phase.** Cancel now sets `complete` first and fires the deferral-hygiene gate itself. The `Fix in this session` bullet drops its "specs are approved by now" premise.
   - **A repeated solo run saved the draft.** The copy is saved only when the child is `ready`, and Cancel restores the newest saved copy for that child's ID.
+- **Cold round 4 (2026-09-24): discarded.** It returned two findings, both procedure details inside one agent's own steps, with no gap between agents. Both are discarded under the re-triage below, which also replaces the text they were about.
+- **Re-triage against one evidence bar (overseer, 2026-09-24).** This supersedes the round-1 to round-3 entries above wherever they conflict. The review → fix cycle had drifted from the standard: `/quo-plan` grew from 2,989 to 3,353 words, mostly on crash and compaction rules. This inventory dropped rules whose failures were only predicted (F14–F19). A scenario a reviewer role-plays is a prediction too, not a run failure, so it earns one goal sentence at most, never a mechanism. Gaps between agents (contracts, relays, headings) are still findings. Details inside one agent's own steps are not (CLAUDE.md's contract/procedure rule).
+  - **Kept, as contract fixes:**
+    - one `#` heading per ticket in the plan draft (the Plan Bee body keeps `## Anticipated doc impact`, which breakdown and the Doc Writer read);
+    - the user-change relay to the writers as `findings:` lines;
+    - `/quo-spec-review` returning to its caller;
+    - the `date` / `Get-Date` timestamp in the Encode heading;
+    - the scratch-file rule covering every file each skill writes.
+  - **Replaced with minimum state plus one goal.** The removed mechanisms:
+    - the gate's content and `won't-fix` rows in the manifest;
+    - query-before-create;
+    - the Resume re-ask rule;
+    - the Revise-routing carrier;
+    - Start fresh carrying obligations;
+    - the solo writers' saved-copy naming scheme.
+
+    The manifest now keeps the phase, the feature title (the resume question names it), what the run has created (the scope file and plan draft paths, and the ticket IDs), the open gate (name, question, choices), and the open obligations. The scope file and plan draft paths are kept because the reviewed draft exists nowhere else. One sentence covers recovery: "After a compaction or a crash, re-read the manifest and reconcile it with bees before acting." The review-round counter is gone, since nothing read it. The second accepted collision (two repos with the same directory name) is dropped with the machinery that listed it.
+  - **Solo Cancel** is one goal sentence: "keep the prior body until the user approves; on Cancel, put it back." The Cancel choice reads "put the prior body and status back; a PRD/SDD this run created stays `drafted`".
+  - **Cancel with open obligations.** Instead of routing them through deferral hygiene, the Cancel sentence now reports them: one goal clause, since the failure was predicted.
+  - **Unchanged by the re-triage:** the round-1 post-approval `Fix in this session` route through the solo writer (a relay between agents), and the `escalate-to-user` recommendation precedence.
+  - **Result:** `/quo-plan` is 227 lines and 3,110 words; the growth over the draft's 2,989 is the kept contract fixes.

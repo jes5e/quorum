@@ -20,23 +20,20 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 
 ## 2. Run-state manifest
 
-The manifest holds the run's values that live nowhere else on disk, so a compaction or a crashed session loses nothing.
+The manifest holds what the run needs and bees does not: its phase, what it has created, the open gate, and the open deferrals.
 
-**Path.** `/tmp/.quorum/run-state-quo-plan-<repo-dir-name>.md` (`%TEMP%\.quorum\run-state-quo-plan-<repo-dir-name>.md` on Windows), where `<repo-dir-name>` is the last path segment of `git rev-parse --show-toplevel`. The name is deterministic, with no suffix or timestamp, because after a compaction you must recompute the path rather than remember it. Accepted collisions: two `/quo-plan` runs in one repo at the same time, and two repos with the same directory name; the resume question's feature title shows either.
+**Path.** `/tmp/.quorum/run-state-quo-plan-<repo-dir-name>.md` (`%TEMP%\.quorum\run-state-quo-plan-<repo-dir-name>.md` on Windows), where `<repo-dir-name>` is the last path segment of `git rev-parse --show-toplevel`. The name is deterministic, with no suffix or timestamp, because after a compaction you must recompute the path rather than remember it. Accepted collision: two `/quo-plan` runs in one repo at the same time.
 
-**Lifecycle.** At run start, read the manifest. When it is absent or reads `**Phase:** complete`, write a fresh one. Otherwise an earlier run stopped partway: fire the resume gate (Section 3), because only the user knows whether that run is abandoned. Rewrite the manifest whenever a value changes, before acting on it, and record each ticket ID the moment its create returns.
+**Lifecycle.** At run start, read the manifest. When it is absent or reads `**Phase:** complete`, write a fresh one. Otherwise an earlier run stopped partway: fire the resume gate (Section 3), because only the user knows whether that run is abandoned. Rewrite the manifest whenever a value changes, and record each ticket ID as its create returns.
 
 ```markdown
 # Run state — quo-plan @ <repo-dir-name>
 
-**Phase:** <scope (Section 4) | specs (5) | draft (6) | review (7–8) | approved | created (9) | handoff (10) | complete>
+**Phase:** <scope | specs | draft | review | approved | created | handoff | complete>
 **Feature:** <title, or pending>
-**Scope file:** <path, or pending>
+**Scope file:** <path, or pending> · **Plan draft:** <path, or pending>
 **Spec Bee:** <id, or pending> · **PRD:** <id, or pending> · **SDD:** <id, or pending>
-**Plan draft:** <path, or pending>
-**Review round:** <n>
-**Plan Bee:** <id, or pending>
-**Epics:** <Epic N = <id>, …, or pending>
+**Plan Bee:** <id, or pending> · **Epics:** <Epic N = <id>, …, or pending>
 
 ## Obligations
 
@@ -48,24 +45,22 @@ The manifest holds the run's values that live nowhere else on disk, so a compact
 none
 ```
 
-**After a compaction or on resume**, trust the manifest over any summary: re-read it and the tickets it names, and continue from its phase. A gate record with an answer means finish the work that answer calls for. A gate record with no answer means ask it again; on resume after a stopped session, first redo the step that produced it (for plan approval, the round's reviews), because what it showed may be stale.
-
-A crash can land between a create and its record. So at phase `approved`, before creating a ticket the manifest does not list, check whether it already exists and record a match instead of creating a second. For the Plan Bee, look for a `drafted` one whose `reference_materials` names this run's Spec Bee. For an Epic, look for one with the same title under the recorded Plan Bee.
+After a compaction or a crash, re-read the manifest and reconcile it with bees before acting.
 
 ## 3. Gates
 
-A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, choices, and everything it shows the user, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Record the answer in `## Open gate` when it arrives. Set the section back to `none` only once the work that answer calls for has landed, so a Revise's findings and change lines survive a compaction until the writers and the draft carry them.
+A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, and choices, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Set `## Open gate` back to `none` once the answer is consumed.
 
 Gates fire only where the user holds the decision:
 
-- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?` It shows the stopped run's `## Open gate` record, so writing this gate keeps that record. **Resume** continues from the recorded phase and applies Section 2's rule to that record. **Start fresh** overwrites the manifest but carries over its open `## Obligations` rows; tickets already created stay as they are.
+- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?`; choices **Resume** (continue from the recorded phase) and **Start fresh** (overwrite the manifest; tickets already created stay as they are).
 - **Scope** — choices **Approve**, **Revise**, **Cancel** (Section 4).
 - **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee anyway`, `Cancel` (Section 5).
 - **Plan approval**, once per review round — choices **Approve**, **Approve over blockers**, **Revise**, **Cancel** (Section 8).
 - **Deferral hygiene**, only when obligations are open — choices `Fix in this session`, `File as issue tickets`, `Encode in an existing ticket body` (Section 10).
 - **Next steps** — Section 10.
 
-A `Cancel` at any gate sets `**Phase:** complete`, fires the deferral-hygiene gate over any open `## Obligations` rows, reports what exists, and stops. Nothing is ever written to the Plans hive before plan approval, so a cancelled run leaves no Plan Bee to clean up.
+A `Cancel` at any gate sets `**Phase:** complete`, reports what exists and any open obligations, and stops. Nothing is ever written to the Plans hive before plan approval, so a cancelled run leaves no Plan Bee to clean up.
 
 ## 4. Scope
 
@@ -116,7 +111,7 @@ Dependencies link sibling Epics only. A dependency on a Bee is not expressible, 
 
 ## 7. Reviews
 
-The first round runs both reviews on the same state, before the plan-approval gate. `/quo-spec-review` checks the specs against their contract. A cold reviewer checks whether the plan is a sound solution; it exists because a checklist review let plan-level design errors through, and on its first real run it caught three. Record the round number.
+The first round runs both reviews on the same state, before the plan-approval gate. `/quo-spec-review` checks the specs against their contract. A cold reviewer checks whether the plan is a sound solution; it exists because a checklist review let plan-level design errors through, and on its first real run it caught three.
 
 Dispatch the plan reviewer as `Agent(subagent_type=general-purpose, run_in_background=true, prompt=…)` with this section's prompt, IDs and path filled in. While it works, invoke `/quo-spec-review <spec-bee-id>` through the Skill tool with no `--doc`. Then wait for the reviewer's completion notification.
 
@@ -178,7 +173,7 @@ Lead with the verdict in a sentence: the plan reads as coherent (`approve`), it 
 
 Fire the plan-approval gate. Offer **Approve** when no `blocker` is open, and **Approve over blockers** in its place when one is. On `escalate-to-user`, mark no choice (Recommended): the call is the user's. Otherwise mark **Revise** (Recommended) when a `blocker` is open, and **Approve** (Recommended) on a clean `approve` verdict.
 
-- **Approve** or **Approve over blockers** → Section 9. Record each finding approved over as a closed `## Obligations` row with destination `won't-fix`, so the report can list it after a compaction; mark an overridden blocker as such. A finding the user wants fixed later becomes an open row with its intended destination.
+- **Approve** or **Approve over blockers** → Section 9. A finding approved over is a won't-fix, listed in the report with any overridden blockers. A finding the user wants fixed later becomes an open `## Obligations` row with its intended destination.
 - **Revise** → route the remaining findings and the user's own changes (Section 7), then run the next round.
 - **Cancel** → the Spec Bee and its children stay `drafted`; a re-run reuses them.
 
@@ -186,7 +181,7 @@ Whenever the user or a reviewer defers something to later, anywhere in the run, 
 
 ## 9. Create the plan
 
-Set `**Phase:** approved`, then write in this order, recording each ID in the manifest as its create returns:
+Set `**Phase:** approved`, then write in this order, recording each ID in the manifest:
 
 1. Set the PRD and SDD children to `ready`, then the Spec Bee.
 2. Create the Plan Bee in the `plans` hive, status `drafted`, titled with the feature title, with its drafted body and `reference_materials` exactly `[{"value":"<spec-bee-id>","resolver":"bees"}]`. Downstream skills follow that entry to the Spec Bee and read its children titled `PRD` and `SDD`.
@@ -206,7 +201,7 @@ Set `**Phase:** created`.
 
 Close each row as its item lands. Do not hand off while a row is open. When a route fails, show the remaining rows and ask again.
 
-**Report.** List the Spec Bee and its PRD and SDD, the Plan Bee, and each Epic by label with its ID, status, and dependencies. Add any `RESEARCH NEEDED` questions, the `won't-fix` rows (overridden blockers marked), and where each other obligation went.
+**Report.** List the Spec Bee and its PRD and SDD, the Plan Bee, and each Epic by label with its ID, status, and dependencies. Add any `RESEARCH NEEDED` questions, the findings approved over (overridden blockers marked), and where each obligation went.
 
 **Commit.** Stage only this run's hive files, never the whole tree, because a hive may live outside the repo and the working tree may hold unrelated changes. The sibling helper prints each in-repo hive path, one per line:
 
