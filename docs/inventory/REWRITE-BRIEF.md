@@ -207,6 +207,15 @@ A8. Executability read: a reviewer role-plays one full `/quo-fix-issue` run and 
     the text alone and reports any step where the next action is ambiguous.
 A9. No coverage regression against D12, checked explicitly.
 
+*Amended 2026-09-24 (CLAUDE.md `## How skill prose is written`):* A1 is met, in addition to the D10 cut list, when an
+inventory rule is present, moved to a shipped reference file, or deleted under that standard with its evidence recorded in
+the commit or ticket; INVENTORY.md's "procedure" class means any instruction, not the standard's sense of a how-to step.
+§5's literal rule and A3 do not require an external-CLI invocation that standard retires (the indexed `stages:` query
+strings, for example); a retired literal is recorded in the commit or ticket. A8 reports a step only when the agent
+cannot tell what outcome satisfies it or what exact string a contract uses; a step whose procedure is left to the agent is
+not ambiguous. A2 stands: a change that needs a rule the inventory lacks records it as an amendment here, as the batches
+above did.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 

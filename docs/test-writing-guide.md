@@ -9,7 +9,7 @@ Tests here cover two things and nothing else:
 1. **Python helpers** — every module under `skills/*/scripts/`, through the two-layer pattern below.
 2. **Structural invariants of shipped markdown** — properties a test can check without quoting a sentence: a heading or label anchor is present in the files that emit and consume it; two sections the mirror map declares identical are byte-identical (or identical after a declared token substitution); a body is within its line cap and its first sections sit within the first 150 lines; a gate's choice labels appear verbatim; no shipped artifact cites a repo-only document. `tests/test_orchestrator_structure.py` and `tests/test_shipped_artifact_portability.py` are the models.
 
-**Pinning prose sentences is out of scope.** A test that asserts a sentence of skill or role prose is present freezes wording, not behavior, and turns every rewording into a test edit; the six retired prose-pin modules were replaced for that reason. Key an assertion on a heading, a label, a fixed line a consumer parses, a file name, a command, or an enum value — never on a sentence of explanation.
+**Pinning prose sentences is out of scope.** A test that asserts a sentence of skill or role prose is present freezes wording, not behavior, and turns every rewording into a test edit; the six retired prose-pin modules were replaced for that reason. Key an assertion on a heading, a label, a fixed line a consumer parses, a file name, a command that is itself a contract (a bundled helper's CLI), or an enum value — never on a sentence of explanation, and never on an external tool's invocation that CLAUDE.md `## How skill prose is written` would have the skill state as a goal.
 
 ## Setup
 

@@ -9,7 +9,7 @@ This guide is opinionated. When the rules here conflict with a "standard" markdo
 A skill is read by Claude at invocation time, not by a human at design time. Write for an instructable agent that has no memory of prior sessions and no access to context beyond what the skill prose provides.
 
 - **Direct, imperative voice.** "Read CLAUDE.md" not "you should read CLAUDE.md". "Write the section as below" not "the section can be written as".
-- **Code over prose.** A labeled shell block teaches more than a paragraph describing what the shell block would do.
+- **Goals over procedures.** State what a step must achieve and why, and let the agent work out how. Give exact text only where CLAUDE.md `## How skill prose is written` says it belongs.
 - **Opinionated defaults, not exhaustive references.** A skill that lists six options for everything is a skill that makes Claude waffle. Pick one, mark it "(Recommended)", and let the user override (via `AskUserQuestion` if the override is itself a finite set of choices, or by replying in prose if it's free-text — see `## AskUserQuestion patterns` below).
 - **No headers-and-bullets-for-everything.** A two-sentence answer should be two sentences, not a "Summary" header followed by a one-bullet list.
 
@@ -73,11 +73,9 @@ Whenever a skill needs to find tickets in a hive — list open issues, find an E
 bees execute-freeform-query --query-yaml '<yaml>'
 ```
 
-The bees CLI does not have a `list-tickets` command, a `search` command, or a hive-scoped enumeration command. Anything that smells like one is a guess; verify with `bees execute-freeform-query --help` before writing a new recipe.
+The bees CLI does not have a `list-tickets` command, a `search` command, or a hive-scoped enumeration command. Anything that smells like one is a guess; verify with `bees execute-freeform-query --help` before stating a fact about it.
 
-**Prose rule.** When a skill tells Claude to "find", "search", "list", or "look up" tickets, ship the concrete recipe inline at that point. Vague prose ("search the issues hive for a duplicate") forces the agent to invent a CLI verb and is the same anti-pattern CONTRIBUTING.md flags under "Don't replace concrete shell snippets with vague prose."
-
-The rule extends past the recipe itself. If a recipe's `report:` projection returns only part of what the prose-after-the-recipe instructs the agent to check (e.g., the projection reports `up_dependencies` as IDs and the prose then asks "verify each dependency is `done`"), ship the follow-up recipe inline too. `bees show-ticket --ids <id1> <id2> ...` is the canonical batch-lookup shape — use it explicitly rather than leaving the agent to derive it.
+**Prose rule.** When a skill needs tickets found, it names what to find and the facts bees' help does not make obvious or gets wrong: there is no list or search verb; enumeration goes through `bees execute-freeform-query`; the `report:` key adds fields to results; and the query is passed on one line in YAML flow style (`{stages: [[...]], report: [...]}`), because the help's `\n` example is not expanded by the shell (gabemahoney/bees#28) and a query with real newlines triggers permission prompts. It does not ship a query recipe, which goes stale when bees changes. Bare "search the issues hive" with no facts is still vague prose — it sends the agent guessing at a verb (CONTRIBUTING.md `## Anti-patterns`). The shape and examples below orient contributors and sessions working in this repo; they are not text to paste into a skill.
 
 **Canonical YAML shape.**
 
@@ -107,37 +105,25 @@ report: [<fields>]   # optional: add named fields to each returned ticket
 - `up_dependencies` — get upstream blockers
 - `down_dependencies` — get downstream dependents
 
-**The `report:` clause is real but undocumented in `--help`.** Without it, the response contains only `ticket_ids` (a flat list of IDs). With `report: [title, ticket_status, up_dependencies, ...]`, the response contains a `tickets` array where each ticket carries the requested fields. Use `report:` whenever the agent will display results to the user, pattern-match titles, or reason about status/dependencies. Omit `report:` when you only need IDs to traverse next.
+**The `report:` clause is real but undocumented in `--help`** (reported upstream as gabemahoney/bees#28; once the help documents it, skills no longer need to name it). Without it, the response contains only `ticket_ids` (a flat list of IDs). With `report: [title, ticket_status, up_dependencies, ...]`, the response contains a `tickets` array where each ticket carries the requested fields. Use `report:` whenever the agent will display results to the user, pattern-match titles, or reason about status/dependencies. Omit `report:` when you only need IDs to traverse next.
 
 **Worked examples.**
 
 ```bash
-# All open issues — used by /quo-file-issue (duplicate check) and /quo-fix-issue (no-args / all modes):
-bees execute-freeform-query --query-yaml 'stages:
-  - [type=bee, hive=issues, status=open]
-report: [title]'
+# All open issues:
+bees execute-freeform-query --query-yaml '{stages: [[type=bee, hive=issues, status=open]], report: [title]}'
 
-# Ready Plan Bees — used by /quo-breakdown-epic and /quo-execute when called without args:
-bees execute-freeform-query --query-yaml 'stages:
-  - [type=bee, hive=plans, status=ready]
-report: [title]'
+# Ready Plan Bees:
+bees execute-freeform-query --query-yaml '{stages: [[type=bee, hive=plans, status=ready]], report: [title]}'
 
-# Drafted Epic children of a specific Plan Bee — used by /quo-breakdown-epic when caller supplies a Bee ID:
-bees execute-freeform-query --query-yaml 'stages:
-  - [parent=<bee-id>, type=t1, status=drafted]
-report: [title, up_dependencies]'
+# Drafted Epic children of a specific Plan Bee:
+bees execute-freeform-query --query-yaml '{stages: [[parent=<bee-id>, type=t1, status=drafted]], report: [title, up_dependencies]}'
 
-# Trace from an Epic up to its parent Bee — used by /quo-execute when caller supplies an Epic ID:
-bees execute-freeform-query --query-yaml 'stages:
-  - [id=<epic-id>]
-  - [parent]
-report: [title, ticket_status]'
+# Trace from an Epic up to its parent Bee:
+bees execute-freeform-query --query-yaml '{stages: [[id=<epic-id>], [parent]], report: [title, ticket_status]}'
 
 # Status snapshot — all Plan Bees plus their children (two-stage traversal):
-bees execute-freeform-query --query-yaml 'stages:
-  - [type=bee, hive=plans]
-  - [children]
-report: [title, ticket_status, up_dependencies]'
+bees execute-freeform-query --query-yaml '{stages: [[type=bee, hive=plans], [children]], report: [title, ticket_status, up_dependencies]}'
 ```
 
 **Cross-platform note.** The single-quoted YAML literal works identically in POSIX bash/zsh and Windows PowerShell single-quoted strings — embedded `$variables` are not expanded by either shell inside single quotes. So query recipes do not need OS-paired variants; one block covers both. (Exception: if a recipe interpolates a shell variable for the ticket ID, the interpolation syntax is shell-specific and the recipe needs OS-paired variants like every other shell snippet.)
@@ -154,13 +140,7 @@ bees append-ticket-body --ticket-id <id> --chunk-file <path>
 
 `append-ticket-body` is append-only by design: the existing body is preserved byte-for-byte and the chunk lands as one logical addition. The bees CLI itself prescribes this flow — quoting `bees update-ticket --help`: *"Capped at 10000 characters; for larger bodies, set the body to the first 10000-character chunk and use `bees append-ticket-body` to write the rest."*
 
-**Prose rule for skills that author body updates.** When skill prose tells Claude to "update the ticket body", "append a section to the Epic body", or "persist the finding to the ticket", ship the right command for the size class:
-
-- **Small new body (≤10000 chars total):** `bees update-ticket --ids <id> --body-file <path>` — one invocation, replaces the body wholesale.
-- **Append to a body that may exceed the cap:** `bees append-ticket-body --ticket-id <id> --chunk-file <path>` — append-only, no cap risk on the cumulative size.
-- **Unknown size at write time:** prefer `append-ticket-body` for append-shaped operations even when the current body fits — the future body grows, the chunk does not, and the cap was originally tuned around the expected delta size, not the cumulative ticket length.
-
-Skill prose that says "single `bees update-ticket --body-file` invocation" is wrong if the body is append-shaped or large. The Subtask author should reach for `append-ticket-body` instead and document the choice in skill prose. (Surfaced by `b.5tm` Task ek probe-results persistence — Subtask wording specified `update-ticket --body-file` but the cumulative body would have exceeded the cap, forcing the engineer to deviate to `append-ticket-body` to honor the byte-for-byte preservation contract.)
+**Prose rule for skills that author body updates.** When skill prose tells Claude to update or append to a ticket body, it says which operation it means — replace the body, or add to it while preserving what is there — and leaves the command to the agent; bees' help documents the cap and `append-ticket-body`. Prose that names a specific command gets this wrong when the body is larger or append-shaped: a Subtask that specified `update-ticket --body-file` for a body that would have exceeded the cap forced the engineer to deviate to `append-ticket-body` to preserve the existing text.
 
 ## The Scoped-marker contract
 
@@ -364,7 +344,7 @@ Bees ticket IDs are random suffixes (`t1.rwx.o4`, `b.9xr`) — fine as machine h
 
 The `Epic N` and `Task M` ordinals come from the ticket titles (`Epic N — …` / `Task M — …`); the orchestrator obtains the enclosing Plan Bee ID by walking the committed ticket's parent chain (Task → Epic → Bee, or Epic → Bee) — context it already holds from the run's top-level invocation. When the enclosing Epic has no parent Plan Bee (a standalone Epic), omit the `Plan <bee-id>, ` prefix and lead with the Epic. The trailing `(<id>)` is the committed ticket's own ID and is the only place a random-suffix ID appears as a standalone parenthesized token; the leading `Plan <bee-id>` is the deliberate exception that anchors the commit to its plan file.
 
-This convention is downstream-facing — it governs what the skills emit when installed in any target repo, the same way the querying recipes and the Scoped-marker contract do.
+This convention is downstream-facing — it governs what the skills emit when installed in any target repo, the same way the Scoped-marker contract does.
 
 ## When you're updating an existing skill
 
