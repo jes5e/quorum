@@ -49,7 +49,7 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 
    1. `## Codebase exploration findings` — architecture, affected modules, patterns, data models, fixtures, configuration, from the research.
    2. `## Requirements` — `SR-1`, `SR-1.1`, … grouped under one heading per domain, each an observable behavior. It always ends with two subsections:
-      - `### Mechanism lifecycle` — for each mechanism the design introduces (new state, configuration, persisted or wire field, background task, gate, retry path, and the like), where it is created, consumed, and torn down in every scope and exit path;
+      - `### Mechanism lifecycle` — for each mechanism the design introduces (as the `analyst` role defines the term), where it is created, consumed, and torn down in every scope and exit path;
       - `### Policy decisions this design implies` — each yes/no question the design forces, with the recommended answer.
 
       Each reads `none — <why>` when empty. A missing lifecycle leg or open policy question otherwise surfaces only as late review churn.
