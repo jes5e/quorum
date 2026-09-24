@@ -633,3 +633,20 @@ No second round was run on the inventory. Every fix is an inventory edit or a pr
     - `docs/prd.md`'s b.7ib acceptance criteria.
 
   The writers' inline "set back to `drafted` on update" stays: inline writers now only ever touch a `drafted` Spec Bee's children.
+- **Cold round 1 on the draft (2026-09-24, two reviewers: contracts/fidelity and executability).** 25 findings across the two reports, 1 blocker, 14 behavior. The disposition of each is in the Checkpoint 4 record. The rules the fixes add or keep, with evidence:
+  - **Solo Cancel restores the saved body and status** (W/D step 2 and the Cancel choice). This is F22 on the path F22's fix routes revisions to. Both reviewers found it independently; the three questions are the same as F22's. A clause is unavoidable, because spec review reads only the ticket body, so the write must precede the gate.
+  - **The gate's content lives in `## Open gate`, and approved-over findings become closed `won't-fix` rows in `## Obligations`.** Without this, a compaction at the plan-approval gate or during Section 9 loses the findings and the won't-fix list. The existing carriers are reused.
+  - **Query before creating a ticket the manifest does not list.** A crash between a create and its record would otherwise duplicate the Plan Bee or an Epic. Rare, silent, not recovered.
+  - **Start fresh carries open `## Obligations` rows.** Otherwise the stopped run's deferrals vanish, which is F12.
+  - **The plan draft uses one `#` heading per ticket**, so extracting the Plan Bee body keeps its `## Anticipated doc impact`, which the output contract requires.
+  - **A post-approval `Fix in this session` spec change goes through the solo writer**, which reviews and gates it. Specs are `ready` by then, and the inline path would leave a child `drafted` with nothing to promote it.
+  - **`/quo-spec-review` returns to its caller and stops only when standalone.** "Then stop" sat at F10's review-return-then-gate point.
+  - **User-requested changes on Revise reach the writer as `findings:` lines**, and a scope change rewrites the scope file first. This closes a relay with no channel.
+  - **The Encode timestamp comes from `date` / `Get-Date`**, because the model has no clock (the executable-verb test).
+  - **The scratch-file rule covers every file the run writes** (rule 4).
+- **Rules the round-1 reviewers found carried by no SV group, now recorded:**
+  - "a release gate on other work belongs in the Epic body as prose": the other half of 2026-09-16 defect 9;
+  - "a fuller path taken only to prevent recurrence is not a fuller fix": the b.vtw C2 pick rule, which S5's pick consumes;
+  - the single-literal-command bullet: b.7ib `## Minimal rewrite` asks for Bash etiquette "stated once, as a goal";
+  - the solo writers applying trivial fixes themselves: the operator's "trivial fixes applied without re-invoking a writer";
+  - `quo-write-sdd` reading the `PRD` child first: a goal with its reason (the design answers the PRD), no failure claimed.

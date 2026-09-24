@@ -18,7 +18,7 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
   spec-bee-id: <spec-bee-id>
   distilled-scope: <path to the approved scope file>
   findings:
-  <finding lines verbatim, on a revise pass only>
+  <on a revise pass only: finding lines verbatim, and each change the user asked for as one line>
   ```
 
   The `args` shape, not how rich the conversation is, identifies the inline path: a solo run after a long discussion still owes the user its gate. Inline, the caller has already approved the scope and runs the reviews and gates itself, so fire no gate, leave the child `drafted`, and return:
@@ -35,7 +35,7 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 ## Steps
 
 1. **Read the Spec Bee** with `bees show-ticket`. When it is missing or not in the `specs` hive, stop and say so; creating Spec Bees is `/quo-plan`'s job. Read its `PRD` child when there is one, since the design answers it.
-2. **Find the existing SDD.** Query the Spec Bee's children for one titled exactly `SDD`. None → you will create it. One → you will update it, so re-runs never duplicate it. More than one → stop and ask the user which is canonical.
+2. **Find the existing SDD.** Query the Spec Bee's children for one titled exactly `SDD`. None → you will create it. One → you will update it, so re-runs never duplicate it. On a solo run, first save its body to a body file and note its status: a cancelled solo revision puts both back, so an approved SDD is never lost to a draft. More than one → stop and ask the user which is canonical.
 3. **Research the codebase.** The design must cite real modules, files, functions, and fixtures, never plausible guesses, and a planning conversation rarely names them. So on first authoring, dispatch an `Explore` agent with the feature scope and the docs at the `Internal architecture docs (SDD)`, `Customer-facing docs`, and `Engineering best practices` keys of `## Documentation Locations`. Ask it for:
    - the subsystems and modules the feature touches;
    - the conventions new code should follow;
@@ -49,10 +49,10 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 
    1. `## Codebase exploration findings` — architecture, affected modules, patterns, data models, fixtures, configuration, from the research.
    2. `## Requirements` — `SR-1`, `SR-1.1`, … grouped under one heading per domain, each an observable behavior. It always ends with two subsections:
-      - `### Mechanism lifecycle` — for each mechanism the design introduces (as `agents/analyst.md` defines the term), where it is created, consumed, and torn down in every scope and exit path;
+      - `### Mechanism lifecycle` — for each mechanism the design introduces (new state, configuration, persisted or wire field, background task, gate, retry path, and the like), where it is created, consumed, and torn down in every scope and exit path;
       - `### Policy decisions this design implies` — each yes/no question the design forces, with the recommended answer.
 
-      The two subsections are what breakdown cites when it lists the sites a Task owns, and a missing lifecycle leg otherwise surfaces only as late review churn.
+      Each reads `none — <why>` when empty. They are what breakdown cites when it lists the sites a Task owns, and a missing lifecycle leg otherwise surfaces only as late review churn.
    3. `## Test Fixtures` — the helpers, factories, sample data, and mocks to reuse, by real name.
    4. `## Existing Behavior` — the contracts that must not change: API shapes, persisted data, wire fields, configuration meaning.
    5. `## Documentation` — the docs to update after implementation, by their `## Documentation Locations` paths.
@@ -65,5 +65,5 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
    - Invoke `/quo-spec-review <spec-bee-id> --doc SDD` through the Skill tool.
    - Apply each finding whose smallest complete fix path is `trivial-tweak` yourself, rewriting the ticket body.
    - Then write the current body to a fresh body file and, in the same turn, call `AskUserQuestion` with the body's summary, the `RESEARCH NEEDED` questions, and the remaining findings. The file write in that turn is what keeps the gate from being described and left unasked.
-   - Choices: **Approve** (set the SDD `ready`; a `blocker` approved over is recorded in the report), **Revise** (apply the remaining findings and the user's changes, then review again), **Cancel** (the SDD stays `drafted`).
-8. **Finish.** Inline, return the four fields above. Solo, report the Spec Bee, the SDD ID, whether it was created or updated, its status, the `RESEARCH NEEDED` questions, and any findings approved over. The Spec Bee's own status belongs to the caller.
+   - Choices: **Approve** (set the SDD `ready`; a `blocker` approved over is recorded in the report), **Revise** (apply the remaining findings and the user's changes, then review again), **Cancel** (an SDD this run created stays `drafted`; one it updated gets its saved body and status back).
+8. **Finish.** Inline, return `sdd_ticket_id`, `sdd_status`, `action`, and `research_needed`. Solo, report the Spec Bee, the SDD ID, whether it was created or updated, its status, the `RESEARCH NEEDED` questions, and any findings approved over. The Spec Bee's own status belongs to the caller.

@@ -18,7 +18,7 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
   spec-bee-id: <spec-bee-id>
   distilled-scope: <path to the approved scope file>
   findings:
-  <finding lines verbatim, on a revise pass only>
+  <on a revise pass only: finding lines verbatim, and each change the user asked for as one line>
   ```
 
   The `args` shape, not how rich the conversation is, identifies the inline path: a solo run after a long discussion still owes the user its gate. Inline, the caller has already approved the scope and runs the reviews and gates itself, so fire no gate, leave the child `drafted`, and return:
@@ -34,8 +34,8 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 ## Steps
 
 1. **Read the Spec Bee** with `bees show-ticket`. When it is missing or not in the `specs` hive, stop and say so; creating Spec Bees is `/quo-plan`'s job. Read the docs at the `Internal architecture docs (SDD)` and `Customer-facing docs` keys of `## Documentation Locations` when the feature touches existing behavior.
-2. **Find the existing PRD.** Query the Spec Bee's children for one titled exactly `PRD`. None → you will create it. One → you will update it, so re-runs never duplicate it. More than one → stop and ask the user which is canonical.
-3. **Gather the content.** Inline, read the scope file and treat any `findings:` lines as required fixes to the existing body. Solo, use the conversation when it already carries substantive scope, erring toward distilling because re-asking what the user settled costs them a repetition. Otherwise ask in prose for what the sections below need: the problem and who has it, success, exclusions, required behavior, failure modes, non-functional and UI needs, assumptions, open questions. Never invent content the sources do not support.
+2. **Find the existing PRD.** Query the Spec Bee's children for one titled exactly `PRD`. None → you will create it. One → you will update it, so re-runs never duplicate it. On a solo run, first save its body to a body file and note its status: a cancelled solo revision puts both back, so an approved PRD is never lost to a draft. More than one → stop and ask the user which is canonical.
+3. **Gather the content.** Inline, read the scope file and treat any `findings:` lines as required fixes to the existing body. Solo, use the conversation when it already carries substantive scope, erring toward distilling because re-asking what the user settled costs them a repetition. Otherwise ask in prose for what the twelve sections need: the problem and who has it, success, exclusions, required behavior, failure modes, non-functional and UI needs, assumptions, open questions. Never invent content the sources do not support.
 4. **Author the body** with these twelve sections, in this order, every one present. An empty section reads `none — <why>`, so a reader can tell "nothing here" from "forgotten":
 
    1. `## Problem Statement` — the problem, who has it, and why now.
@@ -57,5 +57,5 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
    - Invoke `/quo-spec-review <spec-bee-id> --doc PRD` through the Skill tool.
    - Apply each finding whose smallest complete fix path is `trivial-tweak` yourself, rewriting the ticket body.
    - Then write the current body to a fresh body file and, in the same turn, call `AskUserQuestion` with the body's summary and the remaining findings. The file write in that turn is what keeps the gate from being described and left unasked.
-   - Choices: **Approve** (set the PRD `ready`; a `blocker` approved over is recorded in the report), **Revise** (apply the remaining findings and the user's changes, then review again), **Cancel** (the PRD stays `drafted`).
-7. **Finish.** Inline, return the three fields above. Solo, report the Spec Bee, the PRD ID, whether it was created or updated, its status, and any findings approved over. The Spec Bee's own status belongs to the caller.
+   - Choices: **Approve** (set the PRD `ready`; a `blocker` approved over is recorded in the report), **Revise** (apply the remaining findings and the user's changes, then review again), **Cancel** (a PRD this run created stays `drafted`; one it updated gets its saved body and status back).
+7. **Finish.** Inline, return `prd_ticket_id`, `prd_status`, and `action`. Solo, report the Spec Bee, the PRD ID, whether it was created or updated, its status, and any findings approved over. The Spec Bee's own status belongs to the caller.

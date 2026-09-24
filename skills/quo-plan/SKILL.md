@@ -12,8 +12,9 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 
 **Working rules for every step.**
 
-- bees is the ticket store; `bees <command> -h` and `bees sting` document it. It has no list or search verb: enumerate with `bees execute-freeform-query`, pass the query on one line in YAML flow style (`{stages: [[...]], report: [...]}`), and name the fields you need in `report:`.
-- Pass every multi-paragraph ticket body with `--body-file`, never inline, because a newline followed by `#` trips Claude Code's command-injection guard. Write body files under `/tmp/.quorum/` (`%TEMP%\.quorum` on Windows), creating the directory if absent, with a collision-resistant name, and never delete them: they are the record of a crashed run.
+- bees is the ticket store; `bees <command> -h` and `bees sting` document it. It has no ticket list or search verb: enumerate with `bees execute-freeform-query`, pass the query on one line in YAML flow style (`{stages: [[...]], report: [...]}`), and name the fields you need in `report:`.
+- Write every file this run creates (the manifest, the scope file, the plan draft, body files) under `/tmp/.quorum/` (`%TEMP%\.quorum` on Windows), creating the directory if absent. Never delete them: they are the record of a crashed run. Give each a collision-resistant name, except the manifest (Section 2).
+- Pass every multi-paragraph ticket body with `--body-file`, never inline, because a newline followed by `#` trips Claude Code's command-injection guard.
 - Run each shell command as one literal command, with no pipes, chains, or `$` substitution, because those shapes re-prompt the user for permission; put multi-step logic in a Python script instead.
 - Ask free-text questions in prose and let the user answer in their next turn. `AskUserQuestion` is multi-choice only and appends its own free-text slot, so never add an option that points at it.
 
@@ -21,14 +22,14 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 
 The manifest holds the run's values that live nowhere else on disk, so a compaction or a crashed session loses nothing.
 
-**Path.** `/tmp/.quorum/run-state-quo-plan-<repo-dir-name>.md` (`%TEMP%\.quorum\run-state-quo-plan-<repo-dir-name>.md` on Windows), where `<repo-dir-name>` is the last path segment of `git rev-parse --show-toplevel`. The name is deterministic, with no suffix or timestamp, because after a compaction you must recompute the path rather than remember it. Accepted collision: two `/quo-plan` runs in one repo at the same time share it.
+**Path.** `/tmp/.quorum/run-state-quo-plan-<repo-dir-name>.md` (`%TEMP%\.quorum\run-state-quo-plan-<repo-dir-name>.md` on Windows), where `<repo-dir-name>` is the last path segment of `git rev-parse --show-toplevel`. The name is deterministic, with no suffix or timestamp, because after a compaction you must recompute the path rather than remember it. Accepted collisions: two `/quo-plan` runs in one repo at the same time, and two repos with the same directory name; the resume question's feature title shows either.
 
 **Lifecycle.** At run start, read the manifest. When it is absent or reads `**Phase:** complete`, write a fresh one. Otherwise an earlier run stopped partway: fire the resume gate (Section 3), because only the user knows whether that run is abandoned. Rewrite the manifest whenever a value changes, before acting on it, and record each ticket ID the moment its create returns.
 
 ```markdown
 # Run state — quo-plan @ <repo-dir-name>
 
-**Phase:** <scope | specs | draft | review | approved | created | handoff | complete>
+**Phase:** <scope (Section 4) | specs (5) | draft (6) | review (7–8) | approved | created (9) | handoff (10) | complete>
 **Feature:** <title, or pending>
 **Scope file:** <path, or pending>
 **Spec Bee:** <id, or pending> · **PRD:** <id, or pending> · **SDD:** <id, or pending>
@@ -47,15 +48,15 @@ The manifest holds the run's values that live nowhere else on disk, so a compact
 none
 ```
 
-**After a compaction**, or on resume, trust the manifest over any summary. Re-read it, re-read the tickets it names, and continue from its phase. When `## Open gate` names a gate, ask it again. A ticket already recorded is never created a second time.
+**After a compaction**, or on resume, trust the manifest over any summary: re-read it, re-read the tickets it names, and continue from its phase. When `## Open gate` names a gate, ask it again from what that section records. A crash can land between a create and its record. So before creating a ticket the manifest does not list, query bees for one with the same title under the same parent (for the Plan Bee, the same title in the `plans` hive), and record a match instead of creating a second.
 
 ## 3. Gates
 
-A gate is the manifest `Write` that fills `## Open gate` (the gate's name, question, and choices), then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Set `## Open gate` back to `none` once the answer is consumed.
+A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, choices, and everything it shows the user, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Set `## Open gate` back to `none` once the answer is consumed.
 
 Gates fire only where the user holds the decision:
 
-- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?`; choices **Resume** (continue from the recorded phase) and **Start fresh** (overwrite the manifest; tickets already created stay as they are).
+- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?`; choices **Resume** (continue from the recorded phase) and **Start fresh** (overwrite the manifest, carrying over its open `## Obligations` rows; tickets already created stay as they are).
 - **Scope** — choices **Approve**, **Revise**, **Cancel** (Section 4).
 - **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee anyway`, `Cancel` (Section 5).
 - **Plan approval**, once per review round — choices **Approve**, **Approve over blockers**, **Revise**, **Cancel** (Section 8).
@@ -72,13 +73,18 @@ When the conversation or the `<description>` argument already carries substantiv
 
 Research before you draft: the target CLAUDE.md, the relevant source, anything the user pointed to, and the project PRD/SDD at the `Project requirements doc (PRD)` and `Internal architecture docs (SDD)` keys of `## Documentation Locations`. Query Plan Bees of any status and open Issues for overlapping work, and discuss with the user whether to extend, depend on, or stay separate from any overlap. When the request is really a defect in existing behavior, suggest `/quo-file-issue` instead.
 
-Write the scope to a scope file and record its path. Use these sections, rendering an empty one as `none` so a reader can tell "nothing here" from "forgotten": `# <feature title>`, `### What`, `### Why`, `### Acceptance criteria`, `### Out of scope`, `### Decisions`, `### Rejected alternatives`, `### Constraints`, and `### Prior context` (what the user pointed you to). Both writers read this file, and the decisions and rejected alternatives are what downstream agents otherwise re-litigate.
+Write the scope to a scope file and record its path. Render an empty section as `none`, so a reader can tell "nothing here" from "forgotten". The sections: `# <feature title>`, `### What`, `### Why`, `### Acceptance criteria`, `### Out of scope`, `### Decisions`, `### Rejected alternatives`, `### Constraints`, and `### Prior context` (what the user pointed you to). Both writers read this file, and the decisions and rejected alternatives are what downstream agents otherwise re-litigate.
 
 Fire the scope gate, showing the scope. **Approve** moves to Section 5. **Revise** means iterate in prose, rewrite the file, and ask again. **Cancel** stops the run.
 
 ## 5. Spec Bee and specs
 
-**Spec Bee.** A re-run for the same unfinished feature must reuse its Spec Bee, because a duplicate fragments the PRD and SDD silently. Query the `specs` hive's Bees and compare titles after normalizing: lowercase, whitespace collapsed, surrounding punctuation trimmed. Only a `drafted` Spec Bee is a candidate. A `ready` one holds approved specs that existing Plan Bees may read, and the writers would overwrite them before any gate, so never reuse or change it. When a `ready` Spec Bee matches, say so and create a new one; revising an approved spec in place is the solo writers' job (`/quo-write-prd <spec-bee-id>`, `/quo-write-sdd <spec-bee-id>`). On a `drafted` match, or a near match you cannot rule out, fire the Spec Bee reuse gate. `Reuse existing Spec Bee` takes its ID. `Create a new Spec Bee anyway` falls through to creating one. `Cancel` stops the run. Otherwise create a `bee` in the `specs` hive, status `drafted`, titled with the feature title, with a two-to-three-sentence body from the scope; the PRD and SDD content belongs in its children, never in this body. Record the ID.
+**Spec Bee.** A re-run for the same unfinished feature must reuse its Spec Bee, because a duplicate fragments the PRD and SDD silently.
+
+- Query the `specs` hive's Bees and compare titles after normalizing: lowercase, whitespace collapsed, surrounding punctuation trimmed.
+- Only a `drafted` Spec Bee is a candidate. A `ready` one holds approved specs that existing Plan Bees may read, and the writers would overwrite them before any gate, so never reuse or change it. When a `ready` Spec Bee matches, say so and create a new one; revising an approved spec in place is the solo writers' job (`/quo-write-prd <spec-bee-id>`, `/quo-write-sdd <spec-bee-id>`).
+- On a `drafted` match, or a near match you cannot rule out, fire the Spec Bee reuse gate. `Reuse existing Spec Bee` takes its ID; `Create a new Spec Bee anyway` falls through to creating one; `Cancel` stops the run.
+- Otherwise create a `bee` in the `specs` hive, status `drafted`, titled with the feature title, with a two-to-three-sentence body from the scope. The PRD and SDD content belongs in its children, never in this body. Record the ID.
 
 **Writers.** Invoke `/quo-write-prd`, then `/quo-write-sdd`, through the Skill tool, never in parallel, since both add children to one Spec Bee. Pass each the same `args`:
 
@@ -91,11 +97,11 @@ Invoked this way the writers fire no gates, leave their child `drafted`, and ret
 
 ## 6. Plan draft
 
-Draft the plan into one file and record its path. Draft it before creating any Plans-hive ticket, so the review and any revision change a file, not tickets.
+Draft the plan into one file and record its path. Draft it before creating any Plans-hive ticket, so the review and any revision change a file, not tickets. The file has one `#` heading per ticket: `# Plan Bee body`, then `# Epic N — <short title>` for each Epic. Each ticket's body is everything under its heading, down to the next `#` heading, without the heading line itself.
 
-**Plan Bee body**, under `## Plan Bee body`: a two-to-three-sentence summary of the feature, then `## Anticipated doc impact`. That section lists which cumulative project docs the feature should update once it ships, named by their CLAUDE.md `## Documentation Locations` keys (for example `Project requirements doc (PRD)`, `Internal architecture docs (SDD)`, `Customer-facing docs`) rather than by path, because projects route those keys to different files. It is the Doc Writer's starting checklist.
+**The Plan Bee body** is a two-to-three-sentence summary of the feature, then `## Anticipated doc impact`. That section lists which cumulative project docs the feature should update once it ships, named by their CLAUDE.md `## Documentation Locations` keys (for example `Project requirements doc (PRD)`, `Internal architecture docs (SDD)`, `Customer-facing docs`). It names keys rather than paths because projects route those keys to different files. It is the Doc Writer's starting checklist.
 
-**Epics**, one section each titled `## Epic N — <short title>` (N from 1, in dependency order), each giving its outcome, scope, acceptance criteria, and the earlier Epics it depends on. Decompose so that:
+**Each Epic body** gives its outcome, scope, acceptance criteria, and the earlier Epics it depends on; N runs from 1 in dependency order. Decompose so that:
 
 - every Epic leaves the codebase green, with all existing tests passing;
 - each Epic is one coherent user- or system-visible outcome, sliced vertically by capability, never a layer (no "API Epic"); pure refactors may be foundational Epics but go vertical as soon as possible;
@@ -104,13 +110,13 @@ Draft the plan into one file and record its path. Draft it before creating any P
 - acceptance criteria name what the user interacts with and how they check it, or how the agent demonstrates it ("Server starts on http://localhost:8000", not "Server is available");
 - Epics are as small as a single coherent outcome allows; one Epic is fine for a small feature.
 
-Dependencies link sibling Epics only; a dependency on a Bee is not expressible, so a release gate on other work belongs in the Epic body as prose.
+Dependencies link sibling Epics only. A dependency on a Bee is not expressible, so a release gate on other work belongs in the Epic body as prose.
 
 ## 7. Reviews
 
-Each round runs both reviews on the same state, before the plan-approval gate: `/quo-spec-review` checks the specs against their contract, and a cold reviewer checks whether the plan is a sound solution. The cold reviewer exists because a checklist review let plan-level design errors through, and on its first real run it caught three. Record the round number.
+The first round runs both reviews on the same state, before the plan-approval gate. `/quo-spec-review` checks the specs against their contract. A cold reviewer checks whether the plan is a sound solution; it exists because a checklist review let plan-level design errors through, and on its first real run it caught three. Record the round number.
 
-Dispatch the plan reviewer as `Agent(subagent_type=general-purpose, run_in_background=true, prompt=…)` with the prompt below, IDs and path filled in, and while it works invoke `/quo-spec-review <spec-bee-id>` through the Skill tool with no `--doc`. Then wait for the reviewer's completion notification.
+Dispatch the plan reviewer as `Agent(subagent_type=general-purpose, run_in_background=true, prompt=…)` with this section's prompt, IDs and path filled in. While it works, invoke `/quo-spec-review <spec-bee-id>` through the Skill tool with no `--doc`. Then wait for the reviewer's completion notification.
 
 ```
 You are an independent, read-only reviewer of a feature plan. Do not modify any
@@ -150,7 +156,13 @@ least one blocker. `escalate-to-user`: an ambiguity only the user can settle.
 With no findings, return `No plan-review issues found.` and then the verdict line.
 ```
 
-**Route each finding by where its fix lands.** Pick the smallest enumerated fix path that fully fixes the finding as stated. Treat `[preferred]` as an input, and never take a fuller path only to prevent recurrence. When the pick is `trivial-tweak`, apply it yourself without asking: rewrite the PRD or SDD child's body (it stays `drafted`) or edit the plan draft. Other picks wait for the gate: after **Revise**, a PRD or SDD fix goes to that writer alone, re-invoked with the finding lines verbatim under a `findings:` key after the usual `args`, and a Plan Bee body or Epic fix is yours to make in the draft. Drop a plan-review finding about prose quality. After a revision, re-run only the reviews whose input changed: spec review when a child changed, the plan reviewer whenever anything did.
+Route each finding by where its fix lands:
+
+- Pick the smallest enumerated fix path that fully fixes the finding as stated. `[preferred]` is an input; a fuller path taken only to prevent recurrence is not a fuller fix.
+- When the pick is `trivial-tweak`, apply it yourself without asking: rewrite the PRD or SDD child's body (it stays `drafted`), or edit the plan draft.
+- Other picks wait for the gate. After **Revise**, a PRD or SDD fix goes to that writer alone, re-invoked with the usual `args` plus a `findings:` key carrying the finding lines verbatim. The user's own requested changes go the same way, one line each; a change of scope rewrites the scope file first. A Plan Bee body or Epic fix is yours to make in the draft.
+- Drop a plan-review finding about prose quality.
+- After a revision, re-run only the reviews whose input changed: spec review when a child changed, the plan reviewer whenever anything did.
 
 ## 8. Plan approval
 
@@ -162,20 +174,20 @@ Lead with the verdict in a sentence: the plan reads as coherent (`approve`), it 
 - the trivial fixes you applied;
 - the remaining findings verbatim.
 
-Fire the plan-approval gate. Offer **Approve** when no `blocker` is open, and **Approve over blockers** in its place when one is. Mark **Revise** (Recommended) when a `blocker` is open, **Approve** (Recommended) on a clean `approve` verdict, and nothing on `escalate-to-user`.
+Fire the plan-approval gate. Offer **Approve** when no `blocker` is open, and **Approve over blockers** in its place when one is. On `escalate-to-user`, mark no choice (Recommended): the call is the user's. Otherwise mark **Revise** (Recommended) when a `blocker` is open, and **Approve** (Recommended) on a clean `approve` verdict.
 
-- **Approve** or **Approve over blockers** → Section 9. A finding approved over is a won't-fix, listed in the report; the user's overridden blockers are listed there too. A finding the user wants fixed later becomes an `## Obligations` row with its intended destination.
-- **Revise** → route the remaining findings and any changes the user asks for in prose (Section 7), then run the next round.
+- **Approve** or **Approve over blockers** → Section 9. Record each finding approved over as a closed `## Obligations` row with destination `won't-fix`, so the report can list it after a compaction; mark an overridden blocker as such. A finding the user wants fixed later becomes an open row with its intended destination.
+- **Revise** → route the remaining findings and the user's own changes (Section 7), then run the next round.
 - **Cancel** → the Spec Bee and its children stay `drafted`; a re-run reuses them.
 
-Whenever the user or a reviewer defers something to later, anywhere in the run, add an `## Obligations` row at once: the next session reads only tickets, so a deferral that exists only in this conversation is lost.
+Whenever the user or a reviewer defers something to later, anywhere in the run, add an open `## Obligations` row at once: the next session reads only tickets, so a deferral that exists only in this conversation is lost.
 
 ## 9. Create the plan
 
-Set `**Phase:** approved`, then write in this order, recording each ID in the manifest as its create returns so that a resumed run never duplicates one:
+Set `**Phase:** approved`, then write in this order, recording each ID in the manifest as its create returns:
 
 1. Set the PRD and SDD children to `ready`, then the Spec Bee.
-2. Create the Plan Bee in the `plans` hive, status `drafted`, titled with the feature title, with the drafted body and `reference_materials` exactly `[{"value":"<spec-bee-id>","resolver":"bees"}]`. Downstream skills follow that entry to the Spec Bee and read its children titled `PRD` and `SDD`.
+2. Create the Plan Bee in the `plans` hive, status `drafted`, titled with the feature title, with its drafted body and `reference_materials` exactly `[{"value":"<spec-bee-id>","resolver":"bees"}]`. Downstream skills follow that entry to the Spec Bee and read its children titled `PRD` and `SDD`.
 3. Create each Epic as a `t1` child of the Plan Bee, status `drafted`, titled `Epic N — <short title>` exactly as drafted, with its drafted body. The ordinal title is the Epic's human label in every later status line and commit.
 4. Set each Epic's `up_dependencies` to the Epics it depends on.
 5. Set the Plan Bee to `ready`. `/quo-breakdown-epic` picks `ready` Plan Bees and breaks down their `drafted` Epics.
@@ -186,13 +198,13 @@ Set `**Phase:** created`.
 
 **Deferral hygiene.** Set `**Phase:** handoff`. When `## Obligations` has no open row, print `Deferral hygiene: no deferred items.` Otherwise list the open rows and fire the deferral-hygiene gate. The user can route different items differently by writing that in the free-text slot.
 
-- `Fix in this session` — do the work now; a spec change re-runs spec review.
+- `Fix in this session` — do the work now. The specs are approved by now, so a spec change goes through the solo writer: invoke `/quo-write-prd <spec-bee-id>` or `/quo-write-sdd <spec-bee-id>` through the Skill tool with no other `args`. It reviews and gates the change, and the row closes on its **Approve**.
 - `File as issue tickets` — invoke `/quo-file-issue` through the Skill tool with the item as its description.
-- `Encode in an existing ticket body` — append a `## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)` section to one of this run's Plans- or Specs-hive tickets, keeping its existing body. Write the timestamp from your own clock into the body file; it keeps several runs' sections apart.
+- `Encode in an existing ticket body` — append a `## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)` section to one of this run's Plans- or Specs-hive tickets, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -Format 'yyyy-MM-dd HH:mm'` (PowerShell).
 
 Close each row as its item lands. Do not hand off while a row is open. When a route fails, show the remaining rows and ask again.
 
-**Report.** List the Spec Bee and its PRD and SDD, the Plan Bee, and each Epic by label with its ID and dependencies; any `RESEARCH NEEDED` questions; the findings approved over and any overridden blockers; and where each obligation went.
+**Report.** List the Spec Bee and its PRD and SDD, the Plan Bee, and each Epic by label with its ID, status, and dependencies. Add any `RESEARCH NEEDED` questions, the `won't-fix` rows (overridden blockers marked), and where each other obligation went.
 
 **Commit.** Stage only this run's hive files, never the whole tree, because a hive may live outside the repo and the working tree may hold unrelated changes. The sibling helper prints each in-repo hive path, one per line:
 

@@ -528,7 +528,7 @@ Then offer three options via AskUserQuestion:
 
 1. **Bootstrap baseline docs now** *(recommended for established projects with existing code)* — I'll explore your codebase, ask you a few short questions about the project's purpose, and produce starter `docs/prd.md` and `docs/sdd.md`.
 2. **Defer** — re-running `/quo-setup` offers the bootstrap again once there is code to describe; meanwhile `/quo-plan` keeps each feature's PRD and SDD as tickets. Best for greenfield projects with little or no code yet.
-3. **Skip permanently — body-as-spec** — I won't create any docs. Each Plan Bee body becomes the spec for that feature. Each Issue Bee body is the spec for that issue. Works for one-off features or throwaway projects, but does not accumulate a project-level spec across features.
+3. **Skip permanently — body-as-spec** — I won't create any docs. Each feature's spec lives in its Spec Bee (from `/quo-plan`), and each Issue Bee body is the spec for that issue. Works for one-off features or throwaway projects, but does not accumulate a project-level spec across features.
 
 #### Detect repo state before showing the question
 
@@ -868,7 +868,7 @@ The new-machine fast path also offers this step; the rationale for surfacing it 
 
 ### Next Steps
 
-After setup is complete, tell the user that quorum is ready to use. CLAUDE.md now contains both a `## Documentation Locations` section (consumed by Doc Writer / Engineer / Test Writer agents during execution) and a `## Build Commands` section (consumed by Engineer agents in `quo-execute` and `quo-fix-issue` for compile/format/lint/test invocations). Both are precondition checks for the downstream workflow skills — running `/quo-execute`, `/quo-fix-issue`, `/quo-plan-from-specs`, or `/quo-file-issue` against a repo missing either section will hard-fail with `Run /quo-setup first.`
+After setup is complete, tell the user that quorum is ready to use. CLAUDE.md now contains both a `## Documentation Locations` section (consumed by Doc Writer / Engineer / Test Writer agents during execution) and a `## Build Commands` section (consumed by Engineer agents in `quo-execute` and `quo-fix-issue` for compile/format/lint/test invocations). Both are precondition checks for the downstream workflow skills — running `/quo-execute`, `/quo-fix-issue`, `/quo-plan`, `/quo-plan-from-specs`, or `/quo-file-issue` against a repo missing either section will hard-fail with `Run /quo-setup first.`
 
 If the context-usage gauge producer was configured during this run, remind the operator it becomes active from the next session (status-line configuration is read at session start, so the run in progress isn't guarded); if it was not, note that re-running setup re-offers it.
 
@@ -882,7 +882,7 @@ The next-step recommendation depends on whether the user already has spec docs (
 
   `/quo-plan-from-specs` reads both documents, creates a Plan Bee in the Plans hive with the two paths as its `reference_materials`, decomposes the work into Epics, and chains into `/quo-breakdown-epic`. This is the right choice when scope and design are already nailed down and just need to be turned into a plan.
 
-  If your PRD/SDD already describe multiple features, use `/quo-plan` (or `/quo-plan-from-specs --feature "<title>"` to scope to one) — bare `/quo-plan-from-specs <PRD> <SDD>` assumes a single-feature spec and will hard-fail on cumulative docs.
+  If your PRD/SDD already describe multiple features, use `/quo-plan-from-specs --feature "<title>"` to scope to one — bare `/quo-plan-from-specs <PRD> <SDD>` assumes a single-feature spec and will hard-fail on cumulative docs.
 
   Run `/quo-plan-from-specs` in a fresh Claude Code session. `/quo-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/quo-plan-from-specs` re-reads the specs and CLAUDE.md from disk, so a fresh session gives it full context budget for scope analysis and Epic creation.
 
@@ -892,7 +892,7 @@ The next-step recommendation depends on whether the user already has spec docs (
   /quo-plan [optional one-line description]
   ```
 
-  `/quo-plan` is interactive — it asks clarifying questions to define scope, then creates a **Spec Bee** in the Specs hive with PRD and SDD as `t1=Doc` children (authored via inline delegation to `/quo-write-prd` and `/quo-write-sdd`), and a **Plan Bee** in the Plans hive with Epics whose `reference_materials` points at the Spec Bee via the `bees` resolver. Downstream skills (`/quo-breakdown-epic`, `/quo-execute`) follow the resolver chain into the Spec Bee and its `t1=Doc` children to read spec content. Project-level PRD/SDD on disk are not mutated at plan time; the post-implementation `doc-writer` agent folds completed work back into them later. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
+  `/quo-plan` is interactive — it asks clarifying questions to define scope, then creates a **Spec Bee** in the Specs hive with PRD and SDD as `t1=Doc` children (authored via inline delegation to `/quo-write-prd` and `/quo-write-sdd`), and, once you approve the reviewed plan, a **Plan Bee** in the Plans hive whose `reference_materials` points at the Spec Bee via the `bees` resolver, with its Epics. Downstream skills (`/quo-breakdown-epic`, `/quo-execute`) follow the resolver chain into the Spec Bee and its `t1=Doc` children to read spec content. Project-level PRD/SDD on disk are not mutated at plan time; the post-implementation `doc-writer` agent folds completed work back into them later. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
 
   Run `/quo-plan` in a fresh Claude Code session. `/quo-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/quo-plan` does deep codebase exploration and scope iteration, so a fresh session gives it full context budget for that work.
 
