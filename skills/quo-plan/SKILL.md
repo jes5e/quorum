@@ -48,22 +48,24 @@ The manifest holds the run's values that live nowhere else on disk, so a compact
 none
 ```
 
-**After a compaction**, or on resume, trust the manifest over any summary: re-read it, re-read the tickets it names, and continue from its phase. When `## Open gate` names a gate, ask it again from what that section records. A crash can land between a create and its record. So before creating a ticket the manifest does not list, query bees for one with the same title under the same parent (for the Plan Bee, the same title in the `plans` hive), and record a match instead of creating a second.
+**After a compaction**, trust the manifest over any summary: re-read it and the tickets it names, and continue from its phase. When `## Open gate` names a gate with no answer recorded, ask it again from what the section records; with an answer recorded, finish the work that answer calls for. **On resume** after a stopped session, also continue from the phase: a gate the stopped run left open is asked again after redoing the step that produced it (for plan approval, the round's reviews).
+
+A crash can land between a create and its record. So at phase `approved`, before creating a ticket the manifest does not list, check whether it already exists and record a match instead of creating a second. For the Plan Bee, look for a `drafted` one whose `reference_materials` names this run's Spec Bee. For an Epic, look for one with the same title under the recorded Plan Bee.
 
 ## 3. Gates
 
-A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, choices, and everything it shows the user, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Set `## Open gate` back to `none` once the answer is consumed.
+A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, choices, and everything it shows the user, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Record the answer in `## Open gate` when it arrives. Set the section back to `none` only once the work that answer calls for has landed, so a Revise's findings and change lines survive a compaction until the writers and the draft carry them.
 
 Gates fire only where the user holds the decision:
 
-- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?`; choices **Resume** (continue from the recorded phase) and **Start fresh** (overwrite the manifest, carrying over its open `## Obligations` rows; tickets already created stay as they are).
+- **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?` **Resume** continues from the recorded phase. **Start fresh** overwrites the manifest but carries over its open `## Obligations` rows; tickets already created stay as they are.
 - **Scope** — choices **Approve**, **Revise**, **Cancel** (Section 4).
 - **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee anyway`, `Cancel` (Section 5).
 - **Plan approval**, once per review round — choices **Approve**, **Approve over blockers**, **Revise**, **Cancel** (Section 8).
 - **Deferral hygiene**, only when obligations are open — choices `Fix in this session`, `File as issue tickets`, `Encode in an existing ticket body` (Section 10).
 - **Next steps** — Section 10.
 
-A `Cancel` at any gate sets `**Phase:** complete`, reports what exists, and stops. Nothing is ever written to the Plans hive before plan approval, so a cancelled run leaves no Plan Bee to clean up.
+A `Cancel` at any gate first routes any open `## Obligations` rows through deferral hygiene (Section 10), then sets `**Phase:** complete`, reports what exists, and stops. Nothing is ever written to the Plans hive before plan approval, so a cancelled run leaves no Plan Bee to clean up.
 
 ## 4. Scope
 

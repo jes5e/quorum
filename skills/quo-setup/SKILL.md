@@ -868,7 +868,7 @@ The new-machine fast path also offers this step; the rationale for surfacing it 
 
 ### Next Steps
 
-After setup is complete, tell the user that quorum is ready to use. CLAUDE.md now contains both a `## Documentation Locations` section (consumed by Doc Writer / Engineer / Test Writer agents during execution) and a `## Build Commands` section (consumed by Engineer agents in `quo-execute` and `quo-fix-issue` for compile/format/lint/test invocations). Both are precondition checks for the downstream workflow skills — running `/quo-execute`, `/quo-fix-issue`, `/quo-plan`, `/quo-plan-from-specs`, or `/quo-file-issue` against a repo missing either section will hard-fail with `Run /quo-setup first.`
+After setup is complete, tell the user that quorum is ready to use. CLAUDE.md now contains both a `## Documentation Locations` section (consumed by Doc Writer / Engineer / Test Writer agents during execution) and a `## Build Commands` section (consumed by Engineer agents in `quo-execute` and `quo-fix-issue` for compile/format/lint/test invocations). Both are precondition checks for the downstream workflow skills — running `/quo-execute`, `/quo-fix-issue`, `/quo-plan-from-specs`, or `/quo-file-issue` against a repo missing either section will hard-fail with `Run /quo-setup first.`
 
 If the context-usage gauge producer was configured during this run, remind the operator it becomes active from the next session (status-line configuration is read at session start, so the run in progress isn't guarded); if it was not, note that re-running setup re-offers it.
 

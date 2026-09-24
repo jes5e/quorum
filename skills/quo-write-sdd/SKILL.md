@@ -35,7 +35,7 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 ## Steps
 
 1. **Read the Spec Bee** with `bees show-ticket`. When it is missing or not in the `specs` hive, stop and say so; creating Spec Bees is `/quo-plan`'s job. Read its `PRD` child when there is one, since the design answers it.
-2. **Find the existing SDD.** Query the Spec Bee's children for one titled exactly `SDD`. None → you will create it. One → you will update it, so re-runs never duplicate it. On a solo run, first save its body to a body file and note its status: a cancelled solo revision puts both back, so an approved SDD is never lost to a draft. More than one → stop and ask the user which is canonical.
+2. **Find the existing SDD.** Query the Spec Bee's children for one titled exactly `SDD`. None → you will create it. One → you will update it, so re-runs never duplicate it. On a solo run, first save it to `saved-<sdd-id>-<short-suffix>.md` with its status on the first line and its body after. A cancelled solo revision puts both back, so an approved SDD is never lost to a draft, and the child's ID in the name lets a compacted run find the file. More than one → stop and ask the user which is canonical.
 3. **Research the codebase.** The design must cite real modules, files, functions, and fixtures, never plausible guesses, and a planning conversation rarely names them. So on first authoring, dispatch an `Explore` agent with the feature scope and the docs at the `Internal architecture docs (SDD)`, `Customer-facing docs`, and `Engineering best practices` keys of `## Documentation Locations`. Ask it for:
    - the subsystems and modules the feature touches;
    - the conventions new code should follow;
@@ -60,7 +60,7 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
    7. `## Decisions and rejected alternatives` — each decision with the alternatives weighed and why they lost.
 
    Sections 6 and 7 carry what the conversation settled, so downstream agents do not re-litigate it. An SDD says how the system is built; user stories and business goals belong in the PRD.
-6. **Write the ticket.** Put the body in a file under `/tmp/.quorum/` (`%TEMP%\.quorum` on Windows), creating the directory if absent, with a collision-resistant name, and never delete it. Pass it with `--body-file`, because an inline body with a newline before `#` trips Claude Code's command-injection guard. With no SDD, create a `t1` child of the Spec Bee in the `specs` hive, titled `SDD`, status `drafted`. With one, replace its body and set it to `drafted`: a revised SDD is unapproved until its gate passes.
+6. **Write the ticket.** Put the body in a file. This file, the saved copy, and the gate's body file all go under `/tmp/.quorum/` (`%TEMP%\.quorum` on Windows), creating the directory if absent, with collision-resistant names, and are never deleted. Pass it with `--body-file`, because an inline body with a newline before `#` trips Claude Code's command-injection guard. With no SDD, create a `t1` child of the Spec Bee in the `specs` hive, titled `SDD`, status `drafted`. With one, replace its body and set it to `drafted`: a revised SDD is unapproved until its gate passes.
 7. **Solo only: review and approve.**
    - Invoke `/quo-spec-review <spec-bee-id> --doc SDD` through the Skill tool.
    - Apply each finding whose smallest complete fix path is `trivial-tweak` yourself, rewriting the ticket body.

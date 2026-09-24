@@ -938,4 +938,4 @@ The SDD's `## Requirements` now ends with `### Mechanism lifecycle` and `### Pol
 - both reviewers' finding and verdict lines;
 - the two new SDD subsection headings in their writer and their reviewer.
 
-`tests/test_prose_size.py` lowers the four word caps and raises CLAUDE.md's for the governance lines this change needed.
+`tests/test_prose_size.py` lowers the four word caps to their new sizes. It raises CLAUDE.md's for the governance lines this change needed, and `quo-setup`'s for correcting its stale `/quo-plan` descriptions.
