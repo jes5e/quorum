@@ -182,8 +182,8 @@ restore is possible), `new_command`, `preserved_status_line_keys`, `self_check`,
 Writes the persistent opt-out marker (creating the gauge directory if absent),
 prints its path, and exits `0`. Idempotent: a repeated run rewrites the same
 content and reports the same path. The marker silences only `/quo-setup`'s
-automatic offer to configure the producer — never a genuine over-threshold
-stop — and deleting the file re-enables that offer. There is NO removal subcommand by
+automatic offer to configure the producer, and deleting the file re-enables
+that offer. There is NO removal subcommand by
 design: this helper never deletes anything, so opting back in is a manual file
 delete, not a command.
 
@@ -204,9 +204,8 @@ A persistent marker an operator writes to run unguarded. Its mere EXISTENCE is
 the signal — the contents are advisory only and are never parsed. The name and
 location are a contract between `write-opt-out` and `inspect-statusline`, whose
 report `/quo-setup` reads. What the marker suppresses is narrow: only
-`/quo-setup`'s automatic offer to configure the producer. The orchestrators do
-not read it; with no reading published they continue unguarded either way, and
-a genuine over-threshold reading still stops them. `inspect-statusline` reports
+`/quo-setup`'s automatic offer to configure the producer; the orchestrators do
+not read it. `inspect-statusline` reports
 the path and whether it exists; it never creates it.
 
 Higher-precedence settings
@@ -430,8 +429,6 @@ OPT_OUT_MARKER_FILENAME = "context-guard-opt-out"
 OPT_OUT_MARKER_BODY = (
     "This marker opts this environment out of /quo-setup's automatic offer "
     "to configure the context-usage gauge producer.\n"
-    "It does NOT suppress a genuine over-threshold stop: when a real reading "
-    "crosses the stop threshold, the guard still stops.\n"
     "Delete this file to have /quo-setup offer the step again.\n"
 )
 

@@ -3368,16 +3368,13 @@ def test_cli_write_opt_out_is_idempotent(tmp_path):
 def test_cli_write_opt_out_marker_body_states_its_scope(tmp_path):
     # Deliberately loose substring checks — the body is advisory prose, never
     # parsed by any reader, so its exact wording is not a contract. What must hold:
-    # it states its scope (setup's automatic offer), states that deletion reverses
-    # it, and clarifies it does NOT suppress a genuine over-threshold stop.
+    # it states its scope (setup's automatic offer) and that deletion reverses it.
     res = _run(["write-opt-out"], env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0, res.stderr
     body = (tmp_path / ".quorum" / "context-guard-opt-out").read_text(encoding="utf-8")
     assert "/quo-setup" in body
     assert "offer" in body
     assert "Delete this file" in body
-    assert "over-threshold" in body
-    assert "NOT suppress" in body
 
 
 def test_cli_write_opt_out_has_no_removal_subcommand(tmp_path):

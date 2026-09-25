@@ -584,3 +584,29 @@ No second round was run on the inventory. The behavior findings change the draft
   - **One finding (suggestion, behavior, contract), pre-existing.** The no-argument pick and the Bee pick filtered on `ready`, but `/quo-execute` sets a Bee `in_progress` when it starts, and the skill's own **Execute in fresh session** choice can run it while drafted Epics remain. That is a gap between two agents. The fix removes the status filter instead of widening it: the pick takes Plan Bees with a `drafted` Epic, and the fallback suggests `/quo-execute` for a `ready` or `in_progress` Bee. The frontmatter description follows.
   - **Size:** 2,913 → 2,908 words, 179 lines.
   - **Exit rule:** this behavior finding is one sentence, and its fix shrank the text. I verified it myself against `/quo-execute`'s status writes (its run-start step 2 and tick step 1) rather than running a fourth round. That is the overseer's call at Checkpoint 4.
+- **Checkpoint 4 (overseer, 2026-09-25):** accepted after auditing `12e3d7a..753a137`. No fourth round; the validation run is the next cold read.
+- **Validation run (2026-09-25, live_edit, smoke Bee `b.v9c`, run mode Work through all Epics).**
+  - **Scope:** Epic 1 was broken down into 6 Tasks and 17 Subtasks, committed as `db5b0efc`. The run then paused on reshape risk, because Epics 2 and 3 consume Epic 1's store operations. One deferral was encoded into Epics 2 and 3 and committed as `5c8a3403`. Wall clock 28 min.
+  - **Output contract, all met:**
+    - `Task N —` titles;
+    - every ticket `ready`;
+    - Task `up_dependencies` as designed;
+    - no Subtask edges (no same-role chain needed);
+    - exactly one role tag on each of the 17 Subtasks (7 `engineer`, 5 `test-writer`, 5 `doc-writer`);
+    - all four template sections on every Subtask, nothing extra;
+    - `## Sites` on all six Tasks, citing the SDD child's mechanism-lifecycle and policy entries;
+    - a `doc-writer` Subtask on each of the five code Tasks, none on the client-check Task;
+    - no verify or commit Subtasks;
+    - both commit subjects on contract; nothing pushed.
+  - **Gates:**
+    - the effort gate did not fire (the session was at `high`);
+    - the run-mode, deferral-hygiene, and next-steps gates fired, each a real decision;
+    - the next-steps gate had four choices, and its reason sat on the recommended choice;
+    - the final manifest has the documented shape with `## Open gate` at `none`. Whether each gate was written there first was not observed directly.
+  - **Context and research:** 228.7k of 1M tokens (23%) at the end of Epic 1, 192.6k of it messages. Code reading went to 3 `Explore` agents. The orchestrator itself read only tickets, scratch spec copies, and greps of CLAUDE.md and `/quo-execute`.
+  - **Traceability review:** one PM pass, 0 `GAP`. It raised a blocker (a client-pull step that would have moved the demo app off its pinned `ovlive`), 6 suggestions, and 4 nits, all fixed in the draft. No mismatch between the prompt and `agents/pm.md` surfaced.
+  - **Triage, by the three questions:**
+    - **Improvised, needing no rule:** the agent grepped `/quo-execute` and sampled older tickets to match formats and check tags. Every Task body opens with its own title as a plain line; it is cosmetic, seen once, and harms nothing.
+    - **Observed for b.87t, not a breakdown defect:** the client-check Task's `engineer` Subtask records its findings in the PRD ticket and a `docs-internal` report. Whether b.87t's Engineer accepts that doc work is its question; it earns no breakdown rule until an execute run fails on it.
+    - **Confirms the B60 deletion:** without the external-docs clause, the agent checked no Azure Managed Redis docs. It judged, correctly, that the repo's recorded in-cluster probe already settled the question.
+    - **Not exercised, kept:** the context guard (no same-session continuation), the Bee pick, the `file-path` and Scoped-marker branches, the open-design-choice question, and the re-review after a `GAP`. Each is a contract, operator policy, or a branch this run did not reach, so non-use is not evidence to delete it.
