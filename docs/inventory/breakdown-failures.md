@@ -543,3 +543,24 @@ No second round was run on the inventory. The behavior findings change the draft
   - **B60 goes.** F22 is rare, loud, and recovered unaided, so it earns no rule; `b.v9c`'s Redis probe will show whether the agent checks the docs anyway.
   - Two unbacked phrases are cut: "recording each Epic's progress in the manifest", which no field backs, and "survives for the next run", which no next run reads.
   - The structure test now pins the variable names `CLAUDE_EFFORT` and `CLAUDE_CODE_SESSION_ID`, not the commands that read them.
+- **Cold round 1 on the draft (2026-09-25, two lanes: contracts/fidelity and executability).**
+  - **Result:** 22 findings, 16 distinct after the overlaps (six pairs); 0 blocker; 8 behavior. All applied. Each behavior fix narrows or rewords an existing sentence rather than adding a mechanism.
+  - **Behavior fixes, each a gap between two agents or a newly defined condition failing a case its definition enumerates:**
+    - the review's re-dispatch condition: fix every `GAP` and `addressed-now` item, but re-review only after a `GAP`. Both lanes found the contradiction;
+    - the Mode 2 continue condition, and the recommendation, now check every remaining drafted Epic against every Epic broken down this run. A dependency-order tie could skip the consumer;
+    - a `reference_materials` entry with no `resolver` is read as a file. `/quo-plan-from-specs` writes that shape, and the B52 Keep row says "(or omitted)";
+    - Subtask `up_dependencies` are defined: same-role only. Decision 2 dropped the cross-role edges, but no text said which edges remain;
+    - the PM prompt allows scratch files under `/tmp/.quorum/` and names Path A with the Plan Bee as the Grandparent Bee, which `agents/pm.md` needs for the Scoped-marker check;
+    - the manifest's **Draft** names its Epic, which the recovery goal needs after a compaction;
+    - `Fix in this session` commits the tickets it changes (F7, observed);
+    - the Bee pick counts only Plan Bees with a drafted Epic.
+  - **Wording and contract clarifications:**
+    - the draft's body-extent rule (template headings stay at `##`);
+    - the PM maps the spec's requirements for this Epic, not only the Epic body;
+    - deferrals are deduplicated;
+    - the recovery goal covers compaction only, matching the run-start truncate;
+    - the fresh-session line is said before the gate, not as a paragraph above it;
+    - readers fixed: the doc-writing guide's trailer-less-gates list, the SDD's chain bullet and gate sentence, and CONTRIBUTING's `Explore` claim.
+  - **Deletions:** the `**Unit scope:**` field (no reader), "Never restate the threshold" (a maintainer note), and "It stages only in-repo hive paths" (helper internals).
+  - **Size:** 2,812 → 2,887 words (+75), 177 → 179 lines. The additions are the gap and F7 fixes above, net of the deletions.
+  - **Exit rule:** eight behavior findings earn a fresh cold round.

@@ -15,7 +15,7 @@ The workflow chain is linear with two entry points:
 
 - `/quo-setup` — one-time per repo (idempotent re-runs)
 - `/quo-plan` *or* `/quo-plan-from-specs` — produces a Plan Bee with Epic children
-- `/quo-breakdown-epic` — decomposes one Epic into Tasks/Subtasks, commits the new ticket files at end-of-skill
+- `/quo-breakdown-epic` — decomposes a Plan Bee's drafted Epics into Tasks/Subtasks, committing each Epic's new ticket files
 - `/quo-execute` — walks every Epic, dispatches subagents per Task, commits
 - `/quo-file-issue` *and* `/quo-fix-issue` — anytime, for bugs/follow-ups
 
@@ -973,7 +973,7 @@ The per-Task fan-out of research-mode `engineer` / `test-writer` / `doc-writer` 
 - Every code, configuration, or deployment Task gets a `doc-writer` Subtask, seeded from the Plan Bee's `## Anticipated doc impact`.
 - No "Verify the Task" Subtasks, no one-Subtask-per-test-file split, and no implementation-first dependency edges. The rebuilt execute's close-out verifies, and it orders the roles itself. Today's `/quo-execute` read those shapes, so it must not run on this output before its rebuild (b.87t) lands.
 
-**State and gates.** A run-state manifest, `run-state-quo-breakdown-epic-<bee-id>.md`, keeps the six mirrored lead statements. It holds the run mode, the draft path, the Epics broken down this run, `## Obligations`, and `## Open gate`, with one recovery goal. Every gate is the `## Open gate` write, then `AskUserQuestion` in the same turn.
+**State and gates.** A run-state manifest, `run-state-quo-breakdown-epic-<bee-id>.md`, keeps the six mirrored lead statements. It holds the run mode, the draft path, the Epics broken down this run, `## Obligations`, and `## Open gate`, with one recovery goal. Every gate after the Bee pick is the `## Open gate` write, then `AskUserQuestion` in the same turn.
 - Five gates: session effort, Bee pick, run mode, deferral hygiene (once, when the run ends), and a four-choice next-steps gate.
 - The Epic-pick gate is gone: the run starts at the first drafted Epic in dependency order, or at the Epic an argument names.
 - The context guard runs before each further Epic in the same session. It stops on an over-threshold, `stale`, or unreadable reading, and continues on `missing` (operator decision, 2026-09-25). Its missing-reading gate is gone, so the opt-out marker now silences only `/quo-setup`'s automatic offer.

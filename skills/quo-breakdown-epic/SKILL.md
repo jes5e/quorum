@@ -31,9 +31,8 @@ The manifest is a small markdown file holding the handful of run-scoped values t
 ```markdown
 # Run state — quo-breakdown-epic @ <bee-id>
 
-**Unit scope:** Bee <bee-id>
 **Run mode:** <Stop after each Epic | Work through all Epics | one Epic | pending>
-**Draft:** <path of the Epic in progress, or none>
+**Draft:** <epic-id> at <draft-path>, or none
 **Broken down:** <Epic N = <epic-id>, …, or none>
 
 ## Obligations
@@ -46,7 +45,7 @@ The manifest is a small markdown file holding the handful of run-scoped values t
 none
 ```
 
-The run mode is a user choice nothing else records, and **Broken down** lets the run-end report tell this run's Epics from earlier ones. Conversation memory is never a substitute for the manifest, the draft, and bees, because the harness can drop old tool results without a marker. After a compaction or a crash, re-read them and reconcile with the working tree before acting: an Epic that is `ready` with Tasks is done, and a draft on disk is the Epic in progress.
+The run mode is a user choice nothing else records, and **Broken down** lets the run-end report tell this run's Epics from earlier ones. Conversation memory is never a substitute for the manifest, the draft, and bees, because the harness can drop old tool results without a marker. After a compaction, re-read them and reconcile with the working tree before acting: an Epic that is `ready` with Tasks is done, and the recorded **Draft** is the Epic in progress.
 
 ## 3. Gates
 
@@ -55,7 +54,7 @@ A gate is the manifest `Write` that fills `## Open gate` with the gate's name, q
 Gates fire only where the user holds the decision:
 
 - **Session effort** — first, before the manifest exists, so it goes straight to `AskUserQuestion`. Read `printenv CLAUDE_EFFORT` (PowerShell `Write-Output $env:CLAUDE_EFFORT`). If it is empty or not one of `low` < `medium` < `high` < `xhigh` < `max`, skip silently. At or above `high`, say nothing. Below it, ask ``This session is running at `effort=<current>`, below the `high` floor this skill is tuned for. Decomposition quality here sets Subtask granularity for every downstream execution run.`` then a blank line then `Subagent effort is pinned per role and is NOT affected by this setting.` Choices: **Proceed anyway**, or **Let me change it first** (exit; the user runs `/model` and re-invokes).
-- **Bee pick** — with no argument and several `ready` Plan Bees, before the manifest exists: one choice per Bee, up to four; the free-text slot takes any other.
+- **Bee pick** — with no argument and several `ready` Plan Bees that have a `drafted` Epic, before the manifest exists: one choice per Bee, up to four; the free-text slot takes any other.
 - **Run mode** — when two or more `drafted` Epics remain: question `How should this run handle multiple Epics? (You will not be asked again this run.)`; choices **Stop after each Epic** and **Work through all Epics**. The labels match `/quo-execute`'s, so the choice reads the same in both skills.
 - **Deferral hygiene**, only when obligations are open — Section 9.
 - **Next steps** — Section 9.
@@ -64,7 +63,7 @@ Gates fire only where the user holds the decision:
 
 - **An Epic ID** starts at that Epic; its parent is the Plan Bee.
 - **A Bee ID** starts at its first `drafted` Epic in dependency order.
-- **No argument** takes the one `ready` Plan Bee, or fires the Bee pick when there are several. With none, say no Plan Bee is ready and suggest `/quo-plan` or `/quo-plan-from-specs`.
+- **No argument** takes the one `ready` Plan Bee with a `drafted` Epic, or fires the Bee pick when there are several. With none, say no Plan Bee is ready and suggest `/quo-plan` or `/quo-plan-from-specs`.
 
 When the Bee has no `drafted` Epic, say so and suggest `/quo-execute <bee-id>`. Otherwise write the manifest, then fire the run-mode gate when it applies and record the answer.
 
@@ -75,7 +74,7 @@ Read the Epic, its Plan Bee, the Epics it depends on, and its sibling Epics. Tre
 The spec is what the Plan Bee's `reference_materials` names:
 
 - **A `bees` entry** names a Spec Bee. Its `t1=Doc` children titled exactly `PRD` and `SDD` are the spec; match those titles exactly, never loosely.
-- **A `file-path` entry** is a doc on disk. When the Plan Bee body carries a `Scoped to` marker, write the body text (not the `bees show-ticket` JSON) to a scratch file and run the bundled resolver: `python3 "<this skill's base directory>/scripts/scoped_marker_resolver.py" <body-file>` (PowerShell `python "<this skill's base directory>\scripts\scoped_marker_resolver.py" <body-file>`). Its `"scoped": true` output restricts the spec to the named `### Feature:` subsection. Exit 2 means the marker is broken: report its stderr and stop, never falling back to the whole doc. The marker applies only to this path.
+- **A `file-path` entry, or one with no `resolver`,** is a doc on disk. When the Plan Bee body carries a `Scoped to` marker, write the body text (not the `bees show-ticket` JSON) to a scratch file and run the bundled resolver: `python3 "<this skill's base directory>/scripts/scoped_marker_resolver.py" <body-file>` (PowerShell `python "<this skill's base directory>\scripts\scoped_marker_resolver.py" <body-file>`). Its `"scoped": true` output restricts the spec to the named `### Feature:` subsection. Exit 2 means the marker is broken: report its stderr and stop, never falling back to the whole doc. The marker applies only to this path.
 - **No entry** means the Plan Bee body is the spec.
 
 Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs the feature changes.
@@ -84,7 +83,7 @@ Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs th
 
 **Research.** Before drafting, dispatch read-only `Explore` agents in the background over the code the Epic touches, in proportion to the Epic, and wait for their notifications. Code reading goes to them, and they return findings rather than file contents, because your context has to hold the spec and the draft for the whole Epic.
 
-**Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet.
+**Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet. A Task's body is what precedes its first Subtask label, and a Subtask's body runs to the next label; keep the template's headings at `##` inside them.
 
 **Tasks.** N is the Task's 1-based position in the Epic, and the title is its label in every later status line and commit.
 
@@ -114,6 +113,7 @@ The files, functions, and changes, with line numbers where known.
 - State scope and acceptance, not implementation; paste no code. The implementer is an expert, and the code will move before it runs.
 - Carry any design decision the user gave you verbatim into every Subtask it affects. When the spec leaves open a choice the Tasks must commit to, ask in prose before drafting past it.
 - Emit no Subtask for committing, formatting, or running the full test suite. `/quo-execute` does those itself.
+- Give a Subtask `up_dependencies` only on a same-role Subtask it builds on; `/quo-execute` orders the roles itself.
 
 ## 7. Traceability review
 
@@ -122,15 +122,17 @@ Dispatch one `pm` agent in the background with this prompt, IDs and paths filled
 ```
 You are reviewing a draft breakdown of Epic <epic-id> under Plan Bee <bee-id>,
 before any of its tickets exist. There is no diff: do not invoke
-/quo-engineer-review or /quo-doc-writer-review, and change no file or ticket.
+/quo-engineer-review or /quo-doc-writer-review, and change no ticket and no
+file outside /tmp/.quorum/.
 The draft is <draft-path>: one `# Task N — <title>` heading per Task, and one
 `## <role>: <title>` heading per Subtask under it. Cite those labels.
 
-Resolve the spec from the Plan Bee's reference_materials as your role file
-describes; the Scoped-marker helper is at <scoped-marker-resolver-path>.
+Resolve the spec as your role file's Path A describes, with the Plan Bee as
+the Grandparent Bee; the Scoped-marker helper is at
+<scoped-marker-resolver-path>.
 
-1. Map every requirement in the Epic's scope and acceptance criteria to the
-   Subtasks that cover it, in this table:
+1. Map every requirement the spec places in this Epic's scope, and each of the
+   Epic's acceptance criteria, to the Subtasks that cover it, in this table:
 
    | Spec Requirement | Source | Covered By Subtask | Status |
 
@@ -143,7 +145,7 @@ describes; the Scoped-marker helper is at <scoped-marker-resolver-path>.
    project-doc destination.
 ```
 
-`<scoped-marker-resolver-path>` is `<this skill's base directory>/scripts/scoped_marker_resolver.py`. Fix every `GAP` and every `addressed-now` finding in the draft, then dispatch the review again. Stop when a pass reports no `GAP`. Add each deferred item to `## Obligations` as the review returns it: the next session reads only tickets, so a deferral held in this conversation is lost.
+`<scoped-marker-resolver-path>` is `<this skill's base directory>/scripts/scoped_marker_resolver.py`. Fix every `GAP` and every `addressed-now` finding in the draft, and dispatch the review again only when the pass reported a `GAP`. Add each deferred item not already in `## Obligations` as the review returns it: the next session reads only tickets, so a deferral held in this conversation is lost.
 
 ## 8. Create, commit, and move on
 
@@ -151,9 +153,9 @@ describes; the Scoped-marker helper is at <scoped-marker-resolver-path>.
 
 **Commit.** Stage only the in-repo Plans-hive path the sibling helper prints, never the whole tree, because the hive may live outside the repo and the working tree may hold unrelated changes: `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive plans` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive plans`). Commit with the subject `Plan <bee-id>, Break down <epic-title> (<epic-id>)`, where `<epic-title>` is the Epic's `Epic N — <title>`. When the helper prints nothing, commit nothing and note in the report that the tickets live outside the repo. Never push.
 
-**Move on.** Under **Work through all Epics**, when a `drafted` Epic remains and this Epic will not reshape a contract that Epic consumes (Section 9), print `Mode 2 (Work through all Epics): continuing to <Epic N — title>.`, run the context guard, and return to Section 5 for the next `drafted` Epic in dependency order. Otherwise the run ends: go to Section 9.
+**Move on.** Under **Work through all Epics**, when a `drafted` Epic remains and none of them consumes a contract an Epic broken down this run will reshape (Section 9), print `Mode 2 (Work through all Epics): continuing to <Epic N — title>.`, run the context guard, and return to Section 5 for the next `drafted` Epic in dependency order. Otherwise the run ends: go to Section 9.
 
-**Context guard.** It runs before every Epic broken down in the same session after the first. Read `printenv CLAUDE_CODE_SESSION_ID` (PowerShell `Write-Output $env:CLAUDE_CODE_SESSION_ID`) and trim it; unset or empty → skip. Get the threshold from `python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" stop-threshold` and the reading from `python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" read --session-id <trimmed-id>` (PowerShell: `python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py"` with the same arguments). Never restate the threshold. A reading at or above it, `stale`, a non-zero exit, or empty output ends the run through Section 9, recommending `/quo-breakdown-epic <bee-id>` in a fresh session, so the next Epic starts fresh rather than being compacted mid-draft. Below the threshold, `no-reading`, or `missing` → continue.
+**Context guard.** It runs before every Epic broken down in the same session after the first. Read `printenv CLAUDE_CODE_SESSION_ID` (PowerShell `Write-Output $env:CLAUDE_CODE_SESSION_ID`) and trim it; unset or empty → skip. Get the threshold from `python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" stop-threshold` and the reading from `python3 "<this skill's base directory>/../quo-setup/scripts/context_gauge.py" read --session-id <trimmed-id>` (PowerShell: `python "<this skill's base directory>\..\quo-setup\scripts\context_gauge.py"` with the same arguments). A reading at or above it, `stale`, a non-zero exit, or empty output ends the run through Section 9, recommending `/quo-breakdown-epic <bee-id>` in a fresh session, so the next Epic starts fresh rather than being compacted mid-draft. Below the threshold, `no-reading`, or `missing` → continue.
 
 ## 9. End of run
 
@@ -161,17 +163,17 @@ describes; the Scoped-marker helper is at <scoped-marker-resolver-path>.
 
 **Deferral hygiene.** When `## Obligations` has no open row, print `Deferral hygiene: no deferred items.` Otherwise list the open rows and fire the deferral-hygiene gate. The user can route different items differently by writing that in the free-text slot.
 
-- `Fix in this session` — do the work now.
+- `Fix in this session` — do the work now, and commit any ticket it changes as Section 8 does.
 - `File as issue tickets` — invoke `/quo-file-issue` through the Skill tool with the item as its description.
-- `Encode in existing ticket` — append a `## Deferred from /quo-breakdown-epic run (<YYYY-MM-DD HH:MM>)` section to the named ticket, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -Format 'yyyy-MM-dd HH:mm'` (PowerShell). Then commit the encodes with `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" --skill quo-breakdown-epic --count <N>` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" --skill quo-breakdown-epic --count <N>`), where `<N>` counts the items encoded. It stages only in-repo hive paths.
+- `Encode in existing ticket` — append a `## Deferred from /quo-breakdown-epic run (<YYYY-MM-DD HH:MM>)` section to the named ticket, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -Format 'yyyy-MM-dd HH:mm'` (PowerShell). Then commit the encodes with `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" --skill quo-breakdown-epic --count <N>` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" --skill quo-breakdown-epic --count <N>`), where `<N>` counts the items encoded.
 
 Close each row as its item lands. Do not end the run while a row is open; when a route fails, show the remaining rows and ask again.
 
-**Next steps.** Skip this gate when the context guard ended the run. Above the choices, say that each next skill re-reads everything from bees and disk, so a fresh session gives it the full context budget. Fire the next-steps gate with these choices, the two break-down choices only when a `drafted` Epic remains:
+**Next steps.** Skip this gate when the context guard ended the run. Before firing it, say in one line that each next skill re-reads everything from bees and disk, so a fresh session gives it the full context budget. Fire the next-steps gate with these choices, the two break-down choices only when a `drafted` Epic remains:
 
 - **Execute in fresh session** — run `/quo-execute <bee-id>` in a new session. It runs every workable Epic in dependency order and stops at `drafted` ones.
 - **Next Epic, fresh session** — run `/quo-breakdown-epic <bee-id>` in a new session.
 - **Next Epic, this session** — run the context guard, then return to Section 5 for the next `drafted` Epic.
 - **Done for now** — the plan is saved.
 
-Recommend **Execute in fresh session** when no `drafted` Epic remains, or when this Epic's implementation will reshape a contract a remaining sibling consumes: new infrastructure, API surface, schema, or framework that the sibling is written to use. Breaking that sibling down now would produce Tasks that go stale. Pure ordering between Epics is not reshape risk; then recommend **Next Epic, fresh session**. Put the reason in the recommended choice's description, naming the sibling Epics, and never in a paragraph above the question, which the UI truncates.
+Recommend **Execute in fresh session** when no `drafted` Epic remains, or when an Epic broken down this run will reshape a contract a remaining sibling consumes: new infrastructure, API surface, schema, or framework that the sibling is written to use. Breaking that sibling down now would produce Tasks that go stale. Pure ordering between Epics is not reshape risk; then recommend **Next Epic, fresh session**. Put the reason in the recommended choice's description, naming the sibling Epics, and never in a paragraph above the question, which the UI truncates.
