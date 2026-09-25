@@ -959,7 +959,7 @@ The SDD's `## Requirements` now ends with `### Mechanism lifecycle` and `### Pol
 **Architecture.** `/quo-breakdown-epic` was rewritten minimally under CLAUDE.md `## How skill prose is written`, from a failure inventory (`docs/inventory/breakdown-failures.md`). It went from 966 lines and 18,400 words to under 200 lines and about 2,800. No rule earned by an observed failure was dropped.
 
 **Flow.** For each drafted Epic, in dependency order:
-1. Read the Epic, its Plan Bee, its dependencies and siblings, and the spec the Plan Bee's `reference_materials` names, scoped by the bundled resolver on the `file-path` path.
+1. Read the Epic, its Plan Bee, its dependencies and siblings, and the spec the Plan Bee's `reference_materials` names, scoped by the bundled resolver on a `file-path` or resolver-less entry.
 2. Dispatch read-only `Explore` agents over the code the Epic touches. Code reading goes to them so the orchestrator's context holds the spec and the draft, not the code.
 3. Draft every Task and Subtask to one scratch file, labelled `# Task N — <title>` and `## <role>: <title>`.
 4. Dispatch one cold `pm` agent to review the draft for spec traceability and for its role's cross-Task and cross-Epic interaction checks. Fix each `GAP` and in-draft finding, and re-review until no `GAP` remains.
@@ -973,7 +973,7 @@ The per-Task fan-out of research-mode `engineer` / `test-writer` / `doc-writer` 
 - Every code, configuration, or deployment Task gets a `doc-writer` Subtask, seeded from the Plan Bee's `## Anticipated doc impact`.
 - No "Verify the Task" Subtasks, no one-Subtask-per-test-file split, and no implementation-first dependency edges. The rebuilt execute's close-out verifies, and it orders the roles itself. Today's `/quo-execute` read those shapes, so it must not run on this output before its rebuild (b.87t) lands.
 
-**State and gates.** A run-state manifest, `run-state-quo-breakdown-epic-<bee-id>.md`, keeps the six mirrored lead statements. It holds the run mode, the draft path, the Epics broken down this run, `## Obligations`, and `## Open gate`, with one recovery goal. Every gate after the Bee pick is the `## Open gate` write, then `AskUserQuestion` in the same turn.
+**State and gates.** A run-state manifest, `run-state-quo-breakdown-epic-<bee-id>.md`, keeps the six mirrored lead statements. It holds the run mode, the Epic in progress and its draft path, the Epics broken down this run, `## Obligations`, and `## Open gate`, with one recovery goal. Every gate after the Bee pick is the `## Open gate` write, then `AskUserQuestion` in the same turn.
 - Five gates: session effort, Bee pick, run mode, deferral hygiene (once, when the run ends), and a four-choice next-steps gate.
 - The Epic-pick gate is gone: the run starts at the first drafted Epic in dependency order, or at the Epic an argument names.
 - The context guard runs before each further Epic in the same session. It stops on an over-threshold, `stale`, or unreadable reading, and continues on `missing` (operator decision, 2026-09-25). Its missing-reading gate is gone, so the opt-out marker now silences only `/quo-setup`'s automatic offer.

@@ -564,3 +564,15 @@ No second round was run on the inventory. The behavior findings change the draft
   - **Deletions:** the `**Unit scope:**` field (no reader), "Never restate the threshold" (a maintainer note), and "It stages only in-repo hive paths" (helper internals).
   - **Size:** 2,812 → 2,887 words (+75), 177 → 179 lines. The additions are the gap and F7 fixes above, net of the deletions.
   - **Exit rule:** eight behavior findings earn a fresh cold round.
+- **Cold round 2 (2026-09-25, one reviewer, both lanes, a confirming pass on round 1's fixes).**
+  - **Result:** six of the nine re-traced paths closed cleanly. 6 findings: 0 blocker, 3 suggestion, 3 nit; 2 behavior, both from round-1 fixes. All applied.
+  - **Behavior:**
+    - `Fix in this session` staged only the Plans hive, through its "as Section 8 does" pointer. A deferral can name a Spec Bee child (`agents/pm.md:253`), so F7 recurred for that case. It now stages each touched hive's in-repo path.
+    - The Bee-pick fix left the no-argument fallback suggesting `/quo-plan` for a fully broken-down Bee. It now suggests `/quo-execute <bee-id>` there.
+  - **Contract and wording:**
+    - the PM prompt names both scratch directories (the Windows path `agents/pm.md` uses);
+    - it points at spec resolution plus Path A's Scoped-marker check, not Path A alone;
+    - the SDD b.pcc entry covers the resolver-less entry and the Draft field's Epic.
+  - **Deletion:** the body-extent procedure. The contract part stays: template headings kept at `##`.
+  - **Size:** 2,887 → 2,913 words (+26), 179 lines.
+  - **Exit rule:** two behavior findings earn a narrow confirming round on those two fixes.

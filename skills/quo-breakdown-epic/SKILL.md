@@ -63,7 +63,7 @@ Gates fire only where the user holds the decision:
 
 - **An Epic ID** starts at that Epic; its parent is the Plan Bee.
 - **A Bee ID** starts at its first `drafted` Epic in dependency order.
-- **No argument** takes the one `ready` Plan Bee with a `drafted` Epic, or fires the Bee pick when there are several. With none, say no Plan Bee is ready and suggest `/quo-plan` or `/quo-plan-from-specs`.
+- **No argument** takes the one `ready` Plan Bee with a `drafted` Epic, or fires the Bee pick when there are several. With none, say so, and suggest `/quo-execute <bee-id>` when a `ready` Plan Bee is already broken down, else `/quo-plan` or `/quo-plan-from-specs`.
 
 When the Bee has no `drafted` Epic, say so and suggest `/quo-execute <bee-id>`. Otherwise write the manifest, then fire the run-mode gate when it applies and record the answer.
 
@@ -83,7 +83,7 @@ Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs th
 
 **Research.** Before drafting, dispatch read-only `Explore` agents in the background over the code the Epic touches, in proportion to the Epic, and wait for their notifications. Code reading goes to them, and they return findings rather than file contents, because your context has to hold the spec and the draft for the whole Epic.
 
-**Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet. A Task's body is what precedes its first Subtask label, and a Subtask's body runs to the next label; keep the template's headings at `##` inside them.
+**Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet. Keep the template's headings at `##` inside each ticket's text, as its ticket will carry them.
 
 **Tasks.** N is the Task's 1-based position in the Epic, and the title is its label in every later status line and commit.
 
@@ -123,13 +123,14 @@ Dispatch one `pm` agent in the background with this prompt, IDs and paths filled
 You are reviewing a draft breakdown of Epic <epic-id> under Plan Bee <bee-id>,
 before any of its tickets exist. There is no diff: do not invoke
 /quo-engineer-review or /quo-doc-writer-review, and change no ticket and no
-file outside /tmp/.quorum/.
+file outside the .quorum scratch directory (/tmp/.quorum/, or %TEMP%\.quorum
+on Windows).
 The draft is <draft-path>: one `# Task N — <title>` heading per Task, and one
 `## <role>: <title>` heading per Subtask under it. Cite those labels.
 
-Resolve the spec as your role file's Path A describes, with the Plan Bee as
-the Grandparent Bee; the Scoped-marker helper is at
-<scoped-marker-resolver-path>.
+Resolve the spec from the Plan Bee's reference_materials as your role file
+describes, with the Plan Bee as the Grandparent Bee, so its Path A
+Scoped-marker check applies; the helper is at <scoped-marker-resolver-path>.
 
 1. Map every requirement the spec places in this Epic's scope, and each of the
    Epic's acceptance criteria, to the Subtasks that cover it, in this table:
@@ -163,7 +164,7 @@ the Grandparent Bee; the Scoped-marker helper is at
 
 **Deferral hygiene.** When `## Obligations` has no open row, print `Deferral hygiene: no deferred items.` Otherwise list the open rows and fire the deferral-hygiene gate. The user can route different items differently by writing that in the free-text slot.
 
-- `Fix in this session` — do the work now, and commit any ticket it changes as Section 8 does.
+- `Fix in this session` — do the work now, and commit the ticket files it changed, staging the in-repo path of each hive it touched (the helper's `resolve-hive-paths` with that `--hive`).
 - `File as issue tickets` — invoke `/quo-file-issue` through the Skill tool with the item as its description.
 - `Encode in existing ticket` — append a `## Deferred from /quo-breakdown-epic run (<YYYY-MM-DD HH:MM>)` section to the named ticket, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -Format 'yyyy-MM-dd HH:mm'` (PowerShell). Then commit the encodes with `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" --skill quo-breakdown-epic --count <N>` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" --skill quo-breakdown-epic --count <N>`), where `<N>` counts the items encoded.
 
