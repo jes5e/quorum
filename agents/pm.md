@@ -150,7 +150,7 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `quo-brea
 
 ### Path B — quo-fix-issue `up_dependencies`-based opportunistic marker discovery
 
-**Precondition.** Run this path when the orchestrator's dispatch prompt indicates this PM is invoked under `/quo-fix-issue` — that is, no Grandparent Bee is named, the diff is traced against the approved directive (see "Approved design directive" above) and the project's docs, and a Plan Bee in `up_dependencies` may optionally carry scope context.
+**Precondition.** Run this path when the orchestrator's dispatch prompt indicates this PM is invoked under `/quo-fix-issue` — that is, no Grandparent Bee is named, and a Plan Bee in `up_dependencies` may optionally carry scope context.
 
 **Dual-use of `up_dependencies` — explicit and load-bearing.** The Issue's `up_dependencies` array has two roles in this skill, both intentional:
 
@@ -161,7 +161,7 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `quo-brea
 
 After the orchestrator has validated dependency-blocker statuses upstream, iterate the Issue's `up_dependencies` array and, for each entry that resolves to a Bee in the `plans` hive, attempt to detect and apply a marker. Discovery is **best-effort** — a missing marker, a malformed marker, or a non-`plans`-hive entry is not a fatal error.
 
-1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. Filter on the hive with `bees execute-freeform-query`, passing the query on one line in YAML flow style (`{stages: [[...]], report: [...]}`) because the help's multi-line example does not run as written; a query cannot report `body`, so read that with `bees show-ticket`.
+1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. Filter on the hive with `bees execute-freeform-query`, passing the query on one line in YAML flow style (`{stages: [[...]], report: [...]}`) because the help's multi-line example does not run as written. A query cannot report `body`, so read that with `bees show-ticket`.
 
    If the query returns zero rows for that ID, treat it as a non-`plans`-hive entry and skip to the next ID. Do NOT hard-fail on a non-Plan-Bee `up_dependencies` entry — that is the blocker-only use of the field, which is fine.
 

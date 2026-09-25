@@ -34,7 +34,7 @@ CAPS = {
     "skills/quo-execute/references/rationale.md": 2573,
     "skills/quo-execute/references/routing.md": 2994,
     "skills/quo-file-issue/SKILL.md": 7180,
-    "skills/quo-fix-issue/SKILL.md": 12587,
+    "skills/quo-fix-issue/SKILL.md": 12588,
     "skills/quo-fix-issue/references/github-close.md": 382,
     "skills/quo-fix-issue/references/url-resolution.md": 525,
     "skills/quo-plan/SKILL.md": 3130,
@@ -50,7 +50,7 @@ CAPS = {
     "agents/doc-reviewer.md": 676,
     "agents/doc-writer.md": 3304,
     "agents/engineer.md": 2647,
-    "agents/pm.md": 6908,
+    "agents/pm.md": 6891,
     "agents/test-reviewer.md": 692,
     "agents/test-writer.md": 3200,
 }
