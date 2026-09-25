@@ -5,7 +5,7 @@ title: 'Minimal rewrite of /quo-breakdown-epic under the prose standard: no Task
 parent: null
 reference_materials: null
 created_at: '2026-09-11T01:15:18.807870'
-status: open
+status: done
 schema_version: '0.1'
 guid: pccrxyv5oh99ahdywhqc1natjaibzd8r
 ---
@@ -100,4 +100,14 @@ It alone decides the Subtask role marker and whether it still emits "Verify the 
   - `:228` and `agents/pm.md:26` still attribute null `reference_materials` to `/quo-plan`, which hasn't emitted it since b.31f. The consumer fallback itself stays.
 - **b.eid items 3–4:** breakdown can cite the SDD's `### Mechanism lifecycle` and `### Policy decisions this design implies` when listing a Task's sites.
 - **Label rename, in one pass:** "Encode in an existing ticket body" is six words, over `AskUserQuestion`'s limit of five. Rename it (e.g. "Encode in existing ticket") across all four deferral-hygiene gates at once: `/quo-plan`, `/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic`. Also update `tests/test_planning_structure.py`, `tests/test_orchestrator_structure.py`, README, `docs/prd.md`, and `docs/sdd.md`. It's one label in four skills, so it can't be renamed piecemeal.
+## Closed (2026-09-25)
 
+Merged to main by fast-forward, head `a0cd8c2` (commits `45f4426`..`a0cd8c2`, not pushed). `/quo-breakdown-epic` went from 966 lines and 18,423 words to 179 lines and 2,908 words; the failure inventory is `docs/inventory/breakdown-failures.md`.
+
+**Correction to `## Inputs from b.7ib`.** Its line "The manifest is keyed on the repo directory name, outside the lead-statement mirror" was wrong: breakdown is one of the three skills whose manifest lead statements are mirrored, and `/quo-execute` and `/quo-fix-issue` state its Bee-ID key in shared text. The manifest stays keyed on the Bee ID with the lead statements byte-identical; only b.7ib's gate shape was adopted.
+
+**Decisions (b.pcc alone, ratified at Checkpoint 2):** each Subtask carries exactly one role tag (`engineer`, `test-writer`, `doc-writer`); no "Verify the Task" Subtasks, no one-test-Subtask-per-file split, no implementation-first edges; one author with read-only `Explore` research and one cold `pm` traceability review replace the per-role research fan-out; the Epic-pick gate is gone. **Operator ratification (2026-09-25):** the context guard converges on D4, so the missing-reading gate and the opt-out check are gone.
+
+**Validation.** Smoke Bee b.v9c in live_edit, run mode Work through all Epics: Epic 1 became 6 Tasks and 17 Subtasks, and every output-contract item held. Three gates, all real decisions. Mode 2 paused correctly on reshape risk. One PM pass, 0 GAP, caught a real blocker. Context was 23% of 1M after the Epic, with code reading in three `Explore` agents. No validation defect needed a skill-text change. Epics 2 and 3 are still `drafted`.
+
+**Open:** the context guard was not exercised (no same-session continuation). A gauge producer publishes in the container, but whether the guard reads it is unconfirmed until a run continues past a unit boundary in one session.

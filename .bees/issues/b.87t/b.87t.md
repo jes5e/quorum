@@ -96,4 +96,28 @@ This ticket now runs after b.pcc and b.37n; the order is on b.vtw's `## Serial o
 ## Validation input (2026-09-25)
 
 This rebuild is validated by executing smoke Bee b.v9c in live_edit after b.pcc breaks it down. Epic 1 opens with an in-script-publish probe. Its Azure Managed Redis part runs on the operator's host, so the implementer stops and asks the operator to run it rather than attempting it.
+## Inputs from b.pcc (2026-09-25)
+
+b.pcc merged at `a0cd8c2`. Design against b.v9c Epic 1's real output in live_edit (6 Tasks, 17 Subtasks, all `ready`; Epics 2 and 3 still `drafted`).
+
+**What breakdown now emits:**
+- Each Subtask carries exactly one role tag, `engineer`, `test-writer`, or `doc-writer`, which execute dispatches by. An operator-run step is tagged `engineer`, and its body says the implementer stops and asks.
+- No "Verify the Task" Subtasks. `### Defaults` says they are "flipped on the implementer's behalf"; there are none to flip, and the close-out verifies.
+- No implementation-first edges. Subtask `up_dependencies` are same-role only; execute orders the roles itself.
+- A Task body carries its purpose, its cross-Task contracts, and `## Sites` (b.eid item 3). Acceptance criteria live in the Subtasks, in the four-section template.
+- Every code, config, or deployment Task has a `doc-writer` Subtask.
+- Breakdown's PM prompt names `agents/pm.md` Path A with the Plan Bee as the Grandparent Bee. Keep that working when the PM changes.
+
+**Sequencing constraint:** today's `/quo-execute` must not run on this output; it reads the dropped shapes. This rebuild is the first execute run on it.
+
+**Role-file items (out of bounds for b.pcc, this ticket's to fix):**
+- `agents/pm.md:26` attributes null `reference_materials` to `/quo-plan`, stale since b.31f; the consumer fallback stays.
+- `agents/pm.md:227` trusts the Task's `.T` Subtask as the full-suite run.
+- `agents/pm.md:253` offers a PRD/SDD deferral destination; breakdown's prompt excludes it.
+- The PM's instructions assume a diff and a per-Task review; breakdown's prompt states its own case (review the draft, cite draft labels, invoke no review skill, change nothing).
+- `agents/doc-writer.md:66` reads `## Why`, which no breakdown ticket carries.
+
+**Validation observation:** b.v9c Task 1 is a research-and-record Task; its `engineer` Subtask writes findings into the PRD ticket and a `docs-internal` report. Decide whether the Engineer takes that work.
+
+**Context guard:** not exercised in b.pcc's run. A gauge producer publishes in the container, but whether the guard reads it is unconfirmed; this rebuild's guard at Task boundaries is the first chance to see it.
 

@@ -1,7 +1,7 @@
 ---
 id: b.eid
 type: bee
-title: Per-Task site lists in breakdown and execute-PM verification against the SDD's Mechanism lifecycle and Policy decisions sections (items 3-4; items 1-2 landed in b.7ib)
+title: 'Per-Task site lists (landed in b.pcc as ## Sites) and the execute PM verifying against them (b.87t)'
 parent: null
 reference_materials: null
 created_at: '2026-09-04T03:04:46.237777'
@@ -65,3 +65,6 @@ Items 1–2 landed in b.7ib (`bceca34`): `/quo-write-sdd`'s `## Requirements` no
 - the execute PM verifying against them.
 
 b.pcc and b.87t are the natural owners.
+## Item 3 landed in b.pcc (2026-09-25)
+
+`/quo-breakdown-epic` (merged at `a0cd8c2`) lists, under a Task's `## Sites`, each SDD `### Mechanism lifecycle` or `### Policy decisions this design implies` entry the Task implements, citing the SDD child's ID and the entry. Observed on all six Tasks of b.v9c Epic 1 in live_edit. Item 4, the execute PM verifying against `## Sites`, stays open for b.87t.

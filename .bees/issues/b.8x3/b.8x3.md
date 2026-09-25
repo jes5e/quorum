@@ -2,10 +2,11 @@
 id: b.8x3
 type: bee
 title: Guard the /quo-breakdown-epic menu same-session next-Epic continuation
-status: open
-created_at: '2026-08-19T21:37:34.613112'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-08-19T21:37:34.613112'
+status: done
+schema_version: '0.1'
 guid: 8x3k2so5kvphbop8bx6he2cb1e9kaprf
 ---
 
@@ -41,4 +42,6 @@ Confirmed scope of the gap: `/quo-execute` has no analogous gap (Mode 1 accept i
 
 - **Rejected: fold the fix into Epic 3's Task 3 now.** The PM recommended defer-to-Issue over fold-now because (1) the Task 3 body deliberately scoped the guard to the Mode 2 auto-continue path and its own scope-note anticipated this exact question as a follow-up; (2) folding requires a genuine design decision (whether to re-stop a just-prompted user, plus a second insertion site that is structurally distinct from the auto-continue path) that should be blessed explicitly rather than bolted onto an execution Subtask mid-run; and (3) the blast radius is bounded (menu already recommends fresh-session; b.ja9 backstop applies).
 - **Rejected: accept-as-is / drop the concern.** That would lose a real coverage question. Defer-to-Issue is the non-lossy disposition — the question is captured in this durable carrier.
+## Closed (2026-09-25)
 
+Resolved by `2ab84d5`, which guarded the menu's same-session continuation. The b.pcc rewrite (merged at `a0cd8c2`) keeps the rule general: the guard runs before every Epic broken down in the same session after the first, whichever path continues. The two-step missing-reading gate this ticket's fix mirrored is gone (operator decision 2026-09-25).
