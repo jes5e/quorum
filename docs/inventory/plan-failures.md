@@ -710,3 +710,15 @@ No second round was run on the inventory. Every fix is an inventory edit or a pr
   - **Exit rule:** three behavior findings earn a fresh cold round. It should cover only this round's fixes and the F12 correction.
 - **Checkpoint 4 (overseer, 2026-09-24).** Accepted. The confirming round is skipped: the smoke-Bee validation is the next cold read.
 - **Operator, before validation (2026-09-24): the SDD's mechanism gloss goes.** `### Mechanism lifecycle` now says "(as the `analyst` role defines the term)" instead of restating the list. The definition has a single home in the analyst role, and `agents/engineer.md` points there the same way. The pointer names the installed role, not a repo path, which answers cold round 1's concern that a downstream writer cannot open `agents/analyst.md`. This supersedes the gloss described in §6.
+- **Validation run (2026-09-24, live_edit, smoke Bee `b.v9c`; Checkpoint 5 accepted by the overseer).**
+  - The output contract held on every item.
+  - The run asked nine gates, all real decisions.
+  - Review rounds converged on their own (blockers per round: 2, 2, 1, 0), so no cap or stopping rule is earned.
+  - The triage is in the Checkpoint 5 report. The fixes below are applied without a cold review, on the overseer's direction: a deleted sentence, shorter labels, and one word.
+  - **T1: F10 recurred at the solo writer's review-return point.** `/quo-plan` called the solo `/quo-write-sdd`, which called `/quo-spec-review`; the review returned, and the turn ended before the writer's gate. By the three questions: F10 is observed, now four times; it announced itself as a stall; the agent did not recover unaided, but a bare `continue` was enough. `/quo-spec-review` step 4 drops "Standalone, stop there": a standalone run ends anyway, and "stop" was the one instruction the agent could follow at that moment. This is a hypothesis about the cause, to be confirmed on the next solo-writer run.
+  - **T5: gate labels are five words or fewer**, matching `AskUserQuestion`'s label guidance. The agent had shortened the pinned seven-word next-steps labels itself.
+    - The next-steps labels become **Break down in fresh session** (Recommended) and **Break down in this session**.
+    - The reuse label becomes `Create a new Spec Bee`.
+    - `Encode in an existing ticket body` is held. It labels the same deferral-hygiene gate in `/quo-execute`, `/quo-fix-issue` (pinned by `tests/test_orchestrator_structure.py`) and `/quo-breakdown-epic` (out of bounds), so renaming it in `/quo-plan` alone would give one gate two names. The rename is a cross-skill ticket note.
+  - **T13:** Section 8 recommends **Approve** "on an `approve` verdict", replacing "a clean `approve` verdict", which was ambiguous when suggestions stayed open.
+  - **T2, a candidate change, not applied:** `/quo-spec-review` runs through the Skill tool in the author's own context, so in this run only the cold plan reviewer was independent. That was true of the base skill too. Making spec review a dispatched cold agent would be a design change. Record the reviews' independence on the next planning runs before deciding.

@@ -73,11 +73,11 @@ def test_solo_writer_gate_is_fronted_by_the_body_file_write(body):
 PLAN_GATE_LABELS = [
     "**Resume**", "**Start fresh**",
     "**Approve**", "**Revise**", "**Cancel**",
-    "`Reuse existing Spec Bee`", "`Create a new Spec Bee anyway`",
+    "`Reuse existing Spec Bee`", "`Create a new Spec Bee`",
     "**Approve over blockers**",
     "`Fix in this session`", "`File as issue tickets`", "`Encode in an existing ticket body`",
-    "**In a fresh session, break down now** (Recommended)",
-    "**Continue in this session: break down now**",
+    "**Break down in fresh session** (Recommended)",
+    "**Break down in this session**",
     "**Review first**", "**Done for now**",
 ]
 

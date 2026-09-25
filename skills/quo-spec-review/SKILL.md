@@ -20,7 +20,7 @@ Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hi
 1. **Resolve the children.** Query the Spec Bee's children for the titles `PRD` and `SDD`, matched exactly. With none in scope, output `No spec content to review` and stop. With more than one per title, stop and ask the user which is canonical.
 2. **Read each body** with `bees show-ticket`. The ticket body is the spec downstream skills consume, so review it and never a file on disk. The Spec Bee's own body, source code, tests, and project docs are other reviewers' lanes.
 3. **Review against `## Criteria`**, citing the document and section in every finding.
-4. **Return the findings** in the `## Output` shape. An invoking skill continues at its own next step, usually its gate. Standalone, stop there: the user reads the list and decides, and there is no gate.
+4. **Return the findings** in the `## Output` shape. An invoking skill continues at its own next step, usually its gate.
 
 ## Criteria
 

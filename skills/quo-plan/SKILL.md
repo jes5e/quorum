@@ -55,7 +55,7 @@ Gates fire only where the user holds the decision:
 
 - **Resume** — question `An unfinished /quo-plan run for "<feature>" stopped at phase <phase>. Resume it?`; choices **Resume** (continue from the recorded phase) and **Start fresh** (overwrite the manifest; tickets already created stay as they are).
 - **Scope** — choices **Approve**, **Revise**, **Cancel** (Section 4).
-- **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee anyway`, `Cancel` (Section 5).
+- **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee`, `Cancel` (Section 5).
 - **Plan approval**, once per review round — choices **Approve**, **Approve over blockers**, **Revise**, **Cancel** (Section 8).
 - **Deferral hygiene**, only when obligations are open — choices `Fix in this session`, `File as issue tickets`, `Encode in an existing ticket body` (Section 10).
 - **Next steps** — Section 10.
@@ -80,7 +80,7 @@ Fire the scope gate, showing the scope. **Approve** moves to Section 5. **Revise
 
 - Query the `specs` hive's Bees and compare titles loosely enough that the same feature still matches under different case, spacing, or punctuation.
 - Only a `drafted` Spec Bee is a candidate. A `ready` one holds approved specs that existing Plan Bees may read, and the writers would overwrite them before any gate, so never reuse or change it. When a `ready` Spec Bee matches, say so and create a new one; revising an approved spec in place is the solo writers' job (`/quo-write-prd <spec-bee-id>`, `/quo-write-sdd <spec-bee-id>`).
-- On a `drafted` match, or a near match you cannot rule out, fire the Spec Bee reuse gate. `Reuse existing Spec Bee` takes its ID; `Create a new Spec Bee anyway` falls through to creating one; `Cancel` stops the run.
+- On a `drafted` match, or a near match you cannot rule out, fire the Spec Bee reuse gate. `Reuse existing Spec Bee` takes its ID; `Create a new Spec Bee` falls through to creating one; `Cancel` stops the run.
 - Otherwise create a `bee` in the `specs` hive, status `drafted`, titled with the feature title, with a two-to-three-sentence body from the scope. The PRD and SDD content belongs in its children, never in this body. Record the ID.
 
 **Writers.** Invoke `/quo-write-prd`, then `/quo-write-sdd`, through the Skill tool, never in parallel, since both add children to one Spec Bee. Pass each the same `args`:
@@ -171,7 +171,7 @@ Lead with the verdict in a sentence: the plan reads as coherent (`approve`), it 
 - the trivial fixes you applied;
 - the remaining findings verbatim, each with the fix path you picked.
 
-Fire the plan-approval gate. Offer **Approve** when no `blocker` is open, and **Approve over blockers** in its place when one is. On `escalate-to-user`, mark no choice (Recommended): the call is the user's. Otherwise mark **Revise** (Recommended) when a `blocker` is open, and **Approve** (Recommended) on a clean `approve` verdict.
+Fire the plan-approval gate. Offer **Approve** when no `blocker` is open, and **Approve over blockers** in its place when one is. On `escalate-to-user`, mark no choice (Recommended): the call is the user's. Otherwise mark **Revise** (Recommended) when a `blocker` is open, and **Approve** (Recommended) on an `approve` verdict.
 
 - **Approve** or **Approve over blockers** → Section 9. A finding approved over is a won't-fix, listed in the report with any overridden blockers. A finding the user wants fixed later becomes an open `## Obligations` row with its intended destination.
 - **Revise** → route the remaining findings and the user's own changes (Section 7), then run the next round.
@@ -219,7 +219,7 @@ Stage the printed paths and commit with the subject `Plan feature: <title> (<pla
 
 **Next steps.** Above the choices, say that the next skill re-reads everything from bees and disk, so a fresh session gives it the full context budget; same-session work fits only a Bee with one or two Epics. Fire the next-steps gate:
 
-- **In a fresh session, break down now** (Recommended) — run `/quo-breakdown-epic <bee-id>` in a new session.
-- **Continue in this session: break down now** — load `quo-breakdown-epic` now.
+- **Break down in fresh session** (Recommended) — run `/quo-breakdown-epic <bee-id>` in a new session.
+- **Break down in this session** — load `quo-breakdown-epic` now.
 - **Review first** — the user reviews the plan before going on.
 - **Done for now** — the plan is saved.
