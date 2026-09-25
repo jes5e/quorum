@@ -177,7 +177,7 @@ Dispositions: **Keep → BVn** (carried as a contract or guard), **Goal → BVn*
 | B57 | L277-288 | Not the JSON envelope; resolve the helper from this skill's base directory; invoke it | C + K | 4c762cc, 21af5c2, fd18011; F17 | Keep → BV9 (the helper path; "the body, not the JSON" as a clause) |
 | B58 | L289 | Helper exit semantics; exit 2 stops the run, no fallback to the full doc | C | 4c762cc | Keep → BV9 |
 | B59 | L290-291 | Don't remove the scratch file | O | c13b5b9 | Go: BV3 states it once |
-| B60 | L292-296 | Check an external system's docs before planning a probe | E | f50a656; F22 | Goal → BV10 (one clause: rare, loud, recovered) |
+| B60 | L292-296 | Check an external system's docs before planning a probe | E | f50a656; F22 | Go: F22 is rare (once), loud (the probe failed), and recovered unaided, which earns nothing (overseer, pre-review). The `b.v9c` Epic 1 Redis probe will show whether the agent checks the docs anyway |
 | B61 | L297 | Identify the work as a list of Tasks | P | 0b69f1a | Go: the section's purpose |
 | B62 | L298-300 | Dependency Epics are done by then; build on them | P | 0b69f1a, 298e13c | Goal → BV9 |
 | B63 | L301-306 | Don't duplicate a sibling Epic's scope | P | 0b69f1a | Goal → BV9 |
@@ -311,7 +311,7 @@ Each group is one place in the draft. Checkpoint 3 maps each to its draft locati
 - **BV7 Pick the Epic** (B23, B24, B25, B30): an Epic ID, a Bee ID, or nothing; the Bee pick; start at the first drafted Epic in dependency order unless an Epic ID names another; an Epic argument resolves its Bee.
 - **BV8 Run mode** (B29, B31, B33): two or more `drafted` Epics → the question and its two labels, identical to `/quo-execute`'s.
 - **BV9 Read the Epic and its spec** (B49, B50, B51, B52, B53, B54, B55, B56, B57, B58, B62, B63): the Epic, its Bee, the Epics it depends on (assume them done), its siblings (don't duplicate them); the spec by resolver, exact `PRD`/`SDD` titles, the Scoped marker through the bundled resolver (file path only, exit 2 stops), the Bee body when `reference_materials` is empty.
-- **BV10 Research** (B60): read-only `Explore` agents over the code the Epic touches, in proportion to it. Code reading goes to them, and they return findings rather than file contents, because with one author the orchestrator's context has to hold the spec and the draft, not the code (overseer, Checkpoint 2). Check an external system's docs before planning a probe of it.
+- **BV10 Research** (new: S1, overseer Checkpoint 2): read-only `Explore` agents over the code the Epic touches, in proportion to it. Code reading goes to them, and they return findings rather than file contents, because with one author the orchestrator's context has to hold the spec and the draft, not the code.
 - **BV11 Draft the Tasks and Subtasks** (B65, B66, B67, B68, B71, B73, B85, B99, B121): to one draft file, labelled per S2. It covers:
   - `Task N — <title>`, one commit each, with `up_dependencies`; a Task body carries its purpose, cross-Task contracts, and `## Sites` when applicable;
   - scope, not implementation;
@@ -538,3 +538,8 @@ No second round was run on the inventory. The behavior findings change the draft
   - **BV4's leftover Epic-ID fallback is removed.**
   - **The context budget becomes a goal** (BV10): code reading goes to `Explore` agents, which return findings, not file contents. At Checkpoint 5 I report the orchestrator's context use at each Epic boundary of the `b.v9c` run. If it runs heavy, the fallback is one drafting agent per Task.
   - **Not a finding:** routing a crashed run's open obligations before the run-start truncate. No run shows it, and `/quo-execute` does not do it.
+- **Checkpoint 3 (overseer, 2026-09-25): accepted, with four fixes applied before the cold review.**
+  - The manifest is written as soon as the Bee is known, and the run mode is filled in from the gate's answer. This restructure means every gate after the Bee pick is manifest-fronted; previously the run-mode gate fired before the manifest existed.
+  - **B60 goes.** F22 is rare, loud, and recovered unaided, so it earns no rule; `b.v9c`'s Redis probe will show whether the agent checks the docs anyway.
+  - Two unbacked phrases are cut: "recording each Epic's progress in the manifest", which no field backs, and "survives for the next run", which no next run reads.
+  - The structure test now pins the variable names `CLAUDE_EFFORT` and `CLAUDE_CODE_SESSION_ID`, not the commands that read them.

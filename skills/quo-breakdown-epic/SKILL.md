@@ -8,7 +8,7 @@ Turn each drafted Epic of a Plan Bee into Tasks and Subtasks that `/quo-execute`
 
 ## 1. Preconditions
 
-Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hives` lacks the `plans`, `issues`, or `specs` hive (by `normalized_name`), or the target repo's CLAUDE.md lacks `## Documentation Locations` or a `## Build Commands` section carrying `Compile/type-check`, `Format`, `Lint`, `Narrow test`, and `Full test`. If a dispatch fails with `Agent type '<name>' not found`, stop with `Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.` and name the draft file, which survives for the next run.
+Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hives` lacks the `plans`, `issues`, or `specs` hive (by `normalized_name`), or the target repo's CLAUDE.md lacks `## Documentation Locations` or a `## Build Commands` section carrying `Compile/type-check`, `Format`, `Lint`, `Narrow test`, and `Full test`. If a dispatch fails with `Agent type '<name>' not found`, stop with `Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.` and name the draft file, which survives on disk.
 
 **Working rules for every step.**
 
@@ -26,13 +26,13 @@ The manifest is a small markdown file holding the handful of run-scoped values t
 
 **Path and filename.** The manifest is written under the project's standard scratch-file convention, in `<tempdir>/.quorum/` (`/tmp/.quorum/` on POSIX, `%TEMP%\.quorum` on Windows). Its name is `run-state-quo-breakdown-epic-<bee-id>.md`, keyed on the Plan Bee every Epic belongs to. **The filename is deterministic — do NOT add a random suffix or timestamp.** After a compaction you recompute the path from the Bee ID rather than remember it. Every skill in this set carries its own name in the filename's leading position and differs only in the discriminator it appends, so a `/quo-execute` run on the same Bee never touches this file. Accepted collision: two breakdown runs on one Bee at once share it, and they already collide over tickets.
 
-**Semantics: truncate at run start, rewrite at each boundary.** The manifest is a **live snapshot, not an accumulating log**. Write it once the Bee and the run mode are known, rewrite it whenever a value changes, and never delete it.
+**Semantics: truncate at run start, rewrite at each boundary.** The manifest is a **live snapshot, not an accumulating log**. Write it as soon as the Bee is known, rewrite it whenever a value changes, and never delete it.
 
 ```markdown
 # Run state — quo-breakdown-epic @ <bee-id>
 
 **Unit scope:** Bee <bee-id>
-**Run mode:** <Stop after each Epic | Work through all Epics | one Epic>
+**Run mode:** <Stop after each Epic | Work through all Epics | one Epic | pending>
 **Draft:** <path of the Epic in progress, or none>
 **Broken down:** <Epic N = <epic-id>, …, or none>
 
@@ -66,7 +66,7 @@ Gates fire only where the user holds the decision:
 - **A Bee ID** starts at its first `drafted` Epic in dependency order.
 - **No argument** takes the one `ready` Plan Bee, or fires the Bee pick when there are several. With none, say no Plan Bee is ready and suggest `/quo-plan` or `/quo-plan-from-specs`.
 
-When the Bee has no `drafted` Epic, say so and suggest `/quo-execute <bee-id>`. Otherwise fire the run-mode gate when it applies, then write the manifest.
+When the Bee has no `drafted` Epic, say so and suggest `/quo-execute <bee-id>`. Otherwise write the manifest, then fire the run-mode gate when it applies and record the answer.
 
 ## 5. Read the Epic and its spec
 
@@ -82,7 +82,7 @@ Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs th
 
 ## 6. Draft the Tasks and Subtasks
 
-**Research.** Before drafting, dispatch read-only `Explore` agents in the background over the code the Epic touches, in proportion to the Epic, and wait for their notifications. Code reading goes to them, and they return findings rather than file contents, because your context has to hold the spec and the draft for the whole Epic. When the Epic relies on an external system's contract, check its authoritative docs before planning a probe of it.
+**Research.** Before drafting, dispatch read-only `Explore` agents in the background over the code the Epic touches, in proportion to the Epic, and wait for their notifications. Code reading goes to them, and they return findings rather than file contents, because your context has to hold the spec and the draft for the whole Epic.
 
 **Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet.
 
@@ -147,7 +147,7 @@ describes; the Scoped-marker helper is at <scoped-marker-resolver-path>.
 
 ## 8. Create, commit, and move on
 
-**Create** the tickets from the reviewed draft, recording each Epic's progress in the manifest as you go. Each Task is a `t2` child of the Epic and each Subtask a `t3` child of its Task, created `drafted` with its title, body, role tag, and `up_dependencies`. Once all exist, set the Subtasks, then the Tasks, then the Epic to `ready`. Add the Epic to **Broken down** and set **Draft** to `none`.
+**Create** the tickets from the reviewed draft. Each Task is a `t2` child of the Epic and each Subtask a `t3` child of its Task, created `drafted` with its title, body, role tag, and `up_dependencies`. Once all exist, set the Subtasks, then the Tasks, then the Epic to `ready`. Add the Epic to **Broken down** and set **Draft** to `none`.
 
 **Commit.** Stage only the in-repo Plans-hive path the sibling helper prints, never the whole tree, because the hive may live outside the repo and the working tree may hold unrelated changes: `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive plans` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive plans`). Commit with the subject `Plan <bee-id>, Break down <epic-title> (<epic-id>)`, where `<epic-title>` is the Epic's `Epic N — <title>`. When the helper prints nothing, commit nothing and note in the report that the tickets live outside the repo. Never push.
 
