@@ -148,6 +148,9 @@ D12. **Nothing reduces review coverage**: no round caps, no lane skipped, no nar
     manifest's `**Proposal:**` line, names it by path in the Revise shape, and reads it after a compaction instead of re-deriving (re-firing
     the gate from it when `## Open gate` names the Analyst gate); the Section 5 scope-character-replacement clause is deleted. A cold review
     must not report any of these as a §1 / D9 / D12 / A2 violation.
+    *Amended 2026-09-25 (Issue `b.37n`):* the fix-mode PM receives `## Authoritative design directive (from the Analyst gate)`, `## Blast radius`,
+    and `## Design decisions for writers`, and traces the diff against the directive, the Issue body staying the problem statement (FX-ROLES-19's
+    body-as-spec is superseded for fix mode; FX-PROMPT-25's PM `## Blast radius` relay is restored). A cold review must not report this as an A2 violation.
 
 ## 4. Shape of each body (target ≤ 500 lines, hard cap 550)
 

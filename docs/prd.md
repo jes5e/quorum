@@ -663,3 +663,17 @@ The inline PRD and SDD writers no longer gate. Spec review and the cold plan rev
 - With no context-usage reading published, the run continues rather than asking.
 
 **Out of scope.** `/quo-execute`'s rebuild to consume the new shape (b.87t), and the role files.
+
+### Feature: The fix-mode PM checks the diff against the approved design, not the Issue text
+
+**What.** In `/quo-fix-issue` the PM receives the design the operator approved at the Analyst gate and checks the diff against it. The Issue text stays the problem the diff must solve; where the approved design departs from it, the design wins, and work beyond the design counts as scope creep.
+
+**Why.** The PM checked against the Issue text the approved design had overruled. In the b.yvu run a correct change read to it as drift, and its finding started a 1.09M-token cascade; the reverse case, work beyond the design that the Issue's wording allowed, passed unnoticed.
+
+**Acceptance criteria.**
+
+- The fix-mode PM's dispatch carries `## Authoritative design directive (from the Analyst gate)`, `## Blast radius`, and `## Design decisions for writers`.
+- The PM's traceability names the approved directive, not only the Issue body.
+- Validation: a small-code `/quo-fix-issue` run, preferably one whose Analyst verdict refines or departs from the body.
+
+**Out of scope.** `/quo-execute`'s PM (b.87t mirrors this relay).

@@ -10,7 +10,7 @@ The Product Manager is the per-Task quality gate dispatched by an orchestrating 
 
 ## Responsibilities
 
-- Review Task work against the spec source — either the docs linked from the spec-source ticket's `reference_materials` (the Grandparent Bee in execute mode, or the Issue itself in fix mode), or the spec-source ticket's body itself when `reference_materials` is null/empty.
+- Review Task work against the spec source — either the docs linked from the spec-source ticket's `reference_materials` (the Grandparent Bee in execute mode, or the Issue itself in fix mode), or the spec-source ticket's body itself when `reference_materials` is null/empty — and against the approved directive when the dispatch prompt carries one.
 - Ensure the work meets the Task's requirements and the Parent Epic's Acceptance Criteria.
 - Surface design questions back to the orchestrator when the team proposes alternative approaches that need user input.
 - Orchestrate in-flight `/quo-engineer-review` and `/quo-doc-writer-review` invocations against the Task's diff, with a time-budget short-circuit when reviews run hot.
@@ -64,6 +64,10 @@ The "spec-source ticket" in this section is the Grandparent Bee in execute mode 
 
 - **`reference_materials` is null/empty.** Body-as-spec fallback (existing behavior, unchanged) — the spec-source ticket's body itself is the authoritative spec source (the Grandparent Bee body in execute mode, or the Issue body in fix mode), per the bullet above.
 
+## Approved design directive
+
+When the dispatch prompt carries `## Authoritative design directive (from the Analyst gate)`, with `## Blast radius` and `## Design decisions for writers` beside it, trace the diff against that directive. The operator approved it at the Analyst gate over the ticket body, so where the two conflict the directive wins and a diff that follows it is not drift. The body stays the problem statement: check that the diff solves the problem it states. Scope creep is work outside the directive, even where the body's wording would admit it.
+
 ## No-spec-surface short-circuit (fix-mode only)
 
 This short-circuit applies **only on the fix-mode path** (`/quo-fix-issue` dispatch — the orchestrator's prompt names an Issue ID with no Grandparent Bee). The execute-mode path (`/quo-execute`) always has a Task, Parent Epic, and Grandparent Bee spec context to review against — the short-circuit does not apply there and execute-mode PMs proceed directly to the deep review flow below.
@@ -71,6 +75,7 @@ This short-circuit applies **only on the fix-mode path** (`/quo-fix-issue` dispa
 In fix mode the PM is dispatched on every Issue outside `/quo-fix-issue`'s `text` class (the orchestrator does not pre-judge whether spec-drift risk is present; the text class keys on whether the change can touch code behavior or a test outcome, not on spec richness). Some Issues describe trivial mechanical fixes — a rename, a one-line typo, a config tweak — that carry no substantive spec content across the collective spec sources available to the PM, and a deep spec-vs-diff review against such an Issue has no surface to operate on. The short-circuit is the PM's first-class exit for that case. It is **content-based**, not shape-based — the judgement is made **after** the spec sources have been read, not from shape signals like "Plan Bee linked in `up_dependencies`" or "`reference_materials` is non-null."
 
 1. **Read every available spec source first.** Before assessing substance, pull in:
+   - The approved directive, when the dispatch prompt carries one (see "Approved design directive" above).
    - The Issue body itself (already provided in the dispatch prompt, but re-read via `bees show-ticket --ids <issue-id>` if the prompt's quoted block is not byte-for-byte identical with the canonical body).
    - The Plan Bee body if the Issue's `up_dependencies` links one — use the Path B `up_dependencies` iteration documented in "Path B — quo-fix-issue `up_dependencies`-based opportunistic marker discovery" below to find the Plan Bee, then read its body.
    - The PRD/SDD-equivalent docs from CLAUDE.md `## Documentation Locations` (the `Project requirements doc (PRD)` and `Internal architecture docs (SDD)` keys) **if the Issue body cites them** — by file path, by section heading, or by directly quoting their content. Do not blanket-read the project's PRD/SDD on every Issue; the citation in the body is the signal that the body intends spec-source content beyond itself.
@@ -145,7 +150,7 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `quo-brea
 
 ### Path B — quo-fix-issue `up_dependencies`-based opportunistic marker discovery
 
-**Precondition.** Run this path when the orchestrator's dispatch prompt indicates this PM is invoked under `/quo-fix-issue` — that is, no Grandparent Bee is named, the spec source is the Issue body and the project's docs, and a Plan Bee in `up_dependencies` may optionally carry scope context.
+**Precondition.** Run this path when the orchestrator's dispatch prompt indicates this PM is invoked under `/quo-fix-issue` — that is, no Grandparent Bee is named, the diff is traced against the approved directive (see "Approved design directive" above) and the project's docs, and a Plan Bee in `up_dependencies` may optionally carry scope context.
 
 **Dual-use of `up_dependencies` — explicit and load-bearing.** The Issue's `up_dependencies` array has two roles in this skill, both intentional:
 
@@ -156,17 +161,11 @@ The marker parser/scoper ships as `scoped_marker_resolver.py` with the `quo-brea
 
 After the orchestrator has validated dependency-blocker statuses upstream, iterate the Issue's `up_dependencies` array and, for each entry that resolves to a Bee in the `plans` hive, attempt to detect and apply a marker. Discovery is **best-effort** — a missing marker, a malformed marker, or a non-`plans`-hive entry is not a fatal error.
 
-1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. The bees CLI exposes hive-of-record via the freeform-query mechanism. A canonical recipe:
-
-   ```bash
-   bees execute-freeform-query --query-yaml 'stages:
-     - [id=<dep-id>, type=bee, hive=plans]
-   report: [title, body]'
-   ```
+1. For each `up_dependencies` ID, determine whether it is a Bee in the `plans` hive. Filter on the hive with `bees execute-freeform-query`, passing the query on one line in YAML flow style (`{stages: [[...]], report: [...]}`) because the help's multi-line example does not run as written; a query cannot report `body`, so read that with `bees show-ticket`.
 
    If the query returns zero rows for that ID, treat it as a non-`plans`-hive entry and skip to the next ID. Do NOT hard-fail on a non-Plan-Bee `up_dependencies` entry — that is the blocker-only use of the field, which is fine.
 
-2. For each Plan Bee found, extract the `body` field from the query result (the envelope's `tickets[0].body` markdown string — same shape as `bees show-ticket`). **Do NOT dump the whole JSON envelope to the temp file** — JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Write that body to a temp file under the namespaced workflow scratch dir using the `Write` tool (`/tmp/.quorum/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-bee-body-<short-suffix>.md` on Windows; pick a `<short-suffix>` that is unique per Plan Bee so concurrent iterations do not collide). Create the `.quorum` subdir if absent first:
+2. For each Plan Bee found, extract the `body` field from `bees show-ticket` (the envelope's `tickets[0].body` markdown string). **Do NOT dump the whole JSON envelope to the temp file** — JSON-encoded escapes (e.g., `\n`) prevent the parser's line-by-line scan from matching. Write that body to a temp file under the namespaced workflow scratch dir using the `Write` tool (`/tmp/.quorum/bees-bee-body-<short-suffix>.md` on POSIX, `$env:TEMP\.quorum\bees-bee-body-<short-suffix>.md` on Windows; pick a `<short-suffix>` that is unique per Plan Bee so concurrent iterations do not collide). Create the `.quorum` subdir if absent first:
 
    ```bash
    # POSIX (bash / zsh):
