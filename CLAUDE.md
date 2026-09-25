@@ -26,6 +26,8 @@ These are the contributing principles the README calls out, and they drive every
 
 ## How skill prose is written
 
+The aim of every change here is a skill set that is simpler, easier to maintain, and better, not one that merely fits its caps and passes review: a smaller, clearer skill that still meets its contract is the win.
+
 Skill prose — `skills/*/SKILL.md`, `agents/*.md`, and the shipped `references/` files — states goals with their reasons and leaves the procedure to the agent. Agents work out procedure well. What they cannot do is agree on an exact string with another agent, protect state from a loss they cannot see coming, reliably obey an instruction that stronger wording has already failed to enforce, or know a choice that is the operator's to make. So prose prescribes only:
 
 1. **Contracts** — headings, return lines, manifest fields, gate labels, the ticket shapes and titles another agent keys on, and templates whose output another agent or the operator reads.
