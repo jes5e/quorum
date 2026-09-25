@@ -93,4 +93,7 @@ This supersedes `## Sequencing` and the b.pcc and b.7ib lines of `## Relation to
 This ticket now runs after b.pcc and b.37n; the order is on b.vtw's `## Serial order` note. It supersedes the first paragraph of `## Order revised` ("in parallel with the planning track"). It is designed against the Tasks b.pcc produced for the smoke Bee, including the role marker b.pcc chose.
 
 **Validation:** execute the smoke Bee.
+## Validation input (2026-09-25)
+
+This rebuild is validated by executing smoke Bee b.v9c in live_edit after b.pcc breaks it down. Epic 1 opens with an in-script-publish probe. Its Azure Managed Redis part runs on the operator's host, so the implementer stops and asks the operator to run it rather than attempting it.
 

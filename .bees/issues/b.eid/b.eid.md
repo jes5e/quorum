@@ -1,7 +1,7 @@
 ---
 id: b.eid
 type: bee
-title: 'Plan path needs b.q3f''s up-front enumeration: SDD lifecycle/policy sections, spec-review checks, per-Task site lists, execute PM verification'
+title: Per-Task site lists in breakdown and execute-PM verification against the SDD's Mechanism lifecycle and Policy decisions sections (items 3-4; items 1-2 landed in b.7ib)
 parent: null
 reference_materials: null
 created_at: '2026-09-04T03:04:46.237777'
@@ -58,4 +58,10 @@ Raised 2026-09-04 while reviewing whether b.q3f's Analyst improvements have a co
 3. **The `## Blast radius` empty form and the lane rule travel with the list.** The fixed empty line `No invariant added, removed, or weakened.` is emitted only when the change adds, removes, and weakens no invariant **and introduces no mechanism**; check #8 treats an explicitly-empty list as supplied (nothing to verify) rather than missing. Entries in the tests / customer docs / internal docs kind-groups are dispositioned to the writer lanes and are never a finding against the Engineer, with the lane resolved by the consuming lane's own scope definition rather than the upstream label. Any per-Task site list should use the same kind-group vocabulary so the same rules apply unchanged.
 
 Related follow-up filed from the same run: **b.ag8** — relaying `### Policy decisions this change implies` to the two `/quo-engineer-review` callers, and relaying `## Blast radius` / policy decisions to the Phase B writers and their review skills (`/quo-test-writer-review`, `/quo-doc-writer-review`) — fix-mode gaps b.q3f's reviewers surfaced; if this Issue lands a per-Task site list, the writer-lane relay should be designed once for both modes.
+## Narrowed to items 3–4 (2026-09-25)
 
+Items 1–2 landed in b.7ib (`bceca34`): `/quo-write-sdd`'s `## Requirements` now ends with `### Mechanism lifecycle` and `### Policy decisions this design implies`, each with a `none — <why>` line when empty, and both reviewers check them. This ticket stays open for items 3–4:
+- per-Task site lists in breakdown, which can cite those two subsections;
+- the execute PM verifying against them.
+
+b.pcc and b.87t are the natural owners.

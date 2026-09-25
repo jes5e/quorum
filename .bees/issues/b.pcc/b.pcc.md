@@ -91,4 +91,13 @@ This ticket now follows b.7ib; the order is on b.vtw's `## Serial order` note. I
 It alone decides the Subtask role marker and whether it still emits "Verify the Task" Subtasks; b.87t consumes both. This supersedes the last bullet of `## Minimal rewrite` (items "defined with b.87t").
 
 **Validation:** break down the smoke Bee that b.7ib planned.
+## Inputs from b.7ib (2026-09-25)
+
+- **Validation input:** smoke Bee b.v9c in live_edit, with Epics `t1.v9c.94`, `t1.v9c.k9`, `t1.v9c.n4`. Epics 2 and 3 depend on Epic 1. Break it down with the rewritten skill. Rebuild the container's skills snapshot first (`./run --rebuild`), because the container doesn't pick up host changes otherwise.
+- **Gate shape to follow:** b.7ib's. Gates are fronted by a manifest write in the same turn as `AskUserQuestion`. The manifest is keyed on the repo directory name, outside the lead-statement mirror, and nothing uses the TaskList.
+- **Stale references to fix while here:**
+  - `skills/quo-breakdown-epic/SKILL.md:731` cites "`/quo-plan` Step 4b", which no longer exists;
+  - `:228` and `agents/pm.md:26` still attribute null `reference_materials` to `/quo-plan`, which hasn't emitted it since b.31f. The consumer fallback itself stays.
+- **b.eid items 3–4:** breakdown can cite the SDD's `### Mechanism lifecycle` and `### Policy decisions this design implies` when listing a Task's sites.
+- **Label rename, in one pass:** "Encode in an existing ticket body" is six words, over `AskUserQuestion`'s limit of five. Rename it (e.g. "Encode in existing ticket") across all four deferral-hygiene gates at once: `/quo-plan`, `/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic`. Also update `tests/test_planning_structure.py`, `tests/test_orchestrator_structure.py`, README, `docs/prd.md`, and `docs/sdd.md`. It's one label in four skills, so it can't be renamed piecemeal.
 

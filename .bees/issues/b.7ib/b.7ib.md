@@ -5,7 +5,7 @@ title: 'Minimal in-house rewrite of /quo-plan and its three sub-skills under the
 parent: null
 reference_materials: null
 created_at: '2026-09-11T01:15:20.509880'
-status: open
+status: done
 schema_version: '0.1'
 guid: 7ib1dcwwzyj8bfty77e2p7izxrvrotg9
 ---
@@ -90,3 +90,14 @@ The `## Minimal rewrite` section's "Settle OpenSpec first" bullet is settled, an
 **Order.** This ticket now runs first; the order is on b.vtw's `## Serial order` note. This supersedes "on the planning track after b.pcc" in `## Minimal rewrite`: b.pcc now follows the gate and manifest shape this rewrite sets, and consumes its output contract.
 
 **Validation.** Plan the smoke Bee: a small real feature the operator wants built, in a code repo, with at least two Epics. The Epics it produces are what b.pcc is validated on.
+## Closed (2026-09-25)
+
+Merged to main by fast-forward, head `bceca34` (commits `3610e8a`..`bceca34`, not pushed).
+
+**Validation.** Smoke Bee b.v9c in live_edit met every output-contract item. The run asked 9 gates, every one a real decision, against about 25 (about 9 real) on 2026-09-16. Review rounds converged on their own (2, 2, 1, 0 blockers). The validation fixes landed in `bceca34`.
+
+**Open items:**
+- **Candidate T2:** spec review runs in the author's own context, so only the plan reviewer is independent. Recorded in the inventory §12 and not applied.
+- **T1's fix is a hypothesis.** Removing spec review's "Standalone, stop there" should stop the agent ending its turn when a review returns three skills deep. Confirm it on the next run that uses a solo writer.
+
+**Process note.** Review rounds 1–3 added crash and compaction machinery for scenarios reviewers role-played. The overseer's re-triage (`9d694f8`) removed it under one evidence bar: a rule needs a failure observed in a real run. That bar goes into CLAUDE.md next.
