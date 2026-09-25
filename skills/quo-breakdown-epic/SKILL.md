@@ -1,6 +1,6 @@
 ---
 name: quo-breakdown-epic
-description: Break down a Plan Bee's drafted Epics into Tasks and role-tagged Subtasks, drafted against the spec, checked by a cold PM traceability review, then created as tickets. Pass an Epic ID or a Bee ID, or nothing to pick a ready Plan Bee.
+description: Break down a Plan Bee's drafted Epics into Tasks and role-tagged Subtasks, drafted against the spec, checked by a cold PM traceability review, then created as tickets. Pass an Epic ID or a Bee ID, or nothing to pick a Plan Bee with drafted Epics.
 argument-hint: "[<epic-id> | <bee-id>]"
 ---
 
@@ -54,7 +54,7 @@ A gate is the manifest `Write` that fills `## Open gate` with the gate's name, q
 Gates fire only where the user holds the decision:
 
 - **Session effort** — first, before the manifest exists, so it goes straight to `AskUserQuestion`. Read `printenv CLAUDE_EFFORT` (PowerShell `Write-Output $env:CLAUDE_EFFORT`). If it is empty or not one of `low` < `medium` < `high` < `xhigh` < `max`, skip silently. At or above `high`, say nothing. Below it, ask ``This session is running at `effort=<current>`, below the `high` floor this skill is tuned for. Decomposition quality here sets Subtask granularity for every downstream execution run.`` then a blank line then `Subagent effort is pinned per role and is NOT affected by this setting.` Choices: **Proceed anyway**, or **Let me change it first** (exit; the user runs `/model` and re-invokes).
-- **Bee pick** — with no argument and several `ready` Plan Bees that have a `drafted` Epic, before the manifest exists: one choice per Bee, up to four; the free-text slot takes any other.
+- **Bee pick** — with no argument and several Plan Bees that have a `drafted` Epic, before the manifest exists: one choice per Bee, up to four; the free-text slot takes any other.
 - **Run mode** — when two or more `drafted` Epics remain: question `How should this run handle multiple Epics? (You will not be asked again this run.)`; choices **Stop after each Epic** and **Work through all Epics**. The labels match `/quo-execute`'s, so the choice reads the same in both skills.
 - **Deferral hygiene**, only when obligations are open — Section 9.
 - **Next steps** — Section 9.
@@ -63,7 +63,7 @@ Gates fire only where the user holds the decision:
 
 - **An Epic ID** starts at that Epic; its parent is the Plan Bee.
 - **A Bee ID** starts at its first `drafted` Epic in dependency order.
-- **No argument** takes the one `ready` Plan Bee with a `drafted` Epic, or fires the Bee pick when there are several. With none, say so, and suggest `/quo-execute <bee-id>` when a `ready` Plan Bee is already broken down, else `/quo-plan` or `/quo-plan-from-specs`.
+- **No argument** takes the one Plan Bee with a `drafted` Epic, or fires the Bee pick when there are several. With none, suggest `/quo-execute <bee-id>` for a `ready` or `in_progress` Plan Bee, else `/quo-plan` or `/quo-plan-from-specs`.
 
 When the Bee has no `drafted` Epic, say so and suggest `/quo-execute <bee-id>`. Otherwise write the manifest, then fire the run-mode gate when it applies and record the answer.
 

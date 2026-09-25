@@ -576,3 +576,11 @@ No second round was run on the inventory. The behavior findings change the draft
   - **Deletion:** the body-extent procedure. The contract part stays: template headings kept at `##`.
   - **Size:** 2,887 → 2,913 words (+26), 179 lines.
   - **Exit rule:** two behavior findings earn a narrow confirming round on those two fixes.
+- **Cold round 3 (2026-09-25, one reviewer, a narrow confirming pass).**
+  - **Confirmed:**
+    - `Fix in this session` can stage every touched hive with one `resolve-hive-paths` call, leaves no ticket file uncommitted, and stages nothing beyond hive paths;
+    - the four listed no-argument cases route correctly;
+    - the other four round-2 changes open no gap between agents.
+  - **One finding (suggestion, behavior, contract), pre-existing.** The no-argument pick and the Bee pick filtered on `ready`, but `/quo-execute` sets a Bee `in_progress` when it starts, and the skill's own **Execute in fresh session** choice can run it while drafted Epics remain. That is a gap between two agents. The fix removes the status filter instead of widening it: the pick takes Plan Bees with a `drafted` Epic, and the fallback suggests `/quo-execute` for a `ready` or `in_progress` Bee. The frontmatter description follows.
+  - **Size:** 2,913 → 2,908 words, 179 lines.
+  - **Exit rule:** this behavior finding is one sentence, and its fix shrank the text. I verified it myself against `/quo-execute`'s status writes (its run-start step 2 and tick step 1) rather than running a fourth round. That is the overseer's call at Checkpoint 4.
