@@ -181,10 +181,9 @@ restore is possible), `new_command`, `preserved_status_line_keys`, `self_check`,
 
 Writes the persistent opt-out marker (creating the gauge directory if absent),
 prints its path, and exits `0`. Idempotent: a repeated run rewrites the same
-content and reports the same path. The marker suppresses only
-`/quo-breakdown-epic`'s missing-reading hard-stop (`/quo-execute` and
-`/quo-fix-issue` do not read it) — never a genuine over-threshold stop — and
-deleting the file re-enables that guard. There is NO removal subcommand by
+content and reports the same path. The marker silences only `/quo-setup`'s
+automatic offer to configure the producer — never a genuine over-threshold
+stop — and deleting the file re-enables that offer. There is NO removal subcommand by
 design: this helper never deletes anything, so opting back in is a manual file
 delete, not a command.
 
@@ -203,14 +202,12 @@ Opt-out marker
 
 A persistent marker an operator writes to run unguarded. Its mere EXISTENCE is
 the signal — the contents are advisory only and are never parsed. The name and
-location are a cross-skill contract, so both the writer and the boundary guard
-that reads it name the same file. What the marker suppresses is narrow: only
-`/quo-breakdown-epic`'s missing-reading hard-stop (the stop that fires when no
-reading is being published); `/quo-execute` and `/quo-fix-issue` do not read the
-marker and continue unguarded on a missing reading either way. It does NOT
-suppress a genuine over-threshold stop — an operator who opts out still stops
-when a real reading crosses the threshold. `inspect-statusline` reports the
-path and whether it exists; it never creates it.
+location are a contract between `write-opt-out` and `inspect-statusline`, whose
+report `/quo-setup` reads. What the marker suppresses is narrow: only
+`/quo-setup`'s automatic offer to configure the producer. The orchestrators do
+not read it; with no reading published they continue unguarded either way, and
+a genuine over-threshold reading still stops them. `inspect-statusline` reports
+the path and whether it exists; it never creates it.
 
 Higher-precedence settings
 --------------------------
@@ -417,27 +414,25 @@ GAUGE_DIR_NAME = ".quorum"
 GAUGE_FILENAME_TEMPLATE = "context-usage-{session_id}.json"
 
 # The persistent opt-out marker. Its mere existence is the signal — the contents
-# are advisory only, so the boundary guard that reads it never parses the body.
-# This filename is a cross-skill string contract: the guard that suppresses its
-# missing-reading hard-stop reads exactly this name under the gauge directory,
-# so it lives here, beside the gauge-file constants, defined once for both sides.
+# are advisory only and never parsed. This filename is a string contract between
+# `write-opt-out` and `inspect-statusline`, whose report `/quo-setup` reads to
+# silence its automatic producer offer, so it lives here, beside the gauge-file
+# constants, defined once for both sides.
 OPT_OUT_MARKER_FILENAME = "context-guard-opt-out"
 
 # Human-readable body written into the opt-out marker. The body is advisory only
-# — the boundary guard keys off the file's existence and never parses it — but it
-# states precisely what the marker does and does not suppress, and how to reverse
-# it, for an operator who opens the file. Held here so `write-opt-out` writes
+# — readers key off the file's existence and never parse it — but it states
+# precisely what the marker does and does not suppress, and how to reverse it,
+# for an operator who opens the file. Held here so `write-opt-out` writes
 # byte-identical content on every run (idempotence). It deliberately never
 # mentions a removal command, because none exists: opting back in is a plain file
 # delete.
 OPT_OUT_MARKER_BODY = (
-    "This marker opts this environment out of the context-guard's "
-    "missing-reading hard-stop only.\n"
-    "While it exists, a boundary check that cannot obtain a trustworthy "
-    "context-window reading proceeds instead of stopping.\n"
+    "This marker opts this environment out of /quo-setup's automatic offer "
+    "to configure the context-usage gauge producer.\n"
     "It does NOT suppress a genuine over-threshold stop: when a real reading "
     "crosses the stop threshold, the guard still stops.\n"
-    "Delete this file to re-enable the missing-reading guard.\n"
+    "Delete this file to have /quo-setup offer the step again.\n"
 )
 
 # Where the operator's user-level settings file lives. `CLAUDE_CONFIG_DIR`, when
@@ -1491,7 +1486,7 @@ def main() -> int:
 
     subparsers.add_parser(
         "write-opt-out",
-        help="write the persistent opt-out marker that suppresses /quo-breakdown-epic's missing-reading stop",
+        help="write the persistent opt-out marker that silences /quo-setup's automatic producer offer",
     )
 
     subparsers.add_parser(

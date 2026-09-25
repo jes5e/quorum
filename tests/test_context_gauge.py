@@ -1427,12 +1427,11 @@ def test_classify_reading_is_silent_across_the_four_normal_cases(
 def test_statusline_constants_are_the_published_contract():
     """Exact-equality pins on the five inspection constants.
 
-    `OPT_OUT_MARKER_FILENAME` is a CROSS-SKILL string contract: the boundary
-    guard that suppresses its missing-reading hard-stop lives in a different
-    skill and reads exactly this filename under the gauge directory. A rename
-    here would degrade that guard to a silent no-op (it would look for a marker
-    nobody writes), so this test is meant to fail loudly rather than let the
-    contract drift. The other four name the user-settings location the installer
+    `OPT_OUT_MARKER_FILENAME` is a string contract: `write-opt-out` writes it and
+    `inspect-statusline` reports it for `/quo-setup` to read, and the published
+    docs name the path. A rename here would leave an operator's existing marker
+    unread, so this test is meant to fail loudly rather than let the contract
+    drift. The other four name the user-settings location the installer
     and the inspector must agree on byte-for-byte.
     """
     assert mod.OPT_OUT_MARKER_FILENAME == "context-guard-opt-out"
@@ -3368,13 +3367,14 @@ def test_cli_write_opt_out_is_idempotent(tmp_path):
 
 def test_cli_write_opt_out_marker_body_states_its_scope(tmp_path):
     # Deliberately loose substring checks — the body is advisory prose, never
-    # parsed by the guard, so its exact wording is not a contract. What must hold:
-    # it states the missing-reading scope, states that deletion re-enables the
-    # guard, and clarifies it does NOT suppress a genuine over-threshold stop.
+    # parsed by any reader, so its exact wording is not a contract. What must hold:
+    # it states its scope (setup's automatic offer), states that deletion reverses
+    # it, and clarifies it does NOT suppress a genuine over-threshold stop.
     res = _run(["write-opt-out"], env=_env_with_tempdir(tmp_path))
     assert res.returncode == 0, res.stderr
     body = (tmp_path / ".quorum" / "context-guard-opt-out").read_text(encoding="utf-8")
-    assert "missing-reading" in body
+    assert "/quo-setup" in body
+    assert "offer" in body
     assert "Delete this file" in body
     assert "over-threshold" in body
     assert "NOT suppress" in body

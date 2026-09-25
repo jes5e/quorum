@@ -621,7 +621,7 @@ SHARED_GATE_LABELS = {
     "unexplained movement": ["**Re-dispatch the writer now**", "**Wait**"],
     "routing (c)": ["`Fix properly now`", "`Defer to follow-up Issue`", "`Accept the limitation`", "`(Recommended)`"],
     "routing (d)": ["`Defer to follow-up Issue`", "`Cancel`"],
-    "deferral hygiene": ["`Fix in this session`", "`File as issue tickets`", "`Encode in an existing ticket body`"],
+    "deferral hygiene": ["`Fix in this session`", "`File as issue tickets`", "`Encode in existing ticket`"],
     "post-completion disposition": ["**Fix in this session**", "**File as issue tickets**", "**Skip**"],
     "analyst": ["**Approve & proceed to implementation (Recommended)**", "**Revise**", "**Cancel**"],
     "SR-6.7": ["`File follow-up Issue to revisit the depth decision`", "`Accept the misjudgment and proceed`", "`Pause to discuss`"],

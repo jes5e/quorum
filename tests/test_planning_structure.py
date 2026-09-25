@@ -75,7 +75,7 @@ PLAN_GATE_LABELS = [
     "**Approve**", "**Revise**", "**Cancel**",
     "`Reuse existing Spec Bee`", "`Create a new Spec Bee`",
     "**Approve over blockers**",
-    "`Fix in this session`", "`File as issue tickets`", "`Encode in an existing ticket body`",
+    "`Fix in this session`", "`File as issue tickets`", "`Encode in existing ticket`",
     "**Break down in fresh session** (Recommended)",
     "**Break down in this session**",
     "**Review first**", "**Done for now**",

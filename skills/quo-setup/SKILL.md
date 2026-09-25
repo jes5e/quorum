@@ -497,7 +497,7 @@ Do NOT volunteer the following context unless the user asks what a location is f
 - **Project requirements doc (PRD)**: Used by the Product Manager agent in `quo-execute` and `quo-fix-issue` to detect spec drift — does the work the Engineer landed match what the project says it does? Project-level cumulative spec; new features add sections, never overwrite.
 - **Internal architecture docs (SDD)**: Used by the Engineer to understand existing system design, by the Product Manager for architectural drift detection, and by the Doc Writer to update architecture documentation after code changes.
 - **Customer-facing docs**: Used by the Doc Writer to update user-facing documentation when user-visible behavior changes.
-- **Engineering best practices**: Used by the Engineer agent in quo-fix-issue, quo-breakdown-epic, and quo-execute to follow project coding standards when writing or modifying source code.
+- **Engineering best practices**: Used by the Engineer agent in quo-fix-issue and quo-execute to follow project coding standards when writing or modifying source code.
 - **Test writing guide**: Used by the Test Writer to follow project testing conventions when writing or modifying tests.
 - **Test review guide**: Used by the Test Writer to self-review test quality before completing work.
 - **Doc writing guide**: Used by the Doc Writer to follow project documentation style and format conventions.
@@ -783,7 +783,7 @@ The inspector writes nothing and creates no file; it emits one JSON object to st
 
 2. **Already-configured-and-current second.** When `producer_state` is `direct` or `wrapped` AND `producer_current` is true, print one line — `The context-usage gauge producer is already configured.` — and move on with no question. When the state is `direct` or `wrapped` but `producer_current` is **false** (the installed command's interpreter or script path no longer matches what would be composed now — e.g. a moved or upgraded interpreter, which leaves a silently broken status line), do NOT fire the gate either. Take a short **refresh** branch instead: announce that an existing producer configuration is stale and will be refreshed; if `higher_precedence_sources` is non-empty, name each entry's scope and path and say plainly that the refreshed user-level setting may not take effect there (the refresh has no gate, so this announcement is where the pinned-environment honesty requirement lands on this branch); then run `install-statusline` (below, as one literal command) and report per the reporting duties in *Act* — echo `previous_command`, report the self-check outcome, and never present a failed self-check as complete.
 
-This ordering — opt-out, then already-configured/refresh — is what makes the step idempotent and what makes it safe for a boundary-time gate to dispatch on a machine where it already ran: a second pass writes nothing new, and an operator who opted out is never nagged.
+This ordering — opt-out, then already-configured/refresh — is what makes the step idempotent: a second pass writes nothing new, and an operator who opted out is never nagged.
 
 #### The gate
 
@@ -856,7 +856,7 @@ python "<bees-setup-base-dir>\scripts\context_gauge.py" write-opt-out
 
 #### What the opt-out marker means
 
-The opt-out marker lives at `<tempdir>/.quorum/context-guard-opt-out` (on POSIX, `/tmp/.quorum/context-guard-opt-out`; on Windows, `%TEMP%\.quorum\context-guard-opt-out`). Its existence suppresses only `/quo-breakdown-epic`'s boundary stop that fires when **no reading is being published** — `/quo-execute` and `/quo-fix-issue` do not read the marker and continue unguarded on a missing reading either way — and it does NOT suppress a genuine over-threshold stop when a reading *is* present, so an operator who opts out still stops when a real reading crosses the threshold. To re-enable the offer and `/quo-breakdown-epic`'s missing-reading guard, remove that file — there is no command to undo the opt-out, by design; just delete the named file.
+The opt-out marker lives at `<tempdir>/.quorum/context-guard-opt-out` (on POSIX, `/tmp/.quorum/context-guard-opt-out`; on Windows, `%TEMP%\.quorum\context-guard-opt-out`). Its existence silences only this step's automatic offer. The orchestrators do not read it: with no reading published they continue unguarded either way, and a genuine over-threshold reading still stops them. To re-enable the offer, remove that file — there is no command to undo the opt-out, by design; just delete the named file.
 
 #### Troubleshooting
 

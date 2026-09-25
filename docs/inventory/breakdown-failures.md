@@ -30,10 +30,17 @@ These eight choices decide many dispositions below. They are proposals for Check
   - Truncated at run start, as the lead statement says; no resume gate. A crashed run's state is in bees (its Epic is still `drafted`, or its tickets exist and say so).
   - One recovery goal: after a compaction, re-read the manifest and reconcile it with bees and the working tree before acting.
   - **Goes:** the Pre-run SHA, whose one reader (the checkpoint's commit-landed check) goes; per-Epic progress and next unit, which bees re-derives; the 480-word sibling-collision essay and its three-step recovery (F-less, review-predicted).
-- **S4 — Gates only at real decisions, each fronted by the `## Open gate` write in the same turn as `AskUserQuestion`** (b.7ib's shape, F2). Six gates: session effort (policy, O3), Bee pick, Epic pick, run mode (O5), deferral hygiene (F3), next steps (F5). The effort, Bee-pick, and Epic-pick gates fire before the manifest exists and go straight to `AskUserQuestion`, as `/quo-execute`'s run-start gates do. **Gone:** the gap-fill divergence gate (no run; S1 has one author) and the guard's missing-reading gate (S6). Labels five words or fewer (F26).
+- **S4 — Gates only at real decisions, each fronted by the `## Open gate` write in the same turn as `AskUserQuestion`** (b.7ib's shape, F2).
+  - **Five gates:** session effort (policy, O3), Bee pick, run mode (O5), deferral hygiene (F3), and next steps (F5).
+  - The effort and Bee-pick gates fire before the manifest exists and go straight to `AskUserQuestion`, as `/quo-execute`'s run-start gates do.
+  - **Gone:**
+    - the Epic-pick gate (B26): the run starts at the first drafted Epic in dependency order, and an Epic ID argument picks another (overseer, Checkpoint 2);
+    - the gap-fill divergence gate: no run behind it, and S1 has one author;
+    - the guard's missing-reading gate (S6).
+  - Labels of five words or fewer (F26).
 - **S5 — The output contract, with three additions and one removal.**
   - Tasks titled `Task N — <title>`, commit-sized, with `up_dependencies`.
-  - **Task bodies get a named shape.** They use the Subtask template's headings (`## Context`, `## What Needs to Change`, `## Key Files`, `## Acceptance Criteria`) plus `## Sites` when applicable. Today only Subtasks have a template, but `agents/doc-writer.md:66` reads a Task's `## What Needs to Change` and `## Acceptance Criteria`, and b.87t's Engineer receives the Task body.
+  - **A Task body carries its purpose, its cross-Task contracts, and `## Sites` when applicable; the acceptance criteria and the per-role work live in the Subtasks** (overseer, Checkpoint 2). The four template headings on a Task would restate acceptance criteria one level up, the cost b.pcc's 2026-09-23 note flagged. `agents/doc-writer.md:66` reads a Task *or* a Subtask body, and in b.87t every role receives its own Subtask bodies.
   - Subtasks follow the Mandatory Subtask Description Template.
   - Everything is `drafted` at creation and `ready` once the Epic's children all exist.
   - The Plan Bee's Scoped marker is read as today.
@@ -136,7 +143,7 @@ Dispositions: **Keep → BVn** (carried as a contract or guard), **Goal → BVn*
 | B23 | L76-79 | An Epic ID is used directly; a Bee ID finds its Epics | P | 0b69f1a | Goal → BV7 |
 | B24 | L80-87 | No arguments: query `ready` Plan Bees; one → use it, several → gate, none → suggest a planning skill; the recipe | K + P | 0b69f1a, 1a88dc1; F4 | Goal → BV7 / BV3 (bees orientation; the recipe goes) |
 | B25 | L88-95 | Find the Bee's `drafted` Epics; the recipe | K | 1a88dc1 | Goal → BV7 |
-| B26 | L96-103 | Epic-pick gate; recommend by the dependency chain | C | 0b69f1a | Keep → BV7 (the option list shape goes) |
+| B26 | L96-103 | Epic-pick gate; recommend by the dependency chain | C | 0b69f1a | Go: no run behind it; one option per Epic exceeds `AskUserQuestion`'s four once a Bee has five Epics (F25); the run mode and dependency order cover it: start at the first drafted Epic in dependency order, and an Epic ID argument picks a different start (overseer, Checkpoint 2) |
 | B27 | L104-107 | This section runs on every invocation (conditional half, unconditional half) | A | 888fa46 | Go: the restructure removes the trap |
 | B28 | L108-109 | The mode gate goes through the two-step contract | T | 2c7d3ef | Go: F1 |
 | B29 | L110-111 | Count the `drafted` Epics left | P | d03a1d7 | Goal → BV8 |
@@ -298,15 +305,15 @@ Each group is one place in the draft. Checkpoint 3 maps each to its draft locati
 - **BV1 Frontmatter** (B1): `name` and `argument-hint` unchanged; the description names the flow.
 - **BV2 Preconditions** (B3, B4, B5, B6, B7, B8): hard-fail `Run /quo-setup first.` with a one-line reason when the Plans, Issues, or Specs hive is missing, or CLAUDE.md lacks `## Documentation Locations` or `## Build Commands` with its five keys; `Agent type '<name>' not found` stops the run with the same message and the restart remedy.
 - **BV3 Working rules** (B24, B37, B56, B96): bees orientation (no list verb; one-line flow-style YAML; `report:`), scratch files under `/tmp/.quorum/` created if absent and never deleted, `--body-file` for multi-paragraph bodies, one literal command per shell call, free-text questions in prose.
-- **BV4 Run-state manifest** (B32, B34, B35, B36, B38, B40, B41, B43, B44, B45, B79, B80, B166): the six lead statements byte-identical; `run-state-quo-breakdown-epic-<bee-id>.md` (the Epic ID when no parent Bee resolves); fields per S3; rewritten when a value changes and at each Epic boundary; one accepted collision; one recovery goal.
-- **BV5 Gates** (new: F2, F26, O10): each gate is the `## Open gate` write, then `AskUserQuestion` in the same turn; the six gates listed once; labels of five words or fewer.
+- **BV4 Run-state manifest** (B32, B34, B35, B36, B38, B40, B41, B43, B44, B45, B79, B80, B166): the six lead statements byte-identical; `run-state-quo-breakdown-epic-<bee-id>.md`; fields per S3; rewritten when a value changes and at each Epic boundary; one accepted collision; one recovery goal.
+- **BV5 Gates** (new: F2, F26, O10): each gate is the `## Open gate` write, then `AskUserQuestion` in the same turn; the five gates listed once; labels of five words or fewer.
 - **BV6 Session effort** (B13, B15, B17, B18, B20, B21): read `CLAUDE_EFFORT`; unknown → skip; strictly below `high` → the question and its two choices.
-- **BV7 Pick the Epic** (B23, B24, B25, B26, B30): an Epic ID, a Bee ID, or nothing; the Bee pick; the Epic pick recommending by the dependency chain; an Epic argument resolves its Bee.
+- **BV7 Pick the Epic** (B23, B24, B25, B30): an Epic ID, a Bee ID, or nothing; the Bee pick; start at the first drafted Epic in dependency order unless an Epic ID names another; an Epic argument resolves its Bee.
 - **BV8 Run mode** (B29, B31, B33): two or more `drafted` Epics → the question and its two labels, identical to `/quo-execute`'s.
 - **BV9 Read the Epic and its spec** (B49, B50, B51, B52, B53, B54, B55, B56, B57, B58, B62, B63): the Epic, its Bee, the Epics it depends on (assume them done), its siblings (don't duplicate them); the spec by resolver, exact `PRD`/`SDD` titles, the Scoped marker through the bundled resolver (file path only, exit 2 stops), the Bee body when `reference_materials` is empty.
-- **BV10 Research** (B60): read-only `Explore` agents over the code the Epic touches, in proportion to it; check an external system's docs before planning a probe of it.
+- **BV10 Research** (B60): read-only `Explore` agents over the code the Epic touches, in proportion to it. Code reading goes to them, and they return findings rather than file contents, because with one author the orchestrator's context has to hold the spec and the draft, not the code (overseer, Checkpoint 2). Check an external system's docs before planning a probe of it.
 - **BV11 Draft the Tasks and Subtasks** (B65, B66, B67, B68, B71, B73, B85, B99, B121): to one draft file, labelled per S2. It covers:
-  - `Task N — <title>`, one commit each, with `up_dependencies`, in the template's headings plus `## Sites`;
+  - `Task N — <title>`, one commit each, with `up_dependencies`; a Task body carries its purpose, cross-Task contracts, and `## Sites` when applicable;
   - scope, not implementation;
   - cross-Task contracts written down;
   - the caller's decisions carried verbatim, and an open design choice asked in prose;
@@ -334,7 +341,7 @@ b.eid item 3 (per-Task site lists in breakdown) is in scope; item 4 (the execute
 **Recommendation:** a Task that implements entries of the SDD's `### Mechanism lifecycle` or `### Policy decisions this design implies` lists them in its body under `## Sites`, citing the SDD child's ID and the entry.
 - **Consumers.** b.87t's Engineer receives the Task body (Phase A), so consumption starts with b.87t. Today's Engineer reads only its Subtask. The fixed heading gives b.87t's PM (item 4) a string to key on.
 - **Evidence bar.** It is a new contract, so the bar does not apply to its design.
-- **When the spec has no such subsections** (a `file-path` or body-as-spec plan), the Task's `## What Needs to Change` carries whatever sites the draft knows, and no `## Sites` heading is emitted.
+- **When the spec has no such subsections** (a `file-path` or body-as-spec plan), no `## Sites` heading is emitted; the Subtasks' `## What Needs to Change` carry whatever sites the draft knows.
 
 Ticket note for the overseer: b.eid item 3 lands here as `## Sites`; item 4 stays open for b.87t, whose Engineer and PM are its readers.
 
@@ -417,12 +424,12 @@ Every TaskList use in the body goes: B12, B14, B19, B22, B28, B77, B95 and B114 
   - `agents/pm.md:227`: trusts the Task's `.T` Subtask, which decision 2 stops emitting;
   - `agents/pm.md:253`: offers a PRD/SDD deferral destination, which breakdown's prompt now excludes;
   - the PM's instructions assume a diff and per-Task review. Breakdown's dispatch prompt states its own case (review the draft; run traceability and interaction checks; invoke no review skill; change nothing; cite draft labels), a relay contract b.87t should keep compatible;
-  - `agents/doc-writer.md:66`: reads Task/Subtask `## What Needs to Change` / `## Why` / `## Acceptance Criteria`. Tasks now carry the template's headings; `## Why` is not one of them;
+  - `agents/doc-writer.md:66`: reads a Task's or Subtask's `## What Needs to Change` / `## Why` / `## Acceptance Criteria`. Subtasks carry the template; a Task body carries its purpose, contracts, and `## Sites`, not those headings, and `## Why` is in neither;
   - what b.87t consumes:
     - the role tag and its vocabulary (operator-run steps tagged `engineer`);
     - no `.T` Subtasks, although b.87t `### Defaults` says "flipped on the implementer's behalf";
     - no implementation-first edges;
-    - `## Sites`;
+    - Task bodies carrying purpose, cross-Task contracts, and `## Sites`, with the acceptance criteria in the Subtasks;
   - the sequencing constraint (S5): today's `/quo-execute` must not run on b.pcc output.
 
 ## 9. Commit coverage
@@ -521,4 +528,13 @@ It found no Go row that deletes a rule earned by an observed failure while leavi
 
 No second round was run on the inventory. The behavior findings change the draft, which gets its own cold rounds, and the edits here were verified by re-running the coverage check.
 
-**Pending ratification at Checkpoint 2:** decisions 1–3, and S1–S8 as a whole. B178 and B179 are operator policy (O9), so their deletion rests on the operator's ratification of decision 3, which will be recorded here.
+## 12. Amendments after the checkpoints
+
+- **Checkpoint 2 (overseer, 2026-09-25): accepted, with changes.**
+  - Decisions 1 (the role tag) and 2 (no verify Subtasks, no one-test-per-file split, no implementation-first edges) are accepted, with the stated cost and sequencing constraint. S1–S8 are accepted.
+  - **Decision 3 was ratified by the operator on 2026-09-25.** That is the recorded evidence for deleting B178 and B179 (operator policy O9): the operator withdrew the missing-reading gate for breakdown as for the two orchestrators. Its readers are updated in the same change as the draft.
+  - **The Epic-pick gate goes** (B26 now Go). It had no run behind it, and it exceeds four choices once a Bee has five Epics. The run starts at the first drafted Epic in dependency order, and an Epic ID argument picks another. Five gates, not six.
+  - **Task bodies do not take the Subtask template.** A Task carries its purpose, its cross-Task contracts, and `## Sites`; acceptance criteria and per-role work live in the Subtasks (S5, BV11, the b.87t note).
+  - **BV4's leftover Epic-ID fallback is removed.**
+  - **The context budget becomes a goal** (BV10): code reading goes to `Explore` agents, which return findings, not file contents. At Checkpoint 5 I report the orchestrator's context use at each Epic boundary of the `b.v9c` run. If it runs heavy, the fallback is one drafting agent per Task.
+  - **Not a finding:** routing a crashed run's open obligations before the run-start truncate. No run shows it, and `/quo-execute` does not do it.

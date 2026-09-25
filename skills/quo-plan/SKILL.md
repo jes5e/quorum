@@ -57,7 +57,7 @@ Gates fire only where the user holds the decision:
 - **Scope** — choices **Approve**, **Revise**, **Cancel** (Section 4).
 - **Spec Bee reuse**, only when a `drafted` candidate matches — choices `Reuse existing Spec Bee`, `Create a new Spec Bee`, `Cancel` (Section 5).
 - **Plan approval**, once per review round — choices **Approve**, **Approve over blockers**, **Revise**, **Cancel** (Section 8).
-- **Deferral hygiene**, only when obligations are open — choices `Fix in this session`, `File as issue tickets`, `Encode in an existing ticket body` (Section 10).
+- **Deferral hygiene**, only when obligations are open — choices `Fix in this session`, `File as issue tickets`, `Encode in existing ticket` (Section 10).
 - **Next steps** — Section 10.
 
 However the run ends (completion, Cancel, or Start fresh over an unfinished run), open deferrals go through deferral hygiene first. A `Cancel` then reports what exists, sets `**Phase:** complete`, and stops. Nothing is ever written to the Plans hive before plan approval, so a cancelled run leaves no Plan Bee to clean up.
@@ -197,7 +197,7 @@ Set `**Phase:** created`.
 
 - `Fix in this session` — do the work now. A spec change goes through the solo writer: invoke `/quo-write-prd <spec-bee-id>` or `/quo-write-sdd <spec-bee-id>` through the Skill tool with no other `args`. It reviews and gates the change, and the row closes on its **Approve**.
 - `File as issue tickets` — invoke `/quo-file-issue` through the Skill tool with the item as its description.
-- `Encode in an existing ticket body` — append a `## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)` section to one of this run's Plans- or Specs-hive tickets, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -Format 'yyyy-MM-dd HH:mm'` (PowerShell).
+- `Encode in existing ticket` — append a `## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)` section to one of this run's Plans- or Specs-hive tickets, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -Format 'yyyy-MM-dd HH:mm'` (PowerShell).
 
 Close each row as its item lands. Do not hand off while a row is open. When a route fails, show the remaining rows and ask again.
 
