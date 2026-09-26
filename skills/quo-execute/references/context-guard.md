@@ -12,7 +12,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The guard's 
 ## Why it runs only on the continuing in-session path
 
 - On a run that ends in this session a fresh-session recommendation is noise. `/quo-execute` also runs the guard before each Epic-boundary review, since that review and its fixes can run as long as a Task.
-- A single-unit run crosses no boundary and never reaches the guard.
+- In `/quo-fix-issue` a single-unit run crosses no boundary and never reaches the guard.
 - The boundary checkpoint (`/quo-fix-issue`) is unconditional on every exit path; the guard deliberately is not, and must not inherit that unconditionality.
 
 ## Why the reading is obtained the way it is

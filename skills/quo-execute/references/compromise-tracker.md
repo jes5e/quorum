@@ -12,7 +12,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The tracker'
 
 - The timestamp prefix in `compromises-<YYYYMMDD-HHMM>-<short-suffix>.md` makes tracker files debuggably identifiable across many runs accumulated in `<tempdir>/.quorum/`; without it the user has no easy way to map a file to a session.
 - The random `<short-suffix>` is acceptable here, unlike the run-state manifest, because the tracker's reader is a dispatched Agent handed the path in its prompt, and the manifest records that path for the orchestrator's own post-compaction recovery.
-- A new run always writes its own new file; previous-run files are never appended to.
+- A new run writes its own new file; `/quo-execute` resuming an unfinished Epic keeps that Epic's file, and no other previous run's file is appended to.
 - The file is a scratch artifact: author and append it via the `Write` tool, never a shell redirect, and never delete it.
 
 ## Entry-shape rationale
