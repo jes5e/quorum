@@ -195,7 +195,7 @@ Don't change these assignments without a concrete reason — they're load-bearin
 
 ## When editing skills
 
-- Run the `Full test` command from `## Build Commands` before every commit in this repo. The structural and prose-size tests bind only if they run, and the orchestrators' close-out runs `Full test` only when CLAUDE.md requires it.
+- Run the `Full test` command from `## Build Commands` before every commit in this repo. The structural and prose-size tests bind only if they run, and the orchestrators' per-unit close-out runs `Full test` only when CLAUDE.md requires it (`/quo-execute` also runs it once per Epic).
 - The README's skill table is the single source of truth for the user-visible skill catalog. If you add, remove, or rename a skill, update README.md to match.
 - The `description` field in a skill's frontmatter is what Claude Code uses to decide whether to invoke the skill. Keep it precise — vague descriptions cause mis-invocation.
 - Don't introduce a tmux dependency in any of the 14 portable-core skills. Tmux-dependent skills (`bees-fleet`, `bees-worktree-add`, `bees-worktree-rm`) are out of scope for the cross-platform core and mentioned only as optional later installs.

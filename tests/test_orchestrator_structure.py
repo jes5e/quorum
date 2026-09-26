@@ -97,7 +97,18 @@ def normalize_skill_name(text):
 
 def normalize_unit_noun(text):
     """Tier 2 normalization: fold execute's unit placeholders onto fix-issue's."""
-    return text.replace("<epic-id>", "<issue-id>").replace("`Bee`", "`fix`")
+    return text.replace("<task-id>", "<issue-id>").replace("`Epic`", "`fix`")
+
+
+def normalize_task_to_issue(text):
+    """Tier 2 normalization: execute's unit, the Task, read as fix-issue's Issue."""
+    return text.replace("a Task", "an Issue").replace("Task", "Issue")
+
+
+def ladder_bullet(text, label):
+    lines = [line for line in heading_section(text, "### Phase ladder").splitlines() if line.startswith(f"- **{label}")]
+    assert len(lines) == 1, f"expected one {label!r} bullet"
+    return lines[0]
 
 
 def assert_present(anchors, text, where):
@@ -168,10 +179,35 @@ def test_tier1_movement_rung_closing_rules_are_byte_identical():
     assert tail in FIX and tail in EXE
 
 
-def test_tier1_checkpoint_disclaims_context_reclamation_identically():
+def test_fix_issue_checkpoint_disclaims_context_reclamation():
+    # Execute has no boundary checkpoint section since b.87t: bees and git carry its state.
     sentence = ("it does not clear, compact, or reclaim context, and must never be narrated as if it did.")
     assert sentence in heading_section(FIX, "#### Issue-boundary state-externalization checkpoint")
-    assert sentence in heading_section(EXE, "#### Epic-boundary state-externalization checkpoint")
+
+
+PHASE_A_LOOP = (
+    "On its return dispatch the Code Reviewer alone against the diff, unless the return carries `## Design question`. "
+    "Loop Engineer → Code Reviewer until the Code Reviewer emits `No code issues found.` with an empty numbered list, "
+    "or until Section 7's hold set releases the lane: an Engineer pass whose `Kinds changed` names only `comments` or "
+    "`contract-text` closes Phase A after the single confirming read that rule owes, when it owes one. A non-empty "
+    "`### Second-order effects` narrative beside a clean list does not hold Phase A open; carry it to the summary."
+)
+
+
+def test_tier1_phase_a_loop_is_byte_identical():
+    # Only the entry condition differs: the Issue's directive in fix-issue, the Task's engineer Subtasks in execute.
+    assert PHASE_A_LOOP in ladder_bullet(FIX, "Phase A")
+    assert PHASE_A_LOOP in ladder_bullet(EXE, "Phase A")
+
+
+def test_tier2_phase_c_matches_modulo_unit():
+    assert ladder_bullet(FIX, "Phase C") == normalize_task_to_issue(ladder_bullet(EXE, "Phase C"))
+
+
+def test_tier2_engineer_dispatch_precondition_matches_modulo_unit():
+    fix = bullet_lines(heading_section(FIX, "## 6. Gates"), "**Engineer-dispatch precondition.**")
+    exe = bullet_lines(heading_section(EXE, "## 6. Gates"), "**Engineer-dispatch precondition.**")
+    assert fix and fix == [normalize_task_to_issue(line) for line in exe]
 
 
 MANIFEST_LEAD_STATEMENTS = [
@@ -209,7 +245,7 @@ def test_tier2_post_completion_steps_match_modulo_unit_noun():
 
 def test_tier2_context_guard_steps_match_modulo_unit_placeholder():
     fix = numbered_steps(heading_section(FIX, "#### Context-window boundary guard"))
-    exe = numbered_steps(heading_section(EXE, "#### Epic-boundary context-window guard"))
+    exe = numbered_steps(heading_section(EXE, "#### Task-boundary context-window guard"))
     assert len(fix) == len(exe) == 4
     assert fix == [normalize_unit_noun(step) for step in exe]
 
@@ -218,7 +254,6 @@ def test_divergence_table_is_present_identically_in_both_bodies():
     rows = [
         "| Approved-design source for \"introduces a mechanism\" |",
         "| Gate (d) `Cancel` semantics |",
-        "| Part (g) code-review rung |",
         "| Close-out target on `Cancel` / abort |",
     ]
     for body in BODIES.values():
@@ -268,8 +303,6 @@ SHARED_ANCHORS = [
     "## Open gate",
     "**Compromise tracker:**",
     "**Context guard:**",
-    "**Progress:**",
-    "**Next unit:**",
     "**Unit scope:**",
     "**Isolation strategy:**",
     "### Run start",
@@ -420,6 +453,8 @@ FIX_ANCHORS = [
     "`run-state-quo-fix-issue-<repo-dir-name>.md`",
     "`git rev-parse --show-toplevel`",
     "**Pre-session SHA:**",
+    "**Progress:**",
+    "**Next unit:**",
     "**URL token**",
     "**ticket-ID token**",
     "`Cannot start Issue. It is blocked by: [list]`",
@@ -465,60 +500,37 @@ def test_fix_issue_rule_anchors_are_present():
 EXE_ANCHORS = [
     "`normalized_name` is `plans`",
     "`run-state-quo-execute-<bee-id>.md`",
-    "**Pre-Bee SHA:**",
     "**Multi-Epic run mode:**",
     "Mode 1 (Stop after each Epic)",
     "Mode 2 (Work through all Epics)",
-    "`not captured (single Epic in scope)`",
-    "`not captured (all Epics already done)`",
-    "`pending Section 4 query`",
-    "`bees execute-freeform-query --query-yaml 'stages:\\n  - [type=bee, hive=plans]\\nreport: [title, ticket_status]'`",
-    "`bees execute-freeform-query --query-yaml 'stages:\\n  - [parent=<bee-id>, type=t1]\\nreport: [title, ticket_status, up_dependencies]'`",
-    "`status!=drafted`",
-    "**Per-Subtask fan-out.**",
-    "**Per-Task PM.**",
-    "**Epic boundary.**",
-    "**Bee-level reviews.**",
-    "`Agent(subagent_type=\"code-reviewer\", run_in_background=true)`",
-    "`Agent(subagent_type=\"test-reviewer\", run_in_background=true)`",
-    "`Agent(subagent_type=\"doc-reviewer\", run_in_background=true)`",
-    "`\"no Engineer Agent will be dispatched for your Subtask's implementation dependency while you are running\"`",
-    "`\"no Engineer Agent will be dispatched for this Bee while you are running\"`",
-    "`bees update-ticket --ids <subtask-id> --status in_progress`",
-    "Clause 1",
-    "Clause 2",
+    "**Compromises reviewed:**",
+    "**Text class.**",
+    "**Phase A — source to clean.**",
+    "**Phase B — writers once, in parallel.**",
+    "**Phase C — remaining reviewers plus PM.**",
+    "**PM is the exception to the conditional-spawn rules.**",
+    "`No code issues found.`",
+    "**Operator-action rung.**",
+    "`## Operator action needed`",
+    "`\"no Engineer Agent will be dispatched for this Task while you are running\"`",
     "`Plan <bee-id>, Epic N, Task M — <task title> (<task-id>)`",
     "resolve-hive-paths --hive plans",
     "## Task [N] of [total] Complete: [task-title]",
-    "**Follow-up Tasks Created**",
     "Proceeding to next Task: [next-task-title]",
-    "Final Task, moving on to Final Reviews",
-    "**Inter-Epic interaction checkpoint.**",
-    "`git log --oneline <previous-epic-last-commit>..HEAD`",
-    "**Contract drift**",
-    "**Resource compounding**",
-    "**Symmetric-change gaps**",
-    "**Drafted (or blocked-on-drafted) Epics remain**",
-    "**Workable Epic remains**",
-    "**All Epics under this Bee are `done`**",
+    "Final Task, moving on to the Epic-boundary review",
+    "**Epic boundary.**",
     "`Mode 2 (Work through all Epics): auto-continuing to <next-epic-id> — <title>.`",
-    "#### Epic-boundary state-externalization checkpoint",
-    "#### Epic-boundary context-window guard",
+    "#### Task-boundary context-window guard",
     "`/quo-execute <bee-id>`",
     "`## Deferred from /quo-execute run (<YYYY-MM-DD HH:MM>)`",
     "`Encode deferral: /quo-execute — <N> deferral(s) encoded`",
     "--skill quo-execute --count <N> [--doc-path <abs-path> ...]",
-    "`git diff <pre-bee-sha>`",
+    "`git diff <epic-base-sha>`",
+    "`Post-completion review fixes for <epic-id>`",
     "#### Aborted-run close-out",
-    "`<epic-id>: aborted mid-Epic at <task-id> — last commit <sha>`",
-    "`<bee-id>: Bee-level review aborted — <what stopped it>`",
-    "`Cannot mark Bee complete — Epics <ids> are still <status>. Run /quo-breakdown-epic and /quo-execute on them first.`",
     "`bees update-ticket --ids <bee-id> --status done`",
     "## Bee Execution Complete: [bee-title]",
-    "**Bee Status**: Finished",
     "All per-Task work has been committed.",
-    "`/bees-worktree-rm`",
-    "`git merge bee/b.Wx7`",
 ]
 
 
@@ -543,6 +555,10 @@ REFERENCE_ANCHORS = {
     ],
     REF_POST_COMPLETION_PROMPT: [
         "You are an independent reviewer for a quorum <unit-noun> that was just shipped.",
+        "`<scope-notes>`",
+        "**Contract drift**",
+        "**Resource compounding**",
+        "**Symmetric-change gaps**",
         "PHASE 1 — Consume the compromise tracker (passed as a FILE PATH).",
         "PHASE 2 — Challenge each tracked compromise on its merits.",
         "PHASE 3 — Ungated-pick plausibility check, on TWO axes.",
@@ -648,7 +664,7 @@ def test_execute_only_gate_labels_are_verbatim():
         "`How should this run handle multiple Epics? (You will not be asked again this run.)`",
         "**Stop after each Epic**",
         "**Work through all Epics**",
-        "**Continue**",
+        "**Resume the Engineer**",
         "**Abort this unit**",
         "`\"Are you ready to mark this Bee as done?\"`",
         "`\"Yes, mark as done\"`",
@@ -679,31 +695,32 @@ def test_decision_enum_values_are_verbatim_in_both_bodies():
 
 CONTRACT_SURFACES = [
     ("## Design question", [AGENT_ENGINEER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("## Operator action needed", [AGENT_ENGINEER], [QUO_EXECUTE]),
     ("## Files changed", [AGENT_ENGINEER, AGENT_TEST_WRITER, AGENT_DOC_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("Kinds changed:", [AGENT_ENGINEER, AGENT_TEST_WRITER, AGENT_DOC_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Premise check", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_ANALYST]),
     ("Premise check: premise-false", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Source paths to fingerprint", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_TEST_WRITER]),
     ("## Perturbations", [AGENT_TEST_WRITER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
-    ("## Engineer's completeness evidence", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM, AGENT_CODE_REVIEWER]),
+    ("## Engineer's completeness evidence", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_CODE_REVIEWER]),
     ("## Blast radius", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_ENGINEER, AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_WRITER, AGENT_DOC_WRITER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER]),
     ("### Blast radius", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("### Decisions for writers", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Design decisions for writers", [QUO_FIX_ISSUE, QUO_EXECUTE, AGENT_ANALYST], [AGENT_ENGINEER, AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_WRITER, AGENT_DOC_WRITER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
     ("## Engineer's diff (path)", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_DOC_WRITER]),
-    ("## Confirming pass", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
-    ("## Site enumeration requested", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM, AGENT_CODE_REVIEWER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
+    ("## Confirming pass", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_CODE_REVIEWER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
+    ("## Site enumeration requested", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_CODE_REVIEWER, AGENT_TEST_REVIEWER, AGENT_DOC_REVIEWER, QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW]),
     ("Confirming pass: <n> fixes checked", [QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("None — the approach leaves no test or doc decision to the writers.", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("### Deferred refinements", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("### Policy decisions this change implies", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("Analyst verdict:", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("## Authoritative design directive", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_ENGINEER, AGENT_PM]),
-    ("### Second-order effects", [AGENT_PM, AGENT_CODE_REVIEWER, QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("### Second-order effects", [AGENT_CODE_REVIEWER, QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("no spec drift surface to review for this Issue", [AGENT_PM], [QUO_FIX_ISSUE]),
     ("**Your next tool use MUST address these findings now.**", [QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("**Your next tool use MUST advance the workflow.**", [QUO_ENGINEER_REVIEW, QUO_TEST_WRITER_REVIEW, QUO_DOC_WRITER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
-    ("[introduces-mechanism]", [QUO_ENGINEER_REVIEW, AGENT_PM, AGENT_CODE_REVIEWER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
+    ("[introduces-mechanism]", [QUO_ENGINEER_REVIEW, AGENT_CODE_REVIEWER], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("addressed-now", [AGENT_PM, AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE, QUO_BREAKDOWN_EPIC]),
     ("defer-to-existing-ticket-body: <ticket-id>", [AGENT_PM, AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("defer-to-new-Issue", [AGENT_PM, AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
@@ -778,10 +795,12 @@ def test_post_completion_scope_is_working_tree_plus_untracked_in_both_bodies():
         assert "..HEAD" not in section, f"{name} still scopes the post-completion diff as a commit range"
 
 
-def test_inter_epic_judgment_half_is_dispatched_not_director_run():
-    section = heading_section(EXE, "## 8. Per-unit close-out")
-    assert "dispatch a fresh `code-reviewer` Agent at Epic scope" in section
-    assert "dispatch a fresh ephemeral Engineer" not in section
+def test_epic_boundary_review_is_the_post_completion_review_at_epic_scope():
+    # b.87t: one dispatched review per Epic replaces the overlap-only inter-Epic reviewer and the
+    # end-of-run sweep; its interaction checks travel in the shared prompt's <scope-notes> parameter.
+    assert "`<unit-noun>` = `Epic`" in heading_section(EXE, "## 11. Post-completion review")
+    assert "Run the Epic-boundary review (Section 11)" in heading_section(EXE, "## 8. Per-unit close-out")
+    assert "<scope-notes>" in read(REF_POST_COMPLETION_PROMPT)
 
 
 def test_context_guard_continues_silently_on_missing_reading():

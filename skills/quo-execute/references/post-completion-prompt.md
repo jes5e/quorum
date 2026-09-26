@@ -1,17 +1,18 @@
 # Post-completion reviewer prompt skeleton (shared by `/quo-execute` and `/quo-fix-issue`)
 
-The orchestrator dispatches one fresh `general-purpose` reviewer with this prompt after every unit is closed out. The prompt must be self-contained because the reviewer sees nothing else from the run. Fill the parameters below, then send the skeleton verbatim.
+`/quo-fix-issue` dispatches one fresh `general-purpose` reviewer with this prompt after every unit is closed out, and `/quo-execute` dispatches one at each Epic boundary, over that Epic. The prompt must be self-contained because the reviewer sees nothing else from the run. Fill the parameters below, then send the skeleton verbatim.
 
 ## Parameters
 
 | Parameter | `/quo-fix-issue` value | `/quo-execute` value |
 |---|---|---|
-| `<pre-run-sha>` | the manifest's `**Pre-session SHA:**` field | the manifest's `**Pre-Bee SHA:**` field |
-| `<unit-noun>` | `fix` | `Bee` |
-| `<spec-source>` | `the issue body, or bodies in batch mode — read each via bees show-ticket --ids <id>. Issue IDs in this session: <issue-id-1> <issue-id-2> ...` | `the Bee body — read it via bees show-ticket --ids <bee-id>. The parent Epic/Task bodies are secondary spec sources; consult them via bees show-ticket --ids <epic-id-1> <task-id-1> ... (IDs resolved from the Bee's Epic children and their Task children) only when the diff vs. the Bee body is ambiguous.` |
+| `<pre-run-sha>` | the manifest's `**Pre-session SHA:**` field | the commit before the Epic's first Task commit |
+| `<unit-noun>` | `fix` | `Epic` |
+| `<spec-source>` | `the issue body, or bodies in batch mode — read each via bees show-ticket --ids <id>. Issue IDs in this session: <issue-id-1> <issue-id-2> ...` | `the Epic body and its Task bodies — read them via bees show-ticket --ids <epic-id> <task-id-1> <task-id-2> .... The spec the Plan Bee's reference_materials name is the secondary source; consult it when the diff vs. those bodies is ambiguous.` |
 | `<compromise-tracker-path>` | the manifest's `**Compromise tracker:**` field, passed as a path, never as inlined contents | the same |
+| `<scope-notes>` | empty | `This review covers one Epic of Plan Bee <bee-id>. In PHASES 1–4, challenge only tracker entries numbered above <n> (the manifest's **Compromises reviewed:**); earlier entries were challenged at an earlier Epic's review. In PHASE 6, also check this Epic against earlier Epics' code, whose commits carry the subject prefix "Plan <bee-id>, Epic": **Contract drift** (ordering contracts, docstring claims, "this should never happen" comments the new code breaks), **Resource compounding** (new acquires from a resource an earlier Epic uses — model the aggregate), and **Symmetric-change gaps** (a new resource class — check earlier Epics' cleanup paths handle it). The project's Full test command ran at this Epic's end: <passed, or its failing output>. Report each failure as a [defect] blocker.` |
 
-The diff scope is the same in both skills: `git diff <pre-run-sha>` (the working tree against the pre-run commit, no `..HEAD`) plus every untracked file `git ls-files --others --exclude-standard` lists.
+The diff scope is `git diff <pre-run-sha>` (the working tree against that commit, no `..HEAD`) plus every untracked file `git ls-files --others --exclude-standard` lists.
 
 ## Skeleton
 
@@ -32,6 +33,7 @@ you cannot see the run-start tree to tell it apart: when a finding concerns a
 change no ticket body asks for, say it is likely either pre-existing or an
 unticketed in-run edit (a review-round fix, or a formatter pass), as an
 inference, and name that basis. Review that scope against <spec-source>
+<scope-notes>
 The orchestrating team-lead has finished the work — your job is to give it a
 fresh-eyes review with no context of how the work was done.
 

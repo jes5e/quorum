@@ -677,3 +677,24 @@ The inline PRD and SDD writers no longer gate. Spec review and the cold plan rev
 - Validation: a small-code `/quo-fix-issue` run, preferably one whose Analyst verdict refines or departs from the body.
 
 **Out of scope.** `/quo-execute`'s PM (b.87t mirrors this relay).
+
+### Feature: /quo-execute runs each Task like a fixed Issue, and reviews each Epic
+
+**What.** `/quo-execute` works a plan one Task at a time. Each Task runs in order:
+1. the Engineer, looped with a code reviewer until the code is clean;
+2. the Test Writer and Doc Writer together;
+3. their reviewers and a PM who checks the work against the spec and the Task's site list.
+
+After each Epic, the run executes the full test suite and one fresh review of the Epic's work, which also checks it against earlier Epics; the operator fixes, files, or skips what it finds. When a Task needs a step only the operator can take, the run stops and asks. "Stop after each Epic" ends the run at each Epic with a resume command.
+
+**Why.** The prior skill ran every Subtask's implementer at once and reviewed code only inside the PM and at the end of the Bee. That let writers work against code no review had read. It paid for a cold implementer per Subtask. And it found defects only after later Epics had built on them.
+
+**Acceptance criteria.**
+
+- Each Task gets one Engineer, one commit, and its own code, test, and doc reviews.
+- Each Epic gets one review and one full-suite run before the next Epic starts.
+- An operator-only step reaches the operator as a question, not as finished work.
+- A clean run asks only the run-mode question (when two or more Epics are open), any deferral-hygiene question, and the final Bee-done question.
+- Validation: executing smoke Bee b.v9c in live_edit.
+
+**Out of scope.** Running independent Tasks in parallel worktrees, sized from the smoke run's ledger in a follow-up.

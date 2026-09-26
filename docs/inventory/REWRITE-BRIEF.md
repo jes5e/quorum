@@ -219,6 +219,25 @@ cannot tell what outcome satisfies it or what exact string a contract uses; a st
 not ambiguous. A2 stands: a change that needs a rule the inventory lacks records it as an amendment here, as the batches
 above did.
 
+*Amended 2026-09-26 (Issue `b.87t`, the execute rebuild):* `/quo-execute`'s unit is the Task, and each Task runs `/quo-fix-issue`'s
+Phase A / B / C ladder. §4 item 5's execute ladder, D6's inter-Epic checkpoint, and every inventory row for the per-Subtask
+fan-out, the Bee-level reviews (#16 exec), the per-Task PM's in-flight reviews, and the execute half of #41 are superseded;
+the tests' pair list, not the inventory's mirror map, is the live mirror. Rules this rebuild adds, each with its reason in
+the commit:
+- an Engineer return under `## Operator action needed` is not a completion and fires the execute-only Operator-action gate
+  (**Resume the Engineer** / **Abort this unit**), because breakdown's contract has an operator-only step's implementer stop
+  and ask, and execute had no receiver;
+- a return with an explicitly empty `## Files changed` gets no reviewer;
+- an `engineer` Subtask may direct research, a measurement, or a record outside the source tree (`agents/engineer.md`);
+- the post-completion review runs per Epic, with the shared prompt's `<scope-notes>` parameter carrying the interaction checks,
+  the tracker entries above the manifest's `**Compromises reviewed:**`, and the `Full test` result, which the Epic boundary runs once;
+- deferral hygiene fires per Epic and before any other run exit; the context guard runs before each Task and Epic review;
+- the per-Task PM invokes no review skill and verifies the Task's `## Sites` (b.eid item 4).
+
+The operator approved deletion-only edits to `/quo-fix-issue` §7 (the part-(g) divergence row, the execute design-source
+cell, "a Task finding", the PM in-flight sentence) and §8 (the PM second-order clause). A cold review must not report any
+of these as an A2, D6, D12, or §1 violation.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 

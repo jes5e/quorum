@@ -112,7 +112,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - Dispatching the Engineer and a writer in the same round hands the writer a diff the pending code review is about to rewrite, forcing the writer's work to be redone.
 - The one elision is a final pass that ships only text: the code-review rung is the round **Severity bounds the loop** suppresses, so the affected writer follows that Engineer directly.
 - A finding whose chosen fix path changes no source file carries no ordering constraint; re-dispatch that single writer lane alone.
-- Part (g) governs the review-finding re-dispatch path only; in `/quo-execute` the forward per-Subtask fan-out stays concurrent by design.
+- Part (g) governs the review-finding re-dispatch path only; the forward path is each unit's phase ladder.
 
 ## Rationale index
 

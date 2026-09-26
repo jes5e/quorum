@@ -110,7 +110,8 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 
 ## Post-completion review
 
-- The diff scope is the working tree against the pre-run commit plus untracked files because review-round edits may sit uncommitted; a commit-to-commit range alone misses them.
+- The diff scope is the working tree against the pre-run commit (in `/quo-execute`, the commit before the Epic's first Task commit) plus untracked files because review-round edits may sit uncommitted; a commit-to-commit range alone misses them.
+- `/quo-execute` reviews once per Epic rather than once per run: a smaller diff reviews better and cheaper, and a defect is fixed before later Epics build on it, while that Epic's implementers can still be resumed. The Epic's base is found from its Tasks' commit subjects, not a recorded SHA, so it survives a session restart.
 - The reviewer cannot see the run-start tree, so a change no ticket asked for is reported as likely pre-existing or an unticketed in-run edit, as an inference.
 - Post-completion lanes reuse every per-unit rule with the finding index as the unit, because a follow-up answering one finding of a whole-run sweep belongs to no ticket.
 - A post-completion abort closes out through the lane table alone, never through the aborted-unit close-out, because every unit is already `done` and committed.
