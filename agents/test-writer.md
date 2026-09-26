@@ -74,7 +74,7 @@ The Test Writer is the test-authoring worker dispatched by an orchestrating exec
   git hash-object <source paths outside your test lane>
   ```
 
-  **Which paths `<source paths outside your test lane>` names.** It is the set your dispatch prompt supplies under the `## Source paths to fingerprint` heading — both orchestrators supply that heading, scoped to non-test source paths: the files of the Engineer diff you were dispatched against. **When the dispatch prompt omits it**, derive the set yourself, once, with one literal command:
+  **Which paths `<source paths outside your test lane>` names.** It is the set your dispatch prompt supplies under the `## Source paths to fingerprint` heading — both orchestrators supply that heading, scoped to non-test source paths: the files of the Engineer diff you were dispatched against. Drop from the set any file you edit yourself, such as a source file that holds its own unit tests, because your own edits would read as movement; it still goes in your `## Files changed`. **When the dispatch prompt omits it**, derive the set yourself, once, with one literal command:
 
   ```bash
   # POSIX (bash / zsh):

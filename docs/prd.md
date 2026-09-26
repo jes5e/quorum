@@ -694,7 +694,7 @@ After each Epic, the run executes the full test suite and one fresh review of th
 - Each Task gets one Engineer, one commit, and its own code, test, and doc reviews.
 - Each Epic gets one review and one full-suite run before the next Epic starts.
 - An operator-only step reaches the operator as a question, not as finished work.
-- A clean run asks only the run-mode question (when two or more Epics are open), any deferral-hygiene question, and the final Bee-done question.
+- A clean run asks only the isolation question (on a branch in the main repo), the run-mode question (when another Epic could run), any deferral-hygiene question, and the final Bee-done question.
 - Validation: executing smoke Bee b.v9c in live_edit.
 
 **Out of scope.** Running independent Tasks in parallel worktrees, sized from the smoke run's ledger in a follow-up.
