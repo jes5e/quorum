@@ -126,8 +126,7 @@ b.pcc merged at `a0cd8c2`. Design against b.v9c Epic 1's real output in live_edi
 b.37n merged at `29ce682` and was validated on live_edit Issue b.62m. What the rebuild's Phase C PM mirrors:
 - Relay `## Authoritative design directive (from the Analyst gate)` to the PM with its exact heading, verbatim and inline, alongside `## Blast radius` and `## Design decisions for writers`. `agents/pm.md`'s new section engages only on that heading; `## Blast radius` alone does not trigger it. In b.62m the orchestrator relayed it by path after a revision and once merged the three headings; keep them separate and inline.
 - When mirroring, drop `agents/analyst.md:65`'s "in `/quo-fix-issue`" qualifier on the PM recipient.
-- Check execute's own bees query recipes for `report:` fields bees rejects (it refuses `body`), not only for the multi-line `
-` shape.
+- Check execute's own bees query recipes for `report:` fields bees rejects (it refuses `body`), not only for the multi-line form the help shows.
 - **Data for `## Open` (per-Task PM vs once per Epic):** in b.62m the fix-mode PM cost 470k tokens across three passes (9% of a 5.16M run) for one real finding (a missing behavioural test) and three wording nits, one of which the Test Reviewer also found.
 
 **Order:** b.kam (a revised Analyst design must be returned whole, not as a delta) now runs before this ticket, so the rebuild copies the corrected revision path.
