@@ -131,3 +131,7 @@ b.37n merged at `29ce682` and was validated on live_edit Issue b.62m. What the r
 - **Data for `## Open` (per-Task PM vs once per Epic):** in b.62m the fix-mode PM cost 470k tokens across three passes (9% of a 5.16M run) for one real finding (a missing behavioural test) and three wording nits, one of which the Test Reviewer also found.
 
 **Order:** b.kam (a revised Analyst design must be returned whole, not as a delta) now runs before this ticket, so the rebuild copies the corrected revision path.
+## Input from b.kam (2026-09-26)
+
+b.kam landed in `f01bf79`: the Analyst returns a revision whole, not as a delta. Execute's Revise path ("the prior revision in full") and its ticket-recorded revision need no change; copy them as they stand. The rebuild's first run that reaches a revision gate is also b.kam's check (see its close-out note for the three things to confirm).
+

@@ -7,7 +7,7 @@ down_dependencies:
 parent: null
 reference_materials: null
 created_at: '2026-09-26T11:34:26.747364'
-status: open
+status: done
 schema_version: '0.1'
 guid: kamw8yr2hcnygxznitp7we38xt4b4m3b
 ---
@@ -31,3 +31,14 @@ After any revision gate, the proposal file holds the complete approved design, s
 The smallest contract change: `agents/analyst.md` states that a revision returns the whole Design Proposal, every section, not a delta, because the orchestrator keeps only the latest return and relays it verbatim. The overwrite rule then loses nothing. Check `/quo-execute`'s Revise path (it quotes "the prior revision in full") for the same assumption; execute's rebuild (b.87t) mirrors fix-issue's loop, so fix this first.
 
 Hand edit with one cold review, per CLAUDE.md `## Working on the orchestrator skills`. No dedicated validation run: a revision can't be triggered on demand, so the next real run with a revision gate is the check.
+## Closed (2026-09-26)
+
+Landed in `f01bf79`, merged to main by fast-forward (not pushed).
+- `agents/analyst.md`, the `## Prior proposal and user feedback` bullet: a revision is returned as a whole Design Proposal, restating what stands from any earlier proposal rather than referring to it, because the orchestrator keeps only the latest return and relays it verbatim to roles that never saw the earlier one. "Any earlier proposal" leaves execute's first escalation alone, since its prior design is the tickets, which persist.
+- Deleted: the clause naming `/quo-fix-issue`'s reason for passing the proposal as a path.
+- Cap: `agents/analyst.md` 5000 → 5024. `docs/sdd.md` gains a feature entry.
+- Neither orchestrator body changed: fix-issue's overwrite of the proposal file is now lossless, and its inline-relay rule already stood; execute's "prior revision in full" and its ticket-recorded `## Design revision (Analyst)` now hold.
+
+**Review:** the overseer read the diff and traced its readers, and waived the cold round (one contract sentence in a role file, no body change).
+
+**Validation:** no dedicated run, because a revision gate can't be triggered on demand. The check is the next real run that reaches a revision gate after an Approve (the execute rebuild's first such run can serve). Confirm: the Analyst's revised return is whole; the `**Proposal:**` file holds the complete approved design after the gate; later relays carry `## Authoritative design directive (from the Analyst gate)`, `## Blast radius`, and `## Design decisions for writers` verbatim, inline, and under separate headings.
