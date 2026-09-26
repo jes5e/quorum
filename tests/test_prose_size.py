@@ -27,7 +27,7 @@ CAPS = {
     "skills/quo-breakdown-epic/SKILL.md": 2908,
     "skills/quo-doc-writer-review/SKILL.md": 3139,
     "skills/quo-engineer-review/SKILL.md": 6472,
-    "skills/quo-execute/SKILL.md": 11922,
+    "skills/quo-execute/SKILL.md": 11934,
     "skills/quo-execute/references/compromise-tracker.md": 1104,
     "skills/quo-execute/references/context-guard.md": 735,
     "skills/quo-execute/references/post-completion-prompt.md": 1644,

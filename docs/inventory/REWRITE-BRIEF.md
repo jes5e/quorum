@@ -232,7 +232,14 @@ the commit:
 - the post-completion review runs per Epic, with the shared prompt's `<scope-notes>` parameter carrying the interaction checks,
   the tracker entries above the manifest's `**Compromises reviewed:**`, and the `Full test` result, which the Epic boundary runs once;
 - deferral hygiene fires per Epic and before any other run exit; the context guard runs before each Task and Epic review;
-- the per-Task PM invokes no review skill and verifies the Task's `## Sites` (b.eid item 4).
+- the per-Task PM invokes no review skill and verifies the Task's `## Sites` (b.eid item 4);
+- a run resuming a Bee with an `in_progress` Epic keeps the earlier session's `**Compromise tracker:**` path and
+  `**Compromises reviewed:**` count, because the rebuild's own mid-Epic stops (the Task-boundary guard, Mode 1, abort) would
+  otherwise hide that Epic's compromises from its review (a state carrier; cold round 1);
+- the Test Writer drops files it edits itself from its movement fingerprint set, because breakdowns put unit tests inside
+  source files (b.v9c Tasks 2, 4, 5) and its own edits would read as movement (cold round 1);
+- a run already on `bee/<bee-id>` in the main repo skips the isolation gate, because Mode 1 makes resuming onto that branch
+  routine and the gate would offer to create it again.
 
 The operator approved deletion-only edits to `/quo-fix-issue` §7 (the part-(g) divergence row, the execute design-source
 cell, "a Task finding", the PM in-flight sentence) and §8 (the PM second-order clause). A cold review must not report any
