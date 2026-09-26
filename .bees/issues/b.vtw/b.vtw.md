@@ -279,4 +279,9 @@ The constraints in that section still hold, read with "execute track" meaning b.
 - The last bullet ("Whichever track finishes second rebases onto main…") no longer applies. Each item works on its own branch in its own worktree and merges before the next one starts.
 - The skills and role files are installed as live symlinks into the main checkout, so a merge to main deploys to every session at once.
 **Correction (operator, 2026-09-24):** each item works on its own branch in the main checkout, not in a separate worktree directory, so its session keeps the repo's memory and session history. The checked-out branch is live, because the skills are symlinks into that checkout. That's acceptable because the skill being rewritten isn't in use elsewhere, and it lets each item be validated on its branch before merging.
+## b.62m validation run (live_edit, 2026-09-25 to 26): b.37n's validation, and the serial order's next step
+
+`/quo-fix-issue b.62m` on the b.37n branch: 40 dispatches, 5.16M subagent tokens, about 16h43m of wall clock (much of it waiting at gates). Two Analyst passes, both `recommend-with-refinements`; the second was a revision a Test Writer design gap triggered. Observed working as specified: the resume bound fired at 601k (the Test Writer's round 6 went fresh); the test lane closed `close — enumerated`; deferral hygiene filed two Issues and encoded one, each committed through the helper; post-completion fixes grouped by role with resumed implementers and one commit; every gate manifest-fronted with verbatim labels. The run surfaced b.kam (a delta revision overwrites the proposal file).
+
+**Serial order update:** b.kam runs before b.87t, so the execute rebuild copies the corrected Analyst revision path (operator decision 2026-09-26).
 

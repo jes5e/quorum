@@ -7,7 +7,7 @@ down_dependencies:
 parent: null
 reference_materials: null
 created_at: '2026-09-23T11:23:18.151406'
-status: open
+status: done
 schema_version: '0.1'
 guid: 37nfhte9vnaybxgmmgkwp21ptauricd7
 ---
@@ -51,4 +51,14 @@ After the docs-only (text-class) validation run, which dispatches no PM and so d
 ## Third in the serial order (operator decision 2026-09-24)
 
 This ticket now runs after b.pcc and before b.87t; the order is on b.vtw's `## Serial order` note. It supersedes the Sequencing bullet of `## Order and one added item` ("starts the execute track now"). It is still validated on a small-code `/quo-fix-issue` run before b.87t copies its PM relay into execute.
+## Closed (2026-09-26)
 
+Merged to main by fast-forward, head `29ce682` (commits `d0ff356`, `29ce682`; not pushed).
+
+**What landed.** `/quo-fix-issue` §5 relays the approved directive to the PM (without the Engineer's design context) and adds the PM to the `## Blast radius` and `## Design decisions for writers` recipients. `agents/pm.md` gains `## Approved design directive`, keyed on the heading's presence rather than on the mode: trace the diff against the directive, which wins where it and the ticket body conflict; the body stays the problem statement; scope creep is work outside the directive. Path A and `/quo-breakdown-epic`'s PM prompt are untouched. `agents/analyst.md:65` names the PM as a fix-issue recipient.
+
+**Added item.** Three bees query recipes retired for orientation: fix-issue's run-start open-Issue query and tick example, and pm.md Path B's plans-hive query. The last also asked the query for `report: body`, which bees rejects ("use show_ticket to retrieve it"); the body now comes from `bees show-ticket`.
+
+**Validation.** live_edit Issue b.62m (unary-RPC error codes), whose substantive body the approved directive overruled (12 sites, not ~30; an unrequested retry mechanism; three policy answers). The PM received the directive on all three passes, named it as the source that "takes precedence", traced "against the directive", and recorded the departures as approved. No PM finding needed a premise check (b.yvu's cascade started from one). PM cost: 470k tokens, 9% of a 5.16M run, for one real finding (a missing test) and three nits.
+
+**Found, filed separately:** a revised Analyst design returned as a delta overwrites the proposal file, so the full directive is lost and relays fall back to a path and a summary Filed as b.kam, which runs before b.87t.

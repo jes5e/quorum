@@ -4,6 +4,7 @@ type: bee
 title: Rebuild /quo-execute as a plan-walker whose unit is the Task, each Task run through fix-issue's Phase A/B/C loop; per-Epic boundary review replaces the Bee-level lanes and final sweep
 up_dependencies:
 - b.37n
+- b.kam
 parent: null
 reference_materials: null
 created_at: '2026-09-23T11:35:59.951270'
@@ -120,4 +121,13 @@ b.pcc merged at `a0cd8c2`. Design against b.v9c Epic 1's real output in live_edi
 **Validation observation:** b.v9c Task 1 is a research-and-record Task; its `engineer` Subtask writes findings into the PRD ticket and a `docs-internal` report. Decide whether the Engineer takes that work.
 
 **Context guard:** not exercised in b.pcc's run. A gauge producer publishes in the container, but whether the guard reads it is unconfirmed; this rebuild's guard at Task boundaries is the first chance to see it.
+## Inputs from b.37n (2026-09-26)
 
+b.37n merged at `29ce682` and was validated on live_edit Issue b.62m. What the rebuild's Phase C PM mirrors:
+- Relay `## Authoritative design directive (from the Analyst gate)` to the PM with its exact heading, verbatim and inline, alongside `## Blast radius` and `## Design decisions for writers`. `agents/pm.md`'s new section engages only on that heading; `## Blast radius` alone does not trigger it. In b.62m the orchestrator relayed it by path after a revision and once merged the three headings; keep them separate and inline.
+- When mirroring, drop `agents/analyst.md:65`'s "in `/quo-fix-issue`" qualifier on the PM recipient.
+- Check execute's own bees query recipes for `report:` fields bees rejects (it refuses `body`), not only for the multi-line `
+` shape.
+- **Data for `## Open` (per-Task PM vs once per Epic):** in b.62m the fix-mode PM cost 470k tokens across three passes (9% of a 5.16M run) for one real finding (a missing behavioural test) and three wording nits, one of which the Test Reviewer also found.
+
+**Order:** b.kam (a revised Analyst design must be returned whole, not as a delta) now runs before this ticket, so the rebuild copies the corrected revision path.
