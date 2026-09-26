@@ -9,7 +9,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The guard's 
 - Neither the read nor a boundary stop reclaims any context. The orchestrator has no model-invocable lever to clear or compact its own context; the harness owns compaction, and the only reclamation lever is a fresh session.
 - The guard's job is narrow: stop the run at a clean unit boundary, where every load-bearing fact is already on disk, before the harness would auto-compact partway through the next unit.
 
-## Why it runs only on the continuing in-session path
+## Why it runs on the continuing in-session path
 
 - On a run that ends in this session a fresh-session recommendation is noise. `/quo-execute` also runs the guard before each Epic-boundary review, since that review and its fixes can run as long as a Task.
 - In `/quo-fix-issue` a single-unit run crosses no boundary and never reaches the guard.
