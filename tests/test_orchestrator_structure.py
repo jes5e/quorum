@@ -188,7 +188,7 @@ def test_fix_issue_checkpoint_disclaims_context_reclamation():
 PHASE_A_LOOP = (
     "On its return dispatch the Code Reviewer alone against the diff, unless the return carries `## Design question`. "
     "Loop Engineer → Code Reviewer until the Code Reviewer emits `No code issues found.` with an empty numbered list, "
-    "or `No code files to review` on a diff with no code, or until Section 7's hold set releases the lane: an Engineer pass whose `Kinds changed` names only `comments` or "
+    "or `No code files to review`, or until Section 7's hold set releases the lane: an Engineer pass whose `Kinds changed` names only `comments` or "
     "`contract-text` closes Phase A after the single confirming read that rule owes, when it owes one. A non-empty "
     "`### Second-order effects` narrative beside a clean list does not hold Phase A open; carry it to the summary."
 )
