@@ -7,7 +7,7 @@ down_dependencies:
 parent: null
 reference_materials: null
 created_at: '2026-09-27T14:04:44.627938'
-status: open
+status: done
 schema_version: '0.1'
 guid: rqcd6hjknfppeheiywqb8ckmzaanq48n
 ---
@@ -28,3 +28,16 @@ A small batch of fixes to the text `/quo-fix-issue` and `/quo-execute` share (Ti
 ## Process
 
 Hand edits per CLAUDE.md `## Working on the orchestrator skills`, one cold review, the exit rule. Items 1, 2, 4, and 5 are mirrored edits (both bodies byte-identical where Tier 1). No dedicated validation run: the next `/quo-fix-issue` or `/quo-execute` run is the check, and a premise check in it confirms item 1.
+## Closed (2026-09-27)
+
+Landed on main by fast-forward (`1ad0e47`, `2b3390d`, `fb17c37`, `255328d`; head `255328d`). Hand edits; two cold `/quo-engineer-review` rounds: round 1 raised 2 suggestions and 2 nits, all applied (one a behavior finding, which earned round 2); round 2 was clean.
+- (1) The premise-check label is the finding's premise, never the design's: `premise-false` means only "the finding is wrong". The Analyst labels each finding of a dispatch, in the prompt's order.
+- (2) §3 re-reads the skill's own `SKILL.md` after a compaction, once per compaction.
+- (3) The resume bound is 675,000 (operator decision 2026-09-27; evidence in `rationale.md`).
+- (4) Phase A also closes on `No code files to review`, now pinned emitter-to-reader by a contract-surface test.
+- (5) Phase C's redundant PM sentence is deleted.
+- (6) The review skills' trailer says "the summary".
+
+Both bodies got 5 words shorter. No dedicated validation run: the next real `/quo-fix-issue` or `/quo-execute` run is the check, and a premise check in it confirms item 1. Watch item, not a rule: the per-finding labels match findings by position only, so a return that merges or skips a finding would misalign them silently; no run has shown it.
+
+Follow-ups: `docs/prd.md`'s Batch A entry still said execute mode had no Analyst; a "Superseded in part" note now corrects it. A premise-check return that carries a design change is b.h1t item 5.

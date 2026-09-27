@@ -577,6 +577,8 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 
 **Out of scope.** The pipeline classes, confirming-pass checklist, relay by path, required-statements enumeration, cost ledger, and `--unattended` mode (Batch B of Issue b.vtw); the depth vocabulary and the routing table's rows.
 
+**Superseded in part (b.vtw Batch B2a; b.87t).** `/quo-execute` now dispatches the Analyst on escalation, so the execute-mode clauses above no longer hold: a finding that contradicts the approved design goes to the Analyst's premise check in both skills, and two consecutive `earned` code-review rounds send the chain to the Analyst in both; there is no operator continue-or-stop gate. A `premise-false` label means the finding is wrong (b.rqc).
+
 **Superseded in part (2026-09-17).** The confirming-pass checklist and the cost ledger named out of scope above landed in Batch B1 (next feature); the pipeline classes, relay by path, required statements, and `--unattended` remain Batch B2.
 
 ### Feature: Proportional review, Batch B1 — warm implementers, confirming passes, a late-chain stop, and a native cost ledger

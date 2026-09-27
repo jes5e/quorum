@@ -26,4 +26,7 @@ Decide after the operator's big feature, using its run. Evidence: `/tmp/.quorum/
 ## Item 4 (2026-09-27): trim the per-Task PM to its cross-Task role?
 
 The b.v9c PM record (`~/.quorum-scratch/pm-findings-b.v9c.md`; b.87t's correction note) shows the per-Task PM's distinctive value was cross-Task: constraints written into later Tasks' tickets before they ran. Of 15 PM findings in Tasks 1–5, 5 duplicated another reviewer, 6 partly overlapped, and 4 were PM-only (2 substantive). On the big feature, record the PM's findings verbatim again and decide whether its per-Task scope can shrink to cross-Task and spec-traceability checks the dedicated reviewers don't make.
+## Item 5 (2026-09-27): a premise-check return that carries a design change
+
+In b.v9c Task 2 the Analyst's premise-check return held a revision-shaped body (Recommended approach, Blast radius, Decisions for writers, Deferred refinements), and the orchestrator appended it to the Task ticket under `## Design revision (Analyst)`. The premise-check contract has no place for a design change a `premise-holds` finding needs, beyond `### Blast radius` entries. One occurrence; the agent recovered unaided. Decide against the big feature's run: either the contract says a `premise-holds` finding that needs a design change goes through the Analyst gate as a revision, or nothing.
 
