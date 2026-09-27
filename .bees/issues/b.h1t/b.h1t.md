@@ -2,10 +2,11 @@
 id: b.h1t
 type: bee
 title: '/quo-execute follow-ups from the b.v9c run: deferrals aimed at a later Task, target-repo obligations, committing the Epic done flip'
-status: open
-created_at: '2026-09-27T14:04:49.078507'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-27T14:04:49.078507'
+status: open
+schema_version: '0.1'
 guid: h1tof2fim5dae25jzrn3kygn2ppy1vee
 ---
 
@@ -22,4 +23,7 @@ Three `/quo-execute` gaps from the b.87t validation run (live_edit b.v9c Epic 1)
 ## Sequencing
 
 Decide after the operator's big feature, using its run. Evidence: `/tmp/.quorum/b87t-checkpoint-5.md` triage items 1, 3, and 5.
+## Item 4 (2026-09-27): trim the per-Task PM to its cross-Task role?
+
+The b.v9c PM record (`~/.quorum-scratch/pm-findings-b.v9c.md`; b.87t's correction note) shows the per-Task PM's distinctive value was cross-Task: constraints written into later Tasks' tickets before they ran. Of 15 PM findings in Tasks 1–5, 5 duplicated another reviewer, 6 partly overlapped, and 4 were PM-only (2 substantive). On the big feature, record the PM's findings verbatim again and decide whether its per-Task scope can shrink to cross-Task and spec-traceability checks the dedicated reviewers don't make.
 
