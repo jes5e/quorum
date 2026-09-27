@@ -245,6 +245,13 @@ The operator approved deletion-only edits to `/quo-fix-issue` §7 (the part-(g) 
 cell, "a Task finding", the PM in-flight sentence) and §8 (the PM second-order clause). A cold review must not report any
 of these as an A2, D6, D12, or §1 violation.
 
+*Amended 2026-09-27 (Issue `b.rqc`, the mirrored batch from b.v9c):* rules this batch adds or changes, each with its reason in the commit:
+- the premise-check label is defined as the finding's premise (`premise-holds`: the finding is right; `premise-false`: the approved design
+  stands), and the Analyst labels each finding of a premise-check dispatch in the prompt's order, because both b.v9c premise checks used the
+  inverse reading and the bodies send every qualifying finding in one dispatch (a contract gap between two agents);
+- after a compaction, §3 re-reads the skill's own `SKILL.md`, because only about the first 150 lines are re-injected (a recovery goal);
+- the resume bound is 675,000 (operator decision); Phase A also closes on `/quo-engineer-review`'s `No code files to review`.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 
