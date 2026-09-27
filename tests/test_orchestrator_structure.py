@@ -727,6 +727,7 @@ CONTRACT_SURFACES = [
     ("<scoped-marker-resolver-path>", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM]),
     ("## Doc divergence noted", [QUO_FILE_ISSUE], [QUO_FIX_ISSUE]),
     ("No code issues found.", [QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE]),
+    ("No code files to review", [QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("No invariant added, removed, or weakened.", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("None — the recommendation leaves no policy question open.", [AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
 ]
