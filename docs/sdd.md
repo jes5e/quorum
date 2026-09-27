@@ -1024,3 +1024,16 @@ The manifest lead-statement test still covers the body. `tests/test_prose_size.p
 - README, CONTRIBUTING, the doc-writing guide, CLAUDE.md, this file, the PRD, and the brief's A2 amendment.
 
 Validation: executing smoke Bee b.v9c.
+
+### Feature: Mirrored fix-issue/execute fixes from the b.v9c run
+
+**Architecture.** Hand edits (b.rqc) to text both orchestrators share, from b.87t's rebuild and its b.v9c validation run.
+
+- **The premise-check label says whose premise.** In b.v9c both premise checks returned `premise-false` meaning "the design's premise is false; the finding is right", while both bodies read it as "ignore the finding". The orchestrator routed correctly only from the reason line. `agents/analyst.md` `## Premise-check dispatch` and §7 now define the premise as the finding's: `premise-holds` means the finding is right, `premise-false` means it is wrong and the approved design stands. The labels are unchanged, since every consumer already read them that way. Because the bodies send every qualifying finding of a round in one dispatch, the return now labels each finding, in the prompt's order, instead of carrying one first line; §4's premise rung says the same.
+- **§3 re-reads the skill itself after a compaction.** Only about the first 150 lines of a body are re-injected, so §3's re-read list gains this skill's `SKILL.md`; the gates and routing below that line were otherwise unseen after a compaction.
+- **Resume bound 600,000 → 675,000** (operator decision, 2026-09-27). Across seven ledgers (332 rows), the largest resume increment was 214,527; a Test Writer resumed past the old bound to 857,913 without failing. The bodies drop "a first setting, to be tuned from the ledger", and `references/rationale.md` carries the evidence.
+- **Phase A's clean string.** `/quo-engineer-review` answers `No code files to review` on a diff with no code (b.v9c Task 1); either that or `No code issues found.` closes Phase A.
+- **Deleted:** Phase C's sentence that the PM's dispatch prompt states it invokes no review skill, since `agents/pm.md` has no `Skill` tool.
+- **The three review skills' trailer** carries ignored items into "the summary" rather than a "final/Bee-level summary", which no longer exists.
+
+Validation: none dedicated; the next `/quo-fix-issue` or `/quo-execute` run is the check, and a premise check in it confirms the label.
