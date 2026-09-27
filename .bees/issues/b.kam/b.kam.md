@@ -42,3 +42,7 @@ Landed in `f01bf79`, merged to main by fast-forward (not pushed).
 **Review:** the overseer read the diff and traced its readers, and waived the cold round (one contract sentence in a role file, no body change).
 
 **Validation:** no dedicated run, because a revision gate can't be triggered on demand. The check is the next real run that reaches a revision gate after an Approve (the execute rebuild's first such run can serve). Confirm: the Analyst's revised return is whole; the `**Proposal:**` file holds the complete approved design after the gate; later relays carry `## Authoritative design directive (from the Analyst gate)`, `## Blast radius`, and `## Design decisions for writers` verbatim, inline, and under separate headings.
+## Check still open (2026-09-27)
+
+The b.87t validation run (live_edit b.v9c Epic 1) reached no Analyst revision gate: both Analyst returns were premise checks. The three checks in the close-out note wait for the next real run with a revision gate after an Approve.
+

@@ -234,4 +234,7 @@ The minimal `/quo-breakdown-epic` and `/quo-plan` rewrites (b.pcc, b.7ib) now ru
 - **The other item-6 sites stand:** `quo-plan-from-specs`, `quo-file-issue`, `quo-status`, and `hive_commit.py`.
 
 Position otherwise unchanged: after the big feature, or before it if that repo's SDD is already large.
+## Note from b.87t (2026-09-27)
+
+The 2026-09-19 execute-PM gap is closed by b.87t (`9cdb07e`): each Task's dedicated Code Reviewer is the code read and receives `## Design decisions for writers`, and the per-Task PM receives it too. The rest of this ticket's scope is unchanged.
 

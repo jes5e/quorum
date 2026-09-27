@@ -284,4 +284,12 @@ The constraints in that section still hold, read with "execute track" meaning b.
 `/quo-fix-issue b.62m` on the b.37n branch: 40 dispatches, 5.16M subagent tokens, about 16h43m of wall clock (much of it waiting at gates). Two Analyst passes, both `recommend-with-refinements`; the second was a revision a Test Writer design gap triggered. Observed working as specified: the resume bound fired at 601k (the Test Writer's round 6 went fresh); the test lane closed `close — enumerated`; deferral hygiene filed two Issues and encoded one, each committed through the helper; post-completion fixes grouped by role with resumed implementers and one commit; every gate manifest-fronted with verbatim labels. The run surfaced b.kam (a delta revision overwrites the proposal file).
 
 **Serial order update:** b.kam runs before b.87t, so the execute rebuild copies the corrected Analyst revision path (operator decision 2026-09-26).
+## Serial order after b.87t (operator decisions 2026-09-26 and 2026-09-27)
+
+b.87t merged at `9cdb07e` and was validated on b.v9c Epic 1. The order from here:
+1. **b.rqc**, the mirrored fix-issue/execute batch: the premise-check label (observed 2/2, silent), re-reading the skill after a compaction, the resume bound at 675,000 (operator), and two text fixes.
+2. **b.d7t**, delegated gates: a mechanics spike first, with no skill edits, then build only what passed. Before the big feature, where gate volume is highest.
+3. The operator's big feature, then b.sb7 (or b.sb7 first if that repo already carries a large SDD).
+
+Decided after the big feature: b.h1t (execute follow-ups), b.i15 (breakdown addresses work to a role), b.hc5 (a shared per-unit loop reference). Independent, any time: b.kiw (quo-status). b.kam's check waits for a real revision gate.
 

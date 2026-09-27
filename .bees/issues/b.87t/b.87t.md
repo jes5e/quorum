@@ -8,7 +8,7 @@ up_dependencies:
 parent: null
 reference_materials: null
 created_at: '2026-09-23T11:35:59.951270'
-status: open
+status: done
 schema_version: '0.1'
 guid: 87tyy7m2wanqhcxu281y6dugrrzbt5tz
 ---
@@ -133,4 +133,10 @@ b.37n merged at `29ce682` and was validated on live_edit Issue b.62m. What the r
 ## Input from b.kam (2026-09-26)
 
 b.kam landed in `f01bf79`: the Analyst returns a revision whole, not as a delta. Execute's Revise path ("the prior revision in full") and its ticket-recorded revision need no change; copy them as they stand. The rebuild's first run that reaches a revision gate is also b.kam's check (see its close-out note for the three things to confirm).
+## Closed (2026-09-27)
 
+Merged to main by fast-forward, head `9cdb07e` (commits `3322eab`..`9cdb07e`). `/quo-execute` now walks the plan one Task at a time, each Task through fix-issue's Phase A/B/C loop (one Engineer per Task with its `engineer` Subtasks, a dedicated Code Reviewer, then the Test and Doc Writers in parallel, then their reviewers and a traceability-only PM), with one Epic-boundary review replacing the Bee-level lanes and the final sweep. 407 → 372 lines, 13,309 → 11,934 words; `agents/pm.md` 6,891 → 5,493. Operator decisions: the deletion-only fix-issue §7/§8 edits; PM per Task; Mode 1 ends the run at each Epic with a resume command; no Epic-pick question; the ignored-feedback and sign-off questions fold into deferral hygiene and the Bee-done gate.
+
+**Validation:** live_edit smoke Bee b.v9c, Epic 1 (6 Tasks) run to done across two sessions: a guard stop at 78% before Task 6, then a fresh-session resume. 105 dispatches, 11.36M subagent tokens, about 14h wall clock. First real use of the Operator-action gate (Task 1), the guard reading the container gauge, the isolation resume clause, the tracker carry-forward (both challenged compromises came from session 1), and the per-Epic Full test (4,925 passed). The resume bound fired once (Test Writer, 633,530); the largest resume increment was 166k. PM stays per Task: at least five PM-led fixes in one Epic, one of them the Epic's largest design correction (uniqueness unverified without the PM reports; re-check on the big feature). Evidence and triage: `/tmp/.quorum/b87t-checkpoint-5.md`.
+
+Follow-ups are filed separately: the post-merge mirrored batch (premise-check label, post-compaction self re-read, resume bound 675,000, two text fixes), the execute follow-ups to decide after the big feature, the breakdown record-addressing note, and the quo-status error.

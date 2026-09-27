@@ -5,7 +5,7 @@ title: 'Per-Task site lists (landed in b.pcc as ## Sites) and the execute PM ver
 parent: null
 reference_materials: null
 created_at: '2026-09-04T03:04:46.237777'
-status: open
+status: done
 schema_version: '0.1'
 guid: eidko77f6x63deu7wmqza26pqwnxhbj6
 ---
@@ -68,3 +68,6 @@ b.pcc and b.87t are the natural owners.
 ## Item 3 landed in b.pcc (2026-09-25)
 
 `/quo-breakdown-epic` (merged at `a0cd8c2`) lists, under a Task's `## Sites`, each SDD `### Mechanism lifecycle` or `### Policy decisions this design implies` entry the Task implements, citing the SDD child's ID and the entry. Observed on all six Tasks of b.v9c Epic 1 in live_edit. Item 4, the execute PM verifying against `## Sites`, stays open for b.87t.
+## Closed (2026-09-27)
+
+Item 4 landed with b.87t (`9cdb07e`): `agents/pm.md` verifies a Task's diff against its `## Sites`. A listed site the diff leaves unaddressed is a finding; a site the diff needed that the list omits is a breakdown gap, recorded as a `defer-to-new-Issue` item rather than a fix round. With item 3 (b.pcc) and items 1–2 (b.7ib), every item is done.

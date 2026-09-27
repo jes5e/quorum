@@ -5,7 +5,7 @@ title: '/quo-execute ordering gaps after b.pdq: PM in-flight review, test-Subtas
 parent: null
 reference_materials: null
 created_at: '2026-09-04T01:58:24.486826'
-status: open
+status: done
 schema_version: '0.1'
 guid: 5ux8y5jogpfghfbq882dnw54wf13azhx
 ---
@@ -58,4 +58,6 @@ Sub-finding 1 was recorded by the Analyst at b.pdq's design gate as a genuine op
 ## Superseded by b.87t (2026-09-23)
 
 b.87t rebuilds `/quo-execute` around one Engineer per Task, run through fix-issue's Phase A → B → C ordering, and removes the per-Subtask forward fan-out both sub-findings come from: the per-Task code review becomes a dedicated Code Reviewer that closes before any writer runs, and the Test Writer's fingerprint set is the Task's Phase A union taken after Phase A closes. Do not work this ticket; it closes as moot when b.87t lands. It stays open until then because the gaps are real in the shipped body.
+## Closed as moot (2026-09-27)
 
+Both gaps came from `/quo-execute`'s per-Subtask fan-out, which b.87t removed (merged at `9cdb07e`): each Task's dedicated Code Reviewer closes Phase A before any writer runs, and the Test Writer's fingerprint set is the Task's Phase A union, taken after Phase A closes.
