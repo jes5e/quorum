@@ -27,7 +27,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The tracker'
 ## Trigger detail
 
 - **Trigger A** fires from either gate's `Defer to follow-up Issue` branch. Append the entry immediately after `/quo-file-issue` returns the new Issue ID and before the soft-fix or narrowing dispatch. Write `Fix paths surfaced by reviewer: none` when the reviewer enumerated no path at all, which is reachable at gate (d) because its `Defer` is offered whatever the path count. "None did" applies to the single-path case at gate (c) and to every deferral at gate (d), whose `Defer` ships nothing against the finding.
-- **Trigger B** fires from gate (c)'s `Accept the limitation` branch. Append immediately after `AskUserQuestion` returns and before continuing without a fix. It is unreachable for a `blocker` because the gate never offers a blocker that choice.
+- **Trigger B** fires from gate (c)'s `Accept the limitation` branch. Append immediately after the gate's answer arrives and before continuing without a fix. It is unreachable for a `blocker` because the gate never offers a blocker that choice.
 - **Trigger C** has no gate; the write is wired into the row-6 dispatch itself, in the same logical block as the dispatch. A finding whose only fix path is `trivial-tweak` appends nothing; a pick among two or more paths always appends, even when every path is shallow. Row 6 is the only firing site; a user-picked path at gate (c) or (d) is not an ungated route and writes no Trigger C entry.
 - **Trigger D** is the single owner of every post-completion-override write. It covers both recovery gates, and its choice labels are byte-identical to theirs so the branches line up. The recovery gates fire the write; they do not author it.
 

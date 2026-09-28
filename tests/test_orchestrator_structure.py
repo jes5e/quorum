@@ -41,6 +41,7 @@ from conftest import (
     QUO_TEST_WRITER_REVIEW,
     REF_COMPROMISE_TRACKER,
     REF_CONTEXT_GUARD,
+    REF_DELEGATED_GATES,
     REF_GITHUB_CLOSE,
     REF_POST_COMPLETION_PROMPT,
     REF_RATIONALE,
@@ -57,7 +58,7 @@ FIX = read(QUO_FIX_ISSUE)
 EXE = read(QUO_EXECUTE)
 BODIES = {"quo-fix-issue": FIX, "quo-execute": EXE}
 
-SHARED_REFS = [REF_ROUTING, REF_POST_COMPLETION_PROMPT, REF_COMPROMISE_TRACKER, REF_CONTEXT_GUARD, REF_RATIONALE]
+SHARED_REFS = [REF_ROUTING, REF_POST_COMPLETION_PROMPT, REF_COMPROMISE_TRACKER, REF_CONTEXT_GUARD, REF_RATIONALE, REF_DELEGATED_GATES]
 FIX_ONLY_REFS = [REF_URL_RESOLUTION, REF_GITHUB_CLOSE]
 
 LINE_HARD_CAP = 550
@@ -305,6 +306,8 @@ SHARED_ANCHORS = [
     "**Context guard:**",
     "**Unit scope:**",
     "**Isolation strategy:**",
+    "**Decider:**",
+    "`--decider`",
     "### Run start",
     "### Tick",
     "### Phase ladder",
@@ -590,6 +593,21 @@ REFERENCE_ANCHORS = {
         "`stop-threshold`",
         "`write-opt-out`",
         "`/quo-setup --configure-gauge-producer`",
+    ],
+    REF_DELEGATED_GATES: [
+        "`**Decider:**`",
+        "gate-<short-suffix>.md",
+        "`## Question`",
+        "`## Choices`",
+        "`## Context`",
+        "`## Answer`",
+        "`free text`",
+        "delegated to <decider>: <gate file path>",
+        "quorum gate: <question, verbatim>",
+        "Gate file: <path>",
+        "`from-name`",
+        "`operator (fallback)`",
+        "`notify_when_idle: true`",
     ],
     REF_URL_RESOLUTION: [
         "`Filing URL(s) as Issue(s) first, then fixing.`",

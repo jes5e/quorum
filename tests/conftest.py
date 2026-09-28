@@ -55,6 +55,7 @@ REF_POST_COMPLETION_PROMPT = "skills/quo-execute/references/post-completion-prom
 REF_COMPROMISE_TRACKER = "skills/quo-execute/references/compromise-tracker.md"
 REF_CONTEXT_GUARD = "skills/quo-execute/references/context-guard.md"
 REF_RATIONALE = "skills/quo-execute/references/rationale.md"
+REF_DELEGATED_GATES = "skills/quo-execute/references/delegated-gates.md"
 REF_URL_RESOLUTION = "skills/quo-fix-issue/references/url-resolution.md"
 REF_GITHUB_CLOSE = "skills/quo-fix-issue/references/github-close.md"
 

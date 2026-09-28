@@ -1,7 +1,7 @@
 ---
 name: quo-breakdown-epic
 description: Break down a Plan Bee's drafted Epics into Tasks and role-tagged Subtasks, drafted against the spec, checked by a cold PM traceability review, then created as tickets. Pass an Epic ID or a Bee ID, or nothing to pick a Plan Bee with drafted Epics.
-argument-hint: "[<epic-id> | <bee-id>]"
+argument-hint: "[<epic-id> | <bee-id>] [--decider <session-name>]"
 ---
 
 Turn each drafted Epic of a Plan Bee into Tasks and Subtasks that `/quo-execute` can run: draft them against the spec, have a cold PM check the draft covers the spec, then create the tickets and commit them.
@@ -32,6 +32,7 @@ The manifest is a small markdown file holding the handful of run-scoped values t
 # Run state — quo-breakdown-epic @ <bee-id>
 
 **Run mode:** <Stop after each Epic | Work through all Epics | one Epic | pending>
+**Decider:** <session name | none>
 **Draft:** <epic-id> at <draft-path>, or none
 **Broken down:** <Epic N = <epic-id>, …, or none>
 
@@ -45,11 +46,11 @@ The manifest is a small markdown file holding the handful of run-scoped values t
 none
 ```
 
-The run mode is a user choice nothing else records, and **Broken down** lets the run-end report tell this run's Epics from earlier ones. Conversation memory is never a substitute for the manifest, the draft, and bees, because the harness can drop old tool results without a marker. After a compaction, re-read them and reconcile with the working tree before acting: an Epic that is `ready` with Tasks is done, and the recorded **Draft** is the Epic in progress.
+The run mode is a user choice nothing else records, and **Broken down** lets the run-end report tell this run's Epics from earlier ones. **Decider** is the session the run's questions go to (Section 3), from the `--decider` argument, or `none`; when the argument carries `--decider`, check it before the first gate: with no session name after it, or a name no live session answers to in `ListAgents`, print every live session and stop, asking the user to re-run naming the decider. Conversation memory is never a substitute for the manifest, the draft, and bees, because the harness can drop old tool results without a marker. After a compaction, re-read them, and the delegated-gates reference when **Decider** names a session, and reconcile with the working tree before acting: an Epic that is `ready` with Tasks is done, and the recorded **Draft** is the Epic in progress.
 
 ## 3. Gates
 
-A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, and choices, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked, which stronger wording has not prevented. Set `## Open gate` back to `none` once the answer is consumed. Keep every choice label to five words or fewer.
+A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, and choices, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked, which stronger wording has not prevented. Set `## Open gate` back to `none` once the answer is consumed. When **Decider** names a session, every question the run would put to the user after the manifest write, a gate or a prose question, is delegated: the same `Write`, then the send `<this skill's base directory>/../quo-execute/references/delegated-gates.md` defines in place of `AskUserQuestion`. Keep every choice label to five words or fewer.
 
 Gates fire only where the user holds the decision:
 

@@ -700,3 +700,20 @@ After each Epic, the run executes the full test suite and one fresh review of th
 - Validation: executing smoke Bee b.v9c in live_edit.
 
 **Out of scope.** Running independent Tasks in parallel worktrees, sized from the smoke run's ledger in a follow-up.
+
+### Feature: A run sends its questions to a decider session the operator names
+
+**What.** An operator who keeps a second Claude Code session to advise on each question can launch `/quo-execute`, `/quo-fix-issue`, `/quo-breakdown-epic`, or `/quo-plan` with `--decider "<session name>"`. After the launch questions, every question the run would ask the operator goes to that session instead, with the context it needs as files on disk, and the session's reply is taken as the answer. The operator can still answer any question directly, and a run whose decider is gone asks the operator.
+
+**Why.** The operator answered almost every question by pasting the decider session's reply, so each question cost a human relay between two agents. In the b.y3m run a question also reached the operator as a summary that named a design proposal's rules inconsistently.
+
+**Acceptance criteria.**
+
+- `--decider` with no name, or a name no live session answers to, stops the run at launch listing the live sessions.
+- The launch questions (session effort, which plan or Issue, the branch choice, `/quo-plan`'s resume offer, fix-issue's URL filings) still ask the operator; every later question, including plain-text ones and those of an inline `/quo-file-issue`, goes to the decider.
+- Each delegated question leaves a gate file in the scratch directory holding what was sent and the answer with its source.
+- Text the operator types answers a pending question; the first answer wins.
+- A failed send, or a decider that exits while a question is open, falls back to asking the operator.
+- Validation: a real run in a code repo with the operator's decider session.
+
+**Out of scope.** A worker running as the decider's subagent (the spike showed it losing lanes on a decider restart); `/quo-plan-from-specs`, `/quo-setup`, and the solo spec writers.

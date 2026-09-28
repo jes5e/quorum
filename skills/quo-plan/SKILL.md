@@ -1,7 +1,7 @@
 ---
 name: quo-plan
 description: Interactive feature planning — agree the scope, author the PRD and SDD as Spec Bee children (no project-doc mutation), review the specs and the Epic decomposition, and create a Plan Bee with Epics ready for /quo-breakdown-epic and /quo-execute.
-argument-hint: "[<description>]"
+argument-hint: "[<description>] [--decider <session-name>]"
 ---
 
 Turn an idea into a reviewed plan: a Spec Bee holding the PRD and SDD, and a Plan Bee whose Epics `/quo-breakdown-epic` can break down. Planning never writes the project's own docs; the post-implementation Doc Writer does that once the feature ships.
@@ -24,12 +24,13 @@ The manifest holds what the run needs and bees does not: its phase, what it has 
 
 **Path.** `/tmp/.quorum/run-state-quo-plan-<repo-dir-name>.md` (`%TEMP%\.quorum\run-state-quo-plan-<repo-dir-name>.md` on Windows), where `<repo-dir-name>` is the last path segment of `git rev-parse --show-toplevel`. The name is deterministic, with no suffix or timestamp, because after a compaction you must recompute the path rather than remember it. Accepted collisions: two `/quo-plan` runs in one repo at the same time, and two repos whose directories share a name.
 
-**Lifecycle.** At run start, read the manifest. When it is absent or reads `**Phase:** complete`, write a fresh one. Otherwise an earlier run stopped partway: fire the resume gate (Section 3), because only the user knows whether that run is abandoned. Rewrite the manifest whenever a value changes, including `**Phase:**` as each section starts, and record each ticket ID as its create returns.
+**Lifecycle.** When the argument carries `--decider`, check it first: with no session name after it, or a name no live session answers to in `ListAgents`, print every live session and stop, asking the user to re-run naming the decider. At run start, read the manifest. When it is absent or reads `**Phase:** complete`, write a fresh one. Otherwise an earlier run stopped partway: fire the resume gate (Section 3), because only the user knows whether that run is abandoned. Rewrite the manifest whenever a value changes, including `**Phase:**` as each section starts, and record each ticket ID as its create returns. `**Decider:**` is the session the run's questions go to (Section 3), set from this invocation's `--decider` on a fresh manifest and on **Resume**, or `none`.
 
 ```markdown
 # Run state — quo-plan @ <repo-dir-name>
 
 **Phase:** <scope | specs | draft | review | approved | created | handoff | complete>
+**Decider:** <session name | none>
 **Feature:** <title, or pending>
 **Scope file:** <path, or pending> · **Plan draft:** <path, or pending>
 **Spec Bee:** <id, or pending> · **PRD:** <id, or pending> · **SDD:** <id, or pending>
@@ -45,11 +46,11 @@ The manifest holds what the run needs and bees does not: its phase, what it has 
 none
 ```
 
-After a compaction or a crash, re-read the manifest and reconcile it with bees before acting.
+After a compaction or a crash, re-read the manifest, and the delegated-gates reference when `**Decider:**` names a session, and reconcile the manifest with bees before acting.
 
 ## 3. Gates
 
-A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, and choices, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Set `## Open gate` back to `none` once the answer is consumed.
+A gate is the manifest `Write` that fills `## Open gate` with the gate's name, question, and choices, then `AskUserQuestion` in the same turn. The tool call in the same turn is what keeps a gate from being described and left unasked: that happened three times at this skill's review gate, and stronger wording did not stop it. Set `## Open gate` back to `none` once the answer is consumed. When `**Decider:**` names a session, every question the run would put to the user after writing this run's manifest, a gate or a prose question, is delegated: the same `Write`, then the send `<this skill's base directory>/../quo-execute/references/delegated-gates.md` defines in place of `AskUserQuestion`.
 
 Gates fire only where the user holds the decision:
 
