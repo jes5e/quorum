@@ -74,3 +74,26 @@ Subagent variant (unproven; the docs are silent on the parts it depends on):
 
 Operator decision 2026-09-26: after the `/quo-execute` rebuild (b.87t) merges, before the operator's big feature, where gate volume is highest. The spike (step 1) can run as soon as b.87t merges; it touches no skill.
 
+## Step 1 spike results (Claude Code 2.1.283, host, 2026-09-27/28)
+
+Evidence in `/tmp/.quorum/spike-d7t/logs`; report `/tmp/.quorum/bd7t-checkpoint-2.md`. The operator's big feature started before the spike, so the sequencing above was overtaken; the spike ran beside it.
+
+**Separate-session variant: pass.**
+- Basic round trip (message a named session, end the turn, resume mid-task on the reply, multi-line free text intact): observed in everyday overseer↔worker use across b.87t, b.rqc, and this spike; not re-tested.
+- A lane notification while a delegated gate is pending: the worker is idle, not blocked, so every notification wakes it. Re-reading the manifest each turn, it kept `## Open gate` filled through a child's hand-back and two task-notifications (interim, then final), then resumed at the right step on the decider's reply.
+- The operator typing the answer directly: it arrives as an unwrapped user turn, distinguishable from `<cross-session-message from-name=...>`, and was recorded as source=operator. A non-recipient peer's instruction was refused under the probe's rule; the operator's typed line overrode it.
+- The decider disappearing while a gate is pending: the send succeeded while the decider was alive. Its exit (a `-p` session) produced an *idle* notice, not an exit notice (`[Cross-session idle notice] "d7t-ghost" ... is idle now — it finished a turn ... Its harness reports: «bye».`), then silence, since the subscription is one-shot. `ListAgents` dropped the row, and a re-send failed: `No agent named 'd7t-ghost' is reachable.` The fallback `AskUserQuestion` to the operator worked. Not tested: an interactive decider closed mid-wait.
+- Permission-class and host↔container tests dropped: all real sessions run the same way in one container (operator).
+
+**Subagent variant (decider = parent, worker = background subagent): the round trip passes, but it fails for real runs.**
+- Pass: a background subagent invokes a skill and follows it; waits for its own children across turns; resumes its own child by agent ID after its own gate cycle; gates via `SubagentHandback` (once per run) or `SendMessage(to=main)`, answered by the parent's `SendMessage`; resumes with full context, repeatedly, including through a parent exit/resume while idle at a gate. Nested children's task-notifications carry `subagent_tokens` / `tool_uses` / `duration_ms`.
+- Fail: exiting the parent (after a confirmation prompt) killed a running grandchild (`Exit code 137`) with no notification. After the resume the worker still believed the lane was running: a silent hang. The killed child was resumable by agent ID once the worker was told.
+- The worker has no `AskUserQuestion` and no `ListAgents`, and its `CLAUDE_CODE_SESSION_ID` is the parent's, so the context guard would read the decider's gauge.
+- Not tested: subagent compaction (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=15` did not force it; peak 124,143 tokens on haiku, no `compact_boundary`).
+
+**Recommendation (spike worker, overseer concurs):** build the separate-session variant only, with a named decider session as the recipient. The subagent variant needs machinery the separate-session variant doesn't: lane-death detection after a decider restart, guard re-keying, and a second route for operator fallback.
+
+**Out of scope, to route:** (1) the `Agent` tool had no `name` parameter in the spike's 2.1.283 sessions (agent teams off), while the orchestrators name implementers and resume them by name; resume by agent ID worked. The live_edit container run does name implementers (its manifest cites `engineer-t2_y3m_c8_5q`), so whether naming depends on agent teams is unverified. (2) Task-notifications can fire more than once per agent (interim plus final), and the report arrives as a separate `<agent-message>`; this touches the ledger and "read its return". No quorum run has shown a failure from it yet. (3) Foreground `sleep` is blocked by a tool-use guard.
+
+**Open for step 2's design checkpoint:** REWRITE-BRIEF §4 says no reference file may be required to make a gate fire, which a shared delegation reference would need amended; the run-start gates that fire before the manifest exists (effort, pick, isolation); and the solo spec writers' file-write-fronted gate.
+
