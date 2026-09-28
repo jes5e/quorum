@@ -61,7 +61,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - Do not read a Doc Writer's silence as a clean-tree attestation over every source path.
 - A Test Writer's discrimination experiment is the mover most easily misread as an external edit; its `## Perturbations` list is what attributes it.
 - The unexplained-movement gate exists because a blind re-dispatch loop into a tree something else is editing is the failure it prevents.
-- `Wait` re-fires only on the operator's reply because a sibling lane's completion notification is a normal tick and must not re-fire the gate.
+- `Wait` re-fires only on a reply to the gate because a sibling lane's completion notification is a normal tick and must not re-fire the gate.
 
 ## Analyst gate and design directive (`/quo-fix-issue` on every Issue outside the `text` class; `/quo-execute` on escalation)
 

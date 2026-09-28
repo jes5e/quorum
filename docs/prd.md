@@ -712,8 +712,8 @@ After each Epic, the run executes the full test suite and one fresh review of th
 - `--decider` with no name, or a name no live session answers to, stops the run at launch listing the live sessions.
 - The launch questions (session effort, which plan or Issue, the branch choice, `/quo-plan`'s resume offer, fix-issue's URL filings) still ask the operator; every later question, including plain-text ones and those of an inline `/quo-file-issue`, goes to the decider.
 - Each delegated question leaves a gate file in the scratch directory holding what was sent and the answer with its source.
-- Text the operator types answers a pending question; the first answer wins.
-- A failed send, or a decider that exits while a question is open, falls back to asking the operator.
+- Text the operator types answers a pending question; the first answer wins, and a later reply to the same question is ignored.
+- A failed send, or a decider found gone when its idle notice arrives with the question unanswered, falls back to asking the operator.
 - Validation: a real run in a code repo with the operator's decider session.
 
 **Out of scope.** A worker running as the decider's subagent (the spike showed it losing lanes on a decider restart); `/quo-plan-from-specs`, `/quo-setup`, and the solo spec writers.

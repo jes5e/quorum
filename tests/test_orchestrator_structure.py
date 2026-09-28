@@ -603,7 +603,7 @@ REFERENCE_ANCHORS = {
         "`## Answer`",
         "`free text`",
         "delegated to <decider>: <gate file path>",
-        "quorum gate: <question, verbatim>",
+        "quorum gate: <gate name>, <scope>",
         "Gate file: <path>",
         "`from-name`",
         "`operator (fallback)`",
