@@ -95,7 +95,7 @@ bees is the ticket store; `bees <command> -h` and `bees sting` document it. It h
 
 ### Run start
 
-1. When the argument carries `--decider`, check it first: with no session name after it, or a name no live session answers to in `ListAgents`, print every live session and stop, asking the operator to re-run naming the decider. Then run the session-effort gate (Section 6), once.
+1. When the argument carries `--decider`, check it first: with no session name after it, or a name no live session answers to in `ListAgents`, print every live session and stop, asking the operator to re-run naming the decider; once it passes, send the decider the introduction the delegated-gates reference (Section 3) defines. Then run the session-effort gate (Section 6), once.
 2. Pick the Bee. A Bee ID: use it. An Epic ID: use its parent Bee, and start at that Epic. No argument: the Plan Bees whose status is `ready` or `in_progress`; one → use it; several → fire the Bee-pick gate (Section 6); none → say no Plan Bee is workable and suggest `/quo-plan` or `/quo-plan-from-specs`.
 3. Validate the Bee: status `ready` or `in_progress`, and every `up_dependencies` entry `done`; a `ready` dependency is a pending blocker.
 4. Run the isolation gate (Section 6).

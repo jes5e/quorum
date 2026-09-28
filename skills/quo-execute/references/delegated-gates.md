@@ -1,6 +1,18 @@
 # Delegated gates reference
 
-Read at run start when the manifest's `**Decider:**` names a session, and after a compaction. Unread, the run asks the operator, always a correct gate.
+Read at launch when the run is given `--decider`, and after a compaction when the manifest's `**Decider:**` names a session. Unread, the run asks the operator, always a correct gate.
+
+## Introduction
+
+Once the launch check confirms the decider, send it this message, once, before any question; a failed send is handled as under Fallback.
+
+```
+quorum decider: <skill> <arguments>, run by session <this session's name>
+The operator launched this run naming you its decider: questions it would ask the operator come to you.
+Each arrives as a `quorum gate:` message naming a gate file; read that file in full.
+Reply to the sender by message, naming the gate file, with a choice label or free text.
+Answer as the operator's delegate; when you judge a human answer is needed, ask the operator in your own session.
+```
 
 ## What goes to the decider
 
