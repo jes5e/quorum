@@ -2,10 +2,11 @@
 id: b.hc5
 type: bee
 title: 'Candidate: one shared per-unit loop reference for /quo-fix-issue and /quo-execute instead of mirrored text'
-status: open
-created_at: '2026-09-27T14:04:52.413268'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-27T14:04:52.413268'
+status: done
+schema_version: '0.1'
 guid: hc5zqfvw53rv9i7pesdcrv6vp3ttn6yr
 ---
 
@@ -20,4 +21,6 @@ Move the shared per-unit loop into one shared reference, which each body reads a
 ## When to decide
 
 After the big feature, once it shows how often shared rules actually change. The post-compaction self re-read (mirrored batch item 2) removes the compaction argument for this, leaving the maintenance argument.
+## Closed (2026-09-29, operator): not now
 
+Since the rebuild, shared-rule edits have landed in both bodies at once (b.rqc, b.d7t), and the tests keep the mirrored text byte-identical, so the cost is editing twice, not drift. No run has failed because of the mirror. Reopen if a mirrored edit ever causes a real failure or drift.

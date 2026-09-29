@@ -36,6 +36,18 @@ In b.v9c Task 2 the Analyst's premise-check return held a revision-shaped body (
 - **Item 2, heavily:** improvised manifest fields throughout. They include held findings per lane, a Blast-radius carrier, per-Task notes, "deletions owed at run end" (including a `/tmp/.quorum` file, per live_edit's convention), a Task 7 risk, and the commits made. Breakdown runs did the same (`## Operator decisions`, `## Decider standing context`).
 - **Item 5, second occurrence:** in Task 3, PM finding F2's `premise-holds` return carried a mechanism change (a second connection for a pre-read). It was applied through row 6 without a gate, and the Blast radius was amended with it.
 
+## Decisions (operator, 2026-09-29)
+
+Decided on the b.y3m evidence (Tasks 1–6 PM record, Tasks 1–4 run). Report: `~/.quorum-overseer/b-y3m-report.md`; PM analysis: `~/.quorum-overseer/b-y3m-pm-analysis.md`.
+1. **Build:** one goal sentence in execute's deferral hygiene: encode a deferral whose destination is a later Task before that Task starts. Evidence: b.v9c ×3 and b.y3m, always handled unaided. But b.y3m Task 3's PM caught a hand-off planned for the Epic boundary as too late: a near-miss, and silent if missed.
+2. **No change.** The improvised manifest fields for target-repo obligations are continuous, visible, and handled unaided.
+3. **No change; watch.** Committing the Epic `done` flip was seen once (b.v9c) and handled unaided; b.y3m reached no Epic end.
+4. **Keep the per-Task PM as is.** Of 40 findings, 6 duplicated another lane (all own-diff checks), and 16 were PM-only substantive (13 cross-Task, 3 spec/contract traceability, including the run's highest-consequence finding). All 17 hand-offs were written into later tickets before those Tasks ran. The PM costs about 9% of tokens.
+5. **No change.** A premise-holds return carried a mechanism change twice, both harmless, through the Blast-radius channel.
+6. **Build:** give execute's Analyst gate a proposal file, like fix-issue's `**Proposal:**`, and delete execute's §3 re-derive exception.
+
+Items 1 and 6 form one small execute batch, next in the serial order before the docs change (b.sb7, small version). Close this ticket when that batch lands.
+
 ## Item 6 (2026-09-29): a proposal file for execute's Analyst gate
 
 Execute keeps the Analyst's revision only in the conversation until Approve appends it to the ticket; fix-issue writes it to a `**Proposal:**` file. A file would let a delegated gate (b.d7t) name the full return by path instead of copying it. It would also carry `### Deferred refinements` across a compaction, which would let execute drop its §3 Analyst re-derive exception.
