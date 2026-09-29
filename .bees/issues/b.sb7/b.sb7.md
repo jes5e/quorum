@@ -237,4 +237,29 @@ Position otherwise unchanged: after the big feature, or before it if that repo's
 ## Note from b.87t (2026-09-27)
 
 The 2026-09-19 execute-PM gap is closed by b.87t (`9cdb07e`): each Task's dedicated Code Reviewer is the code read and receives `## Design decisions for writers`, and the per-Task PM receives it too. The rest of this ticket's scope is unchanged.
+## Re-scoped to "stop the growth" (operator, 2026-09-28/29)
+
+This note supersedes the 12-item `## Suggested fix`, the relays in `### Relays`, the map-plus-register rebuild, and the five-repo migration, for now. The first build is the small version:
+- **Delete the per-feature fold-in.** `agents/doc-writer.md` `## Cumulative project doc updates` (with its categorization table, title recipe, and idempotency rule) goes, and the Doc Writer no longer writes the PRD.
+- **Two Doc Writer jobs:**
+  - fix what the diff makes false, in the customer docs or the SDD;
+  - record a rule or decision a future agent needs, with its reason, in the SDD.
+
+  One short ownership table says where each kind of fact lives: mechanism in the code, history in commits and tickets, rules and decisions in the SDD, user-visible behavior in the README.
+- **The Doc Reviewer checks what the change touched:** the diff's claims and the Doc Writer's edits. It drops the whole-document completeness and duplication hunt, and the house style's "no design decisions or history" rule, which contradicts the Doc Writer's second job.
+- **Readers the fold-in leaves behind:** the orchestrators' "surface the Plan Bee title to the Doc Writer", `/quo-setup`'s `## Per-feature scope` / `## Per-feature design` skeleton headers and its promises of a Feature subsection, and README's "cumulative project docs" claims.
+
+**Not in this build (decide later on evidence):**
+- new relays: writers already receive `## Design decisions for writers` and `## Blast radius`, and a relay gets added only if a run shows a writer missing a decision;
+- the SDD size cap and the map/register shape;
+- archiving the PRD;
+- migrating existing SDDs, which is a per-repo decision, with live_edit's only after its big feature;
+- retiring the `### Feature:` scoping machinery (item 12a: `/quo-plan-from-specs --feature`, `scoped_marker_resolver.py`, PM Path A/B).
+
+**Evidence** (live_edit and smoke-run ledgers, 2026-09-29): docs are 7–11% of agent time and 14–23% of tokens across three runs, so this is not a speed fix. The problem is growth: live_edit's SDD went from 276k words (2026-09-10) to 340k (2026-09-28), +23% in 18 days over 47 commits. The doc review took 2 rounds on the most recent Issue, not the 5–8 reported above, since text fixes now apply without re-review.
+
+**Operator questions to confirm at the design checkpoint, with defaults:**
+1. The SDD is a guide for agents and people: where things are, the rules the code must keep, and decisions with their reasons. It is not a restatement of the code, and not a history.
+2. The PRD is background: nothing writes it, and it is not archived now.
+3. Existing SDDs: stop the growth now; any cleanup comes later, per repo.
 
