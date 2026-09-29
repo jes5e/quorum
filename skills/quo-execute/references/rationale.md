@@ -73,7 +73,6 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - A Revise re-dispatch hands the revising Analyst the prior proposal in full — by the path of the proposal file, the same bytes at a fraction of the prompt — including its `### Deferred refinements`, so it carries each deferral forward or drops it explicitly.
 - `defer-*` obligations from an earlier Approve survive a later re-fire because that approval still stands; clearing them would destroy every banked refinement.
 - The Design Proposal's durable carrier is the file the orchestrator writes when the Analyst's return reaches the gate, recorded on the manifest's `**Proposal:**` line: its random suffix keeps a stale file from another run from being read as this one's, and the open gate tells whether what it holds is approved. Re-deriving through the Analyst is the recovery only when the carrier is missing, because a proposal reconstructed from a summary is a guess.
-- A premise-check return that revises the approved design takes the gate because the approver approved that text; applied silently, the change is one the approver never saw.
 - An Engineer's `## Design question` means the proposal's `### Blast radius` missed a mechanism; it is a revision of the proposal, not a new decision point.
 
 ## Close-out and commit

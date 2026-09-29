@@ -32,7 +32,7 @@ CAPS = {
     "skills/quo-execute/references/delegated-gates.md": 598,
     "skills/quo-execute/references/context-guard.md": 722,
     "skills/quo-execute/references/post-completion-prompt.md": 1644,
-    "skills/quo-execute/references/rationale.md": 2688,
+    "skills/quo-execute/references/rationale.md": 2660,
     "skills/quo-execute/references/routing.md": 2992,
     "skills/quo-file-issue/SKILL.md": 7188,
     "skills/quo-fix-issue/SKILL.md": 12827,
