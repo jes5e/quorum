@@ -271,8 +271,10 @@ The bodies' Section 4 lead now reads "roles never message each other" in place o
 - one resume command, `/quo-fix-issue <batch-ids>`, replaces `/quo-fix-issue all` and `/quo-fix-issue <remaining-ids>` (FX-GUARD-18, FX-ABORT-28). The old forms compute a batch the manifest no longer matches, and `<remaining-ids>` is empty at the new guard stop. The aborted-Issue STOP's resume continues after the aborted Issue (operator decision, 2026-09-29);
 - `**Decider:**` on a resume comes from the invocation, as at every launch, and the printed command carries `--decider`, so a fresh-session resume re-introduces the run (operator decision, 2026-09-29);
 - the guard also runs before the post-completion review in every mode, as execute's runs before each Epic review. This supersedes FX-GUARD-1, -2, and -4's continuing-path-only rule (the cvei2 context-full stop; single mode by operator decision, 2026-09-29);
-- a session resuming a run re-sends a delegated gate whose file has no `## Answer`, because the decider replies to the ended session (a gap between two agents on the resume path);
-- one goal sentence: when the post-completion findings are no longer readable, the review is dispatched again.
+- a session resuming a run fires again a delegated gate whose file has no `## Answer`, to its own `**Decider:**` or the operator, because the decider replies to the ended session (a gap between two agents on the resume path);
+- the resume command is also printed when the manifest is written, because a session that ends uncleanly prints none, and cvei2's restart was such an end (cold round 1);
+- a single-mode run checks its Issue's dependencies before the manifest write, so a blocked exit leaves no manifest that reads as a stopped run (cold round 1: a case the resume condition's own inputs cover);
+- one goal sentence in §3: when a review's findings are needed and no longer readable, as after a compaction or a resume, that review is dispatched again.
 
 A cold review must not report any of these as an A2 violation.
 

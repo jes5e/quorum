@@ -45,4 +45,4 @@ A failed send, or a delivery notice that it was held or refused, falls back at o
 
 ## After a compaction
 
-A delegated `## Open gate` is never re-sent: read its gate file and act on a recorded `## Answer`, or keep waiting as above. A new session resuming the run re-sends it when no `## Answer` is recorded, since the decider replies to the session that sent it.
+A delegated `## Open gate` is never re-sent: read its gate file and act on a recorded `## Answer`, or keep waiting as above. A new session resuming the run fires it again when no `## Answer` is recorded, to its own `**Decider:**` or, when that is `none`, to the operator, since the decider replies to the session that sent it.

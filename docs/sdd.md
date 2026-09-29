@@ -1063,8 +1063,9 @@ Validation: a real run in a code repo with the operator's decider session (b.d7t
 - **The marker.** `**Next unit:**` gains `post-completion review` once every Issue is finished and is rewritten to `none` when that review completes. Without it, a review still owed and a finished run looked the same.
 - **One resume command,** `/quo-fix-issue <batch-ids>` (the `**Unit scope:**` IDs in order, plus `--decider` when one is set). It is printed at every guard stop and at an aborted-Issue STOP, and replaces `all` and `<remaining-ids>`, which compute a batch the manifest no longer matches. After an aborted Issue, the resume continues with the next Issue and leaves the aborted one `open`.
 - **The guard** also runs before the post-completion review in every mode, as `/quo-execute`'s runs before each Epic review.
-- **A delegated gate** the earlier session left unanswered is re-sent by the resuming session, because the decider replies to the session that sent it.
-- **Findings no longer readable** after a compaction or a resume mean the review is dispatched again.
+- **A delegated gate** the earlier session left unanswered is fired again by the resuming session, to its own decider or the operator, because the decider replies to the session that sent it.
+- **Findings no longer readable** after a compaction or a resume mean that review is dispatched again.
+- **The resume command is also printed at launch,** since a session that ends uncleanly prints none. A single-mode run checks dependencies before writing its manifest, so a blocked exit leaves nothing that reads as a stopped run.
 
 The execute mirror is limited to the guard's placement. Execute's resume keys on its Bee's `in_progress` Epic and carries only the tracker.
 
