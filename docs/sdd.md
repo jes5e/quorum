@@ -1052,3 +1052,26 @@ Validation: none dedicated; the next `/quo-fix-issue` or `/quo-execute` run is t
 **Tests.** `tests/test_orchestrator_structure.py` adds the reference to the shared-reference list and pins its contract strings; the two bodies and the planning and breakdown suites pin `**Decider:**`, `--decider`, and the reference path.
 
 Validation: a real run in a code repo with the operator's decider session (b.d7t step 4).
+
+### Feature: /quo-fix-issue resumes a stopped run from its manifest, and guards before its post-completion review
+
+**Architecture.** `/quo-fix-issue` could not continue an interrupted run in a new session (b.dpp). Run start rewrote every manifest field and emptied `## Lanes`, `## Obligations`, `## Rounds`, and `## Open gate`, and a re-run over finished Issues exited. Its context guard ran only between Issues.
+- **Resume.** A manifest that records the invocation's batch, and whose `**Next unit:**` is not `none`, is a stopped run. Run start keeps every field and section except `**Decider:**`, which comes from the invocation as at every launch. It skips isolation, URL resolution, validation, and the manifest write, and recovers as after a compaction.
+  - Every `open` lane is treated as killed, since its Agent ended with the earlier session.
+  - The run then continues at `**Next unit:**`: an Issue re-entered from its lanes, or the post-completion review.
+  - The recovery machinery already existed (§3's post-compaction rule, the Killed-lane rule, and §5's send-as-liveness test). Run start had been destroying the manifest before any of it could act.
+- **The marker.** `**Next unit:**` gains `post-completion review` once every Issue is finished and is rewritten to `none` when that review completes. Without it, a review still owed and a finished run looked the same.
+- **One resume command,** `/quo-fix-issue <batch-ids>` (the `**Unit scope:**` IDs in order, plus `--decider` when one is set). It is printed at every guard stop and at an aborted-Issue STOP, and replaces `all` and `<remaining-ids>`, which compute a batch the manifest no longer matches. After an aborted Issue, the resume continues with the next Issue and leaves the aborted one `open`.
+- **The guard** also runs before the post-completion review in every mode, as `/quo-execute`'s runs before each Epic review.
+- **A delegated gate** the earlier session left unanswered is re-sent by the resuming session, because the decider replies to the session that sent it.
+- **Findings no longer readable** after a compaction or a resume mean the review is dispatched again.
+
+The execute mirror is limited to the guard's placement. Execute's resume keys on its Bee's `in_progress` Epic and carries only the tracker.
+
+**Evidence.** live_edit run cvei2 (2026-09-28/29):
+- a machine restart mid-Issue, survived only through `claude --resume`, where a re-run would have emptied two open deferrals;
+- a context-full stop during the post-completion fix round, continued only through a decider-written plan and a "skip Run start" prompt.
+
+Operator decisions, 2026-09-29: the aborted STOP resumes after the aborted Issue; the guard runs before the review in single mode too; the decider on resume comes from the invocation.
+
+Validation: a fix-issue batch in a code repo, stopped mid-Issue and before its post-completion review, each resumed in a fresh session with the printed command.

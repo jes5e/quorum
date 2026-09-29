@@ -264,6 +264,18 @@ of these as an A2, D6, D12, or §1 violation.
 
 The bodies' Section 4 lead now reads "roles never message each other" in place of "no peer-to-peer messaging", and unexplained movement's **Wait** re-fires on a reply to the gate. A cold review must not report any of these as an A2 or §4 violation.
 
+*Amended 2026-09-29 (Issue `b.dpp`, fix-issue resume and pre-review guard):* evidence is live_edit run cvei2 (2026-09-28/29). A machine restart mid-Issue was survived only by resuming the same conversation, and a re-run would have emptied two open deferrals. A context-full stop during the post-completion fix round needed a decider-written plan and a "skip Run start" prompt. Both announced themselves, and neither was recovered unaided. Rules this batch adds or changes, each with its reason in the commit:
+- `/quo-fix-issue` run start resumes a manifest that records the invocation's batch and whose `**Next unit:**` is not `none`: it keeps every field and section, skips run-start steps 3–6, and recovers as after a compaction. It supersedes FX-MAN-21's rewrite and FX-MAN-24's fresh write for a stopped run, because they destroyed the only carrier of the run's obligations, lanes, rounds, and review base (a state carrier);
+- `**Next unit:**` gains the value `post-completion review`, rewritten to `none` when Section 11 completes, because the fields could not tell a review still owed from a finished run, and cvei2 improvised "RUN CLOSED" and a plan file for it (a state carrier);
+- a resumed run treats every `open` lane as killed, because the `## Lanes` rule's "will notify — wait for it" is false once the earlier session has ended (a state carrier's recovery goal);
+- one resume command, `/quo-fix-issue <batch-ids>`, replaces `/quo-fix-issue all` and `/quo-fix-issue <remaining-ids>` (FX-GUARD-18, FX-ABORT-28). The old forms compute a batch the manifest no longer matches, and `<remaining-ids>` is empty at the new guard stop. The aborted-Issue STOP's resume continues after the aborted Issue (operator decision, 2026-09-29);
+- `**Decider:**` on a resume comes from the invocation, as at every launch, and the printed command carries `--decider`, so a fresh-session resume re-introduces the run (operator decision, 2026-09-29);
+- the guard also runs before the post-completion review in every mode, as execute's runs before each Epic review. This supersedes FX-GUARD-1, -2, and -4's continuing-path-only rule (the cvei2 context-full stop; single mode by operator decision, 2026-09-29);
+- a session resuming a run re-sends a delegated gate whose file has no `## Answer`, because the decider replies to the ended session (a gap between two agents on the resume path);
+- one goal sentence: when the post-completion findings are no longer readable, the review is dispatched again.
+
+A cold review must not report any of these as an A2 violation.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 
