@@ -4,10 +4,11 @@ type: bee
 title: 'Delegated gates: a quorum skill sends its gates to a named decider session (or its parent) instead of asking the operator'
 up_dependencies:
 - b.rqc
-status: open
-created_at: '2026-09-27T14:04:48.019034'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-27T14:04:48.019034'
+status: done
+schema_version: '0.1'
 guid: d7tbc1pae6xfp9wjc4cx74bhwk8dzqub
 ---
 
@@ -97,3 +98,33 @@ Evidence in `/tmp/.quorum/spike-d7t/logs`; report `/tmp/.quorum/bd7t-checkpoint-
 
 **Open for step 2's design checkpoint:** REWRITE-BRIEF §4 says no reference file may be required to make a gate fire, which a shared delegation reference would need amended; the run-start gates that fire before the manifest exists (effort, pick, isolation); and the solo spec writers' file-write-fronted gate.
 
+## Step 2 build and validation; closed (2026-09-29)
+
+Merged to main by fast-forward, head `1634316` (commits `a78d19c`..`1634316`), not pushed. Separate-session variant only. A run launched with `--decider "<session name>"` sends every question it would put to the operator after its manifest write to that session: gates and prose questions, including an inline `/quo-file-issue`'s. The contract lives once in `skills/quo-execute/references/delegated-gates.md` (561 words; REWRITE-BRIEF §4 amended). Each question writes a gate file (question, choices, context by path or copied verbatim, then `## Answer` with its source) and sends a `quorum gate:` message. The run introduces itself to the decider once at launch. Shipped prose +1,140 words.
+
+**Operator decisions (2026-09-28).**
+- D1: no operator-only gate after launch ("the decider is the only thing that determines it needs a human answer"). Only the pre-manifest launch questions stay with the operator.
+- D2: `--decider "<name>"`; a bare `--decider` lists every live session and stops.
+- D3: a name no live session answers to stops the run at launch.
+- D4: prose questions delegate too.
+- D5: scope is execute, fix-issue, breakdown, plan, and inline `/quo-file-issue`. Out: plan-from-specs, setup, and the solo spec writers.
+- Later the same day: the run introduces itself (no manual priming).
+
+**Review.** Three cold rounds, closing clean.
+- Deleted: the overseer's suggested re-subscribe on an idle notice. A subscription to an already-idle session fires at once, so it would loop.
+- Documented residual: a decider still listed at its idle notice that later closes leaves the run visibly waiting for the operator.
+- Added: a reply must name its gate file, or it answers nothing, so that after an operator override a late reply cannot land on the next gate.
+- Execute's Analyst gate keeps its re-derive exception after a compaction.
+
+**Paraphrase evidence (corrected).** b.v9c's Operator-action gate and b.y3m's Analyst gate.
+
+**Validation (live_edit, 2026-09-28/29).** Three concurrent runs shared one decider ("Performance Planner 3"): `/quo-fix-issue b.v6i b.e1h` (10 questions), `/quo-plan` b.ayp (6), and `/quo-breakdown-epic` b.mqs (3).
+- All 19 were answered by the decider; 18 of 19 replies named the gate file (the other arrived with no other gate open).
+- 0 fallbacks, 0 operator overrides, 0 re-sends, and no cross-run mix-up. The decider opened by-path artifacts and verified claims before approving.
+- It survived a machine restart mid-Issue (`claude --resume`, killed-lane recovery) and a context-full stop (a fresh session, told to skip run start, still delegated from `**Decider:**`).
+- Improvised without harm: descriptive gate-file names (unique per fire); two runs kept the decider's standing instructions in improvised manifest text; two gates abridged or restructured conversation-only context and said so. Watch items, not rules.
+- Report: `~/.quorum-overseer/bd7t-build-checkpoint-5.md`.
+
+**Lost evidence.** The step-1 note cites `/tmp/.quorum/bd7t-checkpoint-2.md` and the spike logs, and Checkpoints 1–4 of step 2 lived in `/tmp/.quorum/`; a macOS restart on 2026-09-28 wiped them. The ticket and commit messages carry the substance.
+
+**Follow-ups.** The `/quo-fix-issue` resume gaps the validation exposed are filed separately. The execute Analyst proposal-file idea is a note on b.h1t.

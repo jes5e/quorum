@@ -45,4 +45,12 @@ Landed in `f01bf79`, merged to main by fast-forward (not pushed).
 ## Check still open (2026-09-27)
 
 The b.87t validation run (live_edit b.v9c Epic 1) reached no Analyst revision gate: both Analyst returns were premise checks. The three checks in the close-out note wait for the next real run with a revision gate after an Approve.
+## Checks 1–2 passed (2026-09-29)
+
+At live_edit b.y3m Task 3, an earned-chain escalation reached the Analyst gate (verdict `recommend-with-refinements`), and the operator approved it.
+- **Check 1 passed:** the return was a whole Design Proposal (Problem through Options the body did not consider).
+- **Check 2 passed:** the Task ticket's `## Design revision (Analyst)` holds the complete design verbatim: all six rules, `### Decisions for writers`, `### Blast radius`, and `### Policy decisions this change implies`.
+- **Check 3 (later relays inline, under separate headings) is unverified,** because the container transcripts are not readable from the host.
+
+Close when a run with readable relays confirms it, or close on this evidence at the overseer's discretion.
 

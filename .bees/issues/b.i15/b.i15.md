@@ -19,5 +19,8 @@ Every piece of work breakdown writes names a role that executes it (the role tag
 
 ## Suggested fix
 
-One goal sentence in breakdown's Subtask rules, if the big feature's breakdown shows the pattern again. Evidence: `/tmp/.quorum/b87t-checkpoint-5.md`.
+One goal sentence in breakdown's Subtask rules, if the big feature's breakdown shows the pattern again. Evidence: `/tmp/.quorum/b87t-checkpoint-5.md` (lost in a 2026-09-28 restart; copy at `~/.quorum-overseer/precedent-b87t-checkpoint-5.md`).
+## Not repeated (2026-09-29)
+
+The breakdown of b.v9c Epics 2–3 (live_edit worktree, commits `e548ae5e` and `ed487909`; 10 Tasks) addresses no work to "the orchestrator". Evidence so far is one occurrence, so it leans toward no rule.
 
