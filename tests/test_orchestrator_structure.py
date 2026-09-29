@@ -211,6 +211,17 @@ def test_tier2_engineer_dispatch_precondition_matches_modulo_unit():
     assert fix and fix == [normalize_task_to_issue(line) for line in exe]
 
 
+def test_proposal_file_mechanism_is_mirrored():
+    # b.h1t: execute reuses fix-issue's proposal file; its read-back rule is Tier 1 (fix-issue's
+    # paragraph carries one more, fix-only sentence) and its gate-time write is Tier 2.
+    fix_read = paragraphs(heading_section(FIX, "## 3. After a compaction"))[1]
+    exe_read = paragraphs(heading_section(EXE, "## 3. After a compaction"))[1]
+    assert "**Proposal:**" in exe_read and fix_read.startswith(exe_read)
+    fix = bullet_lines(heading_section(FIX, "## 6. Gates"), "- **Analyst.**")
+    exe = bullet_lines(heading_section(EXE, "## 6. Gates"), "- **Analyst.**")
+    assert fix and fix == [normalize_task_to_issue(line) for line in exe]
+
+
 MANIFEST_LEAD_STATEMENTS = [
     "The manifest is a small markdown file holding the handful of run-scoped values that live **nowhere else on disk** — everything the orchestrator would otherwise have to remember.",
     "It is what makes harness compaction survivable: after a compaction the orchestrator re-reads this file instead of trusting a summary.",
@@ -307,6 +318,7 @@ SHARED_ANCHORS = [
     "**Unit scope:**",
     "**Isolation strategy:**",
     "**Decider:**",
+    "**Proposal:**",
     "`--decider`",
     "### Run start",
     "### Tick",
@@ -462,7 +474,6 @@ FIX_ANCHORS = [
     "**ticket-ID token**",
     "`Cannot start Issue. It is blocked by: [list]`",
     "**Text class.**",
-    "**Proposal:**",
     "proposal-<issue-id>-<short-suffix>.md",
     "**Phase A — source to clean.**",
     "**Phase B — writers once, in parallel.**",
@@ -507,6 +518,7 @@ EXE_ANCHORS = [
     "Mode 1 (Stop after each Epic)",
     "Mode 2 (Work through all Epics)",
     "**Compromises reviewed:**",
+    "proposal-<task-id>-<short-suffix>.md",
     "**Text class.**",
     "**Phase A — source to clean.**",
     "**Phase B — writers once, in parallel.**",

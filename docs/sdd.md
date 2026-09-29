@@ -1076,3 +1076,27 @@ The execute mirror is limited to the guard's placement. Execute's resume keys on
 Operator decisions, 2026-09-29: the aborted STOP resumes after the aborted Issue; the guard runs before the review in single mode too; the decider on resume comes from the invocation.
 
 Validation: a fix-issue batch in a code repo, stopped mid-Issue and before its post-completion review, each resumed in a fresh session with the printed command.
+
+### Feature: Execute's Analyst gate keeps a proposal file; a premise check that revises the design is gated; hand-offs reach a later Task before it runs
+
+**Architecture.** Three hand edits (b.h1t items 1, 5, and 6), decided by the operator on 2026-09-29 from the b.y3m run.
+- **A proposal file in `/quo-execute`.** The Analyst gate writes the return in full to `proposal-<task-id>-<short-suffix>.md` and records it on a new manifest line, `**Proposal:**`. This is `/quo-fix-issue`'s B2b mechanism, reused unchanged:
+  - the gate's write sentence mirrors fix-issue's, with Task for Issue;
+  - §3's read-back sentences are byte-identical;
+  - a Revise names the file as the prior proposal;
+  - each Task's close-out clears the line, so the next Task never reads another Task's revision.
+
+  After a compaction an open Analyst gate is now re-fired from the file, and a delegated one is handled like every other delegated gate. Execute's exception is deleted: it re-derived the revision through the Analyst, because nothing before Approve carried its `### Deferred refinements`. A delegated gate now names the return by path, so the decider reads the Analyst's own text; b.y3m Task 3's gate had sent a paraphrase naming the proposal's rules inconsistently. Approve still appends the revision to the ticket at the escalation's scope, since later roles read the tickets as the spec.
+- **A premise check that revises the design goes through the gate.** Until now a premise-check return was never gated, and its `### Blast radius` entries replaced approved entries silently. When a finding that holds changes what the approved design states (a policy decision, a stated invariant or bound, or a directive statement), the Analyst now follows its labels with a whole Design Proposal. The proposal's `Analyst verdict:` trailer is the signal: §7, Tier 1 in both bodies, runs the Analyst gate on such a return before any finding routes. The gate keys on the return's shape because only the Analyst knows its answer changes approved text; an orchestrator-side judgment would need a second dispatch to produce something gateable. Labels alone, and `### Blast radius` additions that don't contradict the approved text, stay ungated.
+- **A deferral aimed at a later Task.** `/quo-execute`'s deferral hygiene also fires before a Task starts when an open `defer-*` obligation names that Task or one of its Subtasks as its destination, because that Task's roles read those tickets as their spec. It reuses the existing gate, Encode, and commit.
+
+**Evidence.**
+- Item 1: b.v9c encoded such deferrals mid-Epic three times, and b.y3m every time, unaided; b.y3m Task 3's PM caught hand-offs planned for the Epic boundary as too late.
+- Item 5: b.y3m Task 3 F2 and b.v9c Task 2, both harmless; then a live_edit fix-issue run (2026-09-29) whose premise check silently changed two decider-approved statements, a throughput bound and an exception to a refusal rule.
+- Item 6: the b.y3m paraphrased gate.
+
+Three questions for item 5: 3 times; silent to the approver; not recovered unaided.
+
+**Deliberately not added** (predicted, no run behind them): a carrier for premise-check `### Blast radius` amendments at an execute Task with no revision; a read of the ticket's `## Design revision (Analyst)` when the proposal file is missing; a softer Cancel for a premise-revision gate.
+
+Validation: none dedicated. The next real `/quo-execute` run is the check; the big feature's resume will likely exercise the hand-off timing.

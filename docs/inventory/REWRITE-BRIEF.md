@@ -278,6 +278,14 @@ The bodies' Section 4 lead now reads "roles never message each other" in place o
 
 A cold review must not report any of these as an A2 violation.
 
+*Amended 2026-09-29 (Issue `b.h1t`, items 1, 5, and 6; operator decisions of the same day):* rules this batch adds, changes, or deletes, each with its evidence:
+- `/quo-execute` deferral hygiene also fires before a Task starts when an open `defer-*` obligation's destination is that Task or one of its Subtasks. Evidence: b.v9c encoded such items mid-Epic three times (`fa6ebced`, `89871372`, `beede20d`), and b.y3m every time, unaided; b.y3m Task 3's PM caught hand-offs planned for the Epic boundary as too late. Three questions: every chained Epic; silent if missed; recovered unaided, once only through a PM catch;
+- `/quo-execute`'s Analyst gate writes the return to a `**Proposal:**` file, reusing `/quo-fix-issue`'s mechanism unchanged: the §6 write sentence (Tier 2), the §3 read-back sentences (Tier 1), the Revise shape by path, and the line cleared at each Task's close-out. A delegated gate then names the return by path. Evidence: b.y3m Task 3's Analyst gate paraphrased the proposal, naming its rules inconsistently (a state carrier; a gap between two agents);
+- **deleted:** `/quo-execute` §3's Analyst-gate exception (rewrite `## Open gate` to `none` and re-derive after a compaction; skip a delegated Analyst gate's gate file). It superseded the 2026-09-28 amendment's exception bullet, and its reason is gone, since the file carries the `### Deferred refinements` Approve consumes. §6's "Fires when the Analyst returns from a Section 4 rung" is deleted as redundant with every rung's "run the Analyst gate";
+- a premise-check return that changes what the approved design states (a policy decision, a stated invariant or bound, or a directive statement) ends in a whole Design Proposal and its `Analyst verdict:` trailer, and §7 (Tier 1) sends such a return through the Analyst gate before any finding routes; §4's "no gate fires on it" is deleted in both bodies. Evidence: b.y3m Task 3 F2 and b.v9c Task 2 (both harmless), and a live_edit `/quo-fix-issue` run on 2026-09-29 whose premise check silently changed two statements the decider had approved. Three questions: 3 times; silent to the approver; not recovered unaided.
+
+A cold review must not report any of these as an A2 violation.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 
