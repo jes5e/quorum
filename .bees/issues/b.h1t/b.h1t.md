@@ -5,7 +5,7 @@ title: '/quo-execute follow-ups from the b.v9c run: deferrals aimed at a later T
 parent: null
 reference_materials: null
 created_at: '2026-09-27T14:04:49.078507'
-status: open
+status: done
 schema_version: '0.1'
 guid: h1tof2fim5dae25jzrn3kygn2ppy1vee
 ---
@@ -56,3 +56,16 @@ Execute keeps the Analyst's revision only in the conversation until Approve appe
 
 The b.87t validation report cited above (`/tmp/.quorum/b87t-checkpoint-5.md`) was lost in a macOS restart on 2026-09-28. A copy is kept at `~/.quorum-overseer/precedent-b87t-checkpoint-5.md`.
 
+## Item 5 revisited (operator, 2026-09-29): build
+
+A third occurrence came from a live_edit `/quo-fix-issue` run on 2026-09-29. A premise check on stage-2 code-review findings silently changed two statements the decider had approved in the Issue's Revision 1: a waiting viewer is now cut off at about 240 edits/s rather than the approved 735, and a new exception was added to the refusal-after-data rule. The run later called this "arguably the wrong call". Three questions: 3 times; silent to the approver; not recovered unaided (the operator had to ask). The decision changes from "no change" to "build", in this batch.
+
+## Closed (2026-09-29)
+
+Merged to main by fast-forward, head `a7de6c4` (from `9bf86ea`), not pushed. Items 1, 5, and 6 were built; items 2, 3, and 4 are decided "no change" (above), and item 3 is watched.
+- **Item 1:** execute's deferral hygiene also fires before a Task starts when an open `defer-*` obligation's destination is that Task or one of its Subtasks. `## Obligations` detail stays informational except for that destination.
+- **Item 5:** a premise-check return that changes what the approved design states carries a whole Design Proposal and its `Analyst verdict:` trailer. §7 (Tier 1, both bodies) sends it through the Analyst gate before any finding routes, and a Revise there re-sends the `## Premise check`. §4's "no gate fires on it" is deleted in both bodies; `agents/analyst.md` `## Premise-check dispatch` carries the contract.
+- **Item 6:** execute's Analyst gate writes the return to a `**Proposal:**` file, reusing fix-issue's mechanism verbatim. It is cleared at each Task's close-out and at the Epic boundary. Execute's §3 re-derive exception and the b.d7t amendment's exception are deleted, and a delegated gate names the proposal by path.
+- **Size:** execute +134, fix-issue +41, analyst +57, rationale −19 words.
+- **Review:** cold round 1 found a blocker (the verdict trigger "ending in" could never fire past `### Deferred refinements`) and a Revise-shape gap between the two bodies. Both were fixed; round 2 was clean.
+- **Validation:** none dedicated. The next real `/quo-execute` run is the check (item 1 is likely at the big feature's resume), and items 5 and 6 are checked in any run where an Analyst gate or a design-changing premise return occurs. Checkpoints: `~/.quorum-overseer/bh1t-checkpoint-{1,2,3}.md`.
