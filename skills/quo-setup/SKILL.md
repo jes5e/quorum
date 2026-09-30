@@ -494,7 +494,7 @@ After generating, ask the user to review the generated docs and confirm before p
 #### Writing the CLAUDE.md section
 
 Do NOT volunteer the following context unless the user asks what a location is for:
-- **Project requirements doc (PRD)**: Background on what the project is for and why; agents read it for context, and nothing in the workflow writes it.
+- **Project requirements doc (PRD)**: Background on what the project is for and why; agents read it for context, and nothing after this bootstrap writes it.
 - **Internal architecture docs (SDD)**: Used by the Engineer to understand existing system design, by the Product Manager for architectural drift detection, and by the Doc Writer to update architecture documentation after code changes.
 - **Customer-facing docs**: Used by the Doc Writer to update user-facing documentation when user-visible behavior changes.
 - **Engineering best practices**: Used by the Engineer agent in quo-fix-issue and quo-execute to follow project coding standards when writing or modifying source code.
@@ -650,7 +650,7 @@ If applied, write the files to disk and update the `## Documentation Locations` 
 
 After the bootstrap completes, leave the user with this note:
 
-> The docs you just bootstrapped are starter content. As you use the workflow, the Doc Writer in `/quo-execute` and `/quo-fix-issue` keeps `docs/sdd.md` true to what each change built and adds the rules and decisions a change makes, not a section per feature. `/quo-plan` keeps each feature's own PRD and SDD as tickets. `docs/prd.md` is background: nothing in the workflow writes it, so edit it by hand if the project's purpose changes.
+> The docs you just bootstrapped are starter content. As you use the workflow, the Doc Writer in `/quo-execute` and `/quo-fix-issue` keeps `docs/sdd.md` true to what each change built and adds the rules and decisions a change makes, not a section per feature. `/quo-plan` keeps each feature's own PRD and SDD as tickets. `docs/prd.md` is background: nothing after this bootstrap writes it, so edit it by hand if the project's purpose changes.
 
 #### If the user picks option 2 (Defer)
 

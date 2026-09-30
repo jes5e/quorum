@@ -197,7 +197,7 @@ These are recommendations, not settings quorum applies for you. It could pin an 
 
 If you opt into doc creation (recommended — see [Why this exists](#why-this-exists) above), `/quo-setup` bootstraps:
 
-- `docs/prd.md` — what the project is for and why. Background: agents read it, and nothing in the workflow writes it.
+- `docs/prd.md` — what the project is for and why. Background: agents read it, and nothing after the bootstrap writes it.
 - `docs/sdd.md` — where things are, the guarantees and cross-module rules the code must keep, the contract clients rely on, and decisions with their reasons. The `doc-writer` agent dispatched by `/quo-execute` and `/quo-fix-issue` keeps it true to each change and adds a rule or decision when a change makes one; it adds no section per feature.
 
 Per-feature PRD/SDD content is authored at plan time as `t1=Doc` children of a Spec Bee in the Specs hive (PRD and SDD as separate Docs) and is not copied into the project docs.

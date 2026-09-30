@@ -97,7 +97,7 @@ Invoked this way the writers fire no gates, leave their child `drafted`, and ret
 
 Draft the plan into one file and record its path. Draft it before creating any Plans-hive ticket, so the review and any revision change a file, not tickets. The file has one `#` heading per ticket: `# Plan Bee body`, then `# Epic N — <short title>` for each Epic. Each ticket's body is everything under its heading, down to the next `#` heading, without the heading line itself.
 
-**The Plan Bee body** is a two-to-three-sentence summary of the feature, then `## Anticipated doc impact`. That section lists which project docs the feature should update once it ships, named by their CLAUDE.md `## Documentation Locations` keys (`Internal architecture docs (SDD)`, `Customer-facing docs`). It names keys rather than paths because projects route those keys to different files. It is the Doc Writer's starting checklist.
+**The Plan Bee body** is a two-to-three-sentence summary of the feature, then `## Anticipated doc impact`. That section lists which project docs the feature should update once it ships, named by their CLAUDE.md `## Documentation Locations` keys (`Internal architecture docs (SDD)`, `Customer-facing docs`). It names keys rather than paths because projects route those keys to different files. It seeds `/quo-breakdown-epic`'s doc Subtasks.
 
 **Each Epic body** gives its outcome, scope, acceptance criteria, and the earlier Epics it depends on; N is its 1-based position in the draft. Decompose so that:
 

@@ -11,14 +11,16 @@ The Doc Writer is the documentation worker dispatched by an orchestrating execut
 ## Mode divergence — execute vs. fix
 
 - **Execute mode** (`/quo-execute`): execute the Task's doc Subtasks first, then do the two jobs below over the Engineer's diff, which catches what the Subtasks missed.
-- **Fix mode** (`/quo-fix-issue`): there are no doc Subtasks; the two jobs over the Engineer's diff are the work. On a text-class dispatch — a docs-only Issue on which no Engineer ran — the prompt carries the Issue body as your directive and no diff, and the body is the signal: make the doc change it describes.
+- **Fix mode** (`/quo-fix-issue`): there are no doc Subtasks; the work is the two jobs over the Engineer's diff, plus correcting each false statement in the customer-facing docs or the SDD that the Issue body's `## Doc divergence noted` names. On a text-class dispatch — a docs-only Issue on which no Engineer ran — the prompt carries the Issue body as your directive and no diff, and the body is the signal: make the doc change it describes.
 
 ## The two jobs
 
 The doc paths are the `Customer-facing docs` and `Internal architecture docs (SDD)` keys in CLAUDE.md `## Documentation Locations`.
 
-1. **Keep the docs true to the diff.** In the customer-facing docs and the SDD, correct each statement the Engineer's diff makes false, or delete it when the table below puts that fact elsewhere, and cover the sites a relayed `## Blast radius` or `## Design decisions for writers` names. Add to the customer-facing docs what a user or operator now needs to know. Agents and users act on these docs, and a false statement costs more than a missing one.
-2. **Record what a future agent needs, in the SDD.** When the change adds or changes a guarantee, a cross-module rule, the contract clients rely on, or a decision with the alternatives it rejected, state it once, with its reason, in the SDD section it belongs to. That is what the code cannot hold. Add a sentence only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug; that test is what keeps the SDD from growing, so a change whose facts all live elsewhere leaves the SDD untouched, and nothing gets a section per feature or per change.
+1. **Keep the docs true to the diff.** In the customer-facing docs and the SDD, correct each statement the Engineer's diff makes false, or delete it when the table below puts that fact elsewhere. Add to the customer-facing docs what a user or operator now needs to know. Agents and users act on these docs, and a false statement costs more than a missing one.
+2. **Record what a future agent needs, in the SDD.** When the change adds or changes a guarantee, a cross-module rule, the contract clients rely on, or a decision with the alternatives it rejected, state it once, with its reason, in the SDD section it belongs to; take the reason and the alternatives from the tickets, the relayed decisions, or the diff, never inventing one. That is what the code cannot hold.
+
+**The SDD test:** a fact belongs in the SDD, rather than anywhere else it also fits, only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug. The test is what keeps the SDD from growing: a change whose facts all live elsewhere leaves it untouched, and nothing gets a section per feature or per change.
 
 ## Where each fact lives
 
@@ -30,7 +32,7 @@ The doc paths are the `Customer-facing docs` and `Internal architecture docs (SD
 | What users and operators do: install, commands, configuration | the customer-facing docs |
 | What the project is for and why | the doc the `Project requirements doc (PRD)` key names, as background: read it, never write it |
 
-The table governs over a Subtask body that asks for a fact somewhere else, such as a per-feature section or a PRD entry, because bodies written before it still ask for those.
+The table governs over a ticket body or relayed decision that asks for a fact somewhere else, such as a per-feature section or a PRD entry, because plans and bodies written before it still ask for those; name each request you declined, and why, in your return.
 
 ## Instructions
 
