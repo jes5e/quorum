@@ -263,3 +263,25 @@ This note supersedes the 12-item `## Suggested fix`, the relays in `### Relays`,
 2. The PRD is background: nothing writes it, and it is not archived now.
 3. Existing SDDs: stop the growth now; any cleanup comes later, per repo.
 
+## Input from a live_edit agent (operator relayed, 2026-09-30)
+
+The operator asked a live_edit agent whether "the SDD and PRD hold the why; the code and its comments own how the service works" would help. It said yes, from the run it was in:
+- Rustam's branch arrived with 10 doc problems, mostly SDD lines describing removed machinery.
+- Each design revision listed dozens of SDD lines to change, and revision 3 found about 15 an earlier sweep had missed.
+- The SDD is over 9,000 lines.
+
+Its boundary, for the ownership table: "why only" is too narrow. The SDD also keeps what no single code comment can hold:
+1. the guarantees the service must keep, which span files and which reviewers check against;
+2. rules that cut across modules (dependency direction, key layout);
+3. the client-facing contract (this could live in the customer docs instead);
+4. decisions with their rejected alternatives.
+
+Its two additions:
+- a module-level overview in code for any mechanism that spans files, so moving "how" out of the SDD doesn't lose the overview;
+- a one-time cleanup of the existing SDD, so old "how" and new "why" sections don't sit side by side.
+
+**Overseer's disposition for the design:**
+- The four "keeps" fit the re-scope's "rules and decisions" row. State them in the ownership table.
+- The module overview belongs in the table as the owner of multi-file mechanism ("the code and its module-level docs"). The Doc Writer edits markdown only, so writing those docs is the Engineer's lane, carried by the target repo's engineering guide. Add no Engineer rule without a run showing the gap.
+- The cleanup stays a per-repo job outside this build. For live_edit it comes after its big feature, and could be run as a live_edit Issue through `/quo-fix-issue`.
+
