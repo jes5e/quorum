@@ -5,7 +5,7 @@ title: Internal docs as map + register with single fact ownership; retire the pe
 parent: null
 reference_materials: null
 created_at: '2026-09-10T20:39:45.896745'
-status: open
+status: done
 schema_version: '0.1'
 guid: sb7ntrreicsvjt89uqrzqrvp4ydmbdgd
 ---
@@ -285,3 +285,39 @@ Its two additions:
 - The module overview belongs in the table as the owner of multi-file mechanism ("the code and its module-level docs"). The Doc Writer edits markdown only, so writing those docs is the Engineer's lane, carried by the target repo's engineering guide. Add no Engineer rule without a run showing the gap.
 - The cleanup stays a per-repo job outside this build. For live_edit it comes after its big feature, and could be run as a live_edit Issue through `/quo-fix-issue`.
 
+## Closed (2026-09-30)
+
+Merged to main by fast-forward, head `dfc16d9` (commits `52ccf49`..`dfc16d9`), not pushed. The stop-the-growth version shipped: net −1,666 shipped words, with `agents/doc-writer.md` going from 3,078 to about 1,500 words. There were four cold rounds, and the rounds 2–3 findings were mostly mismatches between the Doc Writer and the Doc Reviewer.
+
+**What changed:**
+- The per-feature fold-in is deleted.
+- The Doc Writer has two jobs (keep the docs true; record what a future agent needs) and one ownership table, plus the SDD test. The test puts a fact in the SDD, not only in the code or the tickets, if and only if an agent without it would make a worse design decision or reintroduce a fixed bug.
+- The Doc Reviewer checks only the change's footprint in the SDD, with the same test and rule.
+- The table governs over ticket bodies and relayed decisions, and the Doc Writer names each request it declined.
+- `/quo-setup`'s skeletons and its guide brief no longer seed per-feature sections.
+
+**Operator decisions (2026-09-30):**
+- Q1: the SDD holds the guarantees, cross-module rules, the client contract, and decisions with their rejected alternatives.
+- Q2: the PRD is background, and nothing writes it after bootstrap.
+- Q3: existing SDDs are cleaned up per repo, later.
+- Guide precedence: the project's guide wins where it places a fact differently, except that nothing is added to a per-feature or per-change section. Evidence: live_edit's deliberate SDD §16 env-var reference, and two quorum-generated guides that prescribe `### Feature:` sections.
+
+**Filed as a follow-up:** the Encode deferral destination "the project PRD/SDD via a doc-writer pass" (see its own Issue).
+
+**Per-repo cleanup, each repo's own job:**
+- the existing SDDs (this repo's `docs/sdd.md` and `docs/prd.md` too);
+- each repo's doc writing guide, read against the new table. event_consumer_service and thumbnail-service still prescribe `### Feature:` sections, which the table overrides in the meantime. live_edit's guide already fits.
+
+For live_edit the operator plans the SDD cleanup on the current fix-issue run's branch, before its docs-only stage 6 (operator 2026-09-30: merge-request size is not a concern; do the cleanup first so stage 6 doesn't correct text the cleanup then deletes).
+
+**Declined on evidence (reopen if a run shows it):**
+- a pm.md doc-placement sentence;
+- an Engineer rule for module-level docs;
+- an execute reader for declined requests;
+- a no-reviewer rule for an empty fix-issue return;
+- an Analyst "never a Feature-section site" clause;
+- a guide that routes facts to the PRD.
+
+**Still deferred:** relays, a size cap, the register, a PRD archive, and retiring the `### Feature:` scoping machinery (item 12a).
+
+**Validation:** none dedicated. The next real runs are the check (does the Doc Writer stop adding feature sections, and does the doc review converge?), starting with live_edit's stage 6. Watch `**Doc Sync**` for declined requests, and watch whether live_edit's §16 survives review.
