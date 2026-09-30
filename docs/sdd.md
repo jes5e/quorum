@@ -1100,3 +1100,17 @@ Three questions for item 5: 3 times; silent to the approver; not recovered unaid
 **Deliberately not added** (predicted, no run behind them): a carrier for premise-check `### Blast radius` amendments at an execute Task with no revision; a read of the ticket's `## Design revision (Analyst)` when the proposal file is missing; a softer Cancel for a premise-revision gate.
 
 Validation: none dedicated. The next real `/quo-execute` run is the check; the big feature's resume will likely exercise the hand-off timing.
+
+### Feature: Stop the SDD growth — the Doc Writer's per-feature fold-in is retired
+
+**Architecture.** Hand edits (b.sb7, re-scoped by the operator 2026-09-28/29; the three design questions answered 2026-09-30).
+- **Deleted:** `agents/doc-writer.md` `## Cumulative project doc updates` — the categorization table, the `### Feature: <title>` recipe, the idempotency rule, the PRD as a write target — and the orchestrators' §5 relay of the Plan Bee title, whose only reader it was.
+- **The Doc Writer's two jobs:** keep the customer docs and the SDD true to the diff; record in the SDD a guarantee, cross-module rule, client contract, or decision with its rejected alternatives, once, with its reason, only if an agent lacking it would design worse or reintroduce a fixed bug. `## Where each fact lives` is the one shipped copy of the ownership table; the PRD is background, never written.
+- **`/quo-doc-writer-review`** drops the house style that forbade decisions and history (it contradicted the second job), the whole-SDD completeness bullets, and the duplication step. The README stays whole-document for correctness; the SDD is reviewed where the change touched it.
+- `/quo-setup` drops the per-feature skeleton headers; `/quo-plan`'s `## Anticipated doc impact` no longer names the PRD.
+
+**Evidence.** live_edit's SDD went from 276k words (2026-09-10) to 340k (2026-09-28), +23% in 18 days over 47 commits; docs are 7–11% of agent time and 14–23% of tokens across three runs, so this is a growth fix, not a speed fix.
+
+**Deferred** (decide on evidence): new relays, a size cap, a register shape, archiving the PRD, per-repo cleanup of existing SDDs (this one included), retiring the `### Feature:` scoping machinery, and the Encode "project PRD/SDD via a doc-writer pass" destination.
+
+Validation: none dedicated. The next real runs are the check: does the Doc Writer stop adding feature sections, and does the doc review converge?

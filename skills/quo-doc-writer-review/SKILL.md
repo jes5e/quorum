@@ -1,14 +1,14 @@
 ---
 name: quo-doc-writer-review
-description: Review the Doc Writer's documentation during a /quo-execute or /quo-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. Checks README and architecture docs are updated with new functionality.
+description: Review the Doc Writer's documentation during a /quo-execute or /quo-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. Checks that the docs the change touched are true and that each fact it recorded sits where it belongs.
 ---
 
 ## Overview
 
-Review documentation completeness for a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket. Verify README and any architecture documents.
+Review the documentation of a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket. Verify the README and the SDD.
 Concise is better than verbose. Value brevity.
 The README is for human users that want to use the program.
-Architecture docs should contain the high-level architecture and core technology.
+The SDD holds where things are, the guarantees and cross-module rules the code must keep, the contract clients rely on, and decisions with their rejected alternatives and reasons; how the code works belongs in the code, and history in commits and tickets (the doc-writer subagent definition's `## Where each fact lives` section).
 
 **Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
 
@@ -24,6 +24,8 @@ Analyze what changed, compare against current docs, return list of specific docu
 
 This review covers user-facing natural-language documentation: `README.md`, architecture docs (e.g. `docs/sdd.md`), and any other docs the project's `CLAUDE.md` lists under `## Documentation Locations` for end-user / contributor reading.
 
+**What the change touched.** Review the whole README for correctness; it is small. An SDD can be too large for a whole-document hunt to converge, so review only the Doc Writer's edits to it and every SDD statement about code the diff changed; a pre-existing problem outside those is not a finding.
+
 **Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/quo-engineer-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
 
 ### Readme
@@ -34,22 +36,6 @@ Readme is for human users to understand how to install and run the project
 - No discussion of security implications or requirements
 - Keep it short and simple - focused on how to install and how to use
 - Don't describe how to use common tools (like screen, poetry, bash etc)
-Architecture docs — house style for this skill: written as an "LLM cheat sheet" so codegen agents can navigate the code base without reading all of it. (Some teams write architecture docs primarily for humans; if the project's own conventions say otherwise, follow them. The list below is the default.)
-- Don't brag about or rationalize the code
-  - No performance details
-  - Don't describe how comprehensive the tests are or the testing strategy
-  - Don't describe design decisions, trade-offs, or other designs considered
-  - Don't describe what happened before — just the current state of things
-  - No design patterns
-- No code — that defeats the purpose, the LLM can read the code if it wants to
-  - no functions, no methods
-- Do add:
-  - list of logical components
-  - what the components do
-  - how the components interact
-  - how data flows through the components
-  - use of resources like databases or file storage
-  - schemas or API endpoints
 
 ## Workflow
 
@@ -80,7 +66,7 @@ Review all commits and changed files to understand the scope of work: new featur
 
 ### 2. Review Current Documentation
 
-Read README.md and Architecture docs to understand current state.
+Read the README and the SDD text in scope.
 
 ### 3. Find Documentation Gaps
 
@@ -91,25 +77,17 @@ Read README.md and Architecture docs to understand current state.
 - If outdated, return a work item ("Update README §X — Y is now Z"). If correct, LEAVE IT ALONE!
 
 
-**Architecture Docs** (cheat sheet for llms):
-- Has the high-level architecture changed?
-- Have new components been introduced or old ones removed?
-- Schema/API changes?
-- Data flow still accurate?
-- If yes, return a work item describing what's stale. If no, LEAVE IT ALONE!
+**SDD** (what the change touched):
+- Is each statement in scope true against the diff — components, boundaries, data flow, schemas and API surfaces included?
+- Does a guarantee, cross-module rule, client contract, or decision the change made appear once, with its reason?
+- Did the Doc Writer add anything the SDD does not own — a restatement of the code, a narration of the change, history, a ticket ID, a section per feature? Return its deletion as a work item.
+- If all is well, LEAVE IT ALONE!
 
 
 ### 4. Check for Inconsistencies
 Look for docs that are now incorrect: outdated commands, deprecated features still shown, changed file paths, old config formats.
 
-### 5. Find and reduce duplication and waste
-- Look for sections of the docs that repeat information and suggest removing them.
-- Look for sections of the doc that are too verbose and recommend ways to compact them without losing meaning
-- Ensure docs serve the right purpose:
-  - Readme is a user manual
-  - Architecture docs are a cheat sheet for LLMs to understand the architecture and core technology
-
-### 6. Output Work Items
+### 5. Output Work Items
 
 Return specific, actionable items as numbered list. **Always append a routing trailer in the second-person imperative form** — `**Your next tool use MUST address these findings now.**` (findings present) or `**Your next tool use MUST advance the workflow.**` (no findings) — that names the precise routing the calling orchestrator (`/quo-execute`'s review loop, `/quo-fix-issue`'s review loop, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.` — that explicitly forbids the narrate-instead-of-do failure mode. **When the orchestrator's judgment leads to firing an `AskUserQuestion` gate** (e.g., escalating a contested finding to the user, asking how to handle an ignored-feedback set), the calling skill's gate contract applies — a manifest `Write` filling `## Open gate` then `AskUserQuestion` in the same turn for `/quo-fix-issue` and `/quo-execute`; the two-step `TaskCreate` → `AskUserQuestion` contract (first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn) for other callers. When the orchestrator's judgment is to dispatch or resume the Doc Writer (no user gate fires), no gate contract applies on this lane — Agent dispatch and `SendMessage` are themselves tool calls and structurally hard to silently yield. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form and the counter-anchor clause are required components, not stylistic preferences (a prose-only counter-anchor demonstrably failed to close this failure mode; a structural gate contract — a tool call preceding the question — narrows but does not close the residual surface); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed step. The orchestrator skills' review-loop sections defer to "follow the routing trailer in this skill's output literally."
 
@@ -193,5 +171,5 @@ Run this section, and only this section, when the invocation carries `## Confirm
 
 When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every statement the unit's change must make — the sites the relayed `## Design decisions for writers` and the `## Blast radius` docs groups name, plus the statements the changed source and the ticket body require — state for each whether it is present and true, and report every gap as ONE finding that lists the sites.
 
-Output in section 6's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
+Output in section 5's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
 

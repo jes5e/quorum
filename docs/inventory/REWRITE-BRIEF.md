@@ -286,6 +286,8 @@ A cold review must not report any of these as an A2 violation.
 
 A cold review must not report any of these as an A2 violation.
 
+*Amended 2026-09-30 (Issue `b.sb7`, stop the SDD growth):* **deleted** from both bodies' §5: the Plan Bee `title` relay to the Doc Writer (execute's title rule in `execute-CONSOLIDATED.md`, FX-ROLES-12, and EDGES E83 and E84). Its only reader, the Doc Writer's per-feature `### Feature: <title>` fold-in, is retired in `agents/doc-writer.md`. A cold review must not report this as an A1 or A5 violation.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 
