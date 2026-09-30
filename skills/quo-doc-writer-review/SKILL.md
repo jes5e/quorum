@@ -9,7 +9,7 @@ Review the documentation of a change set — files changed during a Task, a git 
 Concise is better than verbose. Value brevity.
 The README is for human users that want to use the program.
 The SDD holds where things are (components, how they connect, data flow, external dependencies); the guarantees the system must keep; rules that cut across modules; the contract clients rely on; decisions with the alternatives they rejected; verified facts about outside systems, with their source. How the code works belongs in the code and its comments, and history in commits and tickets.
-**The SDD test:** a fact belongs in the SDD, rather than anywhere else it also fits, only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug. The Doc Writer applies the same test, so judge its SDD edits by it.
+**The SDD test:** a fact goes in the SDD, not only in the code or the tickets, if and only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug. Where the project's doc writing guide places a fact differently, the guide wins, except that no fact goes in a per-feature or per-change section, whatever the guide says. The Doc Writer works by the same test and rule, so judge by them every SDD fact you check, ask for, or propose in a fix path.
 
 **Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
 
@@ -25,7 +25,7 @@ Analyze what changed and return what it made false or left missing in the docs, 
 
 This review covers the docs under the `Customer-facing docs` and `Internal architecture docs (SDD)` keys in CLAUDE.md `## Documentation Locations`. The PRD is background that no role writes, so it is not reviewed.
 
-**What the change touched.** Review the customer-facing docs whole for correctness; users act on every line. An SDD can be too large for a whole-document hunt to converge, so review only the Doc Writer's edits to it and every SDD statement about code the diff changed; a pre-existing problem outside those is not a finding.
+**What the change touched.** Review the customer-facing docs whole for correctness; users act on every line. An SDD can be too large for a whole-document hunt to converge, so review only the Doc Writer's edits to it, every SDD statement about code the diff changed, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
 
 **Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/quo-engineer-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
 
@@ -80,7 +80,7 @@ Read the README and the SDD text in scope.
 
 **SDD** (what the change touched):
 - Is each statement in scope true against the diff — components, boundaries, data flow, schemas and API surfaces included?
-- Does each fact the change made that passes the SDD test appear once, with its reason?
+- Does each fact the change made that passes the SDD test appear once in the SDD, with its reason where the tickets, the relayed decisions, or the diff give one?
 - Does everything the Doc Writer added pass the SDD test? A restatement of the code, a narration of the change, history, a ticket ID, or a section per feature does not; return its deletion as a work item.
 - If all is well, LEAVE IT ALONE!
 

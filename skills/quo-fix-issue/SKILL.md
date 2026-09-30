@@ -275,7 +275,7 @@ Follow the review skills' routing trailer literally — `**Your next tool use MU
 [**Accepted compromises** — rendered when the tracker has entries, or OMITTED ENTIRELY]
 ```
 
-- `**Doc Sync**` confirms the PM's verdict — a deep review or `no spec drift surface to review for this Issue` — and, when the body carried `## Doc divergence noted`, that the Doc Writer consumed it; the orchestrator performs no doc edit itself. On a text-class Issue no PM ran, so `**Doc Sync**` says so and `**Reviews**` carries the one lane that ran.
+- `**Doc Sync**` confirms the PM's verdict — a deep review or `no spec drift surface to review for this Issue` — and, when the body carried `## Doc divergence noted`, that the Doc Writer consumed it; it names each request the Doc Writer's return says it declined, and why, so the operator can refile it. The orchestrator performs no doc edit itself. On a text-class Issue no PM ran, so `**Doc Sync**` says so and `**Reviews**` carries the one lane that ran.
 - `**Second-order effects**` is unconditional and is narrative, not routing input: it never holds a lane open, never becomes a finding, and is never re-ranked or merged into the `**Reviews**` line.
   - Collect every Code Reviewer return at this Issue.
   - Render bullets verbatim; attribute each Code Reviewer block by round; de-duplicate exact repeats.

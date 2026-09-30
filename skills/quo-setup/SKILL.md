@@ -485,7 +485,7 @@ Before generating any docs, determine the project's technology stack from CLAUDE
 
 - **Test review guide** (`docs/test-review-guide.md`) — checklist format covering: correctness (behavior not implementation), isolation (no cross-test dependencies), coverage (happy path + error paths + boundaries), robustness (no sleeps for sync, timeouts on hangs), readability (arrange-act-assert, named constants), performance, and anti-patterns to flag.
 
-- **Doc writing guide** (`docs/doc-writing-guide.md`) — inline doc conventions (e.g., rustdoc, JSDoc, godoc), when to update architecture docs vs README, writing style (active voice, direct, code over prose), project-specific terminology to use consistently, formatting rules, and what not to document.
+- **Doc writing guide** (`docs/doc-writing-guide.md`) — inline doc conventions (e.g., rustdoc, JSDoc, godoc), when to update architecture docs vs README (the SDD takes no per-feature or per-change sections), writing style (active voice, direct, code over prose), project-specific terminology to use consistently, formatting rules, and what not to document.
 
 Each guide should be comprehensive but practical — opinionated defaults, not exhaustive references. Use the project's own technology choices as concrete examples throughout.
 

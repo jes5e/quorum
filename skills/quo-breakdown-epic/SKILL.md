@@ -110,7 +110,7 @@ The files, functions, and changes, with line numbers where known.
 ```
 
 - Give each Subtask exactly one role tag — `engineer`, `test-writer`, or `doc-writer` — for the role that executes it; `/quo-execute` dispatches by that tag. A step only the operator can run is tagged `engineer`, and its body says the implementer stops and asks the operator to run it.
-- Every Task that changes code, configuration, or deployment gets a `doc-writer` Subtask, seeded from `## Anticipated doc impact`: the Doc Writer decides which docs change, so do not judge that no doc does.
+- Every Task that changes code, configuration, or deployment gets a `doc-writer` Subtask, seeded from `## Anticipated doc impact`: it states what the Task changes, and the Doc Writer decides which docs change and where each fact goes, so do not judge that no doc does.
 - State scope and acceptance, not implementation; paste no code. The implementer is an expert, and the code will move before it runs.
 - Carry any design decision the user gave you verbatim into every Subtask it affects. When the spec leaves open a choice the Tasks must commit to, ask in prose before drafting past it.
 - Emit no Subtask for committing, formatting, or running the full test suite. `/quo-execute` does those itself.
