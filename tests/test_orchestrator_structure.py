@@ -758,7 +758,7 @@ CONTRACT_SURFACES = [
     ("<scoped-marker-resolver-path>", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM]),
     ("## Doc divergence noted", [QUO_FILE_ISSUE], [QUO_FIX_ISSUE, AGENT_DOC_WRITER]),
     ("a fact goes in the SDD, not only in the code or the tickets, if and only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug.", [AGENT_DOC_WRITER], [QUO_DOC_WRITER_REVIEW]),
-    ("Where the project's doc writing guide places a fact differently, the guide wins, except that no fact goes in a per-feature or per-change section, whatever the guide says.", [AGENT_DOC_WRITER], [QUO_DOC_WRITER_REVIEW]),
+    ("Where the project's doc writing guide places a fact differently, the guide wins, except that no fact is added to a per-feature or per-change section, whatever the guide says.", [AGENT_DOC_WRITER], [QUO_DOC_WRITER_REVIEW]),
     ("things are (components, how they connect, data flow, external dependencies); the guarantees the system must keep; rules that cut across modules; the contract clients rely on; decisions with the alternatives they rejected; verified facts about outside systems, with their source", [AGENT_DOC_WRITER], [QUO_DOC_WRITER_REVIEW]),
     ("No code issues found.", [QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE]),
     ("No code files to review", [QUO_ENGINEER_REVIEW], [QUO_FIX_ISSUE, QUO_EXECUTE]),
