@@ -26,7 +26,7 @@ Analyze what changed and return what it made false or left missing in the docs, 
 
 This review covers the docs under the `Customer-facing docs`, `Internal architecture docs (SDD)`, and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`.
 
-**What the change touched.** Review the customer-facing docs whole for correctness; users act on every line. An SDD or PRD can be too large for a whole-document hunt to converge, so in each review only the Doc Writer's edits, every statement about code or behavior the diff changed, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
+**What the change touched.** Review the customer-facing docs whole for correctness; users act on every line. An SDD or PRD can be too large for a whole-document hunt to converge, so in each, review only the Doc Writer's edits, every statement about code or behavior the diff changed, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
 
 **Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/quo-engineer-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
 
