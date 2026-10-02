@@ -97,7 +97,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - Vague framings such as "defer to later" are forbidden because an item without a destination cannot be reconciled into a carrier.
 - Step 0 is a safety net for orchestrators that missed the upstream record-creating sites; those sites remain the load-bearing source.
 - The active set is scoped per unit because accumulating deferrals across a batch would surprise the user with a long list at the end and defeat per-unit close-out.
-- Encode writes land after the per-unit commit, so a follow-up commit is needed or the tree is dirty at yield; the helper stages only in-repo hive paths and explicit `--doc-path` arguments, so an aborted unit's uncommitted fix is never swept in.
+- Encode writes land after the per-unit commit, so a follow-up commit is needed or the tree is dirty at yield; the helper stages only in-repo hive paths, so an aborted unit's uncommitted fix is never swept in.
 - The Encode heading's timestamp suffix lets several Encodes to one ticket body across runs sit side by side with distinguishable headings.
 - `<N>` in the Encode commit subject counts deferral items, not tickets, because several items can land in one body and one item in several.
 - Per-item routing at the deferral gate is the one place where the auto-appended free-text slot is the primary path, because the finite choices apply per item.

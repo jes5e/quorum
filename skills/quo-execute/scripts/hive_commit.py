@@ -5,8 +5,7 @@ The deferral-hygiene gate shared by `/quo-execute` and `/quo-fix-issue` (their
 `## 9. Deferral hygiene`) and `/quo-breakdown-epic` (its end of run) lets a
 user route deferred items into an existing ticket body via
 `bees update-ticket --body-file`. Those updates persist new on-disk changes in
-the relevant hive's per-ticket directory (and, when the user routed an Encode to
-the project PRD/SDD, in those doc files). This helper produces the single
+the relevant hive's per-ticket directory. This helper produces the single
 follow-up commit that sweeps those changes — one commit per gate firing, not per
 Encode item.
 
@@ -27,7 +26,7 @@ reason the helper exists.
 **Encode-commit mode (default-shaped subcommand `encode-commit`, also accepted
 bare for backward compatibility):**
 
-    hive_commit.py [encode-commit] --skill <slug> --count <N> [--doc-path <abs-path> ...]
+    hive_commit.py [encode-commit] --skill <slug> --count <N>
 
 Stages and commits the on-disk changes a deferral-hygiene Encode branch
 produced — one follow-up commit per gate firing.
@@ -62,13 +61,6 @@ encode-commit mode arguments:
 - `--count <N>` (REQUIRED, integer): appears verbatim in the commit subject. The
   count of `defer-*` items the user routed to Encode in this gate firing. The
   helper does NOT derive it from git state.
-- `--doc-path <abs-path>` (OPTIONAL, repeatable): a project PRD/SDD path the
-  orchestrator already resolved from CLAUDE.md `## Documentation Locations` and
-  routed an Encode to. Zero occurrences = no doc routed (the common case). Each
-  given path must exist (exit 2 otherwise). The helper does NOT parse CLAUDE.md
-  itself — the orchestrator passes resolved paths explicitly so the contract-key
-  knowledge stays in the orchestrator and this helper stays purely
-  git/hive-mechanical.
 
 Behavior
 --------
@@ -79,20 +71,18 @@ Behavior
    (tested via `Path.resolve()` + `Path.is_relative_to`, NOT string-prefix
    matching). Out-of-repo hives are skipped — their `bees update-ticket` already
    persisted and they require no git action here.
-4. `git add` each `--doc-path` (in-repo by definition).
-5. Check staged state via `git diff --cached --quiet` exit status.
-6. If nothing is staged: print `skipped: nothing staged` and exit 0. Do NOT
+4. Check staged state via `git diff --cached --quiet` exit status.
+5. If nothing is staged: print `skipped: nothing staged` and exit 0. Do NOT
    create an empty commit.
-7. If something is staged: commit with subject
+6. If something is staged: commit with subject
    `Encode deferral: /<slug> — <N> deferral(s) encoded`, print a one-line summary,
    exit 0.
 
 Invariants (load-bearing)
 -------------------------
 - NEVER `git push`.
-- NEVER `git add -A` — only the resolved hive paths and the explicit
-  `--doc-path` arguments are staged, so in-flight changes elsewhere in the
-  working tree are never swept in.
+- NEVER `git add -A` — only the resolved hive paths are staged, so in-flight
+  changes elsewhere in the working tree are never swept in.
 - NEVER create an empty commit.
 - The commit subject string (em-dash `—`, exact spacing) is a contract shared
   with the three skill prose blocks; do not alter it.
@@ -205,23 +195,11 @@ def cmd_encode_commit(args) -> int:
     if hive_paths is None:
         return fail("could not resolve hive paths via `bees list-hives`")
 
-    # Validate --doc-path existence up front.
-    for raw in args.doc_paths:
-        if not Path(raw).exists():
-            return fail(f"--doc-path does not exist: {raw}")
-
     # Stage in-repo hive paths only (out-of-repo hives already persisted via bees).
     for hive_path in hive_paths:
         resolved = hive_path.resolve()
         if not resolved.is_relative_to(repo_root):
             continue
-        add = run_git(["add", str(resolved)], repo_root=repo_root)
-        if add.returncode != 0:
-            return fail(f"`git add {resolved}` failed: {add.stderr.strip()}")
-
-    # Stage each resolved PRD/SDD doc path (in-repo by definition).
-    for raw in args.doc_paths:
-        resolved = Path(raw).resolve()
         add = run_git(["add", str(resolved)], repo_root=repo_root)
         if add.returncode != 0:
             return fail(f"`git add {resolved}` failed: {add.stderr.strip()}")
@@ -266,13 +244,6 @@ def main() -> int:
             "--count",
             type=int,
             help="count of defer-* items routed to Encode this gate firing (verbatim in subject)",
-        )
-        p.add_argument(
-            "--doc-path",
-            action="append",
-            default=[],
-            dest="doc_paths",
-            help="a resolved project PRD/SDD path routed an Encode (repeatable)",
         )
 
     # Resolve-hive-paths mode (NON-MUTATING query).

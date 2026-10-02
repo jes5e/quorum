@@ -288,6 +288,8 @@ A cold review must not report any of these as an A2 violation.
 
 *Amended 2026-09-30 (Issue `b.sb7`, stop the SDD growth):* **deleted** from both bodies' §5: the Plan Bee `title` relay to the Doc Writer (execute's title rule in `execute-CONSOLIDATED.md`, FX-ROLES-12, and EDGES E83 and E84). Its only reader, the Doc Writer's per-feature `### Feature: <title>` fold-in, is retired in `agents/doc-writer.md`. Added in `/quo-fix-issue`'s close-out: `**Doc Sync**` names each request the Doc Writer's return says it declined under its ownership table, because a text-class Issue whose only request is declined otherwise closes `done` with nothing telling the operator (a return line with no reader, a gap between two agents; cold round 2). A cold review must not report either as an A1, A2, or A5 violation.
 
+*Amended 2026-10-02 (Issue `b.21d`, with `b.dh9`):* **deleted** from both bodies' §9: the `Encode in existing ticket` destination "the project PRD/SDD via a doc-writer pass", and from the helper invocation the `[--doc-path <abs-path> ...]` literal and its resolution clause; the helper drops the flag. Its reader is gone: no rule dispatches a doc-writer pass at deferral hygiene, and the Doc Writer, which now keeps the PRD as well as the SDD true, takes no deferred work (history lives in tickets). Encode targets tickets only, as `/quo-breakdown-epic`'s already did (b.pcc). A cold review must not report this as an A1, A3, or A5 violation.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 

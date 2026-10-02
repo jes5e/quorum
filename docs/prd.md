@@ -267,7 +267,7 @@ quorum exists as an alternative to [Apiary](https://github.com/gabemahoney/apiar
 
 ### Feature: Phase skills silently drop "defer to next session" items at session handoff
 
-**Superseded in part for `/quo-breakdown-epic` (b.pcc).** Its ledger is its run-state manifest's `## Obligations`, fed from the PM's Final report as the review returns. The gate fires once when the run ends; Step 0's retroactive sweep is gone; Encode targets tickets only. The third choice is labelled `Encode in existing ticket` in all four skills.
+**Superseded in part for `/quo-breakdown-epic` (b.pcc).** Its ledger is its run-state manifest's `## Obligations`, fed from the PM's Final report as the review returns. The gate fires once when the run ends; Step 0's retroactive sweep is gone; Encode targets tickets only. The third choice is labelled `Encode in existing ticket` in all four skills. Since b.21d, tickets-only holds in all four skills: the "project PRD/SDD via a doc-writer pass" destination below is removed.
 
 **Superseded in part for `/quo-plan` (b.7ib).** `/quo-plan` keeps its deferrals in its run-state manifest, not the TaskList; the gate and its three choices are unchanged.
 

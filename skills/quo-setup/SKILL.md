@@ -494,7 +494,7 @@ After generating, ask the user to review the generated docs and confirm before p
 #### Writing the CLAUDE.md section
 
 Do NOT volunteer the following context unless the user asks what a location is for:
-- **Project requirements doc (PRD)**: Background on what the project is for and why; agents read it for context, and nothing after this bootstrap writes it.
+- **Project requirements doc (PRD)**: What the product must do and why (goals, non-goals, product-level targets, and promises to users); agents read it, and the Doc Writer keeps it true.
 - **Internal architecture docs (SDD)**: Used by the Engineer to understand existing system design, by the Product Manager for architectural drift detection, and by the Doc Writer to update architecture documentation after code changes.
 - **Customer-facing docs**: Used by the Doc Writer to update user-facing documentation when user-visible behavior changes.
 - **Engineering best practices**: Used by the Engineer agent in quo-fix-issue and quo-execute to follow project coding standards when writing or modifying source code.
@@ -650,7 +650,7 @@ If applied, write the files to disk and update the `## Documentation Locations` 
 
 After the bootstrap completes, leave the user with this note:
 
-> The docs you just bootstrapped are starter content. As you use the workflow, the Doc Writer in `/quo-execute` and `/quo-fix-issue` keeps `docs/sdd.md` true to what each change built and adds the rules and decisions a change makes, not a section per feature. `/quo-plan` keeps each feature's own PRD and SDD as tickets. `docs/prd.md` is background: nothing after this bootstrap writes it, so edit it by hand if the project's purpose changes.
+> The docs you just bootstrapped are starter content. As you use the workflow, the Doc Writer in `/quo-execute` and `/quo-fix-issue` keeps both true to what each change built, adding to `docs/sdd.md` the rules and decisions a change makes and to `docs/prd.md` the goals, non-goals, targets, and promises it changes, never a section per feature. `/quo-plan` keeps each feature's own PRD and SDD as tickets.
 
 #### If the user picks option 2 (Defer)
 
@@ -877,7 +877,7 @@ The next-step recommendation depends on whether the user already has spec docs (
   /quo-plan [optional one-line description]
   ```
 
-  `/quo-plan` is interactive — it asks clarifying questions to define scope, then creates a **Spec Bee** in the Specs hive with PRD and SDD as `t1=Doc` children (authored via inline delegation to `/quo-write-prd` and `/quo-write-sdd`), and, once you approve the reviewed plan, a **Plan Bee** in the Plans hive whose `reference_materials` points at the Spec Bee via the `bees` resolver, with its Epics. Downstream skills (`/quo-breakdown-epic`, `/quo-execute`) follow the resolver chain into the Spec Bee and its `t1=Doc` children to read spec content. Project-level PRD/SDD on disk are not mutated at plan time; after implementation, the `doc-writer` agent keeps the SDD true to what shipped. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
+  `/quo-plan` is interactive — it asks clarifying questions to define scope, then creates a **Spec Bee** in the Specs hive with PRD and SDD as `t1=Doc` children (authored via inline delegation to `/quo-write-prd` and `/quo-write-sdd`), and, once you approve the reviewed plan, a **Plan Bee** in the Plans hive whose `reference_materials` points at the Spec Bee via the `bees` resolver, with its Epics. Downstream skills (`/quo-breakdown-epic`, `/quo-execute`) follow the resolver chain into the Spec Bee and its `t1=Doc` children to read spec content. Project-level PRD/SDD on disk are not mutated at plan time; after implementation, the `doc-writer` agent keeps the SDD and PRD true to what shipped. This is the right choice for fresh ideas, refactors, infra work, or any feature that doesn't yet have a written spec.
 
   Run `/quo-plan` in a fresh Claude Code session. `/quo-setup` may have just generated bootstrap PRD/SDD docs and consumed substantial context; `/quo-plan` does deep codebase exploration and scope iteration, so a fresh session gives it full context budget for that work.
 

@@ -229,35 +229,6 @@ def test_encode_commit_missing_required_args_exit2(tmp_path):
     assert "requires --skill and --count" in res.stderr
 
 
-def test_encode_commit_nonexistent_doc_path_exit2(tmp_path):
-    repo, hive_dir, env = _setup_repo_with_hive(tmp_path)
-    missing = repo / "docs" / "ghost.md"
-    res = _run_cli(
-        ["encode-commit", "--skill", "quo-execute", "--count", "1", "--doc-path", str(missing)],
-        repo, env,
-    )
-    assert res.returncode == 2
-    assert "--doc-path does not exist" in res.stderr
-
-
-def test_encode_commit_doc_path_staged_and_committed(tmp_path):
-    repo, hive_dir, env = _setup_repo_with_hive(tmp_path)
-    docs = repo / "docs"
-    docs.mkdir()
-    doc = docs / "prd.md"
-    doc.write_text("prd content\n", encoding="utf-8")
-    res = _run_cli(
-        ["encode-commit", "--skill", "quo-execute", "--count", "1", "--doc-path", str(doc)],
-        repo, env,
-    )
-    assert res.returncode == 0, res.stderr
-    show = subprocess.run(
-        ["git", "show", "--name-only", "--format=", "HEAD"],
-        cwd=str(repo), capture_output=True, text=True,
-    )
-    assert "docs/prd.md" in show.stdout
-
-
 # ---------------------------------------------------------------------------
 # resolve-hive-paths mode: NON-MUTATING query
 # ---------------------------------------------------------------------------

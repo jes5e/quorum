@@ -159,7 +159,7 @@ The body is structured markdown with five **required** sections and three **opti
 <OPTIONAL — populated when the suggested-fix path was chosen over alternatives that were considered; omitted entirely otherwise. Captures the alternatives considered and the reasoning for choosing the suggested fix, so `/quo-fix-issue`'s engineer doesn't re-litigate decisions the user has already made. Distilled from the prior conversation by the distill branch (1a) of the "Gather issue information" step when the "Detect mid-conversation context" heuristic fires; absent on the restart branch (1b).>
 
 ## Doc divergence noted
-<OPTIONAL — populated when the issue surfaces a doc claim that's wrong (or a doc gap); omitted otherwise. Plain prose pointing at the file/section that's wrong and what's wrong about it. Use the canonical doc paths from CLAUDE.md "Documentation Locations" — `Internal architecture docs (SDD)` and `Customer-facing docs` — as the pointers. `/quo-fix-issue`'s doc-writer pass consumes this section during fix execution; do NOT edit project docs from this skill.>
+<OPTIONAL — populated when the issue surfaces a doc claim that's wrong (or a doc gap); omitted otherwise. Plain prose pointing at the file/section that's wrong and what's wrong about it. Use the canonical doc paths from CLAUDE.md "Documentation Locations" — `Project requirements doc (PRD)`, `Internal architecture docs (SDD)`, and `Customer-facing docs` — as the pointers. `/quo-fix-issue`'s doc-writer pass consumes this section during fix execution; do NOT edit project docs from this skill.>
 ```
 
 **OPTIONAL-section contract.** The three sections marked OPTIONAL above — `## Background and rationale`, `## Decisions and rejected alternatives`, and `## Doc divergence noted` — are **omitted entirely** from the Issue body when the issue does not have content for them. Do **not** render them as stub headings followed by empty bodies, "N/A", or "TBD" — leave the section heading out of the markdown completely.
@@ -171,8 +171,6 @@ This is intentionally different from the `/quo-write-prd` and `/quo-write-sdd` s
 Before writing the body to the temp file, review whether the issue description implies the project's spec docs contain incorrect information. The outcome of this review decides whether the OPTIONAL `## Doc divergence noted` section appears in the body composed in 3a.
 
 This review is **observation-only** — do NOT edit any of the project documentation files configured under CLAUDE.md `## Documentation Locations`, the README, or any other project documentation file. The remediation belongs to `/quo-fix-issue`'s doc-writer pass, which consumes the `## Doc divergence noted` section during fix execution.
-
-Use the paths configured in CLAUDE.md `## Documentation Locations` — specifically `Internal architecture docs (SDD)` and `Customer-facing docs` (the README-equivalent). Leave out the PRD: it is background, and no fix pass edits it.
 
 Examples of doc divergence to watch for:
 - Documenting behavior that is now known to be wrong
