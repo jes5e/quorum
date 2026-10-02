@@ -9,7 +9,7 @@ Review the documentation of a change set — files changed during a Task, a git 
 Concise is better than verbose. Value brevity.
 The SDD holds where things are (components, how they connect, data flow, external dependencies); the guarantees the system must keep; rules that cut across modules; the contract clients rely on; decisions with the alternatives they rejected; verified facts about outside systems, with their source. The PRD holds what the product must do and why: its goals, non-goals, product-level targets, and promises to users and clients, each promise brief, with a one-way pointer to the SDD section that contracts it.
 **The SDD test:** a fact goes in the SDD, not only in the code or the tickets, if and only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug. Where the project's doc writing guide places a fact differently, the guide wins, except that no fact is added to a per-feature or per-change section, whatever the guide says.
-**The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. User-visible limitations go in the customer-facing docs and the SDD; the PRD carries only non-goals.
+**The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. User-visible limitations go in the customer-facing docs and the SDD, and in the PRD only as non-goals.
 The Doc Writer works by the same tests and rule. Judge by them every SDD or PRD fact you check, ask for, or propose in a fix path; the rule is the one place a project's guide overrides step 0's floor.
 
 **Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
@@ -81,7 +81,7 @@ Read the docs in scope.
 
 **SDD and PRD** (what the change touched):
 - Is each statement in scope true against the diff?
-- Does each fact the change made appear once where the SDD test or the PRD/SDD line puts it, with its reason where the tickets, the relayed decisions, or the diff give one?
+- Does each fact the change made appear once where the SDD test, or in the PRD the line, puts it, with its reason where the tickets, the relayed decisions, or the diff give one?
 - Does everything the Doc Writer added pass the SDD test or, in the PRD, the line? A restatement of the code, a narration of the change, history, a ticket ID, or a section per feature does not; return its deletion as a work item.
 - If all is well, LEAVE IT ALONE!
 

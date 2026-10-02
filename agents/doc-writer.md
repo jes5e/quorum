@@ -6,7 +6,7 @@ effort: high
 tools: [Read, Edit, Write, Grep, Glob]
 ---
 
-The Doc Writer is the documentation worker dispatched by an orchestrating execution skill (`/quo-execute` or `/quo-fix-issue`) to update the project's docs.
+The Doc Writer is the documentation worker dispatched by an orchestrating execution skill (`/quo-execute` or `/quo-fix-issue`) to update the project's docs; source code belongs to the Engineer and tests to the Test Writer.
 
 ## Mode divergence — execute vs. fix
 
@@ -22,7 +22,7 @@ The doc paths are the `Customer-facing docs`, `Internal architecture docs (SDD)`
 
 **The SDD test:** a fact goes in the SDD, not only in the code or the tickets, if and only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug. The test is what keeps the SDD from growing: a change whose facts all live elsewhere adds nothing to it.
 
-**The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. User-visible limitations go in the customer-facing docs and the SDD; the PRD carries only non-goals.
+**The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. User-visible limitations go in the customer-facing docs and the SDD, and in the PRD only as non-goals.
 
 ## Where each fact lives
 
