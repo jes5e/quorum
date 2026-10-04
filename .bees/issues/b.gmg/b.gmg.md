@@ -2,10 +2,11 @@
 id: b.gmg
 type: bee
 title: 'Doc roles: a stale code-level SDD statement is corrected in place and kept; check placement before correcting, and review edits as well as additions'
-status: open
-created_at: '2026-10-03T23:11:09.348667'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-10-03T23:11:09.348667'
+status: done
+schema_version: '0.1'
 guid: gmg4sjv4ykpbvhn5etm3kd3uxfo5diwg
 ---
 
@@ -47,4 +48,22 @@ Keep the writer and reviewer wording aligned (pin it if a shared phrase emerges)
 - A rule for the orchestrator's relays (stale-name lists). The table already governs over relayed requests; the writer applying placement first covers them.
 - The breakdown's doc Subtasks naming code identifiers: one occurrence, so it is a prediction.
 - live_edit's SDD cleanup of the older flagged passages. That is the repo's own job, best run after this fix lands so later Tasks don't re-correct the detail in place.
+## Closed (2026-10-04)
 
+Merged to main by fast-forward, head `5ed619e` (commits `91f7110`..`5ed619e`), not pushed. A hand edit: one design-and-draft checkpoint, then three cold rounds. Rounds 1 and 2 each had one behavior finding that the round before had opened; round 3 had wording only.
+
+**What changed:**
+- **Doc Writer job 1:** "For each statement you edit or the Engineer's diff makes false, check the table first, even when a request asks only for accuracy. Correct it if the table keeps its fact in that doc; otherwise delete it, pointing to the code if useful."
+- **Doc review step 3:** "Does every statement the Doc Writer added or edited pass the SDD test or, in the PRD, the line? A restatement of the code, however accurate, …, or a new per-feature section does not." The Mission line says "added or edited" too.
+- **Readers:** README ("corrects or removes") and `docs/sdd.md`'s b.sb7 entry.
+
+Writer and reviewer check the same statements, so an unrelated edit in an old code-detail sentence settles in one pass (round 1). A statement corrected in place inside an old per-feature section still passes until the repo's cleanup; a fact added to one is still caught by the guide-precedence rule (round 2). Net shipped prose is +22 words.
+
+**Recorded, not acted on (predictions):** over-deleting a guarantee inside a mixed sentence; a README API reference deleted rather than corrected. **Watch item:** `/quo-execute` has no `**Doc Sync**`-style reader for the Doc Writer's declined requests, which may now be more frequent; check it in the next execute run's triage.
+
+**Validation:** none dedicated. The next `/quo-execute` Task that renames something the SDD names is the check. Watch for these:
+- Does the Doc Writer delete the code detail, or point to it, and name the declined accuracy request in its return?
+- Does the doc review flag an in-place correction of code detail?
+- Is the doc lane's round count unchanged?
+
+**Next for live_edit:** its SDD cleanup of the older flagged passages (the audit, `sdd-code-narration-audit-2026-10-04.md` in its scratch) can run after a rebuild picks up this merge; later Tasks will no longer re-correct that detail in place.
