@@ -49,7 +49,7 @@ CAPS = {
     "agents/analyst.md": 5066,
     "agents/code-reviewer.md": 1221,
     "agents/doc-reviewer.md": 667,
-    "agents/doc-writer.md": 1620,
+    "agents/doc-writer.md": 1615,
     "agents/engineer.md": 2789,
     "agents/pm.md": 5454,
     "agents/test-reviewer.md": 683,
