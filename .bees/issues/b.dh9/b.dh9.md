@@ -2,10 +2,11 @@
 id: b.dh9
 type: bee
 title: 'Doc roles: give the PRD its own row (goals, non-goals, targets, promises) and keep it true, instead of read-only'
-status: open
-created_at: '2026-10-02T15:38:28.031211'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-10-02T15:38:28.031211'
+status: done
+schema_version: '0.1'
 guid: dh9s8pzgfmu2q47n7q3xio4gzfabaisx
 ---
 
@@ -62,4 +63,25 @@ Shrink each repo's existing PRD to the definition: keep goals, non-goals, target
 ## Process
 
 A small batch: a design checkpoint, hand edits, one cold review under the exit rule, and merge on the operator's go. No dedicated validation; the next real run that changes a promise is the check.
+## Closed (2026-10-03)
 
+Merged to main by fast-forward with b.21d, head `ce89c0f` (commits `aec1fda`..`ce89c0f`), not pushed. Hand edits, a design checkpoint, and two cold rounds; round 2 was clean.
+
+**What changed:**
+- The Doc Writer's ownership table has a PRD row: goals, non-goals, product-level targets, and promises to users and clients, each promise brief with a one-way pointer to the SDD section that contracts it.
+- A PRD/SDD line test sits beside the SDD test. It names a goal, non-goal, or target as the PRD's first; of other sentences, one naming a field, code, metric name, or env var, or stating an exception or limit, is the SDD's, and one whose deletion would change what a product owner signs off to users is the PRD's. User-visible limitations go in the customer docs and the SDD, and in the PRD only as non-goals.
+- The row and the test are carried verbatim by the Doc Writer and `/quo-doc-writer-review`, and pinned.
+- The Doc Writer's first job covers the PRD for its row. The review checks the PRD's footprint the way it checks the SDD's.
+- Readers updated: `/quo-setup` (the PRD description and the post-bootstrap note; the bootstrap skeleton already maps onto the row), `/quo-file-issue` (the PRD key is in `## Doc divergence noted`), `/quo-plan` (`## Anticipated doc impact`), README, and `docs/sdd.md`.
+
+**The design review's catch:** the targets-first ordering. Read literally, "within N" and "metric" would have sent a confirm-latency target to the SDD.
+
+**Round 1's behavior finding:** the reviewer could place a fact in the SDD on the line alone. It was closed by restructuring. Round 1 also restored the Doc Writer intro's lane boundary (source code to the Engineer, tests to the Test Writer), which the draft had cut on a wrong reason: a subagent never sees its own frontmatter description.
+
+**Size:** net shipped prose +38 words. The b.21d deletion paid for most of the growth.
+
+**Validation:** none dedicated. The next real run that changes a product promise is the check. Watch two things there: does the Doc Writer edit one PRD line with its pointer, and does the doc review accept it without asking for command, error, or metric detail in the PRD?
+
+**Per-repo cleanup, each repo's own job, not this build:** shrink each existing PRD to the row, and read each repo's doc writing guide against the row (a guide that places PRD facts differently wins under the guide-precedence rule). live_edit's comes after its in-flight merge requests, from a prompt the overseer gave the operator on 2026-10-03. Each repo's CLAUDE.md `## Documentation Locations` PRD line gets the one-line definition there; `/quo-setup` writes paths only.
+
+**Dependency for item 12a** (`/quo-plan-from-specs --feature` and the `### Feature:` scoping machinery): once a repo's PRD is cut to the row, its PRD-side `### Feature:` sections go away. Weigh that when 12a is decided.

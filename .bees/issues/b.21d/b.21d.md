@@ -2,10 +2,11 @@
 id: b.21d
 type: bee
 title: Deferral hygiene's Encode still offers a PRD/SDD destination that nothing writes (dead end since b.sb7)
-status: open
-created_at: '2026-09-30T11:52:08.040312'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-30T11:52:08.040312'
+status: done
+schema_version: '0.1'
 guid: 21d2tjibqmm1jydvpdt4ce19gqchkyr5
 ---
 
@@ -20,4 +21,17 @@ Remove the PRD/SDD destination and the `--doc-path` literal from the §9 helper 
 ## Origin
 
 Found during b.sb7 (2026-09-30), declined there as out of that build's scope.
+## Closed (2026-10-03)
 
+Fixed with b.dh9: merged to main by fast-forward, head `ce89c0f` (commits `aec1fda`..`ce89c0f`), not pushed.
+
+**Deleted:**
+- the Encode destination "the project PRD/SDD via a doc-writer pass", from both orchestrators' §9 (a mirrored edit), `agents/analyst.md`, and `agents/pm.md` (with its "name the contract key" sentence);
+- the helper's `--doc-path` flag, its docstring entries, and its two tests. It was deleted rather than left inert, because nothing else passed it;
+- the `rationale.md` mention.
+
+Its reader is gone: no rule dispatches a doc-writer pass at deferral hygiene. Encode targets tickets only in all four skills.
+
+**Records:** REWRITE-BRIEF is amended (2026-10-02). `docs/sdd.md` and `docs/prd.md` carry supersession notes.
+
+**Validation:** none needed. The cold rounds role-played an Encode firing in both orchestrators, and the helper tests pass.
