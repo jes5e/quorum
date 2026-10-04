@@ -1,6 +1,6 @@
 ---
 name: quo-plan-from-specs
-description: Read a PRD and SDD from disk and create a Plan Bee with Epics in the Plans hive. Defaults to single-feature mode; pass --feature "<title>" to scope a single `### Feature: <title>` subsection inside a cumulative PRD/SDD. Without --feature, hard-fails on multi-feature docs — use /quo-plan instead in that case.
+description: Read a PRD and SDD from disk and create a Plan Bee with Epics in the Plans hive. Defaults to single-feature mode; pass --feature "<title>" to scope a single `### Feature: <title>` subsection inside a cumulative PRD/SDD. Without --feature, hard-fails on multi-feature docs.
 argument-hint: "<prd-path> <sdd-path> [--feature \"<title>\"]"
 ---
 
@@ -22,7 +22,7 @@ This skill takes two file paths as positional input, plus an optional named flag
 
 1. `<prd-path>` — path to a **PRD** (Product Requirements Document) describing the user/customer outcome, business goal, scope, and acceptance criteria.
 2. `<sdd-path>` — path to an **SDD** (Software Design Document) describing non-negotiable constraints, architectural boundaries, and what must be true about the software.
-3. `--feature "<title>"` (optional) — scope this planning run to a single `### Feature: <title>` subsection inside the PRD and SDD. Use this when invoking the skill standalone against a cumulative PRD/SDD (one that already contains multiple `### Feature:` subsections from prior `/quo-plan` runs) and you want to re-plan only one feature inside it. Without `--feature`, the skill assumes the docs describe a single feature and hard-fails if it detects more than one `### Feature:` subsection in either doc.
+3. `--feature "<title>"` (optional) — scope this planning run to a single `### Feature: <title>` subsection inside the PRD and SDD. Use this when invoking the skill standalone against a cumulative PRD/SDD (one that already contains multiple `### Feature:` subsections) and you want to re-plan only one feature inside it. Without `--feature`, the skill assumes the docs describe a single feature and hard-fails if it detects more than one `### Feature:` subsection in either doc.
 
 Both documents are expected to already be finalized on disk. This skill does not author them — it takes them as given and turns them into a plan.
 
@@ -46,18 +46,16 @@ Branch on whether the caller passed `--feature "<title>"`.
 #### 1a — `--feature` NOT provided (default, single-feature mode)
 
 - Read both documents in full.
-- **Multi-feature guard.** This skill plans a single feature when invoked without `--feature`. If either document contains more than one `### Feature: <title>` subsection (the cumulative-PRD pattern produced by repeated `/quo-plan` invocations), hard-fail with:
+- **Multi-feature guard.** This skill plans a single feature when invoked without `--feature`. If either document contains more than one `### Feature: <title>` subsection, hard-fail with:
 
   ```
   Multiple `### Feature:` subsections detected in <path>.
   /quo-plan-from-specs assumes the PRD/SDD describe a single feature.
-  Use /quo-plan instead — it adds a new feature section to cumulative
-  PRD/SDD docs and creates one Plan Bee scoped to that feature. To
-  re-plan a single feature inside a cumulative PRD/SDD, pass
+  To plan one feature inside a cumulative PRD/SDD, pass
   --feature "<title>" to scope this run to one `### Feature:` subsection.
   ```
 
-  Replace `<path>` with the offending file's absolute path. Do not attempt to guess which subsection the user meant; do not prompt them to pick one — exit and let them re-enter through `/quo-plan` or re-invoke with `--feature`.
+  Replace `<path>` with the offending file's absolute path. Do not attempt to guess which subsection the user meant; do not prompt them to pick one — exit and let them re-invoke with `--feature`.
 
   Detection rule: count lines that start with `### Feature: ` followed by at least one non-whitespace character (case-sensitive, exactly three `#` followed by a space, the literal word `Feature:`, a space, then a non-whitespace character) in each of the two documents. A bare `### Feature:` heading with no title (or only trailing whitespace) does not count. If either count is greater than 1, fail. A count of 0 or 1 in both documents is fine — 0 means the doc uses some other structure, 1 means exactly one feature is described.
 
@@ -227,12 +225,9 @@ Output markdown summary:
 
 ### 6. Offer Next Steps
 
-After the Plan Bee and its Epics exist, present the user with clear options. Use `AskUserQuestion`.
+Above the choices, say that the next skill re-reads everything from bees and disk, so a fresh session gives it the full context budget; same-session work fits only a Bee with one or two Epics. Then ask with `AskUserQuestion`:
 
-Note above the options: each downstream skill re-reads the Plan Bee, Epics, and CLAUDE.md from the bees CLI and disk, so prior conversation context is not load-bearing across the boundary. A fresh Claude Code session is the recommended default — it gives `/quo-breakdown-epic` (and later `/quo-execute`) full context budget for per-Task body authoring and review cycles. Same-session continuation is acceptable as an opt-in for small Bees with one or two Epics.
-
-- **In a fresh session, break down all Epics** (Recommended) — run `/quo-breakdown-epic <bee-id>` in a new Claude Code session. The skill walks every `drafted` Epic in the Bee.
-- **In a fresh session, break down a specific Epic** — run `/quo-breakdown-epic <epic-id>` in a new session.
-- **Continue in this session** — load `quo-breakdown-epic` now and break down each Epic in dependency order. Reasonable only for small Bees with one or two Epics, since each Epic decomposition adds non-trivial context.
-- **Review first** — let the user review the plan before proceeding.
-- **Done for now** — plan is saved; user will come back later.
+- **Break down in fresh session** (Recommended) — run `/quo-breakdown-epic <bee-id>` in a new session.
+- **Break down in this session** — load `quo-breakdown-epic` now.
+- **Review first** — the user reviews the plan before going on.
+- **Done for now** — the plan is saved.

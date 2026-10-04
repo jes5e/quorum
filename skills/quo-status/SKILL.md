@@ -107,7 +107,7 @@ Walk this tree top-to-bottom; first match wins:
 2. No specs found → "Write PRD and SDD"
 3. No Plan Bees → `/quo-plan` (interactive feature planning) or `/quo-plan-from-specs` (express path if you already have a finalized PRD+SDD on disk)
 4. Any Plan Bee has drafted Epics → `/quo-breakdown-epic` (report how many are drafted vs. ready)
-5. Any Plan Bee has ready Epics with all deps done or no deps → `/quo-execute [bee-id]`
+5. Any Plan Bee has ready Epics with all deps done or no deps → `/quo-execute <bee-id>`
 6. All Epics are `in_progress` → "Work in progress — check active sessions"
 7. All Epics are `done` → "All done — merge or open a PR for the feature branch" (or, if `/bees-worktree-rm` is installed, run it to merge the worktree)
-8. Issue Bees open → `/quo-fix-issue` or `/quo-execute [issue-id]`
+8. Issue Bees open → `/quo-fix-issue <issue-id>`

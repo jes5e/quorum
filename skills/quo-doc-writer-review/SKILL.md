@@ -35,7 +35,6 @@ Readme is for human users to understand how to install and run the project
 - No implementation details
 - No testing or unit testing details
   - This is IMPORTANT. Seriously. Don't talk about how to test the product in the Readme. 
-- No discussion of security implications or requirements
 - Keep it short and simple - focused on how to install and how to use
 - Don't describe how to use common tools (like screen, poetry, bash etc)
 
