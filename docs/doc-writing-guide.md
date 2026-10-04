@@ -300,7 +300,7 @@ When a skill's "Offer Next Steps" block points at another skill that does its ow
 
 Practical rules when authoring an "Offer Next Steps" block:
 
-- **Lead each cross-skill option with "In a fresh session, run `/<next-skill> <args>`."** Make the fresh-session phrasing part of the option label, not a footnote.
+- **Name the fresh session in the option label** (for example **Break down in fresh session**), within `AskUserQuestion`'s five-word label limit, and put the command in the option's description.
 - **Add a one-line justification** above the options explaining why fresh-session is the default — readers should not have to guess whether the recommendation is load-bearing.
 - **Same-session continuation is an explicit opt-in, never the default.** Acceptable only when the next invocation is small (a single Epic, a lightweight skill like `/quo-file-issue`) or when the same skill is repeating with similar context growth per iteration. Keep it as a labeled alternative, not the first option.
 - **Never auto-chain into another heavy skill without asking.** A skill that loads the next skill automatically with no opt-out forces the anti-pattern. If the boundary is heavy → heavy, surface the choice.
