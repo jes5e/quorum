@@ -40,7 +40,7 @@ A few design priorities fall out of this approach:
 - **Cross-platform.** Native macOS, Linux, and Windows PowerShell (or WSL/Git Bash). Every shell snippet ships in both POSIX bash and PowerShell forms; bundled helpers are cross-platform Python.
 - **Idempotent.** Every state-mutating skill (`/quo-setup` especially) detects existing configuration and only prompts where something is missing. Re-runs are safe.
 - **Plain-English statuses.** Plan tickets use `drafted` / `ready` / `in_progress` / `done`; issues use `open` / `done`. No bespoke vocabulary to memorize.
-- **Docs that stay small and true.** The Doc Writer corrects what a change makes false and adds to the SDD only the rules and decisions a future agent needs; how the code works stays in the code, and history stays in commits and tickets.
+- **Docs that stay small and true.** The Doc Writer corrects or removes what a change makes false and adds to the SDD only the rules and decisions a future agent needs; how the code works stays in the code, and history stays in commits and tickets.
 
 ## Requirements
 

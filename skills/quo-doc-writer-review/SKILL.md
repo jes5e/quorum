@@ -20,7 +20,7 @@ This skill **returns work items** — it does not apply fixes itself. The team l
 
 ## Mission
 
-Analyze what changed and return what it made false or left missing in the docs, and what the Doc Writer added that does not belong.
+Analyze what changed and return what it made false or left missing in the docs, and what the Doc Writer added or edited that does not belong.
 
 ### Scope: what is documentation for this review
 
@@ -82,7 +82,7 @@ Read the docs in scope.
 **SDD and PRD** (what the change touched):
 - Is each statement in scope true against the diff?
 - Does each fact the change made appear once where the SDD test, or in the PRD the line, puts it, with its reason where the tickets, the relayed decisions, or the diff give one?
-- Does everything the Doc Writer added pass the SDD test or, in the PRD, the line? A restatement of the code, a narration of the change, history, a ticket ID, or a section per feature does not; return its deletion as a work item.
+- Does everything the Doc Writer added or edited pass the SDD test or, in the PRD, the line? A restatement of the code, however accurate, a narration of the change, history, a ticket ID, or a section per feature does not; return its deletion as a work item.
 - If all is well, LEAVE IT ALONE!
 
 
