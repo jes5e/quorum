@@ -2,10 +2,11 @@
 id: b.9w2
 type: bee
 title: 'quo-plan-from-specs: stale /quo-plan claims, and a next-steps gate over AskUserQuestion''s four-choice limit'
-status: open
-created_at: '2026-09-25T10:10:00.061506'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-09-25T10:10:00.061506'
+status: done
+schema_version: '0.1'
 guid: 9w2y36cyshns46youn5ktdr1xfh9f6bi
 ---
 
@@ -26,4 +27,12 @@ The claims describe `/quo-plan` as it is. The next-steps gate offers at most fou
 ## Suggested fix
 
 A small prose fix in `/quo-plan-from-specs`, with its reader in `docs/sdd.md`. It's suitable for a `/quo-fix-issue` run, as a bounded prose fix to one skill. Leave "Encode in an existing ticket body" alone if it appears: b.pcc renames that label across all four deferral-hygiene gates in one pass.
+## Closed (2026-10-04)
 
+Fixed in small batch 1, merged to main by fast-forward, head `cc319f3`, not pushed.
+- **The stale claims are gone.** `/quo-plan-from-specs` no longer says `/quo-plan` adds feature sections to project docs. That covers the description, the `--feature` note, the multi-feature guard, its hard-fail text, and its exit sentence. The matching `docs/sdd.md` line is corrected too. The guard now points only at `--feature`.
+- **The next-steps gate now follows `/quo-plan`'s set and labels exactly:** four choices, each label five words or fewer. The "break down a specific Epic" choice is dropped, as in `/quo-plan`.
+- **The guide matches.** `docs/doc-writing-guide.md`'s next-steps label rule now fits the five-word limit.
+- **Not touched:** no deferral label appears in this skill.
+
+Net −155 words in the skill. Recorded, not acted on: the skill's Overview still narrates history (true; a deletion candidate when a later change touches it), and nothing pins its next-steps gate to `/quo-plan`'s.

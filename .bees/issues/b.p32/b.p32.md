@@ -2,10 +2,11 @@
 id: b.p32
 type: bee
 title: Doc review README floor bans security requirements, contradicting the Doc Writer's table (operator-required security configuration belongs in the README)
-status: open
-created_at: '2026-10-04T12:16:40.184501'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-10-04T12:16:40.184501'
+status: done
+schema_version: '0.1'
 guid: p32wg2b8t5dtevf9jknpmctja8xxufbg
 ---
 
@@ -26,4 +27,10 @@ The README review lets operator-required security configuration and its user-vis
 ## Suggested fix
 
 Delete the bullet. Nothing it should still exclude is uncovered: implementation-level internals fall under "No implementation details", and guarantees fall under the table's SDD row. A narrowed rule would restate both. Check the readers: tests, README, and `docs/sdd.md`.
+## Closed (2026-10-04)
 
+Fixed in small batch 1, merged to main by fast-forward, head `cc319f3` (commits `93f531b`..`cc319f3`), not pushed. The `### Readme` bullet "No discussion of security implications or requirements" is deleted from `/quo-doc-writer-review`, with no replacement:
+- Security internals stay out of the README under "No implementation details".
+- Guarantees and threat analysis go to the SDD under the Doc Writer's table.
+
+One cold round confirmed that a reviewer now leaves operator auth configuration in a README and still flags security internals, in agreement with the Doc Writer. No dedicated validation. The next live_edit doc review of its README's security-configuration sections is the check.
