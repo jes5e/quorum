@@ -1,248 +1,272 @@
 # <img src="assets/header.png" alt="" width="48" valign="middle"> quorum
 
-**Parallel, high-throughput autonomous software engineering.**
+**Multi-agent software engineering for Claude Code, with independent review at every step.**
 
-**quorum** is a [Claude Code](https://claude.com/claude-code) skill set for running a multi-agent SDLC over a structured ticket system. It's built for shipping large features and full applications with LLMs. Plan, break down, execute, review, fix, repeat. Each step is picked up by a separate ephemeral agent — Engineer, Test Writer, Doc Writer, Product Manager, and three Reviewers — each running with role-isolated tools and handing off through ticket state, not chat history.
+**quorum** is a set of [Claude Code](https://claude.com/claude-code) skills that runs a full development workflow on top of a ticket system: plan a feature, break it into tasks, implement, test, document, review, and fix. Each piece of work is done by a separate, short-lived agent with one role, such as an Engineer, a Test Writer, a Doc Writer, a Product Manager, or a Reviewer. The agents hand work to each other through tickets and git, not through a shared chat history. It is built for shipping large features and whole applications with LLMs.
 
 ```
-/quo-setup                           ← one-time per repo (safe to re-run)
+/quo-setup                            ← once per repo (safe to re-run)
         │
         ▼
-/quo-plan  or  /quo-plan-from-specs  ← from an idea  /  from PRD+SDD on disk
+/quo-plan   or   /quo-plan-from-specs ← from an idea  /  from a PRD + SDD on disk
         │
         ▼
-/quo-breakdown-epic                  ← Epic → Tasks/Subtasks
+/quo-breakdown-epic                   ← Epics → Tasks and Subtasks
         │
         ▼
-/quo-execute                         ← do the work, with reviews
+/quo-execute                          ← do the work, with reviews
 
-/quo-file-issue + /quo-fix-issue     ← anytime, for bugs/follow-ups
-/quo-status                          ← anytime, "where am I?"
+/quo-file-issue + /quo-fix-issue      ← any time, for bugs and follow-ups
+/quo-status                           ← any time: "where am I?"
 ```
 
-No special setup beyond Claude Code itself and the [bees](https://github.com/gabemahoney/bees) CLI — the supported ticket backend today, with [beads](https://github.com/gastownhall/beads) planned.
+You need Claude Code, git, Python, and the [bees](https://github.com/gabemahoney/bees) ticket CLI.
 
 ## Why this exists
 
-Modern coding agents are excellent in tight scope and lossy in long ones. Hand a single agent a multi-day feature and the same failure modes recur: it accumulates a fog of in-session context that's hard to audit, it rubber-stamps its own diff during "review," it drifts silently from the spec you started with, and three hours in it has forgotten why a decision was made. Bigger context windows don't solve this — the underlying problem is **scope discipline**, not memory.
+Coding agents are excellent in tight scope and lossy in long ones. Hand one agent a multi-day feature and the same failures recur: it builds up context nobody can audit, it approves its own work during "review", it drifts from the spec, and hours in it has forgotten why a decision was made. Bigger context windows don't fix this. The problem is scope discipline, not memory.
 
-quorum's bet is that the way to ship agent-built features at production quality is to **decompose the work into ticketed units** and require **multiple independent agents to agree** on each unit before it ships. That's where the name comes from. In practice:
+quorum's bet is that agent-built features reach production quality when the work is **split into ticketed units** and **several independent agents must agree** on each unit before it ships. That's where the name comes from. In practice:
 
-- **Specs and tickets are durable artifacts, not chat scrollback.** PRD and SDD live as docs under a Spec Bee; the Plan Bee decomposes into Epics, Tasks, and Subtasks. Each ticket carries Context, the change required, key files, and acceptance criteria — enough that a cold agent can do the work without ever reading the conversation that produced the ticket.
-- **Each role is a separate ephemeral agent with locked-down tools.** Engineer, Test Writer, Doc Writer, Product Manager, and three Reviewers (code, test, doc). The Engineer can edit source but not tests; the Test Writer can edit tests but not source; the Reviewers can read and grep but not write. Fresh-eyes review is enforced at the tool layer, not the prompt — a reviewer literally cannot rubber-stamp the Engineer's diff because it isn't the same agent and never saw the implementation reasoning.
-- **The PM is the spec-traceability gate.** After Engineer, Test Writer, and Doc Writer complete a Task, a PM agent reads the spec source, the Task ticket, the diff, and the sibling Tasks in the same Epic — and refuses to promote the Task if the diff drifted from spec, broke a sibling's assumption, or smuggled in unasked-for scope (e.g. backwards-compat scaffolding when the spec said no legacy support).
-- **Handoffs are ticket state transitions, not messages.** A Subtask flipping `in_progress → done` is the load-bearing signal that the next role is unblocked. You can stop anywhere, restart any session, hand off to a teammate, or run multiple sessions in parallel — `/quo-status` tells you where the work currently sits.
+- **Specs and tickets are durable, not chat scrollback.** A feature's PRD and SDD live as tickets. The plan breaks into Epics, Tasks, and Subtasks, and each ticket carries its context, the change required, the key files, and acceptance criteria. That's enough for a fresh agent to do the work without the conversation that produced it.
+- **Each role is a separate agent.** The reviewers never saw the implementer's reasoning and are review-only, with no Edit or Write tools, so a review is a second opinion, not the author re-reading its own work.
+- **The PM checks the work against the spec.** After a Task's code, tests, and docs are done, a PM agent compares the diff with the spec and with the neighboring Tasks. It flags drift, assumptions that break a sibling Task, and scope nobody asked for, and the Task doesn't close until those are resolved.
+- **State lives in tickets, git, and a small run file.** You can stop a run and resume it in a fresh session, and `/quo-status` shows where the work stands.
+- **You decide at defined points.** A run asks you only at decision points, such as approving a plan or a design, choosing what to do with a review finding, or a step only you can take. Anything deferred is routed to a ticket before the run ends, so nothing is silently dropped.
 
-A few design priorities fall out of this approach:
+A few design priorities follow from this:
 
-- **Parallel where lanes read different files, ordered where they share a diff.** Within each unit of work — a Task in `/quo-execute`, an Issue in `/quo-fix-issue` — the Test Writer and Doc Writer run together, and their reviewers run as separate lanes. Lanes that share a diff are ordered instead: the Engineer and its code review loop until the review is clean before any writer starts, and a review finding whose fix changes source goes Engineer, then code review, then the affected writer, so tests and docs are not rewritten against an older diff. For the same reason `/quo-execute` works a plan's Tasks one at a time.
-- **Language- and stack-agnostic.** Skills read build, lint, and test commands from the target repo's `CLAUDE.md` instead of hardcoding `cargo`, `npm`, `pytest`, etc. Works on Rust, Node, Python, Go, Java, polyglot repos, or unknown stacks.
-- **Cross-platform.** Native macOS, Linux, and Windows PowerShell (or WSL/Git Bash). Every shell snippet ships in both POSIX bash and PowerShell forms; bundled helpers are cross-platform Python.
-- **Idempotent.** Every state-mutating skill (`/quo-setup` especially) detects existing configuration and only prompts where something is missing. Re-runs are safe.
-- **Plain-English statuses.** Plan tickets use `drafted` / `ready` / `in_progress` / `done`; issues use `open` / `done`. No bespoke vocabulary to memorize.
-- **Docs that stay small and true.** The Doc Writer corrects or removes what a change makes false and adds to the SDD only the rules and decisions a future agent needs; how the code works stays in the code, and history stays in commits and tickets.
+- **Parallel where lanes touch different files, ordered where they share a diff.** Within a Task (in `/quo-execute`) or an Issue (in `/quo-fix-issue`), the Engineer and Code Reviewer loop until the code review is clean. Only then do the Test Writer and Doc Writer run, together, followed by their reviewers. Tests and docs are never written against code that is still changing. `/quo-execute` works a plan's Tasks one at a time.
+- **Any language or stack.** Skills read your build, lint, and test commands from your repo's `CLAUDE.md` instead of hard-coding `cargo`, `npm`, or `pytest`. Rust, Node, Python, Go, Java, polyglot repos, and unfamiliar stacks all work.
+- **Any platform.** macOS, Linux, and Windows (PowerShell, WSL, or Git Bash). Every shell step ships in both POSIX and PowerShell forms, and the bundled helpers are Python.
+- **Safe to re-run.** `/quo-setup` detects what is already configured and only asks about what is missing, and an interrupted planning or execution run picks up where it stopped.
+- **Docs that stay small and true.** The Doc Writer corrects or removes what a change makes false, and records in the design doc only the rules and decisions a future agent needs. How the code works stays in the code; history stays in commits and tickets.
+
+## The roles
+
+The session you run a skill in is the **orchestrator**. It dispatches the roles, routes review findings, owns ticket state, and makes the commits; it doesn't write the code itself. Each role is a subagent defined in `agents/<role>.md`.
+
+| Role | What it does | What it can't do |
+|---|---|---|
+| **Engineer** | Implements the change and runs your compile, lint, and narrow-test commands. | Write tests or docs (other roles own those). |
+| **Code Reviewer** | Reviews the Engineer's diff with `/quo-engineer-review`. | Edit files. |
+| **Test Writer** | Writes or updates tests for the settled diff, and can confirm a test fails without the fix by temporarily reverting it. | Change source or docs. |
+| **Test Reviewer** | Reviews the tests with `/quo-test-writer-review`. | Edit files. |
+| **Doc Writer** | Keeps your customer-facing docs (such as the README), the design doc (SDD), and the PRD true to the change. | Change source or tests; it has no shell. |
+| **Doc Reviewer** | Reviews the doc changes with `/quo-doc-writer-review`. | Edit files. |
+| **Product Manager** | Checks the Task's work against the spec and the neighboring Tasks. | Edit source, tests, or docs. |
+| **Analyst** | Works out the root cause and proposes a design before code is written (`/quo-fix-issue`), or on escalation when execution hits something the plan didn't settle (`/quo-execute`). | Edit files. |
+
+Every role runs on Opus. Each pins its own reasoning effort, `high` for all of them and `xhigh` for the Analyst, so your session's effort setting doesn't change how the roles run.
 
 ## Requirements
 
-- **Claude Code** ([install](https://claude.com/claude-code))
-- **bees CLI** (`pipx install bees-md`) — see [bees](https://github.com/gabemahoney/bees) for documentation. Requires Python 3.10+.
-- **POSIX shell** (bash/zsh on macOS/Linux/WSL) **or PowerShell** (native Windows). Either works; every shell snippet in the skills is provided in both forms.
+- **Claude Code** ([install](https://claude.com/claude-code)).
+- **bees CLI**: `pipx install bees-md` (Python 3.10+). See the [bees docs](https://github.com/gabemahoney/bees).
+- **git**, and a git repository to work in.
+- **Python 3** on your `PATH`, as `python3` on macOS and Linux or `python` on Windows, for the bundled helper scripts.
+- **A POSIX shell** (bash or zsh on macOS, Linux, or WSL) **or PowerShell** (native Windows).
 
 ## Install
 
-### Option A — global (recommended for single-user machines)
+### Option A: for all your repos (recommended)
 
-Copy the skills and subagent definitions into your user-level Claude Code directories so every repo can use them:
+Copy the skills and the role definitions into your user-level Claude Code directories:
 
 ```bash
 # POSIX (bash / zsh):
 git clone https://github.com/jes5e/quorum ~/projects/quorum
+mkdir -p ~/.claude/skills ~/.claude/agents
 cp -r ~/projects/quorum/skills/* ~/.claude/skills/
-mkdir -p ~/.claude/agents
 cp -r ~/projects/quorum/agents/* ~/.claude/agents/
+```
 
+```powershell
 # Windows (PowerShell):
 git clone https://github.com/jes5e/quorum $HOME\projects\quorum
+New-Item -ItemType Directory -Force -Path "$HOME\.claude\skills", "$HOME\.claude\agents" | Out-Null
 Copy-Item -Recurse $HOME\projects\quorum\skills\* $HOME\.claude\skills\
-New-Item -ItemType Directory -Force -Path "$HOME\.claude\agents" | Out-Null
 Copy-Item -Recurse $HOME\projects\quorum\agents\* $HOME\.claude\agents\
 ```
 
-### Option B — per-project install
+### Option B: for one repo
 
-If you want to try quorum on one repo without affecting others, copy the skills and subagent definitions into that repo's `.claude/skills/` and `.claude/agents/`:
+To try quorum on one repo without affecting others, copy the same files into that repo's `.claude/` directory:
 
 ```bash
-# POSIX:
+# POSIX (bash / zsh):
+mkdir -p /path/to/your/repo/.claude/skills /path/to/your/repo/.claude/agents
 cp -r ~/projects/quorum/skills/* /path/to/your/repo/.claude/skills/
-mkdir -p /path/to/your/repo/.claude/agents
 cp -r ~/projects/quorum/agents/* /path/to/your/repo/.claude/agents/
+```
 
+```powershell
 # Windows (PowerShell):
+New-Item -ItemType Directory -Force -Path "C:\path\to\your\repo\.claude\skills", "C:\path\to\your\repo\.claude\agents" | Out-Null
 Copy-Item -Recurse $HOME\projects\quorum\skills\* C:\path\to\your\repo\.claude\skills\
-New-Item -ItemType Directory -Force -Path "C:\path\to\your\repo\.claude\agents" | Out-Null
 Copy-Item -Recurse $HOME\projects\quorum\agents\* C:\path\to\your\repo\.claude\agents\
 ```
 
-### After install
+### After installing
 
-If Claude Code is already running when you copy the files, the new subagent types from `~/.claude/agents/` (Option A) or `<repo>/.claude/agents/` (Option B) won't be registered yet — custom subagents are loaded at session start. You have two options to register them:
+Claude Code loads subagent definitions when a session starts. If a session was already open when you copied the files, run `/agents` in it (this reloads them) or restart Claude Code. Until you do, `/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic` stop with `Run /quo-setup first. — required subagent types … are not registered in this session`.
 
-- **Run `/agents` in the session** — opens Claude Code's agents UI and hot-reloads the registry. Faster than a full restart; preserves the current session.
-- **Restart Claude Code** — quit and relaunch. Always works.
+**To update**, run `git pull` in your clone and copy the files again. If you'd rather have updates apply immediately, symlink each skill directory and role file from your clone instead of copying them.
 
-Either way, until one of these is done, the quo-execute / quo-fix-issue / quo-breakdown-epic skills will fail with `Agent type 'engineer' not found` (or similar).
+## Quick start
 
-In any repo where you want to use the workflow, run:
+In the repo you want to work on:
 
-```
-/quo-setup
-```
+1. **`/quo-setup`** registers the ticket hives, adds two sections to your `CLAUDE.md` (where your docs live, and your build, lint, and test commands), and offers to draft a starter PRD and SDD from your code.
+2. **`/quo-plan add rate limiting to the public API`**: agree the scope, review the specs and Epics it drafts, and approve. You get a Plan Bee (the plan's top ticket) with its Epics.
+3. **`/quo-breakdown-epic`** turns each Epic into Tasks and Subtasks. Run it in a fresh session, as the plan suggests.
+4. **`/quo-execute <plan-bee-id>`** works through the Tasks, one commit per Task, and asks you only at decision points.
 
-It will colonize hives (Plans + Issues + Specs), write a `## Documentation Locations` and `## Build Commands` section to CLAUDE.md, offer to bootstrap baseline PRD/SDD docs from your existing codebase, and offer to wire the optional status-line context-usage gauge producer into your status line. Safe to re-run if you skip a step and want to come back to it later.
+For a bug or a small change, skip planning: **`/quo-file-issue <description or URL>`**, then **`/quo-fix-issue <issue-id>`**.
 
-## File and fix issues from a GitHub URL
+Long runs work best in a fresh session for each skill. Every skill re-reads what it needs from tickets and disk, so nothing is lost between sessions.
 
-Both `/quo-file-issue` and `/quo-fix-issue` accept a bug-tracker URL (GitHub Issue, Linear ticket, internal bug tracker, Slack archive) directly as an argument. The URL is auto-detected, a thin Issue ticket is filed with `reference_materials` pointing at the upstream resource, and the upstream body is fetched via `WebFetch` when the issue is picked up — no copy-pasting the report into a ticket body.
+## Concepts
+
+quorum stores its work in [bees](https://github.com/gabemahoney/bees), a ticket system kept as markdown files in your repo.
+
+- **Hive**: a collection of tickets. `/quo-setup` creates three of them.
+  - **Plans** holds a **Plan Bee** per feature, broken into **Epics**, then **Tasks**, then **Subtasks**.
+  - **Issues** holds bugs, follow-ups, small features, and tech debt.
+  - **Specs** holds a **Spec Bee** per feature, whose `PRD` and `SDD` child tickets are that feature's spec.
+- **Bee**: a ticket. Plan Bees and Spec Bees are the top-level tickets of their hives; Issues are Bees too.
+
+| Hive | Statuses |
+|---|---|
+| **Plans** (Plan Bees, Epics, Tasks, Subtasks) | `drafted` → `ready` → `in_progress` → `done` |
+| **Issues** | `open` → `done` |
+| **Specs** (Spec Bees and their PRD/SDD) | `drafted` → `ready` |
+
+`drafted` means written but not yet approved or broken down into the next tier. `ready` means fully planned and ready for the next stage.
+
+## The skills
+
+### Skills you run
+
+| Skill | What it does |
+|---|---|
+| `/quo-setup` | One-time setup per repo. Registers the Plans, Issues, and Specs hives; writes the `## Documentation Locations` and `## Build Commands` sections of `CLAUDE.md`; optionally drafts a starter PRD and SDD from your code; and optionally installs the [context-usage gauge](#long-runs-and-the-context-guard). Safe to re-run. On a new machine in an already-set-up repo, it re-registers the hives and offers the gauge step, skipping the full walk-through. `--configure-gauge-producer` runs only the gauge step, even in a repo not set up for quorum. |
+| `/quo-plan` | Turns an idea into a plan. It agrees the scope with you, writes the feature's PRD and SDD as a Spec Bee, and drafts the Epics. A spec review and an independent plan review then run, and one approval step shows you the specs, the Epics, and the findings. Only after you approve does it create the Plan Bee and its Epics; your project docs are not changed at plan time. An interrupted run resumes where it stopped. |
+| `/quo-plan-from-specs` | The express path when you already have a finished PRD and SDD on disk: it creates the Plan Bee and Epics from them. It expects docs that describe one feature; for a doc with several `### Feature:` sections, pass `--feature "<title>"` to plan one of them. |
+| `/quo-breakdown-epic` | Breaks a plan's drafted Epics into Tasks and Subtasks, each Subtask tagged with the role that does it. Read-only research agents explore the code, the skill drafts the breakdown, and an independent PM checks it against the spec before any ticket is created. With several Epics, it asks once whether to stop after each Epic or work through them all. |
+| `/quo-execute` | Runs a plan: Epics in dependency order, one Task at a time, one commit per Task. For each Task the Engineer and Code Reviewer loop until the code review is clean, then the Test Writer and Doc Writer run together, then their reviewers and the PM. At each Epic boundary it runs the full test suite and one fresh review of the Epic's work, and you decide what to fix, file, or skip. The Analyst joins only on escalation (a design question the plan didn't settle, a review finding that contradicts the plan, or a fix that keeps breaking), and its revision comes to you for approval. When a step needs you, the run stops and asks. |
+| `/quo-file-issue` | Files an Issue. Give it a description, or run it with no arguments and let it ask, and it writes a full spec: description, current and expected behavior, impact, and suggested fix. Give it a URL (a GitHub issue, a Linear ticket, any bug tracker) and it files a short ticket that points at the original, and offers the existing open Issue if that URL was already filed. |
+| `/quo-fix-issue` | Fixes one Issue, a list of Issues, or `all` of them, in order, with one commit per Issue. URLs are accepted and filed first. For each Issue the Analyst first proposes a design for you to approve: the root cause, every place the fix must touch, and any policy questions it raises. The fix then runs through the same lanes as `/quo-execute`. Issues that only change docs or comments skip the Analyst and go straight to a writer and its reviewer. After the batch, one review covers all of it. For Issues linked to GitHub, it prints `gh issue close` commands for you to run. A stopped run resumes when you run the resume command it prints (the batch's Issue IDs, in order). |
+| `/quo-status` | Shows where the work stands across the hives, and suggests what to run next. |
+
+### Skills the workflow runs for you
+
+You don't need to call these during normal use, but they appear in `/help`.
+
+| Skill | Run by | What it does |
+|---|---|---|
+| `/quo-write-prd` | `/quo-plan` | Writes or revises a feature's PRD in its Spec Bee. Also runs alone: `/quo-write-prd <spec-bee-id>`. |
+| `/quo-write-sdd` | `/quo-plan` | Writes or revises a feature's SDD in its Spec Bee. Also runs alone: `/quo-write-sdd <spec-bee-id>`. |
+| `/quo-spec-review` | `/quo-plan`, `/quo-write-prd`, `/quo-write-sdd` | Reviews a Spec Bee's PRD and SDD for clarity, completeness, and consistency. Also runs alone: `/quo-spec-review <spec-bee-id>` (optionally `--doc PRD` or `--doc SDD`). |
+| `/quo-engineer-review` | `/quo-execute`, `/quo-fix-issue` | Reviews the Engineer's diff and returns findings. |
+| `/quo-test-writer-review` | `/quo-execute`, `/quo-fix-issue` | Reviews the Test Writer's tests and returns findings. |
+| `/quo-doc-writer-review` | `/quo-execute`, `/quo-fix-issue` | Checks that the docs a change touched are true and that each fact sits in the right doc, and returns findings. |
+
+## Fixing issues straight from a URL
+
+`/quo-file-issue` and `/quo-fix-issue` both accept a bug-tracker URL as an argument. quorum files a short ticket that points at the original, and the agents fetch the full report when they pick it up, so there's no copying the report into a ticket.
 
 ```
 /quo-file-issue https://github.com/owner/repo/issues/123         # just file it
 /quo-fix-issue  https://github.com/owner/repo/issues/123         # file and fix in one go
-/quo-fix-issue  b.abc https://github.com/owner/repo/issues/456   # mix existing bees IDs and URLs
+/quo-fix-issue  b.abc https://github.com/owner/repo/issues/456   # mix ticket IDs and URLs
 ```
-
-Re-running on the same URL dedupes against the existing Issue rather than creating a duplicate.
 
 ## Send a run's questions to a decider session
 
-If you keep a second Claude Code session that advises you on each question a run asks, you can let the run ask that session directly instead of relaying its answers by hand. Name the session with `/rename`, then launch `/quo-execute`, `/quo-fix-issue`, `/quo-breakdown-epic`, or `/quo-plan` with `--decider "<session name>"`:
+If you keep a second Claude Code session that advises you on a run's questions, the run can ask it directly instead of you relaying answers by hand. Name that session with `/rename`, then launch `/quo-execute`, `/quo-fix-issue`, `/quo-breakdown-epic`, or `/quo-plan` with `--decider "<session name>"`:
 
 ```
 /quo-execute b.abc --decider "my decider"
 /quo-fix-issue all --decider "my decider"
 ```
 
-`--decider` with no name lists your live sessions and stops, and so does a name no live session answers to.
+`--decider` with no name lists your live sessions and stops. A name that no live session answers to also stops the run.
 
-- **What still asks you.** The questions a run asks at launch, before it writes its run-state manifest: the session-effort check, which plan or Issue to work, the branch choice, `/quo-plan`'s offer to resume an unfinished run, and the filing of URLs passed to `/quo-fix-issue`. Everything the run would ask you after that goes to the decider, plain-text questions included, and so do the questions of `/quo-file-issue` when the run files an Issue. The decider decides when it needs you.
-- **What the decider receives.** First, once at launch (and again when a `/quo-fix-issue` run resumes in a fresh session), an introduction from the run: which skill and run, that you named it the decider, how questions will arrive and how to reply, and that it answers as your delegate, asking you in its own session whenever it judges a human answer is needed. You don't need to brief it yourself. Then, for each question, a four-line message: `quorum gate:` with the question's name and scope, its choices, and the path of a gate file under `/tmp/.quorum/` (`%TEMP%\.quorum\` on Windows) holding the question, the choices, and what you would have seen: the files involved, by path, and anything else copied verbatim. The decider replies to the message's sender, naming the gate file, with a choice or free text, exactly as you would type into the question.
-- **You stay in charge.** Every message shows in both sessions, and you can type an answer into the run at any time; the first answer wins, and a later reply to the same question is ignored. If a message cannot be sent, or the decider has gone when its idle notice arrives with the question unanswered, the run asks you instead. A decider still listed when its idle notice arrives, and that never replies, leaves the run waiting for you to answer it yourself, even if it closes later.
-- **The record.** Each gate file ends with the answer and who gave it: the decider, you, or you as the fallback.
+- **What still comes to you:** the questions a run asks at launch. These are the session-effort check, which plan or Issue to work on, the branch choice, `/quo-plan`'s offer to resume, and filing the URLs given to `/quo-fix-issue`. Every later question goes to the decider, including plain-text questions and the questions `/quo-file-issue` asks when the run files an Issue. The decider decides when it needs you.
+- **What the decider receives:** an introduction at launch, sent again when a `/quo-fix-issue` run resumes in a fresh session, explaining the run and how to reply. Then, for each question, a short `quorum gate:` message naming a gate file in the scratch directory. That file holds the question, its choices, and everything you would have seen, with files given by path. The decider replies with a choice or free text, naming the gate file.
+- **You stay in charge:** every message shows in both sessions, and you can answer in the run at any time; the first answer wins. If a message can't be sent, or the decider has gone, the run asks you instead. A decider that stays open but never replies leaves the run waiting for you.
+- **The record:** each gate file ends with the answer and who gave it.
 
-The two sessions must be able to message each other: both on one machine, or both in one container, and in the same permission class, since a session that bypasses permission prompts holds messages from one that does not (see Claude Code's cross-session messaging docs).
-
-## The skills
-
-### Skills you invoke
-
-These are the entry points. Day-to-day, these are the only commands you type.
-
-| Skill | What it does |
-|---|---|
-| `/quo-setup` | One-time configuration: hives, CLAUDE.md sections, optional PRD/SDD bootstrap from existing codebase, and an optional status-line [context-usage gauge producer](#enabling-the-gauge-producer) step. Idempotent — safe to re-run. On a new machine in an already-set-up repo, `/quo-setup` detects the existing hive markers and offers to just re-register them — and offers the producer step too — skipping the full walk-through. Pass `--configure-gauge-producer` to run only the [producer step](#enabling-the-gauge-producer): it skips the rest of setup and needs no configured repo. |
-| `/quo-plan` | Interactive scope discovery for an idea, refactor, or feature without finalized specs. Agrees the scope with you (distilled from the conversation when you have already discussed it), authors per-feature PRD and SDD as `t1=Doc` children of a Spec Bee in the Specs hive, and drafts the Epic decomposition. Two reviews then run on the same draft — `/quo-spec-review` on the specs and a cold plan reviewer on the whole plan — and one approval gate shows you the specs, the Epics, and the findings; trivial fixes are applied without asking. Only after you approve does it create the Plan Bee, whose `reference_materials` links the Spec Bee, and its Epics — no project-doc mutation at plan time. Before handing off, a deferral-hygiene gate routes any "address later" items to a durable carrier (`Fix in this session` / `File as issue tickets` / `Encode in existing ticket`) so nothing is silently dropped at session boundary. An interrupted run resumes from its run-state manifest. |
-| `/quo-plan-from-specs` | Express path for when you already have a finalized PRD and SDD on disk. Default mode targets a **single-feature** PRD+SDD and hard-fails on PRDs **or SDDs** containing multiple `### Feature:` subsections. Pass `--feature "<title>"` to scope a single subsection inside a cumulative PRD+SDD — useful for re-planning one feature without going back through `/quo-plan`'s discovery loop. Produces a Plan Bee with Epics. |
-| `/quo-breakdown-epic` | Decompose a Plan Bee's drafted Epics into Tasks and Subtasks. Read-only research agents explore the code the Epic touches; the skill drafts every Task and Subtask (each Subtask tagged with the role that executes it) to a scratch file; a cold PM checks that the draft covers the spec before any ticket exists; then it creates the tickets and commits them (when the Plans hive lives in-repo). Ends with a next-steps menu whose recommendation says why. When more than one Epic remains in scope, surfaces a one-time multi-Epic run mode choice at the start of the run — Mode 1 (Stop after each Epic) or Mode 2 (Work through all Epics) — instead of re-prompting at every Epic boundary. Before yielding control, a deferral-hygiene gate closes out any "address later" items into durable carriers (existing ticket body, new Issue, or in-session fix). |
-| `/quo-execute` | Execute a Plan Bee end-to-end: walk its Epics in dependency order and each Epic's Tasks one at a time, and commit per Task. Each Task runs through ephemeral background subagents in order — the Engineer and a Code Reviewer loop until the code review is clean, then the Test Writer and Doc Writer together, then their reviewers and the PM. At each Epic boundary it runs the full test suite and one fresh review of the Epic's work, which also checks it against earlier Epics; findings come to you to fix, file, or skip. When a Task needs a step only you can take, the run stops and asks you. The Analyst is dispatched only on escalation — an Engineer returns a design question the plan did not enumerate, a reviewer finding contradicts the plan, or a code fix is patched twice in a row — and comes back to you as a reasoned revision to approve rather than a fix to direct; an approved revision is appended to the ticket at that scope so later roles read it as the spec. When more than one Epic is in scope, surfaces a one-time multi-Epic run mode choice at the start of the run — Mode 1 (Stop after each Epic: the run ends at each Epic boundary with a resume command) or Mode 2 (Work through all Epics). At each Epic boundary, and before the run ends early, a deferral-hygiene gate closes out any "address later" items into durable carriers (existing ticket body, new Issue, or in-session fix). |
-| `/quo-file-issue` | File a new issue ticket in the issues hive. Issues cover bugs, follow-ups, small features, tech debt — anything ticket-worthy that isn't planned upfront. Three invocation forms: (a) **in-conversation capture** — `/quo-file-issue` (interactive) or `/quo-file-issue <description>` produces an Issue whose body carries the full spec (Description / Current behavior / Expected behavior / Impact / Suggested fix); (b) **bare URL** — `/quo-file-issue <url>` auto-detects URL-shaped positional arguments (`^https?://`) and routes to the same external-reference branch as the flag forms — no flag required; (c) **external-reference flag forms** — `/quo-file-issue --reference <url>` (or its `--from-github <url>` alias) accepted as silent no-op aliases for backward compat. Both URL paths produce a thin Issue (2-3 sentence summary in the body) whose `reference_materials` points at an external resource (GitHub Issue, Linear ticket, Slack archive, internal bug tracker URL, etc.) under one of three canonical resolver names (`github-issue` / `linear-issue` / `url`, picked by the same URL-pattern resolver-name heuristic); `/quo-fix-issue` fetches the upstream content via `WebFetch` when picking the Issue up. Before filing, the skill dedupes by `reference_materials.value` against open Issues and surfaces `Use existing` / `File new` / `Cancel` on a match. Symmetric with `/quo-plan-from-specs` on the planning side. |
-| `/quo-fix-issue` | Fix one or more issue tickets. Argument shapes: interactive (no args), `all`, single bees ID, list of bees IDs, single `<url>`, or a mixed `<id>` + `<url>` list. URL tokens (`^https?://`) trigger file-then-fix routing through `/quo-file-issue` (same dedupe and `WebFetch` fallback apply) and the resolved ticket IDs substitute the URLs *in place* in the working list, preserving the user-supplied prerequisite ordering. Dispatches the same ephemeral background subagents as `quo-execute` but at issue scope, with the Analyst's design-analysis gate running on every Issue before the Engineer dispatch (`quo-execute` dispatches the same Analyst only on escalation) — except a docs- or comments-only Issue, which the skill classifies as text-class from the body and sends straight to one writer and that lane's reviewer, with no Analyst, Test Writer, PM, or post-completion sweep, re-escalating to the Analyst if the writer's change turns out to touch code or tests. That gate shows you the enumerated list of sites the fix is expected to touch (each with the search pattern that found it) and the yes/no policy questions the fix forces but the Issue never settled, each with a recommended answer — approving the proposal ratifies the design, those answers, and any recommendation to split a distinct concern into its own Issue, in one decision. If implementing the approved design would require something the design did not enumerate, the Engineer stops and, on the forward fix path, the same gate comes back to you on a revised proposal rather than the choice being made mid-fix (a question raised later, while fixing a post-completion review finding, is filed as a follow-up Issue instead). Lanes are ordered rather than fanned out together: the Engineer and Code Reviewer loop until the code review comes back clean, then the Test Writer and Doc Writer run once against that settled diff, then the Test Reviewer, Doc Reviewer, and PM — and a later finding that changes source re-enters the Engineer loop before any writer is re-run, so docs and tests are not rewritten once per review round. A deferral-hygiene gate fires per-Issue (and again at end-of-batch in `all` / list mode) to close out any "address later" items into durable carriers (existing ticket body, new Issue, or in-session fix). A run that stops early — at the context guard, on an aborted Issue, or because its session ended — resumes from its run-state manifest when you relaunch it in a fresh session with the batch's Issue IDs, the resume command it prints when it first starts and at every stop. At end-of-run, emits copy-paste-ready `gh issue close ...` recommendations for any fixed Issues whose `reference_materials` carry a `github-issue` resolver — the skill never runs `gh issue close` itself. |
-| `/quo-status` | Show the workflow stages and current progress across all hives. Useful for "where am I?" |
-
-### Skills used internally by the workflow
-
-These are dispatched automatically by the entry-point skills above. You don't need to call them directly during normal use, but they show up in `/agents` and `/help`, and they're documented here so the workflow's behavior is fully traceable.
-
-| Skill | Invoked by | What it does |
-|---|---|---|
-| `/quo-write-prd` | `/quo-plan` (inline) | Author or revise a PRD as a `t1=Doc` child titled `PRD` under a Spec Bee in the Specs hive. Also runs solo for revisions: `/quo-write-prd <spec-bee-id>`. |
-| `/quo-write-sdd` | `/quo-plan` (inline) | Author or revise an SDD as a `t1=Doc` child titled `SDD` under a Spec Bee in the Specs hive. Also runs solo for revisions: `/quo-write-sdd <spec-bee-id>`. |
-| `/quo-spec-review` | `/quo-plan`, `/quo-write-prd`, `/quo-write-sdd` | Fresh-eyes review of a Spec Bee's PRD and SDD children for clarity, completeness, and internal consistency. Its findings are shown at the caller's approval gate before the specs are promoted. Also runs solo: `/quo-spec-review <spec-bee-id>` (optionally `--doc PRD` or `--doc SDD`). |
-| `/quo-engineer-review` | `/quo-execute`, `/quo-fix-issue` | Review the Engineer's diff during the review cycle. Returns improvement work items for the orchestrator. |
-| `/quo-test-writer-review` | `/quo-execute`, `/quo-fix-issue` | Review the Test Writer's test code during the review cycle. Returns improvement work items for the orchestrator. |
-| `/quo-doc-writer-review` | `/quo-execute`, `/quo-fix-issue` | Review the Doc Writer's documentation during the review cycle. Checks that the docs the change touched are true and that each fact it recorded sits where it belongs. Returns improvement work items for the orchestrator. |
-
-## Status vocabulary
-
-| Hive | Statuses |
-|---|---|
-| **Plans** (Plan Bees, Epics, Tasks, Subtasks) | `drafted` → `ready` → `in_progress` → `done` |
-| **Issues** (issue tickets) | `open` → `done` |
-| **Specs** (Spec Bees, Docs) | `drafted` → `ready` |
-
-`drafted` = written but children (next tier down) not yet broken down.
-`ready` = fully planned and ready for the next stage.
-`in_progress` = actively being worked on.
-`done` = completed.
-
-The **Specs** hive (display name `Specs`, normalized name `specs`) holds Spec Bees, each containing per-feature spec docs as `t1=Doc` children. PRD and SDD are both `t1=Doc` children differentiated by ticket title (`PRD` vs `SDD`), not by tier. The hive's allowed resolver is `bees`, so a Plan Bee's `reference_materials` can point at a Spec Bee.
+Both sessions must be able to message each other: on the same machine (or in the same container), and either both or neither bypassing permission prompts, since a session that bypasses them holds messages from one that does not.
 
 ## Recommended session settings
 
-**Subagent effort is pinned per role and is not affected by your session setting.** Every role quorum dispatches carries its own model and reasoning effort in the frontmatter of its `agents/<role>.md` file, and those pins override the session effort rather than inheriting from it — a role pinned at `high` runs at `high` whether you launched at `low` or at `xhigh`. Roles run at `high` minimum, with the Analyst one tier higher. You don't need to think about it.
+Each role's model and effort are pinned in its `agents/<role>.md` file and are not affected by your session. Your session setting governs the skill you run, its orchestration, and the un-pinned helper agents it dispatches (plan and end-of-run reviewers, research agents):
 
-What your session setting *does* govern is the skill you invoke and the orchestration it runs. Recommendations below, covering every skill you invoke yourself — the three orchestrator-only reviewers (`/quo-engineer-review`, `/quo-test-writer-review`, `/quo-doc-writer-review`) are omitted deliberately, since they never run as your session:
-
-| Surface | Recommended |
+| Skill | Recommended |
 |---|---|
-| Orchestrator (`/quo-execute`, `/quo-fix-issue`) | Opus / `medium` — it delegates all implementation rather than producing work, and its context is the longest in the run |
-| `/quo-plan`, `/quo-plan-from-specs`, `/quo-write-prd`, `/quo-write-sdd`, `/quo-spec-review`, `/quo-breakdown-epic` | Opus / `high` — tiny fan-out, maximal blast radius; errors here propagate into every Epic downstream |
-| `/quo-setup` | Opus / `high` — a one-time run, but it writes the CLAUDE.md contract keys every other skill reads; a wrong path or a missed key surfaces as a hard-fail much later |
-| `/quo-status`, `/quo-file-issue` | Opus / `medium` — read-only reporting and a short interactive capture; neither produces work that downstream skills build on, so there is nothing to gain from running hotter |
+| `/quo-execute`, `/quo-fix-issue` | Opus, `medium`: it delegates all implementation, and its context is the longest in the run |
+| `/quo-plan`, `/quo-plan-from-specs`, `/quo-write-prd`, `/quo-write-sdd`, `/quo-spec-review`, `/quo-breakdown-epic` | Opus, `high`: mistakes here carry into every Epic downstream |
+| `/quo-setup` | Opus, `high`: it writes the `CLAUDE.md` sections every other skill reads |
+| `/quo-status`, `/quo-file-issue` | Opus, `medium`: short reporting and capture |
 
-These are recommendations, not settings quorum applies for you. It could pin an effort level on a skill, but only as an *override* — that would drag you down to the recommended level when you had deliberately launched hotter, which is the opposite of what a recommendation should do. What these rows describe is a floor, so quorum names it and leaves the setting to you. Three skills check the floor for you and stay quiet unless you are below it: `/quo-execute` and `/quo-fix-issue` prompt once at run start if your session is below `medium`, and `/quo-breakdown-epic` if it is below `high`. Running hotter than the recommendation is never prompted on — it costs wall-clock, not quality. The rest of the second row — `/quo-plan`, `/quo-plan-from-specs`, `/quo-write-prd`, `/quo-write-sdd`, `/quo-spec-review` — carries no prompt at all, and neither do `/quo-setup`, `/quo-status`, or `/quo-file-issue`, so this table is the only place their recommendation is written down. To change the setting, run `/model` (or launch with `--effort <level>`); the effort ladder is `low` < `medium` < `high` < `xhigh` < `max`.
+These are minimums, and quorum leaves the setting to you. `/quo-execute` and `/quo-fix-issue` ask once at the start if your session is below `medium`, and `/quo-breakdown-epic` if it is below `high`. The other skills don't check. To change it, run `/model` or launch with `--effort <level>`. The levels are `low` < `medium` < `high` < `xhigh` < `max`.
 
-**On long runs, the orchestrators guard against ill-timed auto-compaction.** Because `/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic` carry the longest context in a run, they check context usage before each Task (`/quo-execute`), Issue, or Epic (`/quo-breakdown-epic`), and before a post-completion review, and, when it has climbed close to the point where the harness would auto-compact mid-unit, stop and recommend you begin the next one in a fresh session rather than press on. This depends on a context-usage reading being published for your session; when none is — because no producer is configured for your environment — they continue unguarded; configure a producer with `/quo-setup --configure-gauge-producer` to arm the guard everywhere. See [The context-usage gauge file](#the-context-usage-gauge-file) for how that reading is published and [Enabling the gauge producer](#enabling-the-gauge-producer) for configuring the producer and the opt-out.
+## Long runs and the context guard
+
+`/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic` carry the longest context in a run. Before each Task, Issue, or Epic after the first, and before each end-of-Epic or end-of-batch review, they check how full the session's context is. If it is close to the point where Claude Code would compact it mid-unit, they stop cleanly and tell you how to continue in a fresh session.
+
+That check needs a **context-usage gauge**. Claude Code reports context usage only to your status-line command, so quorum adds a small producer to your status line that saves the reading to a file. Without it, these skills can't see how full the session is and run unguarded.
+
+- **Install it** with `/quo-setup --configure-gauge-producer`, from any session. It wraps your existing status line rather than replacing it. It takes effect from your next session.
+- **If a repo commits its own status line** in `.claude/settings.json`, that setting outranks your user-level one in that repo, and setup will warn you. To guard runs there too, add a `statusLine` to the repo's `.claude/settings.local.json` (keep it git-ignored) whose command is `"<python>" "<skills-dir>/quo-setup/scripts/context_gauge.py" produce --wrap-command "<the repo's status-line command>"`. Local settings outrank the committed file, and nothing committed changes. Re-running setup doesn't refresh this entry, so redo it after a Python upgrade.
+- **To decline for good,** choose "run unguarded" in setup. It records that choice in an opt-out marker file, and setup stops offering the step. Running `/quo-setup --configure-gauge-producer` offers it again.
+- **If the producer breaks**, for example after a Python upgrade, re-running setup repairs the user-level entry.
+- **Some environments can't be configured from settings.** A `--settings` launch flag, organization settings, or MDM policy can outrank every settings file. Such an environment can still publish the reading itself by following the [file contract](#the-context-usage-gauge-file) below.
 
 ## Where docs live
 
-If you opt into doc creation (recommended — see [Why this exists](#why-this-exists) above), `/quo-setup` bootstraps:
+If you let `/quo-setup` draft them, your project gets:
 
-- `docs/prd.md` — what the product must do and why: its goals, non-goals, product-level targets, and promises to users. The `doc-writer` agent keeps it true and updates it when a change alters one of them.
-- `docs/sdd.md` — where things are, the guarantees and cross-module rules the code must keep, the contract clients rely on, and decisions with their reasons. The `doc-writer` agent dispatched by `/quo-execute` and `/quo-fix-issue` keeps it true to each change and adds a rule or decision when a change makes one; it adds no section per feature.
+- `docs/prd.md`: what the product must do and why, meaning its goals, non-goals, product-level targets, and promises to users. The Doc Writer keeps it true and updates it when a change alters one of those.
+- `docs/sdd.md`: where things are, the guarantees and cross-module rules the code must keep, the contract clients rely on, and decisions with their reasons. The Doc Writer keeps it true to each change and adds a rule or decision when a change makes one, never a section per feature.
 
-Per-feature PRD/SDD content is authored at plan time as `t1=Doc` children of a Spec Bee in the Specs hive (PRD and SDD as separate Docs) and is not copied into the project docs.
+Each feature's own PRD and SDD are written at plan time as tickets in its Spec Bee, and are not copied into these docs. The skills find your docs through `CLAUDE.md`'s `## Documentation Locations` section, so any layout works.
 
-The skills detect doc paths from CLAUDE.md `## Documentation Locations`, so you can override the defaults if your project uses a different structure (e.g., `specs/` instead of `docs/`).
+## Scratch files
 
-### Where bundled helper scripts live
+Skills write short-lived files to a scratch directory, `/tmp/.quorum/` on macOS and Linux, or `%TEMP%\.quorum\` on Windows. These include:
 
-A few skills ship Python helpers (e.g., `detect_fast_path.py`, `scoped_marker_resolver.py`, and `context_gauge.py` — the context-usage gauge producer/reader, which also inspects and updates the operator's status-line settings and writes the opt-out marker) in a `scripts/` directory alongside each skill. Where that lands depends on how you got the skills: in a quorum checkout they sit under `skills/<skill-name>/scripts/`, and in an install they sit under `<skill-name>/scripts/` inside your skills directory (`~/.claude/skills/` for a global install, `<repo>/.claude/skills/` for a per-project one), because the install step copies the *contents* of `skills/` rather than the `skills/` directory itself. You don't need to configure absolute paths to them — each skill resolves its own bundled scripts at runtime from its own base directory, and a sibling skill that needs another skill's helper resolves it relative to that same base. An earlier revision wrote a `## Skill Paths` section into CLAUDE.md listing absolute paths to these helpers, but per-machine paths could not be committed safely across contributors, so the skills now self-resolve instead. If a skill invocation surfaces an error mentioning one of these scripts, look under `<skill-name>/scripts/` in your skills install directory, or under `skills/<skill-name>/scripts/` in a quorum checkout.
+- ticket bodies on their way to bees;
+- each run's state file, which a run reads back after a compaction or when it resumes;
+- the compromise tracker (review findings you chose to accept or defer) and the cost ledger (one row per agent dispatch);
+- diff snapshots for the Doc Writer, which has no shell;
+- the Analyst's current design proposal;
+- one gate file per question sent to a decider.
 
-### Scratch files
+The context-usage gauge files and the opt-out marker are written by a Python helper into the `.quorum` directory of Python's temp directory. That's `/tmp/.quorum/` on most Linux systems, `$TMPDIR/.quorum/` on macOS (under `/var/folders/`), and `%TEMP%\.quorum\` on Windows.
 
-Skills write transient scratch files (e.g., body files passed to `bees create-ticket --body-file` or `bees update-ticket --body-file`, and the private copy a Test Writer takes of a source file before temporarily perturbing it to confirm a test really fails without the fix) under a single well-known directory, which also holds the per-session [context-usage gauge file](#the-context-usage-gauge-file) when a producer is configured for your environment, and a persistent context-guard opt-out marker if you [chose to run unguarded](#enabling-the-gauge-producer):
+Skills never delete these files: the footprint is small, and they help when you investigate a run that went wrong. You can delete these directories **between** runs. Don't delete them **during** a run, or while a stopped run waits to be resumed, because the run's state file and compromise tracker are not recreated. Deleting the gauge helper's `.quorum` directory (the `$TMPDIR` one on macOS) also removes the opt-out marker, so setup will offer the gauge step again.
 
-- POSIX (macOS, Linux, WSL): `/tmp/.quorum/`
-- Windows: `%TEMP%\.quorum\`
-
-The directory is safe to delete between runs — skills recreate it on demand. Avoid deleting it *during* a run: alongside the regenerable body files, the skills keep a small run-state manifest there holding values that have no other home (the multi-Epic run mode you picked at run start, the ordered Issue batch you gave `/quo-fix-issue`, the ticket IDs and draft paths `/quo-plan` resumes from, and the path of the Epic draft `/quo-breakdown-epic` is working on), and those are not recreated on demand. On most runs you will also find a compromise tracker there (`compromises-<YYYYMMDD-HHMM>-<short-suffix>.md`), which `/quo-execute` and `/quo-fix-issue` append to as the run accepts compromises and never rebuild: deleting it mid-run empties the end-of-run **Accepted compromises** summary and leaves the post-completion review no record of those compromises to challenge, that file being its only source for them. Beside it sits the run's cost ledger (`ledger-<YYYYMMDD-HHMM>-<short-suffix>.md`, one row per agent dispatch with its tokens, tool uses, and duration — the source of every `**Cost**` line the run prints and of the rule that retires a long-lived implementer agent), one or more `diff-<unit-id>-<short-suffix>.md` snapshots the orchestrator writes for the Doc Writer, which has no shell of its own, and a `proposal-<unit-id>-<short-suffix>.md` holding the Analyst's design proposal for the Issue in flight (on `/quo-execute`, for a Task that escalated to the Analyst), which the run reads back after a compaction instead of paying a fresh Analyst, and on runs with a [decider](#send-a-runs-questions-to-a-decider-session) one `gate-<short-suffix>.md` per question sent to it, holding what was sent and the answer with its source; all are regenerable only in the sense that the next run writes new ones. The persistent context-guard opt-out marker (`context-guard-opt-out`, i.e. `/tmp/.quorum/context-guard-opt-out` on POSIX, `%TEMP%\.quorum\context-guard-opt-out` on Windows) is a third resident nothing recreates: deleting it silently clears a standing "run unguarded" choice, so setup will offer that step again (the orchestrators do not read the marker). The gauge file is the one resident that heals itself: nothing in the workflow recreates it either, but the status-line producer rewrites it on its next refresh, so deleting it leaves no reading published until that refresh restores one. You may also find a `context-usage-quo-setup-self-check.json` there — a synthetic self-check artifact left by a successful producer install that looks like a per-session gauge but belongs to no session; it is overwritten on each install and harmless to delete. Skills do not clean up after themselves, by design: the footprint is small (KBs per run, low-MB after heavy use), and leaving artifacts in place gives you something to inspect when a run crashes. POSIX systems clean `/tmp` on a days-to-reboot cadence anyway; Windows users can clear `%TEMP%\.quorum\` between runs.
+## Reference
 
 ### The context-usage gauge file
 
-Claude Code reports how much of the model's context window is in use to your status-line command and nowhere else, so quorum republishes that reading to a small per-session file that the rest of a run can read back. The bundled helper `skills/quo-setup/scripts/context_gauge.py` writes it, and any environment can publish the same file from a producer of its own — the location, fields, and freshness semantics below are the whole contract.
+This is the contract for the reading the context guard uses, for anyone writing their own producer. The bundled helper `skills/quo-setup/scripts/context_gauge.py` follows it.
 
-**Location.** One file per session, in the same `.quorum` namespace as the scratch files above, resolved through the same platform temporary directory:
+- **Location:** one file per session, `<tempdir>/.quorum/context-usage-<session_id>.json`. Here `<tempdir>` is Python's `tempfile.gettempdir()` (see [Scratch files](#scratch-files)), and `<session_id>` is the Claude Code session id.
+- **Content:** a top-level `session_id` string and a `context_window` object, written as received from the status-line payload:
 
-- POSIX (macOS, Linux, WSL): `/tmp/.quorum/context-usage-<session_id>.json`
-- Windows: `%TEMP%\.quorum\context-usage-<session_id>.json`
+  ```json
+  {"session_id": "<id>", "context_window": {"used_percentage": 37}}
+  ```
 
-`<session_id>` is the Claude Code session id.
+  Consumers read `context_window.used_percentage`. Always write `context_window` as an object, an empty one when there is no reading, never `null`.
+- **Freshness:** every status-line refresh overwrites the file. Freshness is judged from the file's modification time, and a reading older than 20 minutes counts as stale, so a producer must refresh at least that often.
+- **Wrapping:** `produce --wrap-command "<your status-line command>"` runs your command and prints its output unchanged, so the gauge is added to an existing status line. A payload it can't parse, or a gauge file it can't write, never blanks your status line; the gauge just stops updating (`stale`, or `missing` if it was never written).
 
-**Required fields.** A top-level `session_id` string and a `context_window` object:
-
-```json
-{"session_id": "<id>", "context_window": {"used_percentage": 37}}
-```
-
-`context_window.used_percentage` is the field consumers read. The whole `context_window` object is written as received from the status-line payload, so any extra keys it carries are preserved rather than filtered out.
-
-**Overwrite and freshness.** There is one file per session id, so concurrent quorum sessions never collide and never consume each other's reading. Every status-line refresh truncates and rewrites that file — it is a live gauge, not a log, so nothing appends and nothing rotates — and the workflow never deletes it. The file carries no timestamp field: freshness is judged from its modification time, so a producer that stops refreshing goes stale on its own. The bundled helper trusts a reading written within the last 20 minutes, so a producer you write yourself should refresh at least that often. (That 20-minute window mirrors the helper's `FRESHNESS_WINDOW_SECONDS` constant in [`quo-setup/scripts/context_gauge.py`](skills/quo-setup/scripts/context_gauge.py); if that constant is ever retuned, move this number in the same change so the two never drift.)
-
-**Wrapping an existing status line.** `produce --wrap-command "<your existing status-line command>"` runs your own command with the same status-line payload and re-emits its output verbatim, so the gauge is added to an existing status line rather than replacing it. A payload the producer cannot parse — including an empty one, or one whose shape the harness has changed — never blanks that wrapped display, and nor does a gauge the producer cannot write (an unwritable, read-only, or full `.quorum` directory, which is ordinary on a shared machine): the wrapped command still runs, and its output is still what appears on the status line. Either surfaces instead as the gauge quietly going unrefreshed, so it reads as `stale` (or `missing`) when you check it back with the reader snippet below — except that a `.quorum` directory the reader itself cannot traverse takes the same non-zero exit as the nonconforming file noted with that snippet, even though no gauge file exists.
-
-**Restricted or pinned status-line environments.** In some setups a higher-precedence configuration source owns the status-line slot — a session launched against an explicit `--settings` file, organization settings delivered at sign-in, MDM policy, or managed-hook restrictions — so a status-line command written at the user level never takes effect. The contract above is published so those environments can satisfy it themselves. Any process that writes a conforming file keeps the mechanism working, with no change on the quorum side and nothing in the workflow needing to know which producer wrote it: the environment's own status-line command, a wrapper around it, or anything else that can see the session's context-usage payload. The obligations are: write to the published path above, keyed to the current session id; include the required fields above; always write `context_window` as an object — an empty one when the payload carries no reading, never `null`, since a present-but-non-object `context_window` is rejected as malformed rather than read as "no reading"; and refresh at least as often as the freshness window above.
-
-To confirm a producer conforms, read the file back with the bundled helper's reader. Resolve the helper's location in your own install per [Where bundled helper scripts live](#where-bundled-helper-scripts-live), substituting for `<skills-dir>` below the directory that contains `quo-setup/` — your skills install directory (e.g. `~/.claude/skills`, or `<repo>/.claude/skills` for a per-project install) or the `skills/` directory of a quorum checkout — and substitute the current session's id for `<id>`, which Claude Code exposes in the `CLAUDE_CODE_SESSION_ID` environment variable:
+To check a producer, read the file back with the helper. `<skills-dir>` is the directory that contains `quo-setup/` (for example `~/.claude/skills`), and the session id is in the `CLAUDE_CODE_SESSION_ID` environment variable (set inside a Claude Code session's shell):
 
 ```bash
 # POSIX (bash / zsh):
@@ -254,41 +278,24 @@ python3 <skills-dir>/quo-setup/scripts/context_gauge.py read --session-id <id>
 python <skills-dir>\quo-setup\scripts\context_gauge.py read --session-id <id>
 ```
 
-It prints exactly one value: an integer percentage when a fresh reading is present, or `no-reading`, `stale`, or `missing` when there is no fresh number to report. A nonconforming file is the exception — rather than printing one of those four values, the reader exits non-zero and describes the malformation on stderr, which is how you tell a broken producer from a merely quiet one.
+It prints a percentage, or `no-reading`, `stale`, or `missing`. A malformed file makes it exit non-zero with the problem on stderr. For the reasoning behind the contract, see [the contributor notes](docs/doc-writing-guide.md#the-context-gauge-file-contract).
 
-Everything you need to publish and verify a conforming file is above. If you want the reasoning behind it, the deeper contract lives in [the contributor-facing contract section](docs/doc-writing-guide.md#the-context-gauge-file-contract) of the doc-writing guide — optional depth, aimed at contributors working on the mechanism itself.
+### Bundled helper scripts
 
-### Enabling the gauge producer
+A few skills ship Python helpers in a `scripts/` directory beside their `SKILL.md`. Each skill finds its own helpers at run time, so there is nothing to configure. If an error mentions one, look in `<skill-name>/scripts/` in your skills directory.
 
-**What it is.** Near the end of its walk-through, `/quo-setup` offers — optionally — to configure the producer that publishes the reading described in [The context-usage gauge file](#the-context-usage-gauge-file) above. It is a standalone offer: declining it changes nothing else about setup, and every other part of the workflow behaves the same either way.
+## Scope
 
-**How to enable it.** There are three entry points. Running `/quo-setup` normally reaches the step as part of the walk-through. On a machine that is new to an already-set-up repo, the fast path offers it too — the status line is unconfigured there because that setting is per-machine and never committed, so a repo that is otherwise fully set up still has no producer wired in on a fresh machine. And the direct path `/quo-setup --configure-gauge-producer` runs only this step: it needs neither the bees CLI nor a configured repo, and skips the rest of setup.
-
-**The choices.** The offer is a gate with three options: configure it, not now (the offer returns on a future setup run), and run unguarded (don't ask again). There is no separate "wrap it" choice — when a status line already exists, configuring wraps and preserves it rather than replacing it, and re-running never nests one wrapper inside another. For exactly what is preserved when a payload cannot be parsed or the gauge cannot be written, see the **Wrapping an existing status line.** note under [The context-usage gauge file](#the-context-usage-gauge-file) above.
-
-**Activation is next-session.** Status-line configuration is picked up when a session starts, so treat the producer as active from the *next* session — do not assume the run in progress is guarded, since it began before the setting existed.
-
-**Pinned or restricted environments.** A user-level settings write can be outranked — by a session launched against an explicit settings file, by organization settings delivered at sign-in, by MDM policy, or by managed-hook restrictions. Setup names the higher-precedence sources it can detect before it asks, and drops the "recommended" framing from its first option when one is present; it also warns that some such sources cannot be seen from disk at all. Where a user-level write cannot take effect, the route for the environment owner is to satisfy the published [file contract](#the-context-usage-gauge-file) directly with a producer of their own.
-
-**Opting out.** Choosing "run unguarded — don't ask again" writes a persistent marker at `/tmp/.quorum/context-guard-opt-out` (POSIX) or `%TEMP%\.quorum\context-guard-opt-out` (Windows). It suppresses setup's automatic offer of this step; an orchestrator run with no reading published continues unguarded whether or not the marker exists, and a genuine over-threshold stop when a reading *is* present is never suppressed. Removing that file re-enables the automatic offer. You do not have to delete it to change your mind, though: invoking `/quo-setup --configure-gauge-producer` re-offers the step even when the marker is present — an explicit request to configure is itself the change of mind, so only the automatic slow-path and fast-path offers are the ones the marker silences.
-
-**Re-running repairs a stale configuration.** If a configured producer goes stale — its interpreter moved or was upgraded — re-running setup rewrites the configuration to match without re-asking; this is the one unprompted settings rewrite to expect. An existing opt-out marker suppresses even that silent repair. Accepting the step also exercises the newly-composed command once, which runs any wrapped command once.
-
-## Coming soon: optional skills
-
-The current 14 skills are the portable core — they work on any project, any language, any platform with no extra tooling beyond the bees CLI and Claude Code. Optional skills are planned for users who want more — these will likely require additional tooling per skill, clearly labeled:
-
-- **Async-worktree session management** — spawn an isolated git-worktree session for a Plan Bee, work on it in the background, merge cleanly when done.
-- **Multi-repo orchestration** — survey ready work across multiple repos and launch concurrent execution sessions.
-
-Stack-specific helpers (changelog management, license attribution generation, etc.) and infrastructure-specific helpers (pastebins, cloud storage) are out of scope for the cross-language core but can live in companion repos.
+The 14 skills here are a portable core: they work on any project, language, and platform with only Claude Code, git, Python, and bees. Stack-specific helpers (changelog tooling, license attribution) and infrastructure-specific ones (pastebins, cloud storage) are out of scope, and belong in companion repos.
 
 ## Contributing
 
-Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow design rationale, intentional asymmetries between skills, anti-patterns, and skill conventions. Two principles you'll see referenced everywhere:
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow's design, its conventions, and the anti-patterns to avoid, and [CLAUDE.md](CLAUDE.md) for the rules every skill change follows. Two of them matter most:
 
-1. **Skills must work on Rust, Node, Python, Go, Java, and unknown stacks.** Don't hardcode language-specific commands or file paths in skill prose; use the CLAUDE.md `## Build Commands` and `## Documentation Locations` lookups instead. (See `quo-execute` and `quo-fix-issue` for examples of how to reference these.)
-2. **Skills must work on POSIX and Windows.** Every shell snippet should be provided in OS-conditional blocks (POSIX bash + Windows PowerShell at minimum). Helper scripts should be Python or come in OS-paired implementations.
+1. **Skills must work on any stack.** Never hard-code a language-specific command or file name in skill prose; read it from the target repo's `CLAUDE.md` `## Build Commands` and `## Documentation Locations` sections.
+2. **Skills must work on POSIX and Windows.** Every shell snippet comes in POSIX and PowerShell forms; helpers are Python.
+
+To run the tests: `python3 -m pip install -r requirements-dev.txt`, then `python3 -m pytest tests/` (`python` on Windows).
 
 ## License
 
@@ -296,4 +303,4 @@ MIT. See [LICENSE](LICENSE).
 
 ## Credits
 
-Built on top of the [bees](https://github.com/gabemahoney/bees) ticket management system by Gabe Mahoney.
+Built on the [bees](https://github.com/gabemahoney/bees) ticket system by Gabe Mahoney.
