@@ -1,6 +1,6 @@
 ---
 name: quo-doc-writer-review
-description: Review the Doc Writer's documentation during a /quo-execute or /quo-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. Checks that the docs the change touched are true and that each fact it recorded sits where it belongs.
+description: Review the Doc Writer's documentation during a /quo-execute or /quo-fix-issue review cycle. Returns a list of improvement work items for the orchestrator. Checks that the docs the change touched are true, that each fact sits where it belongs, and that customer text is written for its reader.
 ---
 
 ## Overview
@@ -10,7 +10,8 @@ Concise is better than verbose. Value brevity.
 The SDD holds where things are (components, how they connect, data flow, external dependencies); the guarantees the system must keep; rules that cut across modules; the contract clients rely on; decisions with the alternatives they rejected; verified facts about outside systems, with their source. The PRD holds what the product must do and why: its goals, non-goals, product-level targets, and promises to users and clients, each promise brief, with a one-way pointer to the SDD section that contracts it.
 **The SDD test:** a fact goes in the SDD, not only in the code or the tickets, if and only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug. Where the project's doc writing guide places a fact differently, the guide wins, except that no fact is added to a per-feature or per-change section, whatever the guide says.
 **The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. User-visible limitations go in the customer-facing docs and the SDD, and in the PRD only as non-goals.
-The Doc Writer works by the same tests and rule. Judge by them every SDD or PRD fact you check, ask for, or propose in a fix path; the rule is the one place a project's guide overrides step 0's floor.
+**The customer-text test:** customer text is text written for a user, an operator, or an API caller to read, wherever it lives. It says only what its reader would act on or expect, in terms they can act on without the source, and omits nothing they need to act; a changelog entry says what changed for them. A customer-text standard in the project's doc writing guide governs, stricter or looser.
+The Doc Writer works by the same tests and rule. Judge by them every SDD, PRD, or customer-text statement you check, ask for, or propose in a fix path; their guide clauses are the one place a project's guide overrides step 0's floor.
 
 **Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
 
@@ -24,19 +25,11 @@ Analyze what changed and return what it made false or left missing in the docs, 
 
 ### Scope: what is documentation for this review
 
-This review covers the docs under the `Customer-facing docs`, `Internal architecture docs (SDD)`, and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`.
+This review covers the docs under the `Internal architecture docs (SDD)` and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`, and customer text as the customer-text test defines it, under the `Customer-facing docs` key or not. Customer text in a source file is the Engineer's to fix.
 
-**What the change touched.** Review the customer-facing docs whole for correctness; users act on every line. An SDD or PRD can be too large for a whole-document hunt to converge, so in each, review only the Doc Writer's edits, every statement about code or behavior the diff changed, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
+**What the change touched.** A doc set can be too large for a whole-document read to converge, so review only the Doc Writer's edits, every statement about code or behavior the diff changed, every other statement of a fact the change touched, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
 
 **Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/quo-engineer-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
-
-### Readme
-Readme is for human users to understand how to install and run the project
-- No implementation details
-- No testing or unit testing details
-  - This is IMPORTANT. Seriously. Don't talk about how to test the product in the Readme. 
-- Keep it short and simple - focused on how to install and how to use
-- Don't describe how to use common tools (like screen, poetry, bash etc)
 
 ## Workflow
 
@@ -71,24 +64,15 @@ Read the docs in scope.
 
 ### 3. Find Documentation Gaps
 
-**README.md** (user-focused, concise):
-- Install instructions correct?
-- Updated setup/dependencies?
-- Are CLI commands and API references correct?
-- If outdated, return a work item ("Update README §X — Y is now Z"). If correct, LEAVE IT ALONE!
-
-
-**SDD and PRD** (what the change touched):
-- Is each statement in scope true against the diff?
+**Customer text, SDD, and PRD** (what the change touched):
+- Is each statement in scope true against the diff, and does it agree with every other statement of the same fact?
+- Does the customer text in scope pass the customer-text test?
 - Does each fact the change made appear once where the SDD test, or in the PRD the line, puts it, with its reason where the tickets, the relayed decisions, or the diff give one?
 - Does every statement the Doc Writer added or edited pass the SDD test or, in the PRD, the line? A restatement of the code, however accurate, a narration of the change, history, a ticket ID, or a new per-feature section does not; return its deletion as a work item.
 - If all is well, LEAVE IT ALONE!
 
 
-### 4. Check for Inconsistencies
-Look for docs that are now incorrect: outdated commands, deprecated features still shown, changed file paths, old config formats.
-
-### 5. Output Work Items
+### 4. Output Work Items
 
 Return specific, actionable items as numbered list. **Always append a routing trailer in the second-person imperative form** — `**Your next tool use MUST address these findings now.**` (findings present) or `**Your next tool use MUST advance the workflow.**` (no findings) — that names the precise routing the calling orchestrator (`/quo-execute`'s review loop, `/quo-fix-issue`'s review loop, or a standalone user invocation) must take after consuming this output, and **always end the trailer with a counter-anchor clause** — `Do not yield with this text as your assistant response — perform the judgment and act on it, or pass it to the user via prose explaining your decision.` — that explicitly forbids the narrate-instead-of-do failure mode. **When the orchestrator's judgment leads to firing an `AskUserQuestion` gate** (e.g., escalating a contested finding to the user, asking how to handle an ignored-feedback set), the calling skill's gate contract applies — a manifest `Write` filling `## Open gate` then `AskUserQuestion` in the same turn for `/quo-fix-issue` and `/quo-execute`; the two-step `TaskCreate` → `AskUserQuestion` contract (first create a `gate-askuserquestion-<short-suffix>` TaskList task, then call `AskUserQuestion` in the same turn) for other callers. When the orchestrator's judgment is to dispatch or resume the Doc Writer (no user gate fires), no gate contract applies on this lane — Agent dispatch and `SendMessage` are themselves tool calls and structurally hard to silently yield. The trailer is the load-bearing routing prescription — by emitting it as part of the tool output rather than relying on the orchestrator skill to recall a nested rule, the prescription is structurally robust against orchestrator-side attention decay. The second-person imperative form and the counter-anchor clause are required components, not stylistic preferences (a prose-only counter-anchor demonstrably failed to close this failure mode; a structural gate contract — a tool call preceding the question — narrows but does not close the residual surface); third-person framing (e.g., `**Next action for the orchestrator:**`) is a known failure mode where orchestrators emit the descriptive text and yield the turn without firing the prescribed step. The orchestrator skills' review-loop sections defer to "follow the routing trailer in this skill's output literally."
 
@@ -145,13 +129,6 @@ No documentation issues found. README and architecture docs are up to date!
 NOTE: It is OK to return "no issues found". Only return issues if they are very important.
 
 **When invoked from `/quo-execute` or `/quo-fix-issue`**: the team-lead agent will loop back with fixes and re-invoke this skill. If you never return "no issues found", the workflow goes into an infinite loop. Be selective — return real gaps, not nice-to-haves. Severity is consequence, independent of depth, judged in order with the first match winning: `blocker` — what is there is wrong (a false statement, a broken behavior, a violated contract); test: someone acting on the current state is misled or fails. `suggestion` — true and working as far as it goes, but a reader or the code will go wrong in a case it does not cover; test: the fix changes what the text asserts or what the code does. `nit` — true and complete, and this makes it better; test: the fix changes neither; behavior-preserving refactors and wording are nits at any depth. The orchestrator applies every finding you raise and re-reviews only when the fix changed code or tests; a text-only fix is read once at the end of the lane or by the post-completion sweep. Promoting a `nit` to `suggestion` or demoting a `suggestion` to `nit` therefore buys nothing either way, and is not a legitimate use of the scale.
-**Important**
-- Docs are wrong — a `blocker`
-- Readme is missing information the user needs to use the app — a `suggestion`
-**Not Important**
-- Formatting issues — a `nit`, when raised at all
-- Grammar — a `nit`, when raised at all
-
 **Work item quality:**
 - Be specific: include file, section, line number when possible
 - Be actionable: "Update X section - add Y detail" not "docs need work"
@@ -167,5 +144,5 @@ Run this section, and only this section, when the invocation carries `## Confirm
 
 When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every statement the unit's change must make — the sites the relayed `## Design decisions for writers` and the `## Blast radius` docs groups name, plus the statements the changed source and the ticket body require — state for each whether it is present and true, and report every gap as ONE finding that lists the sites.
 
-Output in section 5's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
+Output in section 4's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
 

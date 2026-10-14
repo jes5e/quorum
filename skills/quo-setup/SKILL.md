@@ -455,7 +455,7 @@ If yes (or for any individual rows the user opted to change), walk through each 
 |----------|----------|---------|
 | Project requirements doc (PRD) | "Do you have a project-level PRD?" | "Yes, I'll provide the path" / "Skip (offer bootstrap below)" |
 | Internal architecture docs (SDD) | "Do you have internal architecture docs (e.g., an SDD)?" | "Yes, I'll provide the path" / "Skip (offer bootstrap below)" |
-| Customer-facing docs | "Do you have customer-facing docs (e.g., a README)?" | "Yes, I'll provide the path" / "Use README.md (will be created during execution)" / "Skip" |
+| Customer-facing docs | "Do you have customer-facing docs (e.g., an operations guide, an API guide, or a README)?" | "Yes, I'll provide the path" / "Use README.md (will be created during execution)" / "Skip" |
 | Engineering best practices | "Do you have an engineering best practices guide?" | "Yes, I'll provide the path" / "Generate one for me" / "Skip" |
 | Test writing guide | "Do you have a test writing guide?" | "Yes, I'll provide the path" / "Generate one for me" / "Skip" |
 | Test review guide | "Do you have a test review guide?" | "Yes, I'll provide the path" / "Generate one for me" / "Skip" |
@@ -485,7 +485,7 @@ Before generating any docs, determine the project's technology stack from CLAUDE
 
 - **Test review guide** (`docs/test-review-guide.md`) — checklist format covering: correctness (behavior not implementation), isolation (no cross-test dependencies), coverage (happy path + error paths + boundaries), robustness (no sleeps for sync, timeouts on hangs), readability (arrange-act-assert, named constants), performance, and anti-patterns to flag.
 
-- **Doc writing guide** (`docs/doc-writing-guide.md`) — inline doc conventions (e.g., rustdoc, JSDoc, godoc), when to update architecture docs vs README (the SDD takes no per-feature or per-change sections), writing style (active voice, direct, code over prose), project-specific terminology to use consistently, formatting rules, and what not to document.
+- **Doc writing guide** (`docs/doc-writing-guide.md`) — inline doc conventions (e.g., rustdoc, JSDoc, godoc), who reads the customer-facing docs and the standard their text meets, when to update architecture docs vs customer docs (the SDD takes no per-feature or per-change sections), writing style (active voice, direct, code over prose), project-specific terminology to use consistently, formatting rules, and what not to document.
 
 Each guide should be comprehensive but practical — opinionated defaults, not exhaustive references. Use the project's own technology choices as concrete examples throughout.
 

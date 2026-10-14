@@ -110,7 +110,10 @@ PHASE 6 — Discrete-defect sweep (the final phase). Flag anything that looks
 wrong: code defects, prose problems, spec drift between the change and the
 ticket, contract-key violations (do NOT allow renames of keys in CLAUDE.md
 `## Documentation Locations` or `## Build Commands`), cross-file
-inconsistencies, missing edits the ticket called for.
+inconsistencies, missing edits the ticket called for. Hold customer text
+(text written for a customer to read, wherever it lives) to its reader and
+to the customer-text standard in the doc writing guide CLAUDE.md names: only
+what they would act on, in their terms, with nothing they need missing.
 One generalist pass covers code AND docs AND tests — do not lane-scope.
 
 Note: in skill repos (where the diff includes `skills/<name>/SKILL.md` or

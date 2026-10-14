@@ -52,7 +52,7 @@ The session you run a skill in is the **orchestrator**. It dispatches the roles,
 | **Code Reviewer** | Reviews the Engineer's diff with `/quo-engineer-review`. | Edit files. |
 | **Test Writer** | Writes or updates tests for the settled diff, and can confirm a test fails without the fix by temporarily reverting it. | Change source or docs. |
 | **Test Reviewer** | Reviews the tests with `/quo-test-writer-review`. | Edit files. |
-| **Doc Writer** | Keeps your customer-facing docs (such as the README), the design doc (SDD), and the PRD true to the change. | Change source or tests; it has no shell. |
+| **Doc Writer** | Keeps your customer docs (an operations guide, an API guide, a README) true and written for their readers, and the design doc (SDD) and the PRD true to the change. | Change source or tests; it has no shell. |
 | **Doc Reviewer** | Reviews the doc changes with `/quo-doc-writer-review`. | Edit files. |
 | **Product Manager** | Checks the Task's work against the spec and the neighboring Tasks. | Edit source, tests, or docs. |
 | **Analyst** | Works out the root cause and proposes a design before code is written (`/quo-fix-issue`), or on escalation when execution hits something the plan didn't settle (`/quo-execute`). | Edit files. |
@@ -170,7 +170,7 @@ You don't need to call these during normal use, but they appear in `/help`.
 | `/quo-spec-review` | `/quo-plan`, `/quo-write-prd`, `/quo-write-sdd` | Reviews a Spec Bee's PRD and SDD for clarity, completeness, and consistency. Also runs alone: `/quo-spec-review <spec-bee-id>` (optionally `--doc PRD` or `--doc SDD`). |
 | `/quo-engineer-review` | `/quo-execute`, `/quo-fix-issue` | Reviews the Engineer's diff and returns findings. |
 | `/quo-test-writer-review` | `/quo-execute`, `/quo-fix-issue` | Reviews the Test Writer's tests and returns findings. |
-| `/quo-doc-writer-review` | `/quo-execute`, `/quo-fix-issue` | Checks that the docs a change touched are true and that each fact sits in the right doc, and returns findings. |
+| `/quo-doc-writer-review` | `/quo-execute`, `/quo-fix-issue` | Checks that the docs a change touched are true, that each fact sits in the right doc, and that customer text is written for its reader, and returns findings. |
 
 ## Fixing issues straight from a URL
 
