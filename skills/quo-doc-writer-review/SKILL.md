@@ -25,7 +25,7 @@ Analyze what changed and return what it made false or left missing in the docs, 
 
 ### Scope: what is documentation for this review
 
-This review covers the docs under the `Internal architecture docs (SDD)` and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`, and customer text as the customer-text test defines it, under the `Customer-facing docs` key or not. Customer text in a source file is the Engineer's to fix.
+This review covers the docs under the `Internal architecture docs (SDD)` and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`, and customer text as the customer-text test defines it, under the `Customer-facing docs` key or not.
 
 **What the change touched.** A doc set can be too large for a whole-document read to converge, so review only the Doc Writer's edits, every statement about code or behavior the diff changed, every other statement of a fact the change touched, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
 
