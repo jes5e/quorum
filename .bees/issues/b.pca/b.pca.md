@@ -112,4 +112,23 @@ Source: `~/.quorum-scratch/planner-reply-b.pca.md`, the planner's answer to the 
 6. **live_edit-side asks:** the planner agrees with both. It would fold `CHANGELOG.md` into the `Customer-facing docs` bullet; that wording is the operator's. The guide line goes to live_edit's docs agent, which is also adding mechanical prose checks to live_edit's docs CI test.
 
 **Batch scope after this input:** items 1–5 of `## Proposed change`, the two-sided clause, "written for a customer" as the scope wording, and the post-completion PHASE 6 clause. Add to the readers list: `skills/quo-execute/references/post-completion-prompt.md`, and its pins in `tests/`, if any.
+## Operator decision and a second live_edit review (2026-10-14)
+
+**Operator decision: narrow the customer-docs review.** Unit reviews read what the change touched, plus every other place that states a fact the change touched. This replaces "review the customer-facing docs whole". The decision follows the overseer's recommendation; the planner and live_edit's docs agent concur.
+
+**Review by live_edit's docs agent** (pasted to the overseer; it checked quorum at `4e83c28`). It confirms the diagnosis and the three-key scope gap. Its points, judged on their merits:
+
+1. **The draft test conflicts with a project guide that is more permissive. Accepted; this changes the wording.**
+   - The draft bans "history" and "mechanism" outright. But a changelog entry is change history; live_edit's guide lets CHANGELOG entries carry ticket IDs (doc-writing-guide.md:335); and it allows rationale for behavior an operator observes, and key names an operator must inspect.
+   - "A guide's stricter standard is part of the test" does not settle cases where the guide is looser.
+   - Requirements for the final wording:
+     - (a) where the project's guide sets a customer-text standard, it governs in either direction, matching the existing placement-precedence rule;
+     - (b) "the reader's terms" is stated as a goal (terms the reader can act on), not as an absolute ban list;
+     - (c) the test fits a changelog entry, which says what changed, for its reader.
+   - This is the design of a new contract, so no run evidence is needed. It is also a gap between the role and the project guide.
+2. **live_edit's CI does less than the planner said.** Its prose checks are on an unmerged branch, skip the CHANGELOG, are mechanical only, and would not have caught the internal names or the cross-page contradiction. No standing whole-set review exists.
+   - This does not change the decision, whose reasons are general: it matches the SDD/PRD footprint scope, full reads missed these, and the cost grows with the set.
+   - The gap it names is live_edit's: nothing reads its untouched customer pages. A periodic whole-set read (e.g. per release) is live_edit's process. Quorum has no release step to hang it on. Operator informed.
+3. **The two live_edit asks are withdrawn.** Scoping by reader puts new changelog hunks in scope without any CLAUDE.md key. Where a project guide has no changelog standard, the generic test applies. Touched-only scope leaves an existing changelog backlog alone. That fits the operator's "ignore the changelog for now" in live_edit.
+4. **It also backs the planner's optional close-out read and its log-line scope.** It brings no new argument: "that one pass is what caught these" is answered by the post-completion review being that pass, minus the test. The dispositions above stand: the PHASE 6 clause, and "written for a customer".
 
