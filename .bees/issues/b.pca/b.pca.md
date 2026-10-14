@@ -5,7 +5,7 @@ title: 'Doc roles have no test for customer-facing text: it is checked for truth
 parent: null
 reference_materials: null
 created_at: '2026-10-14T12:12:59.897506'
-status: open
+status: done
 schema_version: '0.1'
 guid: pcaoxuocx5rui9ousowovt3g25exm9d3
 ---
@@ -131,4 +131,33 @@ Source: `~/.quorum-scratch/planner-reply-b.pca.md`, the planner's answer to the 
    - The gap it names is live_edit's: nothing reads its untouched customer pages. A periodic whole-set read (e.g. per release) is live_edit's process. Quorum has no release step to hang it on. Operator informed.
 3. **The two live_edit asks are withdrawn.** Scoping by reader puts new changelog hunks in scope without any CLAUDE.md key. Where a project guide has no changelog standard, the generic test applies. Touched-only scope leaves an existing changelog backlog alone. That fits the operator's "ignore the changelog for now" in live_edit.
 4. **It also backs the planner's optional close-out read and its log-line scope.** It brings no new argument: "that one pass is what caught these" is answered by the post-completion review being that pass, minus the test. The dispositions above stand: the PHASE 6 clause, and "written for a customer".
+## Closed (2026-10-14)
 
+Merged at `7eacfe0`, a fast-forward of `main` from `9caeabf`, not pushed. Hand edits on branch `bpca-customer-text` (Worker 1): a design checkpoint, a draft checkpoint, and two cold rounds.
+- Round 1 had two behavior findings, both from the case where a guide is looser than the test:
+  - the post-completion PHASE 6 sentence lacked the guide's precedence;
+  - the review's ticket-ID deletion bullet reached changelog entries.
+  Both fixed.
+- Round 2 had no behavior findings, and one deletion: the review scope's "Customer text in a source file is the Engineer's to fix". The orchestrators route on what a fix changes (Phase C, part (g)), and b.ua9's reviewer named the Engineer unprompted.
+
+The overseer audited the full diff (9 files, +34/−47) and ran `Full test`: 601 passed.
+
+**What changed:**
+- **A customer-text test,** carried verbatim by the Doc Writer and `/quo-doc-writer-review` and pinned in CONTRACT_SURFACES:
+  > customer text is text written for a user, an operator, or an API caller to read, wherever it lives. It says only what its reader would act on or expect, in terms they can act on without the source, and omits nothing they need to act; a changelog entry says what changed for them. A customer-text standard in the project's doc writing guide governs, stricter or looser.
+- **Scope by reader, not by key.** Customer text outside the keys, such as a changelog, is the Doc Writer's. Source-file customer text routes to the Engineer by what the fix changes.
+- **One footprint for customer docs, SDD and PRD:** what the change touched, plus every other statement of a fact it touched (operator decision). Copies of a fact agree; one statement with a pointer is preferred. The Doc Writer's job 1 keeps an explicit "add the customer text its reader now needs".
+- **The customer row** adds how clients call the API and handle its answers. The SDD row is unchanged.
+- **The post-completion PHASE 6** holds customer text to the guide's standard, and where the guide is silent, to the test.
+- **`/quo-setup`:** the customer-docs question names operations and API guides, and the doc-guide brief names the customer readers and their standard.
+- **Deleted from the review:** the README-only `### Readme` floor, step 3's README checklist, the old step 4, and the Important/Not Important list.
+
+Net shipped prose is +107; the test carried twice accounts for 138 of it. Caps are adjusted, with the reasons in the commit messages.
+
+**Cleanup candidates (untouched):** the review's "Work item quality" list, and its README-era clean line ("README and architecture docs are up to date!").
+
+**Validation:** none dedicated. The live_edit container picks this up only on rebuild. `## Check still open` (the next live_edit doc stage):
+- customer hunks, including changelog entries and proto comments, are judged against the test and the guide;
+- no reviewer proposes banned wording;
+- copies of a changed fact agree;
+- the doc share of agent time in the ledger stays near its usual 7–11%, since review reads less but may raise more findings.
