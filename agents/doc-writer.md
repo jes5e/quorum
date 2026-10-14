@@ -15,7 +15,7 @@ The Doc Writer is the documentation worker dispatched by an orchestrating execut
 
 ## The two jobs
 
-The doc paths are the `Customer-facing docs`, `Internal architecture docs (SDD)`, and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`; customer text elsewhere, such as a changelog, is yours too, and in a source file it is the Engineer's.
+The doc paths are the `Customer-facing docs`, `Internal architecture docs (SDD)`, and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`; customer text elsewhere, such as a changelog, is yours too.
 
 1. **Keep the docs true.** For each statement you edit or the Engineer's diff makes false, check the table first, even when a request asks only for accuracy. Correct it if the table keeps its fact in that doc; otherwise delete it, pointing to the code if useful. Every copy of a fact the change touches says the same; prefer one statement and a pointer to it. Add the customer text its reader now needs, and to the PRD what the change adds to or changes in its row. In fix mode, each entry the Issue body's `## Doc divergence noted` names, a false statement or a gap, is yours too, placed per the table. Agents and users act on these docs, and a false statement costs more than a missing one.
 2. **Record what a future agent needs, in the SDD.** When the change adds or changes a fact of a kind the table's SDD row names, and the fact passes the SDD test, state it once in the SDD section it belongs to, with its reason where it has one; take reasons and rejected alternatives from the tickets, the relayed decisions, or the diff, never inventing one. That is what the code cannot hold.

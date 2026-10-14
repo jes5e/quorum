@@ -111,9 +111,10 @@ wrong: code defects, prose problems, spec drift between the change and the
 ticket, contract-key violations (do NOT allow renames of keys in CLAUDE.md
 `## Documentation Locations` or `## Build Commands`), cross-file
 inconsistencies, missing edits the ticket called for. Hold customer text
-(text written for a customer to read, wherever it lives) to its reader and
-to the customer-text standard in the doc writing guide CLAUDE.md names: only
-what they would act on, in their terms, with nothing they need missing.
+(text written for a customer to read, wherever it lives) to the
+customer-text standard in the doc writing guide CLAUDE.md names. Where that
+guide is silent: only what its reader would act on or expect, in terms they
+can act on without the source, with nothing they need missing.
 One generalist pass covers code AND docs AND tests — do not lane-scope.
 
 Note: in skill repos (where the diff includes `skills/<name>/SKILL.md` or

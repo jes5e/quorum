@@ -68,7 +68,7 @@ Read the docs in scope.
 - Is each statement in scope true against the diff, and does it agree with every other statement of the same fact?
 - Does the customer text in scope pass the customer-text test?
 - Does each fact the change made appear once where the SDD test, or in the PRD the line, puts it, with its reason where the tickets, the relayed decisions, or the diff give one?
-- Does every statement the Doc Writer added or edited pass the SDD test or, in the PRD, the line? A restatement of the code, however accurate, a narration of the change, history, a ticket ID, or a new per-feature section does not; return its deletion as a work item.
+- Does every statement the Doc Writer added or edited in the SDD pass the SDD test, or in the PRD the line? A restatement of the code, however accurate, a narration of the change, history, a ticket ID, or a new per-feature section does not; return its deletion as a work item.
 - If all is well, LEAVE IT ALONE!
 
 
