@@ -2,10 +2,11 @@
 id: b.pca
 type: bee
 title: 'Doc roles have no test for customer-facing text: it is checked for truth, never for its reader'
-status: open
-created_at: '2026-10-14T12:12:59.897506'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-10-14T12:12:59.897506'
+status: open
+schema_version: '0.1'
 guid: pcaoxuocx5rui9ousowovt3g25exm9d3
 ---
 
@@ -83,4 +84,32 @@ Readers to update (verify by grep):
 ## Check still open
 
 The next live_edit doc stage. Customer hunks, including changelog entries and proto comments, are judged against the test, and no banned wording is proposed by a reviewer.
+## Input from the live_edit planner (2026-10-14) and dispositions
+
+Source: `~/.quorum-scratch/planner-reply-b.pca.md`, the planner's answer to the overseer's note (`~/.quorum-overseer/reply-live-edit-planner-b.pca.md`). The planner agrees with the diagnosis: the reviewer judged customer hunks for truth, never for their reader. Its points, judged on their merits:
+
+1. **Make the test two-sided. Accepted, short form; the enumeration is declined.**
+   - The planner's point: "belongs only if…" reads as an exclusion test, so a reviewer looks for text to remove. Two audit findings were missing text: a dropped qualifier, and a missing next step.
+   - Quorum already treats missing information as a defect: the writer's job 1 "adds what a user or operator now needs to know", step 3 "Find Documentation Gaps", and the `suggestion` severity. But the new test must not read one-way. Add one short clause, e.g. "…and nothing the reader needs in order to act is missing."
+   - Declined: the planner's enumeration, "for a refusal or limit: what happened, whether anything applied, next step". That is live_edit's client-API rule, already in its guide, and the test's last sentence makes the guide binding. In quorum it would be a project rule in neutral prose.
+   - The dropped qualifier is also a consistency failure, which item 3 covers.
+2. **Scope by reader. Accepted as a goal, with no list of surfaces in quorum.**
+   - The planner would count gRPC status and error message text, and metric help text. It would exclude Helm template comments not rendered into values documentation, and runtime log lines, except those a customer doc tells operators to search or alert on, since logs legitimately carry internal identifiers for support.
+   - Those are sound judgments. Quorum should state the goal ("text written for a customer to read"), not the list, which is the project's: live_edit's guide § Published files lists its surfaces. "Written for", not "visible to", is what keeps log lines out.
+   - No run has shown a defect in error or metric-help text. They fall under the goal by definition; no rule is added for them.
+   - Findings on source text route to the Engineer as `contract-text`, one confirming read.
+3. **Whole-doc vs. touched-plus-copies.** The planner chooses touched plus every other statement of a changed fact. Two of its reasons are live_edit-specific: CI prose checks for untouched pages, and the docs agent's periodic whole-set review.
+   - The general case, without those: it matches the SDD/PRD footprint scope (b.sb7), full reads did not catch these misses, and the cost grows with the doc set. For a small README, touched ≈ whole anyway.
+   - Overseer recommends narrowing. **Operator decision.**
+4. **Correction to the evidence above.**
+   - b.pa1's hard violations were one CHANGELOG entry: observed-so-far scope, internal mechanics, long sentences. The final-tip audit's "3 more" were advisory; that audit passed 11/11 hunks.
+   - The count is therefore about eight hard violations, mostly in b.ua9, plus soft ones. The three-question answers stand: several per lane, silent, not recovered by quorum.
+5. **"Offer a once-per-lane cold read of the final customer-facing diff as an optional close-out step." Declined as a new step; the existing step gets the test instead.**
+   - Quorum already runs exactly this: the post-completion review (`skills/quo-execute/references/post-completion-prompt.md`). It is a fresh agent that reads the whole final diff once per run (per Epic in execute), and its PHASE 6 covers code and docs, including cross-file inconsistencies.
+   - In b.ua9 it ran (`postcomp-review-b.ua9-ua9w10.md`). It read the client pages and the PRD, and caught a cross-place contradiction (F3: writing-layers.md:70 vs. the shipped behavior). It judged nothing for the reader, and the planner's later cold audits still found reader violations.
+   - So the missing piece is the test in that read, not another read. Fix the existing carrier: add one clause to the prompt's PHASE 6, so customer-facing hunks are judged by the customer-text test and the project guide's customer standard. The prompt is a shared reference, so this is an orchestrator-process edit: inventory-anchored, under the same cold review.
+   - If runs after this still show the final read missing reader problems, revisit.
+6. **live_edit-side asks:** the planner agrees with both. It would fold `CHANGELOG.md` into the `Customer-facing docs` bullet; that wording is the operator's. The guide line goes to live_edit's docs agent, which is also adding mechanical prose checks to live_edit's docs CI test.
+
+**Batch scope after this input:** items 1–5 of `## Proposed change`, the two-sided clause, "written for a customer" as the scope wording, and the post-completion PHASE 6 clause. Add to the readers list: `skills/quo-execute/references/post-completion-prompt.md`, and its pins in `tests/`, if any.
 
