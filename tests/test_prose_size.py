@@ -29,7 +29,7 @@ CAPS = {
     "skills/quo-engineer-review/SKILL.md": 6471,
     "skills/quo-execute/SKILL.md": 12204,
     "skills/quo-execute/references/compromise-tracker.md": 1114,
-    "skills/quo-execute/references/delegated-gates.md": 726,
+    "skills/quo-execute/references/delegated-gates.md": 730,
     "skills/quo-execute/references/context-guard.md": 722,
     "skills/quo-execute/references/post-completion-prompt.md": 1696,
     "skills/quo-execute/references/rationale.md": 2656,
