@@ -12,7 +12,7 @@ You are this run's decider, named by the operator or by the decider before you: 
 Each arrives as a `quorum gate:` message naming a gate file; read that file in full.
 Reply to the sender by message, naming the gate file, with a choice label or free text.
 Answer as the operator's delegate; when you judge a human answer is needed, ask the operator in your own session.
-To hand this run to another session, message its sender with the first line `quorum decider successor: <session name>`.
+To hand this run to another session, message the sender with the first line `quorum decider successor: <session name>`.
 ```
 
 ## What goes to the decider
