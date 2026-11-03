@@ -272,7 +272,7 @@ One of:
 4. Mark the Epic `status=done`, rewrite `**Compromises reviewed:**` to the tracker's current entry count and `**Proposal:**` to `none`, and prune the `postcomp` rows from `## Lanes` and `## Rounds`, since the next Epic's review reuses those scope names.
 5. Query the Bee's Epics and branch:
    - **Every Epic is `done`** → Section 13.
-   - **A workable Epic remains** → Mode 2: print `Mode 2 (Work through all Epics): auto-continuing to <next-epic-id> — <title>.` and return to run-start step 6. Mode 1, or no mode asked: print `Epic <epic-id> is done. Resume with /quo-execute <bee-id>; a fresh session gives the next Epic the full context budget.` and exit.
+   - **A workable Epic remains** → Mode 2: print `Mode 2 (Work through all Epics): auto-continuing to <next-epic-id> — <title>.` and return to run-start step 6. Mode 1, or no mode asked: print `Epic <epic-id> is done. Resume with <the resume command (Section 8)>; a fresh session gives the next Epic the full context budget.` and exit.
    - **Otherwise** → print `Epics <drafted-or-blocked-ids> in this Bee are still drafted (or blocked on drafted dependencies) and need breakdown before this Bee can be closed. Run /quo-breakdown-epic <bee-id> (a fresh session is reasonable to keep context clean) to break down the remaining Epics, then re-run /quo-execute <bee-id>.` and exit.
 
 #### Task-boundary context-window guard
