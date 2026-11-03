@@ -714,6 +714,7 @@ After each Epic, the run executes the full test suite and one fresh review of th
 - Each delegated question leaves a gate file in the scratch directory holding what was sent and the answer with its source.
 - Text the operator types answers a pending question; the first answer wins, and a later reply to the same question is ignored.
 - A failed send, or a decider found gone when its idle notice arrives with the question unanswered, falls back to asking the operator.
+- A decider can hand its runs to a live successor session by message, so a decider handoff needs no session renaming (b.mm2).
 - Validation: a real run in a code repo with the operator's decider session.
 
 **Out of scope.** A worker running as the decider's subagent (the spike showed it losing lanes on a decider restart); `/quo-plan-from-specs`, `/quo-setup`, and the solo spec writers.

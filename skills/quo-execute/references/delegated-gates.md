@@ -8,10 +8,11 @@ Once the launch check confirms the decider, send it this message, once, before a
 
 ```
 quorum decider: <skill> <arguments>, run by session <this session's name>
-The operator launched this run naming you its decider: questions it would ask the operator come to you.
+You are this run's decider, named by the operator or by the decider before you: questions it would ask the operator come to you.
 Each arrives as a `quorum gate:` message naming a gate file; read that file in full.
 Reply to the sender by message, naming the gate file, with a choice label or free text.
 Answer as the operator's delegate; when you judge a human answer is needed, ask the operator in your own session.
+To hand this run to another session, message its sender `quorum decider successor: <session name>`.
 ```
 
 ## What goes to the decider
@@ -42,6 +43,10 @@ Before acting, append `## Answer` to the gate file: `Source:` the decider's name
 ## Fallback
 
 A failed send, or a delivery notice that it was held or refused, falls back at once: ask the operator, source `operator (fallback)`. An idle, exit, or expiry notice about the decider with the question unanswered calls for `ListAgents`: one no longer listed falls back the same way; a listed one may be asking its human, so keep waiting.
+
+## A successor
+
+A message from the decider whose first line is `quorum decider successor: <session name>` hands the run to that session, once `ListAgents` lists it and it is not already the decider. In one turn: rewrite `**Decider:**` to it, send it the introduction, send it any open delegated gate again with the same gate file, rewriting that gate's `delegated to` entry, and send the old decider `quorum decider switched: <session name>`. If the successor is not listed or is already the decider, change nothing and tell the decider why. The same first line from any other session changes nothing and gets no reply. From then on, the decider is the session `**Decider:**` names.
 
 ## After a compaction
 
