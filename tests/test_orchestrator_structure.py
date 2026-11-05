@@ -616,8 +616,6 @@ REFERENCE_ANCHORS = {
         "`free text`",
         "delegated to <decider>: <gate file path>",
         "quorum decider: <skill> <arguments>, run by session <this session's name>",
-        "quorum decider successor: <session name>",
-        "quorum decider switched: <session name>",
         "quorum gate: <gate name>, <scope>",
         "Gate file: <path>",
         "`from-name`",

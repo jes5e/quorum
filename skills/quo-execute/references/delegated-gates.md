@@ -12,7 +12,7 @@ You are this run's decider, named by the operator or by the decider before you: 
 Each arrives as a `quorum gate:` message naming a gate file; read that file in full.
 Reply to the sender by message, naming the gate file, with a choice label or free text.
 Answer as the operator's delegate; when you judge a human answer is needed, ask the operator in your own session.
-To hand this run to another session, message the sender with the first line `quorum decider successor: <session name>`.
+To hand this run to another session, tell the sender its name.
 ```
 
 ## What goes to the decider
@@ -46,7 +46,7 @@ A failed send, or a delivery notice that it was held or refused, falls back at o
 
 ## A successor
 
-A message from the decider whose first line is `quorum decider successor: <session name>` answers no gate; it hands the run to that session once `ListAgents` lists it. In one turn: rewrite `**Decider:**` to it, send it the introduction, send it any open delegated gate again with the same gate file, rewriting that gate's `delegated to` entry, and send the old decider `quorum decider switched: <session name>`. If the successor is not listed, change nothing and tell the decider why. The same first line from any other session changes nothing and gets no reply. From then on, the decider is the session `**Decider:**` names.
+The decider can hand the run to another session by telling it so. Record that session in `**Decider:**`, send it the introduction, and send it any question still waiting; from then on it is the decider.
 
 ## After a compaction
 
