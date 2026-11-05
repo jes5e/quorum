@@ -2,10 +2,11 @@
 id: b.mm2
 type: bee
 title: A run's decider can hand its runs to a named successor, so a decider handoff needs no session renaming
-status: open
-created_at: '2026-11-03T11:43:32.471308'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-03T11:43:32.471308'
+status: done
+schema_version: '0.1'
 guid: mm21fpup7tuo8xyb5jp2uur7o284esgf
 ---
 
@@ -41,4 +42,32 @@ The decider side (a decider telling its runs the successor's name) is the operat
 ## Process
 
 A hand-edit batch (CLAUDE.md `## When editing skills` and `## Working on the orchestrator skills`), one cold review under the exit rule, and the manifest lead statements mirrored where touched. The check is the operator's next live_edit decider handoff, done with this in place and without renaming.
+## Closed (2026-11-04)
 
+Merged at `7aa5e44`, a fast-forward of `main` from `ef9f0aa`, not pushed. Hand edits on branch `bmm2-decider-successor` (Worker 1).
+
+**What changed:**
+- The delegated-gates reference gains `## A successor`, two sentences: "The decider can hand the run to another session by telling it so. Record that session in `**Decider:**`, send it the introduction, and send it any question still waiting; from then on it is the decider."
+- The introduction's line 2 no longer says the operator named the decider. A new last line reads "To hand this run to another session, tell the sender its name."
+- `/quo-execute`'s resume command now carries `--decider "<name>"` when `**Decider:**` names one. The guard, Mode 1 and abort stops print it, as `/quo-fix-issue`'s already did. This was a pre-existing gap: a fresh-session execute resume dropped its decider.
+- README, `docs/prd.md`, `docs/sdd.md` and a REWRITE-BRIEF amendment follow.
+
+Net shipped prose: +67.
+
+**How it got small.** The first version (three cold rounds, +173) carried:
+- a fixed handoff line and a fixed confirmation line;
+- a live check on the successor;
+- a no-reply rule for non-deciders;
+- "the handoff message answers no gate";
+- a clause in each skill.
+
+The operator called it solving for predicted failures. The overseer agreed: two of those additions were its own, and the rest were reviewer predictions accepted as gaps between two agents. The new-feature-contract exemption had been stretched to cover edge-case handling. The cut keeps only the contract the ticket needs, because the agents work out the rest. The one failure that matters, a successor that isn't there, is caught by the existing `## Fallback`: the next send fails and the operator is asked. The overseer traced the four cases against the short version (handoff with a gate open, dead successor, non-decider sender, fresh-session resume) and ran `Full test` (601 passed), with no further cold round.
+
+**Validation:** none dedicated. The check is the operator's next live_edit decider handoff, done without renaming:
+- every run switches;
+- a waiting question reaches the successor;
+- the resume commands printed afterward name the successor.
+
+**Recorded:**
+- fix-issue's run-start print of the resume command comes before any switch, so it matters only after an unclean end, and fails loud;
+- a stale `docs/sdd.md` sentence about execute's Analyst-gate compaction exception predates this change and is owed to this repo's doc cleanup (b.7qb).
