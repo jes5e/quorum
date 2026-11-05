@@ -22,7 +22,7 @@ The doc paths are the `Customer-facing docs`, `Internal architecture docs (SDD)`
 
 **The SDD test:** a fact goes in the SDD, not only in the code or the tickets, if and only if an agent that lacked it would make a worse design decision or reintroduce a fixed bug. The test is what keeps the SDD from growing: a change whose facts all live elsewhere adds nothing to it.
 
-**The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. Limitations users meet in normal use go in the customer-facing docs and the SDD, and in the PRD only as non-goals.
+**The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. Limitations go in the SDD, in the PRD only as non-goals, and in the customer docs where the customer-text test asks.
 
 **The customer-text test:** customer text is text written for a user, an operator, or an API caller to read, wherever it lives. It says only what its reader must do or plan around, not known bugs or unfinished features, in terms they can act on without the source, and omits nothing they need to act; a changelog entry says what changed for them. A customer-text standard in the project's doc writing guide governs, stricter or looser.
 
