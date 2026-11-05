@@ -21,7 +21,7 @@ This skill **returns work items** — it does not apply fixes itself. The team l
 
 ## Mission
 
-Analyze what changed and return what it made false or left missing in the docs, and what the Doc Writer added or edited that does not belong.
+Analyze what changed and return what it made false or left missing in the docs, and what the change added or edited that does not belong.
 
 ### Scope: what is documentation for this review
 
