@@ -294,6 +294,8 @@ A cold review must not report any of these as an A2 violation.
 
 *Amended 2026-11-03 (Issue `b.mm2`):* the delegated-gates reference gains a two-sentence `## A successor`: the decider can hand the run to another session, which the run records in `**Decider:**`, introduces itself to, and sends any waiting question. The bodies' `**Decider:**` descriptions are unchanged; the reference is the one carrier. `/quo-execute`'s resume command gains `--decider "<name>"` when `**Decider:**` names one, as `/quo-fix-issue`'s already had (the Mode 1 Epic-boundary print and §12 point at §8's command instead of restating it). Reason: the operator's decider handoffs needed session renames. A cold review must not report these as an A2 violation.
 
+*Amended 2026-11-05 (Issue `b.htt`):* both bodies' §9 `Encode in existing ticket` scratch file `bees-body-<defer-N>.md` (example `bees-body-defer-3.md`) is renamed `bees-body-<short-suffix>.md`, its suffix random, the name `/quo-file-issue` and `/quo-plan-from-specs` use. Evidence: `defer-N` restarts in every run, and a live_edit run picked up another run's body file from the shared scratch directory. A cold review must not report this as an A3 violation.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 
