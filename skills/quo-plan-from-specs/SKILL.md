@@ -200,7 +200,6 @@ Create T1 type child tickets in the Plan Bee with status `drafted` (their childr
 ##### Epic Viability Checklist
 [ ] No testing Epic — testing is folded into the Epics where the work is done
 [ ] No documentation Epic — documentation is folded into the Epics where the work is done
-[ ] Epics that change config, behavior, or deployment include README/customer-facing doc updates in their scope (not deferred to a separate doc Epic)
 
 #### Setup dependencies
 - After all Epics are created, analyze and set up blocking relationships.

@@ -103,7 +103,7 @@ Draft the plan into one file and record its path. Draft it before creating any P
 
 - every Epic leaves the codebase green, with all existing tests passing;
 - each Epic is one coherent user- or system-visible outcome, sliced vertically by capability, never a layer (no "API Epic"); pure refactors may be foundational Epics but go vertical as soon as possible;
-- testing and documentation fold into the Epic whose work they cover, never a separate Epic, and an Epic that changes config, behavior, or deployment carries its customer-facing doc update;
+- testing and documentation fold into the Epic whose work they cover, never a separate Epic;
 - no chain of Epics leaves an untestable intermediate state, and no Epic mixes a pervasive refactor with feature work;
 - acceptance criteria name what the user interacts with and how they check it, or how the agent demonstrates it ("Server starts on http://localhost:8000", not "Server is available");
 - Epics are as small as a single coherent outcome allows; one Epic is fine for a small feature.

@@ -113,7 +113,7 @@ ticket, contract-key violations (do NOT allow renames of keys in CLAUDE.md
 inconsistencies, missing edits the ticket called for. Hold customer text
 (text written for a customer to read, wherever it lives) to the
 customer-text standard in the doc writing guide CLAUDE.md names. Where that
-guide is silent: only what its reader would act on or expect, in terms they
+guide is silent: only what its reader must do or plan around, in terms they
 can act on without the source, with nothing they need missing.
 One generalist pass covers code AND docs AND tests — do not lane-scope.
 

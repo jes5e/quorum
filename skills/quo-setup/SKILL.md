@@ -496,7 +496,7 @@ After generating, ask the user to review the generated docs and confirm before p
 Do NOT volunteer the following context unless the user asks what a location is for:
 - **Project requirements doc (PRD)**: What the product must do and why (goals, non-goals, product-level targets, and promises to users); agents read it, and the Doc Writer keeps it true.
 - **Internal architecture docs (SDD)**: Used by the Engineer to understand existing system design, by the Product Manager for architectural drift detection, and by the Doc Writer to update architecture documentation after code changes.
-- **Customer-facing docs**: Used by the Doc Writer to update user-facing documentation when user-visible behavior changes.
+- **Customer-facing docs**: Used by the Doc Writer to update user-facing documentation when its readers must do or plan around something new.
 - **Engineering best practices**: Used by the Engineer agent in quo-fix-issue and quo-execute to follow project coding standards when writing or modifying source code.
 - **Test writing guide**: Used by the Test Writer to follow project testing conventions when writing or modifying tests.
 - **Test review guide**: Used by the Test Writer to self-review test quality before completing work.
