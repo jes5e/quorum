@@ -2,10 +2,11 @@
 id: b.htt
 type: bee
 title: Doc review checks customer text per statement; deferral-encode scratch file gets a unique name
-status: open
-created_at: '2026-11-05T10:46:35.471734'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-05T10:46:35.471734'
+status: done
+schema_version: '0.1'
 guid: httmtmt298re4rpm2bbr6k38d4gu5zqm
 ---
 
@@ -51,4 +52,25 @@ The same report noted three more items:
 - **bees hives aren't visible from a git worktree,** so an orchestrator hand-wrote ticket files. That's a bees matter, reported upstream; live_edit files tickets from the main checkout meanwhile.
 - **A Claude Code "Security Test Removal" warning was a false positive.** Once, loud, recovered; no change.
 - **Mid-Task handoffs at clean sub-steps worked four times with no rule written for them.** Evidence against adding one.
+## Closed (2026-11-05)
 
+Merged at `d4eb046`, a fast-forward of `main` from `ede7cb1`, not pushed. Hand edits on branch `bhtt-small-fixes` (Worker 1): a draft checkpoint, then one cold round with no behavior findings and one wording nit, so the lane closed.
+
+**What changed:**
+- `/quo-doc-writer-review` step 3: "Does the customer text in scope pass the customer-text test?" became "Does every customer-text statement the change added or edited pass the customer-text test?", parallel to the SDD bullet. The Mission says "what the change added or edited" in place of "the Doc Writer". "The change" covers customer text the Engineer writes in source.
+- `/quo-execute` and `/quo-fix-issue` §9 `Encode in existing ticket`: the scratch file is `bees-body-<short-suffix>.md`, its suffix random because runs share the directory. This matches `/quo-file-issue` and `/quo-plan-from-specs`. The mirror pin was updated.
+- Readers: a `docs/sdd.md` sentence on the b.pca entry, and a REWRITE-BRIEF amendment of 2026-11-05.
+- Net shipped prose +14.
+
+**Role-play (cold round):**
+- (a) The docs-simplify sampling sentence is flagged under a guide that rejects sampling detail.
+- (b) A changed `values.yaml` comment quoting an internal type is flagged and routed to the Engineer.
+- (c) Two concurrent deferral encodes write different scratch files.
+
+The overseer read the diff and ran `Full test` (601 passed).
+
+**Validation:** none dedicated. It takes effect in live_edit after the next container rebuild. The checks:
+- the next doc stages: a customer sentence that fails the guide's default-no rule is flagged by the lane's Doc Reviewer, not first by the planner's audit;
+- the next deferral encode uses a unique scratch file.
+
+**Upstream:** the bees worktree item from the same report is https://github.com/gabemahoney/bees/issues/30.
