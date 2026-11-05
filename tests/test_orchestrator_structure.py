@@ -405,7 +405,7 @@ SHARED_ANCHORS = [
     "**Step 2 — Surface the active set and gate the user choice.**",
     "**Step 3 — Hard-stop on a non-empty active set.**",
     "`bees update-ticket --ids <ticket-id> --body-file <path>`",
-    "bees-body-<defer-N>.md",
+    "bees-body-<short-suffix>.md",
     "`skipped: nothing staged`",
     "#### Session-scoped compromise tracker",
     "#### Compromise-tracker append triggers",
