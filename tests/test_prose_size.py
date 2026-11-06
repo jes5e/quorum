@@ -43,7 +43,7 @@ CAPS = {
     "skills/quo-setup/SKILL.md": 9625,
     "skills/quo-spec-review/SKILL.md": 845,
     "skills/quo-status/SKILL.md": 728,
-    "skills/quo-test-writer-review/SKILL.md": 3812,
+    "skills/quo-test-writer-review/SKILL.md": 3813,
     "skills/quo-write-prd/SKILL.md": 962,
     "skills/quo-write-sdd/SKILL.md": 1133,
     "agents/analyst.md": 5066,
