@@ -2,10 +2,11 @@
 id: b.m68
 type: bee
 title: 'No customer doc change by default: planning and doc roles stop treating a customer-doc update as the expected result of a change'
-status: open
-created_at: '2026-11-05T11:02:24.159438'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-05T11:02:24.159438'
+status: done
+schema_version: '0.1'
 guid: m683xwbg58sq962v7re6t9cpt46pwdk6
 ---
 
@@ -45,4 +46,24 @@ Make "no customer doc change" quorum's default for every project. A project that
 ## Process
 
 One small hand-edit batch and one cold review under the exit rule, with no dedicated validation. The next live_edit runs after a container rebuild are the check: customer pages stop growing on routine fixes, and the Doc Writer's return names the doc changes it judged unneeded.
+## Closed (2026-11-06)
 
+Merged at `cab25d4`, a fast-forward of `main` from `aeb8c01`, not pushed. Hand edits on branch `bm68-customer-default` (Worker 1).
+
+**What changed.** The customer-text test is now the one place that decides whether customer text is written: "It says only what its reader must do or plan around in normal use, not known bugs or unfinished features, …". The test changed in both carriers, the pin and the post-completion PHASE 6. The other lines that made the same decision now point to it or are gone:
+- the Doc Writer's job 1 now says "Add customer text only where the customer-text test asks for it (most changes need none)";
+- the PRD/SDD line's limitations sentence is now "A limitation is the PRD's only as a non-goal";
+- `/quo-plan`'s "carries its customer-facing doc update" and `/quo-plan-from-specs`' matching checklist line are deleted;
+- `/quo-setup` now says customer docs are kept true.
+
+Net shipped prose is −25.
+
+**Review.** Four cold rounds. From round 2 on, each behavior finding came from the previous round's fix: several sentences each decided customer placement. The class closed once the test became the one home (the worker's lesson, saved as memory `feedback_fix_the_class_at_round_one`). Round 4's fix restored the ticket's own "in normal use". The overseer waived round 5 on its own trace of the four role-plays against the final text:
+- an internal retry change gets no text;
+- a required setting is added, and its absence is flagged;
+- a known bug goes to a ticket, plus the SDD if it passes the SDD test;
+- a hard limit met in normal use goes in the customer docs and the SDD, and in the PRD only as a non-goal.
+
+The overseer read the diff and ran `Full test` (601 passed).
+
+**Validation:** none dedicated. It takes effect in live_edit after the next container rebuild. The check: routine fixes stop adding customer text, and customer pages stop growing.
