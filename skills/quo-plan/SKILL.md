@@ -198,7 +198,7 @@ Set `**Phase:** created`.
 
 - `Fix in this session` — do the work now. A spec change goes through the solo writer: invoke `/quo-write-prd <spec-bee-id>` or `/quo-write-sdd <spec-bee-id>` through the Skill tool with no other `args`. It reviews and gates the change, and the row closes on its **Approve**.
 - `File as issue tickets` — invoke `/quo-file-issue` through the Skill tool with the item as its description.
-- `Encode in existing ticket` — append a `## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)` section to one of this run's Plans- or Specs-hive tickets, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so take it from `date -u +'%Y-%m-%d %H:%M'` (POSIX) or `Get-Date -AsUTC -Format 'yyyy-MM-dd HH:mm'` (PowerShell).
+- `Encode in existing ticket` — append a `## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)` section to one of this run's Plans- or Specs-hive tickets, keeping its existing body. The timestamp keeps several runs' sections apart. You have no clock, so read the current UTC time with one shell command.
 
 Close each row as its item lands. Do not hand off while a row is open. When a route fails, show the remaining rows and ask again.
 

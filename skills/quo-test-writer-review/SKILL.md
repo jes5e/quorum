@@ -10,7 +10,7 @@ It returns a list of improvement work items for the caller to review.
 Be thorough but not pedantic — focus on substance over style.
 A test that scans files to enforce a rule covers the forms the project uses and names the rest as not read in its own description: each form it parses opens new bypasses.
 
-**Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
+**Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it and this Overview. Every other section applies to a lane's first review.
 
 **When invoked by `/quo-execute` or `/quo-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance under Step 3.
 
@@ -209,7 +209,7 @@ No test issues found.
 
 ## Confirming pass
 
-Run this section, and only this section, when the invocation carries `## Confirming pass` — the findings the Test Writer was asked to fix, with that pass's `## Files changed` and `Kinds changed:` lines. Re-read the change set against current state as Step 0a describes, then answer two questions and nothing else:
+Run this section and the Overview, nothing else, when the invocation carries `## Confirming pass` — the findings the Test Writer was asked to fix, with that pass's `## Files changed` and `Kinds changed:` lines. Re-read the change set against current state as Step 0a describes, then answer two questions and nothing else:
 
 1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described. A fix that does not is a finding again, at its original severity, with its fix paths.
 2. **Did the pass falsify anything adjacent?** For every file in the pass's `## Files changed`, check the source the tests pin, the fixtures and helpers they share, and the test names and doc-comments that describe them, and report what the pass broke or left stale. Do not hunt beyond that: a pre-existing gap the pass did not touch is out of scope here — the post-completion review reads the whole diff.
