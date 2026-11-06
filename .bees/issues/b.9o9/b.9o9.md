@@ -2,10 +2,11 @@
 id: b.9o9
 type: bee
 title: Test review stops file-scanning tests growing into parsers; deferral timestamps read the clock
-status: open
-created_at: '2026-11-06T11:27:55.151837'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-06T11:27:55.151837'
+status: done
+schema_version: '0.1'
 guid: 9o91iy8wcyq33fpptuzm663tj3vogoc6
 ---
 
@@ -48,3 +49,27 @@ Also make the confirming pass's "sites the unit's change introduced" plainly mea
 
 One small hand-edit batch and one cold review under the exit rule, with no dedicated validation. Net prose ≈ 0.
 
+## Closed (2026-11-06)
+
+Merged by fast-forward to `c7b3c0a` (commits `56e54ff` draft, `de72c96` cold round 1, `c7b3c0a` cold round 2). Hand edits with two cold rounds; the lane closed under the exit rule. Worker 1; checkpoints `~/.quorum-overseer/bscan-checkpoint-1.md` and `-2.md`. Full test: 601 pass (the overseer ran it). Net shipped prose: +28 words.
+
+### What shipped
+
+1. **Scanning tests.** One goal sentence in `/quo-test-writer-review`'s Overview: "A test that scans files to enforce a rule covers the forms the project uses and names the rest as not read in its own description: each extra form it parses opens new bypasses." The confirming pass now runs with the Overview ("run only it and this Overview"; "Run this section and the Overview, nothing else"), because most of the evidence (C11, C22) came from confirming passes. The confirming pass's "sites the unit's change introduced" reword was not made: with the goal in place, it adds nothing.
+2. **Clock.** Both orchestrators' §9 `Encode in existing ticket` timestamp, both §13 `**Cost**` clock reads, and the `/quo-plan` and `/quo-breakdown-epic` deferral headings now say "the current UTC time read with one shell command", with no snippet. Cold round 1 found that `Get-Date -AsUTC` (in the draft and already in both §13 lines) fails on Windows PowerShell 5.1. Stating the goal fixed all six sites and deleted words. The planners moved from local time to UTC, so one ticket's headings share a zone.
+3. **Repo-only.** `docs/sdd.md:426` is updated, and `docs/inventory/REWRITE-BRIEF.md` carries a 2026-11-06 amendment reversing EX-DHG-18 / E6-114 and FX-HYG-43 / F6-143.
+
+### Findings
+
+Three findings across both rounds, all applied, none declined:
+- r1: the goal didn't reach the confirming pass (a behavior finding);
+- r1: `-AsUTC` fails on PowerShell 5.1;
+- r2: "each extra form" nit.
+
+Recorded, not built: a reviewer who still frames an unused form as a bypass and prefers a parser would get the parser under `routing.md` Step 1. That's predicted, not observed, and this ticket puts the lever on the reviewer.
+
+### Check still open
+
+At the next live_edit run with a scanning guard test, after a container rebuild: did the reviewer ask for unread forms to be named rather than parsed? At the next deferral encode: does the heading carry a real UTC time?
+
+The pre-existing stale lines in `docs/sdd.md` and `docs/prd.md` that this batch found are added to b.7qb.

@@ -2,10 +2,11 @@
 id: b.7qb
 type: bee
 title: 'This repo''s own docs/sdd.md and docs/prd.md: per-repo cleanup to the Doc Writer''s table and the PRD row'
-status: open
-created_at: '2026-10-04T20:37:35.113246'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-10-04T20:37:35.113246'
+status: open
+schema_version: '0.1'
 guid: 7qbhirvqhynxzbduri5xwgzxct3bjdnq
 ---
 
@@ -29,4 +30,9 @@ This repo's own `docs/sdd.md` and `docs/prd.md` have not had the per-repo cleanu
 - Same shape as live_edit's cleanups. Never lose a fact: check that each one lives elsewhere before deleting it.
 - Coordinate with item 12a (`/quo-plan-from-specs --feature` parses `### Feature:` sections). This repo's docs are not planning input, so the cleanup does not depend on it.
 - `docs/inventory/` is the orchestrators' rewrite record and is out of scope.
+
+## Added 2026-11-06 (found during b.9o9, pre-existing)
+
+- `docs/sdd.md:426` still describes the deferral gate as enumerating "the active `defer-*` TaskList set". Gates and obligations now live in the run-state manifest's `## Obligations`, and no rule reads TaskList state.
+- `docs/prd.md:285` and `:296` still list the Encode destination "the project PRD/SDD via a doc-writer pass", which b.21d retired.
 
