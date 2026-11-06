@@ -8,6 +8,7 @@ description: Review the Test Writer's test code during a /quo-execute or /quo-fi
 This skill reviews test files in a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket.
 It returns a list of improvement work items for the caller to review.
 Be thorough but not pedantic — focus on substance over style.
+A test that scans files to enforce a rule covers the forms the project uses and names the rest as not read in its own description: each form it parses opens new bypasses.
 
 **Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
 

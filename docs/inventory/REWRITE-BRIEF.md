@@ -296,6 +296,8 @@ A cold review must not report any of these as an A2 violation.
 
 *Amended 2026-11-05 (Issue `b.htt`):* both bodies' §9 `Encode in existing ticket` scratch file `bees-body-<defer-N>.md` (example `bees-body-defer-3.md`) is renamed `bees-body-<short-suffix>.md`, its suffix random, the name `/quo-file-issue` and `/quo-plan-from-specs` use. Evidence: `defer-N` restarts in every run, and a live_edit run picked up another run's body file from the shared scratch directory. A cold review must not report this as an A3 violation.
 
+*Amended 2026-11-06 (Issue `b.9o9`):* both bodies' §9 `Encode in existing ticket` heading timestamp is read with `date -u` (PowerShell `Get-Date -AsUTC`), reversing EX-DHG-18 / E6-114 and FX-HYG-43 / F6-143 ("authored … from your own clock", "no `date` / `Get-Date` snippet", local time). The model has no clock, so the old rule failed the executable-verb test: a live_edit run wrote six headings with invented times. The time is still written into the body file as a literal, so the rule's reason (no shell substitution) holds. `/quo-plan` and `/quo-breakdown-epic` read the same heading's time in UTC too, so one ticket's headings share a zone. A cold review must not report this as an A1 or A2 violation.
+
 Review loop: cold `/quo-engineer-review` passes with this brief embedded as the criteria, until a pass returns
 nothing above a `trivial-tweak` nit (b.bix rule). No round cap.
 
