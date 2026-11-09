@@ -2,10 +2,11 @@
 id: b.8m1
 type: bee
 title: Engineer asks design questions before building; review findings close a class at once; the ledger records UTC completion time
-status: open
-created_at: '2026-11-09T10:29:28.099269'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-09T10:29:28.099269'
+status: done
+schema_version: '0.1'
 guid: 8m1o4m8uoy7qxh94x58m1udno99p7uih
 ---
 
@@ -57,3 +58,38 @@ Three small changes from the live_edit `/quo-execute` run of plan b.f9p, Epic 2:
 
 One small hand-edit batch with one cold review under the exit rule, and no dedicated validation. Net prose ≈ 0 for items 1 and 2. Item 3 adds a column to a Tier-1 mirror and its pin.
 
+## Closed (2026-11-09)
+
+Merged by fast-forward to `2c19d02`. The commits are `83bd2fb` (the draft), `0d63f6a` (the overseer's Checkpoint 1 change), `dc51ecf` (cold round 1), `4b3cff2` (the operator's SDD trim) and `2c19d02` (cold round 2). The lane closed under the exit rule. The work was Worker 1's; its checkpoints are `~/.quorum-overseer/b8m1-checkpoint-1.md` and `-2.md`. Full test: 601 pass, run by the overseer. Net shipped prose is +62, inside the operator's +65 budget, and the doc roles are untouched.
+
+### What shipped
+
+1. **`agents/engineer.md`:** "Look for such points before you build; on finding one, implement only what the answer cannot change — nothing, when it shapes how the rest is built — then stop and return the open question …" (+14).
+2. **Both review skills** (+16 net):
+   - The Overview says: "A finding whose defect is a class names the class and lists every instance in the change set, so one pass closes it."
+   - The confirming pass's question 1 says a class finding "is closed only when no instance remains in the change set".
+   - Four restatements of the same reason are cut.
+3. **Both orchestrators' ledgers** (+32, a Tier-1 mirror):
+   - a `completed (UTC)` column, "read with one shell command as the row is written";
+   - the header is pinned in `SHARED_ANCHORS`.
+
+Repo-only: `docs/sdd.md` :755 and :896 are now true.
+
+### Findings
+
+- **Round 1:**
+  - A `suggestion` (behavior): the Overview's confirming-pass clause disagreed with the pass's "nothing else". It was restructured into question 1, and engineer-review's scope lines went back to "run only it".
+  - A `nit`: the ledger rule got its own sentence.
+  - A missed SDD reader.
+- **Round 2:** no behavior findings. A REWRITE-BRIEF amendment was declined: nothing breaks without it, and the operator asked for no doc growth. A stale SDD sentence was made true.
+- **Declined as predictions:**
+  - an empty diff after an ask-first return (the Analyst reads the tree);
+  - the design-question rule firing only on a mechanism;
+  - the ledger time lagging behind an open gate.
+
+### Check still open
+
+At the next live_edit run after a rebuild, three things to check:
+- Engineers ask open design questions within minutes, not after building.
+- Class findings arrive as one list, and confirming passes close the class.
+- Ledger rows carry real UTC times.
