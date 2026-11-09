@@ -2,10 +2,11 @@
 id: b.9ar
 type: bee
 title: 'Doc roles stop SDD regrowth: the table''s kind decides placement first, and each pass shows its SDD growth'
-status: open
-created_at: '2026-11-09T10:53:28.394144'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-09T10:53:28.394144'
+status: done
+schema_version: '0.1'
 guid: 9ar289xq12uv8tkvym8uoukz612gd7t1
 ---
 
@@ -90,3 +91,36 @@ This is a design batch on the doc roles, with cold reviews under the exit rule a
 
 Net prose should be about zero or lower, apart from the guard's contract. Validation is the next live_edit runs after a rebuild, with Doc Writer and Doc Reviewer returns saved to scratch (asked of live_edit 2026-11-09).
 
+## Closed (2026-11-09)
+
+Merged by fast-forward to `7c66b9b`. It took two design checkpoints, a draft, and two cold rounds. The lane closed under the exit rule. The work is Worker 1's, and its checkpoints are `~/.quorum-overseer/b9ar-checkpoint-1.md` to `-3.md`. Full test passes (601), run by the overseer. Net shipped prose is +60:
+
+| File | Change |
+|---|---|
+| doc-writer | −9 |
+| doc review | +64 |
+| doc-reviewer wrapper | +9 |
+| breakdown | −4 |
+
+### What shipped
+
+- **One home for SDD placement: the SDD test.** It is pinned in the writer and in the review. It now reads: "a fact goes in the SDD only if the SDD holds its kind and an agent that lacked it would make a worse design decision or reintroduce a fixed bug. How the code works stays in the code however much an agent would miss it: the SDD states the rule the code keeps, not the steps, names, or constants that keep it." Job 2 defers to it. Sentences it made redundant were cut.
+- **The guard is on the reviewer side.** The doc review lists, from the SDD's diff, every paragraph the change added or grew. Each entry gives the kind, what it replaces, and pass or fail ("code mechanism, history, and ticket IDs fail"). If nothing grew, the review says so in one line. One finding returns the deletion of everything that fails. The doc-reviewer wrapper carries these lines even when nothing fails.
+- **Breakdown:** "the Doc Writer, not you, decides which docs change, often none".
+
+### Decisions
+
+- **The writer-side growth list was weighed and set aside at Checkpoint 1.** The observed silent failure was the reviewer, and the writer's misreading is fixed at its cause, so the reviewer-only guard is about +50 rather than about +170. If runs show writers still adding mechanism despite the review's list, the writer-side list is the next step.
+- **Declined:**
+  - a byte count (the writer has no shell, and nothing reads a number);
+  - a PHASE 6 sentence;
+  - round 1's PRD/SDD-line scoping and guide qualifier, both predictions.
+
+### Check still open
+
+At the next live_edit runs after a container rebuild, with Doc Writer and Doc Reviewer returns saved to scratch, check:
+- Does each doc review carry the growth list, or its "grew none" line?
+- Do mechanism paragraphs show as failing and get deleted?
+- Is history still policed?
+
+live_edit is pruning its SDD and adding per-unit size ceilings in its guard tests, which is the project side of this fix.
