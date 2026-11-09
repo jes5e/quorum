@@ -8,9 +8,9 @@ description: Review the Engineer's diff during a /quo-execute or /quo-fix-issue 
 This skill performs code review on a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket.
 It returns a list of improvement work items for the caller to review.
 Be thorough but not pedantic — focus on substance over style.
-A finding whose defect is a class names the class and lists every instance in the change set, so one pass closes it; a confirming pass checks the class in the files it reads, not only the cited sites.
+A finding whose defect is a class names the class and lists every instance in the change set, so one pass closes it.
 
-**Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it and this Overview. Every other section applies to a lane's first review.
+**Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
 
 **When invoked by `/quo-execute` or `/quo-fix-issue`**, the caller is a team-lead agent that may loop back with a fix-and-re-review request. Apply the loop-bounding guidance under Step 3.
 
@@ -252,9 +252,9 @@ Shape 2's `No second-order effects identified.` line is the empty case, not the 
 
 ## Confirming pass
 
-Run this section and the Overview, nothing else, when the invocation carries `## Confirming pass` — the findings an implementer was asked to fix, with that pass's `## Files changed` and `Kinds changed:` lines. Re-read the change set against current state as Step 0a describes, then answer two questions and nothing else:
+Run this section, and only this section, when the invocation carries `## Confirming pass` — the findings an implementer was asked to fix, with that pass's `## Files changed` and `Kinds changed:` lines. Re-read the change set against current state as Step 0a describes, then answer two questions and nothing else:
 
-1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described. A fix that does not is a finding again, at its original severity, with its fix paths.
+1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described; a finding that names a class is closed only when no instance remains in the change set. A fix that does not is a finding again, at its original severity, with its fix paths.
 2. **Did the pass falsify anything adjacent?** For every file in the pass's `## Files changed`, check the callers, tests, comments, and doc statements that depend on what changed, and report what the pass broke or left stale. Do not hunt beyond that: a pre-existing gap the pass did not touch is out of scope here — the post-completion review reads the whole diff.
 
 When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every site the unit's change introduced — the sites the relayed `## Blast radius` and the pass's source files name, with the hooks, branches, and error paths of any new mechanism — state for each whether the code handles it, and report every gap as ONE finding that lists the sites.
