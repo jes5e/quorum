@@ -55,7 +55,7 @@ Return specific, actionable items as numbered list. **Always append a routing tr
 
 Each finding here carries tags along two orthogonal dimensions (the trailer still collapses to two shapes — findings-present versus clean — because the trailer routing here keys off presence-of-findings, not off severity):
 
-- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *the consequence of leaving the finding as it stands* — the three ordered tests in the selectivity paragraph below the output shapes.
+- A **severity** dimension — every finding carries exactly one severity tag, backticked the way `/quo-spec-review`'s findings are: `` `blocker` `` / `` `suggestion` `` / `` `nit` ``. Severity describes *the consequence of leaving the finding as it stands* — the three ordered tests in the severity paragraph below the output shapes.
 - A **depth** dimension carried *per fix path* — every finding enumerates one or more fix paths, and each fix path carries its own depth tag: `trivial-tweak` / `refactor-locally` / `re-architect`. Depth describes *what fixing costs* (the size of the change a given fix path entails).
 
 The two dimensions are orthogonal: a `blocker` might be fixable by a `trivial-tweak`, and a `nit` might only be addressable by a `re-architect` — knowing one tells you nothing about the other, which is why both are emitted. (The depth tags are emitted here for downstream consumers; no routing rule in this skill consumes them yet.)
