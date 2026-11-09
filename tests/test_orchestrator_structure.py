@@ -334,6 +334,7 @@ SHARED_ANCHORS = [
     "`SendMessage`",
     "`ListAgents`",
     "`**Ledger:**`",
+    "`| # | role | scope | round | tokens | transcript | tool uses | duration | completed (UTC) | notes |`",
     "`**Cost:**`",
     "**Late-chain enumeration.**",
     "`close — enumerated`",

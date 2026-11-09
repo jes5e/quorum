@@ -8,6 +8,7 @@ description: Review the Test Writer's test code during a /quo-execute or /quo-fi
 This skill reviews test files in a change set — files changed during a Task, a git diff/range, a worktree, or a bees ticket.
 It returns a list of improvement work items for the caller to review.
 Be thorough but not pedantic — focus on substance over style.
+A finding whose defect is a class names the class and lists every instance in the change set, so one pass closes it; a confirming pass checks the class in the files it reads, not only the cited sites.
 A test that scans files to enforce a rule covers the forms the project uses and names the rest as not read in its own description: each extra form it parses opens new bypasses.
 
 **Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it and this Overview. Every other section applies to a lane's first review.
@@ -132,9 +133,9 @@ This is one of the most common and damaging issues in test suites. Be aggressive
   - Any `except` clause in a test that no longer parses cleanly after a format/lint pass — verify the original parenthesized form was preserved.
   Note: this check applies only when the change touches Python test source. Skip for non-Python test diffs.
 
-**Stale-comment sweep.** If you find a test comment, docstring, or module header the change made false, read every comment in every touched test file and report all substantiated inaccuracies in the same pass; distinguish newly introduced inaccuracies from pre-existing ones, and report a source or documentation inaccuracy you notice as its own item naming the lane that owns it, so it stays on the record instead of being handed to the Test Writer. Do not stop after the first stale comment — one stale comment per round is the cascade shape.
+**Stale-comment sweep.** If you find a test comment, docstring, or module header the change made false, read every comment in every touched test file and report all substantiated inaccuracies in the same pass; distinguish newly introduced inaccuracies from pre-existing ones, and report a source or documentation inaccuracy you notice as its own item naming the lane that owns it, so it stays on the record instead of being handed to the Test Writer.
 
-**New-mechanism site enumeration.** When the relayed `## Blast radius` names a mechanism with lifecycle legs, or the source the tests pin introduces new machinery (a cache, an index, a state machine, a retry or fallback path), enumerate its sites — hooks, branches, error paths — and state for each whether a changed or existing test would fail if it were removed. When the invocation carries `## Design decisions for writers`, the tests it says the change owes are sites too: check each is present and discriminates what the decision names. Report every unpinned site in ONE finding that lists them, so the Test Writer closes the class in one pass rather than one site per round.
+**New-mechanism site enumeration.** When the relayed `## Blast radius` names a mechanism with lifecycle legs, or the source the tests pin introduces new machinery (a cache, an index, a state machine, a retry or fallback path), enumerate its sites — hooks, branches, error paths — and state for each whether a changed or existing test would fail if it were removed. When the invocation carries `## Design decisions for writers`, the tests it says the change owes are sites too: check each is present and discriminates what the decision names. Report every unpinned site in ONE finding that lists them.
 
 ### Step 3: Prioritize and Filter
 
