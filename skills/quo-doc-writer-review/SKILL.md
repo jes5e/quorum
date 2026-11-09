@@ -68,7 +68,7 @@ Read the docs in scope.
 - Is each statement in scope true against the diff, and does it agree with every other statement of the same fact?
 - Does every customer-text statement the change added or edited pass the customer-text test?
 - Does each fact the change made appear once where the SDD test, or in the PRD the line, puts it, with its reason where the tickets, the relayed decisions, or the diff give one?
-- Does every statement the Doc Writer added or edited in the SDD pass the SDD test, or in the PRD the line? Ahead of the work items, list from the SDD's diff, one line each, every paragraph the change added or grew: the kind of fact it states, the older text it replaces or none, and pass or fail (code mechanism, history, and ticket IDs fail), so a skipped check shows; one finding returns the deletion of everything that fails.
+- Does every statement the Doc Writer added or edited in the SDD pass the SDD test, or in the PRD the line? Ahead of the work items, list from the SDD's diff, one line each, every paragraph the change added or grew, with the kind of fact it states, the older text it replaces or none, and pass or fail (code mechanism, history, and ticket IDs fail), or one line saying it grew none, so a skipped check shows; one finding returns the deletion of everything that fails.
 - If all is well, LEAVE IT ALONE!
 
 
