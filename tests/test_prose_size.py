@@ -25,7 +25,7 @@ from conftest import REPO_ROOT, read, shipped_artifacts
 CAPS = {
     "CLAUDE.md": 4743,
     "skills/quo-breakdown-epic/SKILL.md": 3041,
-    "skills/quo-doc-writer-review/SKILL.md": 3251,
+    "skills/quo-doc-writer-review/SKILL.md": 2739,
     "skills/quo-engineer-review/SKILL.md": 6481,
     "skills/quo-execute/SKILL.md": 12216,
     "skills/quo-execute/references/compromise-tracker.md": 1114,
@@ -48,7 +48,7 @@ CAPS = {
     "skills/quo-write-sdd/SKILL.md": 1133,
     "agents/analyst.md": 5066,
     "agents/code-reviewer.md": 1221,
-    "agents/doc-reviewer.md": 676,
+    "agents/doc-reviewer.md": 580,
     "agents/doc-writer.md": 1714,
     "agents/engineer.md": 2803,
     "agents/pm.md": 5454,
