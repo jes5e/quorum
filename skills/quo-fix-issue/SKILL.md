@@ -18,7 +18,7 @@ Before anything else, verify the host repo is configured for quorum. **Hard-fail
 
 #### Write the run-state manifest
 
-Write it at the end of run start (Section 4), once the working list is validated and the isolation strategy is settled and before any Issue is validated or fixed.
+Write the manifest at the end of run start (Section 4), once the working list is validated and the isolation strategy is settled and before any Issue is validated or fixed.
 
 The manifest is a small markdown file holding the handful of run-scoped values that live **nowhere else on disk** — everything the orchestrator would otherwise have to remember. bees holds ticket state, git holds the diff, and the compromise tracker holds accepted compromises; the manifest holds only what those three do not — including the run's lanes, obligations, rounds, and open gate. It is what makes harness compaction survivable: after a compaction the orchestrator re-reads this file instead of trusting a summary.
 
