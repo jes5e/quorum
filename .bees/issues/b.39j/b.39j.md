@@ -2,10 +2,11 @@
 id: b.39j
 type: bee
 title: Prune the quo-execute and quo-fix-issue orchestrators by evidence, keeping every contract, state carrier and guard
-status: open
-created_at: '2026-11-10T13:31:16.138315'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-10T13:31:16.138315'
+status: done
+schema_version: '0.1'
 guid: 39j6gi781gfd6mo2f3dbbde6dhfb5cc5
 ---
 
@@ -60,3 +61,72 @@ One hand-edit batch:
 
 Live_edit picks the change up at its next rebuild. The next real run is the validation.
 
+## Closed (2026-11-10)
+
+Merged by fast-forward to `53f0e64`:
+- `51da68c`: the prune (C1–C14, D1–D3, O3, W1);
+- `2b177cf`: "Write the manifest" where C4 left a bare "it";
+- `df833ee`: cold round 1, with no behavior findings (F1 restored fix's bees orientation, +18; F2 and F4 applied; F3 declined: the reviewer's own trace resolves it, and the branch has 0 fires);
+- `966cd6a`: dropped the ticket reference from `docs/sdd.md:611`;
+- `53f0e64`: F5, three more restatements the review found, with the operator's go.
+
+The lane closed under the exit rule. The work was Worker 1's, in a fresh session. Its checkpoints are `~/.quorum-overseer/b39j-checkpoint-1.md` through `-3.md`, and its tallies are in `~/.quorum-overseer/b39j-evidence/`. Full test passes (601), run by the overseer, who also read the full diff.
+
+**Net shipped: −1,199 words.**
+
+| File | Change |
+|---|---|
+| execute body | −122 |
+| fix-issue body | −380 |
+| `routing.md` | −436 |
+| `compromise-tracker.md` | −171 |
+| `rationale.md` | −42 |
+| `context-guard.md` | −29 |
+| `post-completion-prompt.md` | −15 |
+| `url-resolution.md` | −4 |
+
+### Evidence
+
+A fixed catalog of 38 rules was tallied against:
+- 168 fix-issue manifests and 165 ledgers;
+- 14 execute runs;
+- 953 gate files;
+- 166 compromise trackers (1,570 entries);
+- 343 Analyst files;
+- the diagnosis reports;
+- 18 tickets' validation notes.
+
+The bodies are mostly contracts, state and gates, and the runs exercise nearly all of them. The cuts are duplicates, rationale whose reader is gone, ticket-CLI recipes, one never-used re-derivation table, and one instruction that misfired.
+
+### Operator decisions
+
+- **O1** (route a missing-list finding as a compaction artifact): **kept.** The operator keeps compactions rare, so zero fires is not evidence the rule is idle.
+- **O3** (the post-completion reviewer no longer flags a missing tracker): approved. Its 7 flags on record were all false.
+- **D3** (re-derivation shape compressed): approved.
+- **In-step cuts inside Tier-1 §7** (C6, C7): approved by the overseer under the operator's delegation. The byte-identity test still binds.
+
+### Kept
+
+- **The engineer review's missing-list and empty-list rules (E27, E30):** two real catches of an orchestrator relay gap.
+- **No-chance rules:** the text class, the unexplained-movement gate, GitHub close and URL tokens, the effort gate, and deferral-hygiene Step 0. Their reasons are in Checkpoint 1.
+
+### Validation
+
+The cold round replayed live_edit b.ug2 (fix-issue, 15 steps) and b.f9p Epic 2 (execute, 12 steps). It also traced a blocker through gate (c) and a lost-proposal resume.
+
+### Noted for later triage
+
+- **Ten gaps the runs worked around**, from Checkpoint 1:
+  - mid-run `origin/main` merges;
+  - hand-off state in RESUME blocks;
+  - `hive_commit.py` staging `identity.json`;
+  - the movement rung's missing movers;
+  - no operator-action rung in fix;
+  - the orchestrator writing content itself;
+  - undefined row kinds and scopes;
+  - unnoticed 675k-bound crossings;
+  - deferral hygiene's de facto fourth answer;
+  - rubber-stamp dispositions.
+- **`agents/pm.md:237`** may share O3's false missing-tracker flag.
+- **C8:** fix's "write a needed fact into a carrier" half has no home.
+- **Execute's re-derivation shape** doesn't carry a lost `## Design question`.
