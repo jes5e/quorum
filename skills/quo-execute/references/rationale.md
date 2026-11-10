@@ -88,8 +88,6 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - The unit boundary is where the run is most re-derivable: the unit is `done` and committed, or deliberately left `open` with no commit, and either pair is the durable record.
 - In `/quo-fix-issue`, the ranged `--grep` over `<pre-session-sha>..HEAD` is load-bearing in both directions: a bare `git log -1` may inspect a later `Encode deferral:` commit, and an unscoped `--grep` may match a same-token commit from an earlier run.
 - An absent tracker is not by itself a gap: a unit whose only ungated route hit Trigger C's lone-`trivial-tweak` carve-out is correctly entry-less.
-- The checkpoint does not clear, compact, or reclaim context and must never be narrated as if it did.
-- The per-unit consumption figure some earlier text quoted was an unverified working estimate; nothing measures it, and no rule depends on it.
 
 ## Deferral hygiene
 

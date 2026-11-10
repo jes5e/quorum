@@ -17,7 +17,6 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The guard's 
 ## Why the reading is obtained the way it is
 
 - The threshold lives in the helper's `stop-threshold` seam, which is the single definition site of the number; the skill bodies never restate it.
-- The session id is read first and evaluated before anything else happens, mirroring the session-effort check, so that no gate is opened before the reading is in hand.
 - The session id must be trimmed of trailing whitespace or a newline, because a trailing newline fails the helper's `--session-id` charset validation.
 - An unset session id is the one silent-skip path, the unsupported-CLI carve-out; it matches how an unset `CLAUDE_EFFORT` is treated.
 

@@ -34,7 +34,7 @@ change no ticket body asks for, say it is likely either pre-existing or an
 unticketed in-run edit (a review-round fix, or a formatter pass), as an
 inference, and name that basis. Review that scope against <spec-source>
 <scope-notes>
-The orchestrating team-lead has finished the work — your job is to give it a
+The orchestrator has finished the work — your job is to give it a
 fresh-eyes review with no context of how the work was done.
 
 Perform these phases IN ORDER. Phases 1–5 lead with challenging the
@@ -49,10 +49,8 @@ orchestrator path picks, post-completion overrides). Its path is:
 Read that file yourself via your Read tool — it is passed as a path, not
 inlined. Each `## Compromise <n>` entry carries: Finding (verbatim), Fix
 paths surfaced by reviewer (each with a `[depth:<...>]` tag), Decision,
-Rationale, Follow-up Issue. If the tracker file is MISSING or unreadable,
-do NOT abort — PROCEED with the remaining phases and flag the missing
-tracker explicitly in your output (so the dropped hand-off is visible
-rather than silent).
+Rationale, Follow-up Issue. A missing tracker file means no compromise
+was recorded — the file is created with its first entry — so proceed.
 
 PHASE 2 — Challenge each tracked compromise on its merits. For every entry,
 push back when the chosen path is not defensible; do not rubber-stamp a

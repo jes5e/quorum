@@ -13,16 +13,11 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 ## Kinds of change
 
 - Every implementer return names the kinds its change touched: `code` — any source change other than comments, including a behavior-preserving refactor; `tests` — a change to what a test asserts, sets up, or covers; `contract-text` — text a client or operator relies on: API and on-the-wire protocol comments, README and getting-started docs, runbooks, changelog entries, architecture statements; `comments` — internal comments and docstrings, and any text in a test file that changes no assertion, setup, or coverage (an assertion message, a test docstring, a module header). The kind keys on what the change alters, never on the file it lives in.
-- The kind decides whether a further reviewer round follows (**Severity bounds the loop**): `code` and `tests` earn a cold confirming pass; `contract-text` earns one read, at most one per lane; `comments` earn none and are read by the post-completion sweep.
-- The orchestrator confirms the line is plausible against the files the return lists — adding a kind a listed file plainly requires, never removing one, and treating a missing or unreadable report as `code` — so an unreported change gets more review, not less. A comment edit inside a source file cannot be told from a code edit by its path; the implementer's report is the guard there, and the sweep the backstop.
+- The orchestrator's plausibility check only ever adds a kind, and reads a missing or unreadable report as `code`, so an unreported change gets more review, not less. A comment edit inside a source file cannot be told from a code edit by its path; the implementer's report is the guard there, and the sweep the backstop.
 
 ## What "highest-quality" means
 
-- The pick is the smallest enumerated path that fully fixes the stated defect as the finding describes it.
-- A deeper path is taken only when every shallower one leaves that defect partly unfixed; that is row 4's test, applied to the pick.
-- A deeper path that changes code the stated defect does not touch — recurrence prevention, centralizing, restructuring — is not a fuller fix of the defect; it is recorded as a `defer-to-new-Issue` refinement carrying the reviewer's sketch, never picked in-run. A `[preferred]` deeper path that covers, in the same artifact, a class of sites the finding names is the complete fix of that defect, not recurrence prevention.
-- Internal consistency across every surface that states the invariant still counts: a path that fixes the defect in one place and leaves a sibling surface asserting the old behavior is partial.
-- Effort is a legitimate tiebreaker between paths that both fully fix the defect.
+- The body's Step 1 defines the pick. Internal consistency across every surface that states the invariant still counts: a path that fixes the defect in one place and leaves a sibling surface asserting the old behavior is partial.
 - "Adds a mechanism" is a reason to route to gate (c), not a reason to build.
 - For a docs- or prose-only change set, "fully fixes" means every surface that states the invariant states it consistently.
 
@@ -65,16 +60,9 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - Condition (ii) means the change narrowed to the stated defect is still complete and the blocker no longer describes anything that ships.
 - A narrowing may never reduce coverage of the stated defect, at gate (c) and at gate (d) alike.
 - A `blocker` that cannot be made inapplicable to what ships without leaving the stated defect partly unfixed is in scope; it takes `Fix properly now` or `Re-dispatch the Analyst with this finding`, never `Defer`.
-- The blocker deferral is paired with the narrowing, never shipped alone.
-- File the follow-up Issue first, carrying the reviewer's sketched design verbatim; dispatch the narrowing only once `/quo-file-issue` has returned an Issue ID.
 - Dispatch the narrowing directly, not by re-entering Step 2 with it, because Step 2 would match row 4 and route it straight back to this gate.
-- The direct-dispatch terminality is one rule with the soft-fix rule: it applies to a blocker's narrowing and to a non-blocker's soft fix alike.
-- When the Defer-with-narrowing branch is open, mark the choice `(Recommended)` even on a `blocker`.
 - When the coverage guard withholds `Defer` because the narrowing would leave the stated defect partly unfixed, there is no choice to mark `(Recommended)`, even on a row-2 fire.
 - The blocker Defer branch applies whichever row fired the gate — 2, 3, or 4 — because condition (i) tests the fix path the finding needs, not the chosen path.
-- A `suggestion` or `nit` keeps the narrower rule: its Defer default is row-2 only.
-- The gate fires for a `blocker` like any other finding; `Fix properly now` against `Re-dispatch the Analyst with this finding` is a real decision, three choices when the Defer-with-narrowing branch is open.
-- The `Defer to follow-up Issue` bullet's closing clauses do not apply to a blocker: its no-fix-this-round branch cannot arise, its never-invent-a-narrowing prohibition concerns a non-blocker's empty soft-fix slot, and its soft-fix identification does not apply because what ships is the narrowing.
 
 ## Gate (c) — the soft fix
 
@@ -110,8 +98,6 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 ## (g) Re-dispatch ordering — the rationale
 
 - Dispatching the Engineer and a writer in the same round hands the writer a diff the pending code review is about to rewrite, forcing the writer's work to be redone.
-- The one elision is a final pass that ships only text: the code-review rung is the round **Severity bounds the loop** suppresses, so the affected writer follows that Engineer directly.
-- A finding whose chosen fix path changes no source file carries no ordering constraint; re-dispatch that single writer lane alone.
 - Part (g) governs the review-finding re-dispatch path only; the forward path is each unit's phase ladder.
 
 ## Rationale index
@@ -127,4 +113,3 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 - **Why the exit decision is written before it is acted on.** The `## Rounds` row is the only durable record of which lanes closed on what, for the summary and the audit trail. Writing it before the re-dispatch or the final pass borrows the manifest-write-then-act shape the gates use, but the row carries decisions and counts, never the findings. A compaction between the decision and the action therefore costs the pass itself: the resumed orchestrator finds no clean return to stop on, dispatches a fresh cold pass, and that round's decision rewrites the row.
 - **Why "Follow the trailer literally".** The review skills' routing trailer is the authoritative prescription; the surrounding prose is reference context, not a rule to recall from memory.
 - **Why the Engineer's return with `## Design question` is not a completion.** The Engineer stops rather than invent an unenumerated mechanism, so the diff on disk is partial by construction.
-- **Prose-adherence fragility.** These gates inherit a prose-adherence fragility that the manifest-write-then-ask contract narrows but does not close; it is an execution-time risk, not something this text fixes.
