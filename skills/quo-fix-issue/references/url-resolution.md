@@ -4,7 +4,7 @@ This file is read on demand by `/quo-fix-issue` when the argument list contains 
 
 ## When this procedure runs
 
-- It runs after the isolation strategy is settled and before the up-front `bees show-ticket --ids <id1> <id2> ...` validation pass.
+- It runs after the isolation strategy is settled and before run start's validation pass (step 5).
 - The isolation choice applies to the entire run, including the file-then-fix transition this procedure starts.
 - It runs only when at least one token matched `^https?://`; on the all-IDs path every step below is skipped and nothing is printed.
 
