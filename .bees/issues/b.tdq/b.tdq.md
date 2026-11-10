@@ -2,10 +2,11 @@
 id: b.tdq
 type: bee
 title: 'Prune the doc review skill by evidence: keep the checks saved reviews show working, cut the rest'
-status: open
-created_at: '2026-11-09T11:23:00.616046'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-09T11:23:00.616046'
+status: done
+schema_version: '0.1'
 guid: tdq353es96afyo2bjua3vg4qu31dibnm
 ---
 
@@ -43,3 +44,56 @@ One hand-edit batch:
 
 The expected outcome is a net cut, with every deletion carrying its evidence in the commit.
 
+## Closed (2026-11-09)
+
+Merged by fast-forward to `4ac2dde`: `2eadb93` the prune, `4ac2dde` the round-1 nit. The cold round approved, and the lane closed under the exit rule. The work was Worker 1's; checkpoints are `~/.quorum-overseer/btdq-checkpoint-1.md` to `-3.md`. Full test 601 passes, run by the overseer. Net shipped −608 words:
+
+| File | Before | After |
+|---|---|---|
+| review | 3251 | 2739 |
+| doc-reviewer wrapper | 676 | 580 |
+
+### Evidence
+
+- **Saved live_edit doc reviews:** 123, with 343 findings.
+- **Post-completion sweeps:** 30, with 137 doc misses.
+- **Where the findings came from:**
+  - true and agrees: 169
+  - appears once, with its reason: 49
+  - customer-text test: 18
+  - confirming-pass questions: 68
+- **What the misses show:** they fall under checks that already exist, so nothing new was added.
+
+### What was cut
+
+Each cut's evidence is in `2eadb93`'s message.
+
+| Item | What went | Why |
+|---|---|---|
+| K1, K5 | "Concise …"; steps 1 and 2 | Generic |
+| K2, K7 | Loop-bounding text | Its reader has been gone since b.vtw: re-review follows the fix's `Kinds changed` |
+| K6 | "Only return issues if very important" | The severity scale and the runs contradict it |
+| K8 | The "Work item quality" list | |
+| K9 | The README-era clean line | |
+| K4 | Step 0a's git recipe | Compressed to its goal |
+| K10 | The worked-examples block | A duplicate of Shape 1's examples (approved by the operator) |
+| K11–K13 | The wrapper's cold-start, responsibilities and intro restatements | |
+
+### Kept
+
+Kept word for word:
+- every check that fired;
+- the contracts and pins;
+- b.9ar's text;
+- the severity scale;
+- the confirming pass.
+
+The checks that fire now sit higher in the skill.
+
+### Validation
+
+The cold reviewer replayed the newest real review, `doc-review-redisrs-e2-t14-r1.md`, against the pruned skill. Its three defects were still found.
+
+### Next
+
+The same method applies to `/quo-engineer-review` and `/quo-test-writer-review` and their wrappers, which carry the same cut text. It reaches live_edit at the next container rebuild.

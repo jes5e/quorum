@@ -35,4 +35,5 @@ This repo's own `docs/sdd.md` and `docs/prd.md` have not had the per-repo cleanu
 
 - `docs/sdd.md:426` still describes the deferral gate as enumerating "the active `defer-*` TaskList set". Gates and obligations now live in the run-state manifest's `## Obligations`, and no rule reads TaskList state.
 - `docs/prd.md:285` and `:296` still list the Encode destination "the project PRD/SDD via a doc-writer pass", which b.21d retired.
+- `docs/sdd.md` :874–882 and :140 still describe the doc review's worked examples and its "be selective" rule. b.tdq removed both on 2026-11-09. (Found during b.tdq.)
 
