@@ -131,7 +131,7 @@ When the upstream list is supplied but no Engineer completeness evidence arrived
 
 **Statements the design assigns to source.** When the invocation carries `## Design decisions for writers`, the client- or operator-facing statements it says the source itself must carry — API and on-the-wire comments — are sites too: check each is present in the diff and true, and report every gap as ONE finding that lists them. Its test and doc entries belong to other lanes and are not findings here.
 
-### Step 3: Prioritize and Filter
+### Step 3: Severity
 
 It is OK to return "no issues found".
 

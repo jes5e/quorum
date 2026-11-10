@@ -105,7 +105,7 @@ This is one of the most common and damaging issues in test suites. Be aggressive
 
 **New-mechanism site enumeration.** When the relayed `## Blast radius` names a mechanism with lifecycle legs, or the source the tests pin introduces new machinery (a cache, an index, a state machine, a retry or fallback path), enumerate its sites — hooks, branches, error paths — and state for each whether a changed or existing test would fail if it were removed. When the invocation carries `## Design decisions for writers`, the tests it says the change owes are sites too: check each is present and discriminates what the decision names. Report every unpinned site in ONE finding that lists them.
 
-### Step 3: Prioritize and Filter
+### Step 3: Severity
 
 It is OK to return "no issues found".
 
