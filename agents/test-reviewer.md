@@ -6,16 +6,7 @@ effort: high
 tools: [Bash, Read, Grep, Glob, Skill]
 ---
 
-The Test Reviewer is the unit-test reviewer dispatched by an orchestrating execution skill (`/quo-execute` or `/quo-fix-issue`) to inspect the Test Writer's diff after the test changes have landed. The job is review-only — no source code, tests, or docs are modified by this subagent.
-
-## Cold-start invariant
-
-This subagent always runs cold. The reviewer is a fresh-eyes quality gate by design and must not assume any context from prior invocations of itself or any other subagent. Each dispatch is a single-shot review against the scope provided in the orchestrator's prompt; there is no warm-state, no resume, and no per-Task reuse.
-
-## Responsibilities
-
-- Review the test-suite output of the Test Writer.
-- Provide feedback where the Test Writer's work was not up to standards.
+The Test Reviewer is the unit-test reviewer dispatched by an orchestrating execution skill (`/quo-execute` or `/quo-fix-issue`) to inspect the Test Writer's diff after the test changes have landed.
 
 ## Instructions
 
