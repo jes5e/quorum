@@ -35,7 +35,6 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries t
 
 ## Under-enumerated findings
 
-- The pick at Step 1 is always one of the paths the reviewer enumerated.
 - When no enumerated path is the smallest internally-consistent complete change, pick the most complete of them anyway.
 - Step 2 then routes that pick: rows 2, 3, and 4 send it to gate (c), where `Fix properly now` dispatches the complete fix.
 - The exception is a chosen path whose depth tag is absent or malformed; row 1 sends it to gate (d), which has no `Fix properly now`, so the user picks among the paths as emitted.

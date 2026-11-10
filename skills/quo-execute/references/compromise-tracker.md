@@ -20,12 +20,11 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The tracker'
 - `Finding (verbatim)` carries the severity tag, the fix-path enumeration with depth tags, and the description, so a later reader can re-judge the routing without the conversation.
 - `Fix paths surfaced by reviewer` is recorded so the post-completion review can judge under-enumeration; the run-end summaries deliberately hide this field because they show the path that was chosen, not the menu.
 - `Rationale` on an ungated pick must be the orchestrator's own one-line reason the path was preferred — why it is the smallest internally-consistent complete change — because a bare rule name gives the post-completion challenge nothing to push against.
-- `Rationale` on a `Defer to follow-up Issue` entry names which remaining enumerated path shipped as the soft fix, by letter, or that none did; on a blocker deferral it carries the narrowing record instead. The deferral and what shipped in its place are one decision.
 - A blocker deferral without a narrowing record is the shape every downstream consumer reads as a contract violation.
 
 ## Trigger detail
 
-- **Trigger A** fires from either gate's `Defer to follow-up Issue` branch. Append the entry immediately after `/quo-file-issue` returns the new Issue ID and before the soft-fix or narrowing dispatch. Write `Fix paths surfaced by reviewer: none` when the reviewer enumerated no path at all, which is reachable at gate (d) because its `Defer` is offered whatever the path count. "None did" applies to the single-path case at gate (c) and to every deferral at gate (d), whose `Defer` ships nothing against the finding.
+- **Trigger A** fires from either gate's `Defer to follow-up Issue` branch. Write `Fix paths surfaced by reviewer: none` when the reviewer enumerated no path at all, which is reachable at gate (d) because its `Defer` is offered whatever the path count. "None did" applies to the single-path case at gate (c) and to every deferral at gate (d), whose `Defer` ships nothing against the finding.
 - **Trigger C**: row 6 is the only firing site; a user-picked path at gate (c) or (d) is not an ungated route and writes no Trigger C entry.
 - **Trigger D** is the single owner of every post-completion-override write. It covers both recovery gates, and its choice labels are byte-identical to theirs so the branches line up. The recovery gates fire the write; they do not author it.
 
