@@ -19,7 +19,7 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. The tracker'
 - `<n>` in `## Compromise <n>` is a 1-based counter scoped to the current run's file, not a globally unique identifier.
 - `Finding (verbatim)` carries the severity tag, the fix-path enumeration with depth tags, and the description, so a later reader can re-judge the routing without the conversation.
 - `Fix paths surfaced by reviewer` is recorded so the post-completion review can judge under-enumeration; the run-end summaries deliberately hide this field because they show the path that was chosen, not the menu.
-- `Rationale` on an ungated pick must be the orchestrator's own one-line reason the path was preferred — why it is the smallest internally-consistent complete change — because a bare rule name gives the post-completion challenge nothing to push against.
+- `Rationale` on an ungated pick must be the orchestrator's own one-line reason the path was preferred, because a bare rule name gives the post-completion challenge nothing to push against.
 - A blocker deferral without a narrowing record is the shape every downstream consumer reads as a contract violation.
 
 ## Trigger detail
