@@ -2,10 +2,11 @@
 id: b.xnv
 type: bee
 title: 'Keep code organized: new code goes in the module whose responsibility it is, and a needed split is part of the fix'
-status: open
-created_at: '2026-11-10T18:47:20.455445'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-10T18:47:20.455445'
+status: done
+schema_version: '0.1'
 guid: xnvq8s9vw2n1k8vk4nx74us4g6yu7oxh
 ---
 
@@ -57,3 +58,56 @@ One hand-edit batch:
 
 Live_edit picks the change up at its next rebuild. The next real run is the validation: watch whether the Engineer creates modules, and whether the reviews flag misplaced code and stay quiet about pre-existing size.
 
+## Closed (2026-11-11)
+
+Merged by fast-forward to `c22becd`:
+- `28ba237`: the draft;
+- `be2e1c6`: cold round 1;
+- `bff8881`: cold round 2;
+- `c22becd`: cold round 3, with no behavior findings.
+
+The lane closed under the exit rule. The work was Worker 1's, in a fresh session. Its checkpoints are `~/.quorum-overseer/bxnv-checkpoint-1.md` through `-3.md`. Full test passes (601), run by the overseer, who also read the full diff.
+
+**Net shipped: +106 words.**
+
+| File | Change |
+|---|---|
+| `engineer.md` | +45 |
+| engineer review | +29 |
+| `analyst.md` | +21 |
+| breakdown | +21 |
+| `pm.md` | +11 |
+| `routing.md` | −11 |
+| `compromise-tracker.md` | −10 |
+| both orchestrator bodies | 0 |
+
+### What landed
+
+- **The goal's home is `agents/engineer.md`:** "putting new code in the module whose responsibility it is. A responsibility this change adds belongs in a module of its own when the file it would join already carries several; create or split out that module in this change, since no later step does."
+- **The boundary sentence is verbatim** in the engineer review's concerns check (with "Flag only what the change adds"), the Analyst's Recommended approach, and breakdown's Subtask template.
+- **The PM:** a module that houses a responsibility the change adds is not scope creep.
+- **Routing Step 1, both bodies, Tier 1:** a default (the smallest complete path), two named exceptions picked over shallower paths (the `[preferred]` class-of-sites path, and a path that houses a responsibility this change adds in a module of its own), and a catch-all deferral for any other deeper path.
+- **No numbers anywhere.** The project's own guide supplies the bar.
+
+### Operator decisions
+
+- **Routing and PM behavior changes:** approved, on condition that the change stays simple, makes no step easier to miss and adds nothing for imagined failures. The overseer checked all three.
+- **The merge:** the operator's go.
+
+### Cold rounds
+
+- **Round 1:** the housing clause lost to the "only when every shallower…" clause next to it, so a split was neither picked nor deferred.
+- **Round 2:** the worker's own class miss. That clause was cut.
+- **Round 3:** two readers stopped describing every pick as "smallest".
+
+Role-plays (a)–(e) pass. Recorded as predictions and declined:
+- the housing clause has no "already carries several" condition;
+- an `[introduces-mechanism]` mis-tag;
+- the 59-word catch-all sentence, which was already over the cap.
+
+### Watch on the next live_edit run
+
+- Does the Engineer create modules?
+- Do reviews flag misplaced new code and stay quiet about existing size?
+- Is a housing path ever picked for a focused file?
+- Does anyone mis-tag a move as `[introduces-mechanism]`?
