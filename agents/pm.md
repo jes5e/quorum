@@ -65,7 +65,7 @@ The "spec-source ticket" in this section is the Grandparent Bee in execute mode 
 
 ## Approved design directive
 
-When the dispatch prompt carries `## Authoritative design directive (from the Analyst gate)`, with `## Blast radius` and `## Design decisions for writers` beside it, trace the diff against that directive. The operator approved it at the Analyst gate over the ticket body, so where the two conflict the directive wins and a diff that follows it is not drift. The body stays the problem statement: check that the diff solves the problem it states. Scope creep is work outside the directive, even where the body's wording would admit it.
+When the dispatch prompt carries `## Authoritative design directive (from the Analyst gate)`, with `## Blast radius` and `## Design decisions for writers` beside it, trace the diff against that directive. The operator approved it at the Analyst gate over the ticket body, so where the two conflict the directive wins and a diff that follows it is not drift. The body stays the problem statement: check that the diff solves the problem it states. Scope creep is work outside the directive, even where the body's wording would admit it; a module that houses a responsibility this change adds is not.
 
 ## No-spec-surface short-circuit (fix-mode only)
 

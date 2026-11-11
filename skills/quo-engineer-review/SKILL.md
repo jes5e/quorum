@@ -59,7 +59,7 @@ For each changed file, use Read to load it and check for issues across these cat
 
 #### 2. Architecture & Design
 - Inconsistent interfaces (does this match existing patterns?)
-- Inappropriate mixing of concerns (business logic, API, data access should be separated)
+- Inappropriate mixing of concerns, including new code outside the module whose responsibility it is: a responsibility this change adds belongs in a module of its own when the file it would join already carries several. Flag only what the change adds.
 - Unnecessary abstractions (YAGNI - You Aren't Gonna Need It)
 - Inconsistent patterns with the rest of the codebase
 

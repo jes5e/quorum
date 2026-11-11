@@ -100,7 +100,7 @@ Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs th
 Why this Subtask exists and what it assumes.
 
 ## What Needs to Change
-The files, functions, and changes, with line numbers where known.
+The files, functions, and changes, with line numbers where known. A responsibility this change adds belongs in a module of its own when the file it would join already carries several.
 
 ## Key Files
 - path/to/file — what changes here
