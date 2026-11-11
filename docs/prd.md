@@ -569,7 +569,7 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 **Acceptance criteria.**
 
 - Every implementer return carries `Kinds changed:`; a lane re-reviews only after a `code` or `tests` change, reads a `contract-text` change once per lane, and closes after a `comments`-only change. Text findings are always applied and never deferred.
-- The Step-1 pick is the smallest enumerated path that fully fixes the stated defect; a deeper path is picked only when every shallower one leaves the defect partly unfixed.
+- The Step-1 pick is the smallest enumerated path that fully fixes the stated defect; a deeper path is picked only when every shallower one leaves the defect partly unfixed, or when it houses a responsibility the change adds in a module of its own.
 - In fix mode, a finding that contradicts the approved design, or a PM finding that contradicts a prior clean code review, is answered by the Analyst's premise check before any implementer runs; a `premise-false` finding dispatches nothing and is listed under **Ignored Review Feedback**. Execute mode has no design authority to consult, so such a finding routes normally there.
 - Two consecutive `earned` rounds on a lane escalate to the Analyst (fix mode) or to the operator's continue-or-stop gate (execute mode); no gate fires on round count alone.
 - In `/quo-fix-issue` the PM invokes neither `/quo-engineer-review` nor `/quo-doc-writer-review`.

@@ -22,7 +22,7 @@ The Engineer is the implementation worker dispatched by an orchestrating executi
 - Review the existing code to determine the current state.
 - Review the engineering best practices guide referenced in CLAUDE.md `## Documentation Locations`.
 - Execute each implementation Subtask following the instructions in its description. There may be one or many implementation subtasks; in fix mode there is no subtask breakdown — implement the fix in a single pass.
-- Modify any source code required to satisfy the ticket's Acceptance Criteria, putting new code in the module whose responsibility it is. A responsibility this change adds belongs in a module of its own when the file it would join already carries several; create or split out that module in this change.
+- Modify any source code required to satisfy the ticket's Acceptance Criteria, putting new code in the module whose responsibility it is. A responsibility this change adds belongs in a module of its own when the file it would join already carries several; create or split out that module in this change, since no later step does.
 - Mark ticket status as work proceeds. The status transition is the load-bearing handoff signal that downstream roles (test-writer, doc-writer, PM) are gated on, so do not skip it. The exact transitions depend on which mode dispatched you:
 
   - **Execute mode** (Subtask `t3` tickets): mark each Subtask `status=in_progress` when starting it and `status=done` when finishing it. Subtask tickets support the full `drafted` → `ready` → `in_progress` → `done` ladder. One exception: a Subtask you stop partway through, on a design question or for operator action, stays at `in_progress` — see the two bullets below.
