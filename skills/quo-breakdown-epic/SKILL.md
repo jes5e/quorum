@@ -138,7 +138,9 @@ Scoped-marker check applies; the helper is at <scoped-marker-resolver-path>.
 
    | Spec Requirement | Source | Covered By Subtask | Status |
 
-   Source cites where the requirement lives in the spec. Status is `OK` or `GAP`.
+   Source cites where the requirement lives in the spec. Status is `GAP` when
+   no Subtask covers the requirement, otherwise `OK`; a defect in a Subtask
+   that covers it is a finding, not a `GAP`.
 2. Run your role's cross-Task and cross-Epic interaction checks over the draft,
    and flag work the spec does not ask for.
 3. Report every other finding in your Final report shape. A finding the draft
