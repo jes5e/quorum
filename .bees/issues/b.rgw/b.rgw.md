@@ -2,10 +2,11 @@
 id: b.rgw
 type: bee
 title: A revision replaces the ticket text it supersedes, so a ticket body holds the current spec
-status: open
-created_at: '2026-11-11T21:58:06.739477'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-11T21:58:06.739477'
+status: done
+schema_version: '0.1'
 guid: rgwjhphv22xa43qvepmquhkpvmuceqsx
 ---
 
@@ -55,3 +56,44 @@ One hand-edit batch:
 
 Live_edit picks the change up at its next rebuild.
 
+## Closed (2026-11-12)
+
+Merged by fast-forward to `93caa93`, with the operator's go:
+- `d9ae471`: the draft;
+- `93caa93`: cold round 1, with no behavior findings.
+
+The lane closed under the exit rule. The work was Worker 1's, in a fresh session. Its checkpoints are `~/.quorum-overseer/brgw-checkpoint-1.md` through `-3.md`. Full test passes (601), run by the overseer, who also read the full diff.
+
+**Net shipped: +8 words.**
+
+| File | Change |
+|---|---|
+| execute | +3 |
+| `analyst.md` | +5 |
+| fix-issue | 0 |
+
+### What landed
+
+- **Execute §6 Approve:** the directive is recorded under `## Design revision (Analyst)`, "replacing any earlier revision there. The PM and every later role read the tickets as the spec and must find there the one revision that holds."
+- **`agents/analyst.md`, execute mode:** "replacing any earlier one, so write it whole". The evidence: `t2.dkt.5o.3v`'s revision 3 was a delta, which a replacement would have truncated.
+- **The divergence cell, both bodies:** "appended to" → "recorded in".
+- **Unchanged:** deferral encodes still accumulate, because they add work rather than supersede. Fix-issue never writes its directive into the Issue.
+
+### Operator decisions
+
+- **The design:** approved, including the within-Task trade. A revision superseded inside one Task isn't kept, because nothing commits between Approves and the proposal file is overwritten. The new whole revision states what it supersedes.
+- **The merge:** the operator's go.
+
+### Cold round
+
+One round: approve, with one wording nit. The Approve sentence was 43 words, over §5's 40-word cap, so it was split (−2). Role-plays (a)–(c) pass. The reviewer would write a whole revision, not a delta.
+
+Declined: "appended" in `docs/sdd.md:914` and `docs/prd.md:620`, which narrate B2b history.
+
+Recorded as pre-existing:
+- writers see the recorded revision in the verbatim Task body;
+- a compaction window can leave the ticket one revision behind the proposal file.
+
+### Note
+
+The operator's 2026-11-12 container rebuild ran while this branch was checked out mid-draft. The three merged shipped files were staged in `~/.quorum-scratch/quorum-sync/` for the live_edit decider to copy into the container.
