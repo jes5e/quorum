@@ -757,6 +757,7 @@ CONTRACT_SURFACES = [
     ("defer-to-existing-ticket-body: <ticket-id>", [AGENT_PM, AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("defer-to-new-Issue", [AGENT_PM, AGENT_ANALYST], [QUO_FIX_ISSUE, QUO_EXECUTE]),
     ("<scoped-marker-resolver-path>", [QUO_FIX_ISSUE, QUO_EXECUTE], [AGENT_PM]),
+    ("## Epic-wide contracts", [QUO_BREAKDOWN_EPIC], [QUO_EXECUTE]),
     ("## Doc divergence noted", [QUO_FILE_ISSUE], [QUO_FIX_ISSUE, AGENT_DOC_WRITER]),
     ("a fact goes in the SDD only if the SDD holds its kind and an agent that lacked it would make a worse design decision or reintroduce a fixed bug. How the code works stays in the code however much an agent would miss it: the SDD states the rule the code keeps, not the steps, names, or constants that keep it.", [AGENT_DOC_WRITER], [QUO_DOC_WRITER_REVIEW]),
     ("Where the project's doc writing guide places a fact differently, the guide wins, except that no fact is added to a per-feature or per-change section, whatever the guide says.", [AGENT_DOC_WRITER], [QUO_DOC_WRITER_REVIEW]),

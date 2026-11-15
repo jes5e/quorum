@@ -84,12 +84,12 @@ Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs th
 
 **Research.** Before drafting, dispatch read-only `Explore` agents in the background over the code the Epic touches, in proportion to the Epic, and wait for their notifications. Code reading goes to them, and they return findings rather than file contents, because your context has to hold the spec and the draft for the whole Epic.
 
-**Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet. Keep the template's headings at `##` inside each ticket's text, as its ticket will carry them.
+**Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Epic-wide contracts` for the Epic's section of that name, `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet. Keep the template's headings at `##` inside each ticket's text, as its ticket will carry them.
 
 **Tasks.** N is the Task's 1-based position in the Epic, and the title is its label in every later status line and commit.
 
-- Each Task is one commit's worth of work, since `/quo-execute` commits per Task. Give it `up_dependencies` on the Tasks that must land first.
-- A Task body states the Task's purpose and any contract a sibling Task or Epic must respect: an ordering, a shared resource, an invariant, or a cleanup path every sibling must follow. Reviewers check sibling Tasks against these statements, and a contract left in the author's head surfaces later as a cross-Task defect.
+- Cut Tasks by the change, not by the length of their text: each is one coherent change with its design settled, since every Task pays a fixed execution cost. Give it `up_dependencies` on the Tasks that must land first.
+- A Task body states its purpose and any contract with a particular sibling Task or Epic: an ordering, a shared resource, an invariant, or a cleanup path. A contract or ruling binding more widely goes once in `# Epic-wide contracts`, which `/quo-execute` gives every implementer. Reviewers check sibling Tasks against these statements, and a contract left in the author's head surfaces later as a cross-Task defect.
 - When the spec's SDD has `### Mechanism lifecycle` or `### Policy decisions this design implies`, list under `## Sites` each entry the Task implements, citing the SDD child's ID and the entry, so the implementer works against a list.
 - Acceptance criteria and per-role work live in the Subtasks, not the Task.
 
@@ -112,7 +112,7 @@ The files, functions, and changes, with line numbers where known. A responsibili
 - Give each Subtask exactly one role tag — `engineer`, `test-writer`, or `doc-writer` — for the role that executes it; `/quo-execute` dispatches by that tag. A step only the operator can run is tagged `engineer`, and its body says the implementer stops and asks the operator to run it.
 - Every Task that changes code, configuration, or deployment gets a `doc-writer` Subtask, seeded from `## Anticipated doc impact`: it states what the Task changes, and the Doc Writer, not you, decides which docs change, often none, and where each fact goes.
 - State scope and acceptance, not implementation; paste no code. The implementer is an expert, and the code will move before it runs.
-- Carry any design decision the user gave you verbatim into every Subtask it affects. When the spec leaves open a choice the Tasks must commit to, ask in prose before drafting past it.
+- Carry any design decision the user gave you verbatim into each Subtask it affects, or once into `# Epic-wide contracts` when it binds more widely. When the spec leaves open a choice the Tasks must commit to, ask in prose before drafting past it.
 - Emit no Subtask for committing, formatting, or running the full test suite. `/quo-execute` does those itself.
 - Give a Subtask `up_dependencies` only on a same-role Subtask it builds on; `/quo-execute` orders the roles itself.
 
@@ -153,7 +153,7 @@ Scoped-marker check applies; the helper is at <scoped-marker-resolver-path>.
 
 ## 8. Create, commit, and move on
 
-**Create** the tickets from the reviewed draft. Each Task is a `t2` child of the Epic and each Subtask a `t3` child of its Task, created `drafted` with its title, body, role tag, and `up_dependencies`. Once all exist, set the Subtasks, then the Tasks, then the Epic to `ready`. Add the Epic to **Broken down** and set **Draft** to `none`.
+**Create** the tickets, and the Epic's `## Epic-wide contracts`, from the reviewed draft. Each Task is a `t2` child of the Epic and each Subtask a `t3` child of its Task, created `drafted` with its title, body, role tag, and `up_dependencies`. Once all exist, set the Subtasks, then the Tasks, then the Epic to `ready`. Add the Epic to **Broken down** and set **Draft** to `none`.
 
 **Commit.** Stage only the in-repo Plans-hive path the sibling helper prints, never the whole tree, because the hive may live outside the repo and the working tree may hold unrelated changes: `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive plans` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive plans`). Commit with the subject `Plan <bee-id>, Break down <epic-title> (<epic-id>)`, where `<epic-title>` is the Epic's `Epic N — <title>`. When the helper prints nothing, commit nothing and note in the report that the tickets live outside the repo. Never push.
 
