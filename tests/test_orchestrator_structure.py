@@ -514,7 +514,7 @@ def test_fix_issue_rule_anchors_are_present():
 
 EXE_ANCHORS = [
     "`normalized_name` is `plans`",
-    "`run-state-quo-execute-<bee-id>.md`",
+    "`run-state-quo-execute-<start-id>.md`",
     "**Multi-Epic run mode:**",
     "Mode 1 (Stop after each Epic)",
     "Mode 2 (Work through all Epics)",
@@ -537,7 +537,7 @@ EXE_ANCHORS = [
     "**Epic boundary.**",
     "`Mode 2 (Work through all Epics): auto-continuing to <next-epic-id> — <title>.`",
     "#### Task-boundary context-window guard",
-    "`/quo-execute <bee-id>`",
+    "`/quo-execute <start-id>`",
     "`## Deferred from /quo-execute run (<YYYY-MM-DD HH:MM>)`",
     "`Encode deferral: /quo-execute — <N> deferral(s) encoded`",
     "--skill quo-execute --count <N>`",
