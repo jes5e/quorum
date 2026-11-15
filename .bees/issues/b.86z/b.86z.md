@@ -2,10 +2,11 @@
 id: b.86z
 type: bee
 title: Epic-wide contracts live once in the Epic and reach every implementer; breakdown sizes Tasks by the change, not by ticket text
-status: open
-created_at: '2026-11-15T15:21:45.581654'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-15T15:21:45.581654'
+status: done
+schema_version: '0.1'
 guid: 86z4w82bq8fnr35u42ayot2q1tc6zmns
 ---
 
@@ -71,3 +72,42 @@ A hand-edit batch in a worktree. It starts after b.nhw merges.
    - (c) breakdown of a 23-Task skeleton under the new size goal doesn't split for text size;
    - (d) a Task whose docs don't change gets no doc-writer Subtask, and execute still handles it.
 
+## Closed (2026-11-15)
+
+Merged by fast-forward to `e62712f`, rebased onto `f37ad37`, with the operator's go ("all as recommended", given in the overseer's tab). Commits:
+- `67c7df5`: the draft;
+- `4807057` and `e8026c7`: cold round 1;
+- `b5616a8`: round 2;
+- `d82bc46`: round 3;
+- `e62712f`: lane closed.
+
+The work was Worker 2's. Its checkpoints are `~/.quorum-overseer/b86z-checkpoint-1.md` through `-4.md`. Full test passes (602), run by the overseer, who also read the shipped diff.
+
+**Net shipped: +108 words**, across breakdown, execute and fix-issue.
+
+### What landed
+
+- **Breakdown:**
+  - draft and create a `## Epic-wide contracts` section in the Epic's text, with inner headings at `###`, keeping the rest of the Epic body;
+  - a Task body states only its own and sibling-pair contracts; wider ones go once in the section;
+  - user decisions go into each Subtask they affect, or once into the section;
+  - "Cut Tasks by the change, not by the length of their text … since every Task pays a fixed execution cost";
+  - the PM prompt names the section.
+- **Execute §5:** each implementer receives the Epic's `## Epic-wide contracts`.
+- **The divergence-table approved-design cell, both bodies:** includes the section.
+- **Routing row 3, both bodies:** compares with "this unit's approved design (divergence table)", or its ticket when none was approved. In fix-issue, row 3 now reads the Analyst's approved directive.
+- A `CONTRACT_SURFACES` pin, the SDD, and a REWRITE-BRIEF amendment.
+
+### Operator decisions
+
+- Approved: the relay, the routing input, and the new contract.
+- **Goal 3 dropped.** Breakdown keeps "every Task that changes code, configuration, or deployment gets a doc-writer Subtask". Since 2026-11-09, customer-doc bias was fixed (customer touches fell from about 70% to about 15% of passes), and the Epic 3 audit found customer docs gone stale even with one Doc Writer per Task.
+- Row 3 option (a).
+- Round 3's F1 declined as a residual: reviewers don't receive the Epic section, and row 2 trusts their `[introduces-mechanism]` tag. That predates this batch, is loud at gate (c), and is recoverable there.
+
+### Watch
+
+- Breakdown writes the section and cites it.
+- Implementers act on Epic-wide rulings without copies.
+- Row 3 doesn't re-gate fix-issue changes the Analyst approved.
+- Task counts stay at the change's size.
