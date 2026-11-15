@@ -101,7 +101,7 @@ bees is the ticket store; `bees <command> -h` and `bees sting` document it. It h
 3. Validate the Bee: status `ready` or `in_progress`, and every `up_dependencies` entry `done`; a `ready` dependency is a pending blocker.
 4. Run the isolation gate (Section 6).
 5. Write the run-state manifest (Section 2).
-6. Select the Epic: the one an Epic-ID argument named, on the first pass if it is workable, or else the first workable Epic in dependency order. An Epic is workable when its status is `ready` or `in_progress` and every `up_dependencies` entry is `done`. With none workable, take the Epic boundary's branch (Section 8). The first time this step runs, fire the run-mode gate (Section 6) when another of the Bee's Epics is `ready` or `in_progress`, and record the answer; otherwise record `not asked`. Mark the selected Epic `status=in_progress`.
+6. Select the Epic: the one an Epic-ID argument named, on the first pass unless it is `done`, or else the first workable Epic in dependency order. An Epic is workable when its status is `ready` or `in_progress` and every `up_dependencies` entry is `done`. With none workable, take the Epic boundary's branch (Section 8). The first time this step runs, fire the run-mode gate (Section 6) when another of the Bee's Epics is `ready` or `in_progress`, and record the answer; otherwise record `not asked`. Mark the selected Epic `status=in_progress`.
 
 ### Tick
 

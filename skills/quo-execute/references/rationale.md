@@ -28,8 +28,8 @@ This file is read on demand by `/quo-execute` and `/quo-fix-issue`. It carries e
 - The manifest holds only values with no other durable home; duplicating ticket bodies, directives, or findings would grow it into a shadow ticket store that drifts.
 - `/quo-fix-issue` keys on the repository directory basename because batch membership and order are user-supplied and recorded only inside the manifest; an Issue ID is not recomputable by a reader that lost the conversation.
 - `/quo-execute` keys on the ID the run was started with, its argument, so runs on different Epics of one Bee keep separate files.
-- The skill-name segment keeps sibling skills from truncating each other's manifests; `/quo-breakdown-epic` keys on the same Bee ID.
-- Accepted collisions: two concurrent runs in the same working directory or started with the same ID already collide over statuses and commits; two checkouts sharing a basename land on one file, and a `**Unit scope:**` mismatch is the tell.
+- The skill-name segment keeps sibling skills that key on the same ticket ID from truncating each other's manifests.
+- Accepted collisions: two concurrent runs in the same working directory or against the same Bee already collide over statuses and commits; two checkouts sharing a basename land on one file, and a `**Unit scope:**` mismatch is the tell.
 - The run mode in `/quo-execute` is a user choice with no re-derivation path; if lost, the run cannot know whether to auto-continue, which is why it lives in the manifest.
 - Lanes, obligations, rounds, and the open gate live in the manifest because the manifest is the one carrier that works in every environment; a carrier the harness treats as optional cannot hold load-bearing state.
 
