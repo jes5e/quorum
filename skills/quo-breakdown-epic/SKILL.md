@@ -126,7 +126,8 @@ before any of its tickets exist. There is no diff: do not invoke
 /quo-engineer-review or /quo-doc-writer-review, and change no ticket and no
 file outside the .quorum scratch directory (/tmp/.quorum/, or %TEMP%\.quorum
 on Windows).
-The draft is <draft-path>: one `# Task N — <title>` heading per Task, and one
+The draft is <draft-path>: `# Epic-wide contracts`, which every implementer
+receives, one `# Task N — <title>` heading per Task, and one
 `## <role>: <title>` heading per Subtask under it. Cite those labels.
 
 Resolve the spec from the Plan Bee's reference_materials as your role file
@@ -153,7 +154,7 @@ Scoped-marker check applies; the helper is at <scoped-marker-resolver-path>.
 
 ## 8. Create, commit, and move on
 
-**Create** the tickets, and the Epic's `## Epic-wide contracts`, from the reviewed draft. Each Task is a `t2` child of the Epic and each Subtask a `t3` child of its Task, created `drafted` with its title, body, role tag, and `up_dependencies`. Once all exist, set the Subtasks, then the Tasks, then the Epic to `ready`. Add the Epic to **Broken down** and set **Draft** to `none`.
+**Create** the tickets from the reviewed draft, and add its `# Epic-wide contracts` to the Epic's text as `## Epic-wide contracts`, inner headings at `###`, keeping the rest. Each Task is a `t2` child of the Epic and each Subtask a `t3` child of its Task, created `drafted` with its title, body, role tag, and `up_dependencies`. Once all exist, set the Subtasks, then the Tasks, then the Epic to `ready`. Add the Epic to **Broken down** and set **Draft** to `none`.
 
 **Commit.** Stage only the in-repo Plans-hive path the sibling helper prints, never the whole tree, because the hive may live outside the repo and the working tree may hold unrelated changes: `python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive plans` (PowerShell `python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive plans`). Commit with the subject `Plan <bee-id>, Break down <epic-title> (<epic-id>)`, where `<epic-title>` is the Epic's `Epic N — <title>`. When the helper prints nothing, commit nothing and note in the report that the tickets live outside the repo. Never push.
 
