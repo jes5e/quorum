@@ -210,7 +210,7 @@ Each finding carries a severity tag, exactly one of `blocker` / `suggestion` / `
 |---|---|---|
 | 1 | The finding's severity tag is malformed, or the chosen path carries no depth tag or a malformed one | Treat as `re-architect` → gate (d) |
 | 2 | The chosen path carries the reviewer's `[introduces-mechanism]` tag, or introduces a mechanism by the orchestrator's own reading | Scope-bounding gate (c) |
-| 3 | The chosen path moves a published contract surface beyond what this unit's approved design (divergence table) states, or is breaking for existing consumers | Scope-bounding gate (c) |
+| 3 | The chosen path moves a published contract surface beyond what this unit's approved design (divergence table) states, or its ticket when none was approved, or is breaking for existing consumers | Scope-bounding gate (c) |
 | 4 | The chosen path is narrower than the smallest internally-consistent complete fix — it leaves the stated defect partly unfixed | Scope-bounding gate (c) |
 | 5 | The chosen path's depth tag is `re-architect` | Routing-decision gate (d) |
 | 6 | Otherwise | Dispatch the chosen path, no gate |

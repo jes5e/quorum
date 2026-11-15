@@ -84,7 +84,7 @@ Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs th
 
 **Research.** Before drafting, dispatch read-only `Explore` agents in the background over the code the Epic touches, in proportion to the Epic, and wait for their notifications. Code reading goes to them, and they return findings rather than file contents, because your context has to hold the spec and the draft for the whole Epic.
 
-**Draft to one file**, recorded as the manifest's **Draft**, with one heading per ticket: `# Epic-wide contracts` for the Epic's section of that name, `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet. Keep the template's headings at `##` inside each ticket's text, as its ticket will carry them.
+**Draft to one file**, recorded as the manifest's **Draft**, with `# Epic-wide contracts` for the Epic's section of that name, `# Task N — <short title>` for each Task, and under it `## <role>: <short title>` for each Subtask. The review cites these labels, because no ticket IDs exist yet. Keep the template's headings at `##` inside each ticket's text, as its ticket will carry them.
 
 **Tasks.** N is the Task's 1-based position in the Epic, and the title is its label in every later status line and commit.
 
