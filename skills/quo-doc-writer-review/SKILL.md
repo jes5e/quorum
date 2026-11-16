@@ -10,7 +10,7 @@ The SDD holds where things are (components, how they connect, data flow, externa
 **The SDD test:** a fact goes in the SDD only if the SDD holds its kind and an agent that lacked it would make a worse design decision or reintroduce a fixed bug. How the code works stays in the code however much an agent would miss it: the SDD states the rule the code keeps, not the steps, names, or constants that keep it. Where the project's doc writing guide places a fact differently, the guide wins, except that no fact is added to a per-feature or per-change section, whatever the guide says.
 **The PRD/SDD line:** a goal, non-goal, or product-level target is the PRD's. Of other sentences, one that names a field, code, metric name, or env var, or states an exception or limit ("unless", "except", "only when", "within N"), is the SDD's; one whose deletion would change what a product owner signs off to users is the PRD's. A limitation is the PRD's only as a non-goal.
 **The customer-text test:** customer text is text written for a user, an operator, or an API caller to read, wherever it lives. It says only what its reader must do or plan around in normal use, not known bugs or unfinished features, in terms they can act on without the source, and omits nothing they need to act; a changelog entry says what changed for them. A customer-text standard in the project's doc writing guide governs, stricter or looser.
-The Doc Writer works by the same tests and rule. Judge by them every SDD, PRD, or customer-text statement you check, ask for, or propose in a fix path; their guide clauses are the one place a project's guide overrides step 0's floor.
+The Doc Writer works by the same tests and rule. Judge by them every SDD, PRD, or customer-text statement you check, ask for, or propose in a fix path, and any other doc's statements by the project's doc writing guide's rule for that doc; their guide clauses are the one place a project's guide overrides step 0's floor.
 
 **Confirming pass.** When the invocation carries the heading `## Confirming pass`, this is a confirming pass, not a hunt: skip to `## Confirming pass` at the end of this skill and run only it. Every other section applies to a lane's first review.
 
@@ -22,7 +22,7 @@ Analyze what changed and return what it made false or left missing in the docs, 
 
 ### Scope: what is documentation for this review
 
-This review covers the docs under the `Internal architecture docs (SDD)` and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`, and customer text as the customer-text test defines it, under the `Customer-facing docs` key or not.
+This review covers the docs under the `Internal architecture docs (SDD)` and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`, and customer text as the customer-text test defines it, under the `Customer-facing docs` key or not, and any other doc the Doc Writer edited.
 
 **What the change touched.** A doc set can be too large for a whole-document read to converge, so review only the Doc Writer's edits, every statement about code or behavior the diff changed, every other statement of a fact the change touched, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
 
@@ -43,11 +43,11 @@ The standard checks in the steps below are a guaranteed floor — they always ru
 
 ### 3. Find Documentation Gaps
 
-**Customer text, SDD, and PRD** (what the change touched):
+**The docs in scope** (what the change touched):
 - Is each statement in scope true against the diff, and does it agree with every other statement of the same fact?
 - Does every customer-text statement the change added or edited pass the customer-text test?
-- Does each fact the change made appear once where the SDD test, or in the PRD the line, puts it, with its reason where the tickets, the relayed decisions, or the diff give one?
-- Does every statement the Doc Writer added or edited in the SDD pass the SDD test, or in the PRD the line? Ahead of the work items, list from the SDD's diff, one line each, every paragraph the change added or grew, with the kind of fact it states, the older text it replaces or none, and pass or fail (code mechanism, history, and ticket IDs fail), or one line saying it grew none, so a skipped check shows; one finding returns the deletion of everything that fails.
+- Does each fact the change made or edited appear once, where the Overview's tests put it whatever a ticket or relayed decision asks, with its reason where the tickets, the relayed decisions, or the diff give one?
+- Does every statement the Doc Writer added or edited in the SDD pass the SDD test, or in the PRD the line? Ahead of the work items, list from the SDD's diff, one line each, every paragraph the change added or edited, with the kind of fact it states, the older text it replaces or none, and, as it now reads, pass or each sentence that fails (code mechanism, history, and ticket IDs fail), or one line saying it edited none, so a skipped check shows; one finding returns the deletion of everything that fails.
 
 ### 4. Output Work Items
 
@@ -100,7 +100,7 @@ Severity is consequence, independent of depth, judged in order with the first ma
 
 Run this section, and only this section, when the invocation carries `## Confirming pass` — the findings the Doc Writer was asked to fix, with that pass's `## Files changed` and `Kinds changed:` lines. Re-read the change set against current state as step 0a describes, then answer two questions and nothing else:
 
-1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described. A fix that does not is a finding again, at its original severity, with its fix paths.
+1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described and passes the Overview's test for its doc. A fix that does not is a finding again, at its original severity, with its fix paths.
 2. **Did the pass falsify anything adjacent?** For every file in the pass's `## Files changed`, check the other statements, examples, and cross-references that depend on what changed, and report what the pass broke or left stale. Do not hunt beyond that: a pre-existing gap the pass did not touch is out of scope here — the post-completion review reads the whole diff.
 
 When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every statement the unit's change must make — the sites the relayed `## Design decisions for writers` and the `## Blast radius` docs groups name, plus the statements the changed source and the ticket body require — state for each whether it is present and true, and report every gap as ONE finding that lists the sites.
