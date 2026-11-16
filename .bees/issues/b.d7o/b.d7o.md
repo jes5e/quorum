@@ -2,10 +2,11 @@
 id: b.d7o
 type: bee
 title: Find why the Doc Reviewer missed 63 of 72 failing doc statements in live_edit's Epic 3, then fix the checks the evidence points at
-status: open
-created_at: '2026-11-15T16:22:22.396649'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-15T16:22:22.396649'
+status: done
+schema_version: '0.1'
 guid: d7oorsw3couhaxcksv6aefoow36yaatv
 ---
 
@@ -57,4 +58,59 @@ A hand-edit batch in a worktree:
 1. **Checkpoint 1:** the miss-by-miss diagnosis and the proposed restructure, with no edits. The operator approves.
 2. **The draft.**
 3. **One cold review under the exit rule.** It replays a sample of the 63 misses, plus a few audited statements that passed, through the revised review. The misses should now be flagged, and the passes not.
+## Closed (2026-11-15)
 
+Merged by fast-forward from `2968ce4` to `cbe1357`, with the operator's go: "go" at Checkpoint 1 and "merge" at Checkpoint 2, both given in the overseer's tab.
+
+**Commits:**
+- `a378bd4`: the draft;
+- `3c8e754`: cold round 1;
+- `4bb822e`: round 2;
+- `cbe1357`: round 3, which closed the lane.
+
+The work was Worker 1's. Its checkpoints are `~/.quorum-overseer/bd7o-checkpoint-1.md` (the diagnosis and miss table) and `-2.md`. Full test passes (602). The overseer ran it and read the full diff.
+
+**Net shipped: +49 words.**
+- `skills/quo-doc-writer-review/SKILL.md`: +50, cap 2,595 → 2,645.
+- `agents/doc-reviewer.md`: −1.
+
+### Diagnosis
+
+Epic 3 ran the doc review as it stood after the prune. The prune cut no check that bears on any of these misses. Of the 63 misses:
+- **A (41): other docs were judged only for truth.** The internal changelog had no test beyond truth, and 16 of its failing statements were requested by the reviewer.
+- **B (12): edited SDD paragraphs were never listed.** In-place figure re-pins, rewords and trims never "grew", so the SDD list skipped them.
+- **C (3): a ticket's request overrode placement.** The Doc Writer's "the table governs over a ticket" had no counterpart in the review.
+- **D (about 18, overlapping A–C): reviewer-proposed text went untested.** It was confirmed against its finding only.
+- **E (3): one verdict per paragraph hid a failing sentence.**
+- **Declined:**
+  - F (1): a customer row that a later Task made false. Once, and the goal is already stated.
+  - H (2): the check was present and applied with the wrong verdict.
+
+### What landed
+
+Each change rewords an existing sentence:
+- Scope adds "any other doc the Doc Writer edited". The Overview judges those docs by "the project's doc writing guide's rule for that doc". Step 3's heading becomes "The docs in scope".
+- The placement bullet covers facts "made or edited", placed "where the Overview puts it, whatever a ticket or relayed decision asks".
+- The SDD list covers paragraphs "added or edited", judged "as it now reads", returning "each added or edited sentence that fails".
+- Confirming-pass question 1 also checks that the fix "passes what the Overview judges its doc by".
+- The site enumeration places each statement "where the Overview puts it".
+
+**Yield.** Against live_edit's guide as it read at `b7580dd4e`, the change catches about 33 of the 63 misses. The rest of group A (test lists and fix stories) depends on live_edit's guide. live_edit then decided (2026-11-15, Performance Planner 4):
+- a fix's story goes in the commit message only;
+- changelog entries carry no Tests, Design or Rulings bullets;
+- the guide wins over tickets and rulings;
+- test-only fixes get no entry.
+
+### Operator decisions
+
+- Approved: Checkpoint 1, after asking for, and getting, a check that this batch wasn't over-engineering.
+- The lane closed after round 3, with no round 4. Round 3's two behavior findings were declined, so no text changed for them.
+- **Residual (round 3, F1):** the post-completion PHASE 6 flags "missing edits the ticket called for". It could ask to restore a restatement the lane review removed. No run shows it. It would surface at a gate.
+- **Round 3, F2, offered for filing:** `/quo-execute` has no reader for the Doc Writer's declined-requests list, which `/quo-fix-issue` renders in Doc Sync. Filing awaits the operator.
+
+### Watch on the next live_edit runs
+
+- Changelog findings made by the guide's rule.
+- Edited SDD paragraphs listed, with verdicts per sentence.
+- Reviewer-proposed text tested at the confirming pass.
+- No run of false findings on text that should pass.
