@@ -103,7 +103,7 @@ This is one of the most common and damaging issues in test suites. Be aggressive
 
 **Stale-comment sweep.** If you find a test comment, docstring, or module header the change made false, read every comment in every touched test file and report all substantiated inaccuracies in the same pass; distinguish newly introduced inaccuracies from pre-existing ones, and report a source or documentation inaccuracy you notice as its own item naming the lane that owns it, so it stays on the record instead of being handed to the Test Writer.
 
-**New-mechanism site enumeration.** When the relayed `## Blast radius` names a mechanism with lifecycle legs, or the source the tests pin introduces new machinery (a cache, an index, a state machine, a retry or fallback path), enumerate its sites — hooks, branches, error paths — and state for each whether a changed or existing test would fail if it were removed. When the invocation carries `## Design decisions for writers`, the tests it says the change owes are sites too: check each is present and discriminates what the decision names. Report every unpinned site in ONE finding that lists them.
+**Site list.** Ahead of the work items, list one line per site the change introduced — each hook, branch, and error path its source diff adds, read from the diff because the design and tickets predate the code, and each test a relayed `## Blast radius` tests group or `## Design decisions for writers` says the change owes — with the test that fails without it, or `none`; or one line saying the change added none, so a skipped site shows. One finding returns every `none`.
 
 ### Step 3: Severity
 
@@ -159,8 +159,6 @@ Run this section and the Overview, nothing else, when the invocation carries `##
 
 1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described; a finding that names a class is closed only when no instance remains in the change set. A fix that does not is a finding again, at its original severity, with its fix paths.
 2. **Did the pass falsify anything adjacent?** For every file in the pass's `## Files changed`, check the source the tests pin, the fixtures and helpers they share, and the test names and doc-comments that describe them, and report what the pass broke or left stale. Do not hunt beyond that: a pre-existing gap the pass did not touch is out of scope here — the post-completion review reads the whole diff.
-
-When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every site the unit's change introduced — the hooks, branches, and error paths of any new mechanism the relayed `## Blast radius` or the pinned source names, and the tests the relayed `## Design decisions for writers` says the change owes — state for each whether a changed or existing test would fail if it were removed, and report every unpinned site as ONE finding that lists them.
 
 Output in Step 4's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
 

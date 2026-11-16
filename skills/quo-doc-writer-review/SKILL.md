@@ -24,7 +24,7 @@ Analyze what changed and return what it made false or left missing in the docs, 
 
 This review covers the docs under the `Internal architecture docs (SDD)` and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`, and customer text as the customer-text test defines it, under the `Customer-facing docs` key or not, and any other doc the Doc Writer edited.
 
-**What the change touched.** A doc set can be too large for a whole-document read to converge, so review only the Doc Writer's edits, every statement about code or behavior the diff changed, every other statement of a fact the change touched, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
+**What the change touched.** A doc set can be too large for a whole-document read to converge, so review only the Doc Writer's edits, every statement about code or behavior the diff changed, every other statement of a fact the change touched, the doc sites a relayed `## Blast radius` names, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
 
 **Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/quo-engineer-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
 
@@ -46,7 +46,7 @@ The standard checks in the steps below are a guaranteed floor — they always ru
 **The docs in scope** (what the change touched):
 - Is each statement in scope true against the diff, and does it agree with every other statement of the same fact?
 - Does every customer-text statement the change added or edited pass the customer-text test?
-- Does each fact the change made or edited appear once, where the Overview puts it, whatever a ticket or relayed decision asks, with its reason where the tickets, the relayed decisions, or the diff give one?
+- Does each fact the change made or edited appear once, where the Overview puts it, whatever a ticket or a relayed `## Design decisions for writers` asks, with its reason where the tickets, those decisions, or the diff give one?
 - Does every statement the Doc Writer added or edited in the SDD pass the SDD test, or in the PRD the line? Ahead of the work items, list from the SDD's diff, one line each, every paragraph the change added or edited, with the kind of fact it states, the older text it replaces or none, and, as it now reads, pass or each added or edited sentence that fails (code mechanism, history, and ticket IDs fail), or one line saying it edited none, so a skipped check shows; one finding returns the deletion of everything that fails.
 
 ### 4. Output Work Items
@@ -102,8 +102,6 @@ Run this section, and only this section, when the invocation carries `## Confirm
 
 1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described and passes what the Overview judges its doc by. A fix that does not is a finding again, at its original severity, with its fix paths.
 2. **Did the pass falsify anything adjacent?** For every file in the pass's `## Files changed`, check the other statements, examples, and cross-references that depend on what changed, and report what the pass broke or left stale. Do not hunt beyond that: a pre-existing gap the pass did not touch is out of scope here — the post-completion review reads the whole diff.
-
-When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every statement the unit's change must make, each where the Overview puts it — the statements the relayed `## Design decisions for writers` and the `## Blast radius` docs groups name, plus the statements the changed source and the ticket body require — state for each whether it is present and true, and report every gap as ONE finding that lists the sites.
 
 Output in section 4's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
 

@@ -205,7 +205,5 @@ Run this section, and only this section, when the invocation carries `## Confirm
 1. **Is each fix correct?** For every finding in the block, read its fix and state whether it closes the finding as described; a finding that names a class is closed only when no instance remains in the change set. A fix that does not is a finding again, at its original severity, with its fix paths.
 2. **Did the pass falsify anything adjacent?** For every file in the pass's `## Files changed`, check the callers, tests, comments, and doc statements that depend on what changed, and report what the pass broke or left stale. Do not hunt beyond that: a pre-existing gap the pass did not touch is out of scope here — the post-completion review reads the whole diff.
 
-When the invocation also carries `## Site enumeration requested`, add a third step: enumerate every site the unit's change introduced — the sites the relayed `## Blast radius` and the pass's source files name, with the hooks, branches, and error paths of any new mechanism — state for each whether the code handles it, and report every gap as ONE finding that lists the sites.
-
 Relayed `## Engineer's completeness evidence` and `## Blast radius` lists, and the source statements a relayed `## Design decisions for writers` names, still get their checks. Output in Step 4's shapes with the trailer unchanged, and open the output with the fixed line `Confirming pass: <n> fixes checked`, `<n>` the count of findings in the block, so the orchestrator can tell a confirming pass from a full one.
 
