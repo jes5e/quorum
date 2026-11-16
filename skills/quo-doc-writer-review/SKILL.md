@@ -24,7 +24,7 @@ Analyze what changed and return what it made false or left missing in the docs, 
 
 This review covers the docs under the `Internal architecture docs (SDD)` and `Project requirements doc (PRD)` keys in CLAUDE.md `## Documentation Locations`, and customer text as the customer-text test defines it, under the `Customer-facing docs` key or not, and any other doc the Doc Writer edited.
 
-**What the change touched.** A doc set can be too large for a whole-document read to converge, so review only the Doc Writer's edits, every statement about code or behavior the diff changed, every other statement of a fact the change touched, the doc sites a relayed `## Blast radius` names, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
+**What the change touched.** A doc set can be too large for a whole-document read to converge, so review only the Doc Writer's edits, every statement about code or behavior the diff changed, every other statement of a fact the change touched, the doc sites a relayed `## Blast radius` or `## Design decisions for writers` names, and each entry a ticket's `## Doc divergence noted` names; a pre-existing problem outside those is not a finding.
 
 **Out of scope:** `skills/<name>/SKILL.md` and `agents/<name>.md` files in skill repos. These are *skill / subagent program source* — `/quo-engineer-review`'s territory — not user-facing documentation. A diff that only changes SKILL.md or subagent definition files has no doc gap; do not flag the lack of a corresponding README update unless the SKILL.md change introduced new user-visible behavior the README documents.
 

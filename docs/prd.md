@@ -591,7 +591,7 @@ During the run the orchestrator was briefly allowed to write a fix path of its o
 
 - A fix round at a scope resumes the lane's implementer by name; a fresh implementer appears only after an Analyst-gate revision that changes the approach (`recommend-different-approach`), a failed send (the send is the liveness test), or a latest ledger row for that name whose transcript figure is above 675,000 tokens (the completion notification reports a resumed agent's whole transcript, so the bound reads that figure directly; every non-resume dispatch marks its row `fresh`).
 - Every review after a lane's first, and every `postcomp-*` reviewer, carries `## Confirming pass`, and the line `Confirming pass: <n> fixes checked` heads what the orchestrator reads for the lane; a pass without that line is recorded as a full pass.
-- The test review's first round lists every site the change's source adds, each with its covering test or `none`, or says in one line that it added none.
+- The test review's first round lists every site the change's source adds or changes, each with its covering test or `none`, or says in one line that it added none.
 - The Test Writer and Doc Writer receive `## Blast radius` and `## Design decisions for writers`; the Analyst emits `### Decisions for writers` unconditionally.
 - The Doc Writer receives `## Engineer's diff (path)`.
 - Post-completion findings whose fixes are text or trivial are dispatched as one pass per implementer role.
