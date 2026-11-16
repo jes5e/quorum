@@ -88,7 +88,7 @@ Also read `## Anticipated doc impact` in the Plan Bee body; it names the docs th
 
 **Tasks.** N is the Task's 1-based position in the Epic, and the title is its label in every later status line and commit.
 
-- Cut Tasks by the change, not by the length of their text: each is one coherent change with its design settled, since every Task pays a fixed execution cost. Give it `up_dependencies` on the Tasks that must land first.
+- Cut Tasks by the change, not by the length of their text: each is one coherent change with its design settled, since every Task pays a fixed execution cost. Give it `up_dependencies` on the Tasks that must land first. When the spec leaves open a choice the Tasks must commit to, ask in prose before drafting past it; when only a measurement can settle the choice, it is taken before anything is built on it, as the Task's first step or, when several Tasks build on it, as a Task of its own that writes the decision into their bodies, because building first re-opens the design over built and reviewed code.
 - A Task body states its purpose and any contract with a particular sibling Task or Epic: an ordering, a shared resource, an invariant, or a cleanup path. A contract or ruling binding more widely goes once in `# Epic-wide contracts`, which `/quo-execute` gives every implementer. Reviewers check sibling Tasks against these statements, and a contract left in the author's head surfaces later as a cross-Task defect.
 - When the spec's SDD has `### Mechanism lifecycle` or `### Policy decisions this design implies`, list under `## Sites` each entry the Task implements, citing the SDD child's ID and the entry, so the implementer works against a list.
 - Acceptance criteria and per-role work live in the Subtasks, not the Task.
@@ -112,7 +112,7 @@ The files, functions, and changes, with line numbers where known. A responsibili
 - Give each Subtask exactly one role tag — `engineer`, `test-writer`, or `doc-writer` — for the role that executes it; `/quo-execute` dispatches by that tag. A step only the operator can run is tagged `engineer`, and its body says the implementer stops and asks the operator to run it.
 - Every Task that changes code, configuration, or deployment gets a `doc-writer` Subtask, seeded from `## Anticipated doc impact`: it states what the Task changes, and the Doc Writer, not you, decides which docs change, often none, and where each fact goes.
 - State scope and acceptance, not implementation; paste no code. The implementer is an expert, and the code will move before it runs.
-- Carry any design decision the user gave you verbatim into each Subtask it affects, or once into `# Epic-wide contracts` when it binds more widely. When the spec leaves open a choice the Tasks must commit to, ask in prose before drafting past it.
+- Carry any design decision the user gave you verbatim into each Subtask it affects, or once into `# Epic-wide contracts` when it binds more widely.
 - Emit no Subtask for committing, formatting, or running the full test suite. `/quo-execute` does those itself.
 - Give a Subtask `up_dependencies` only on a same-role Subtask it builds on; `/quo-execute` orders the roles itself.
 
