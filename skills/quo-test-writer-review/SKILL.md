@@ -103,7 +103,7 @@ This is one of the most common and damaging issues in test suites. Be aggressive
 
 **Stale-comment sweep.** If you find a test comment, docstring, or module header the change made false, read every comment in every touched test file and report all substantiated inaccuracies in the same pass; distinguish newly introduced inaccuracies from pre-existing ones, and report a source or documentation inaccuracy you notice as its own item naming the lane that owns it, so it stays on the record instead of being handed to the Test Writer.
 
-**Site list.** Ahead of the work items, list one line per site the change introduced — each hook, branch, and error path its source diff adds or changes, read from the diff because the design and tickets predate the code, and each test a relayed `## Blast radius` tests group or `## Design decisions for writers` says the change owes — with the test that fails without it (for an owed test, one that discriminates what its decision names), or `none`; or one line saying the change added none, so a skipped check shows. One finding returns every `none`.
+**Site list.** Ahead of the work items, list one line per site the change introduced, with the test that fails without it, or `none`; when it introduced none, say so in one line, so a skipped check shows. A site is each hook, branch, and error path the source diff adds or changes, read from the diff because the design and tickets predate the code, and each test a relayed `## Blast radius` tests group or `## Design decisions for writers` says the change owes, whose covering test discriminates what its decision names. One finding returns every `none`.
 
 ### Step 3: Severity
 
