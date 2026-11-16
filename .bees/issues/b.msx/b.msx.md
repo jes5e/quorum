@@ -2,10 +2,11 @@
 id: b.msx
 type: bee
 title: 'Execute surfaces every implementer''s operator-facing return: operator steps from any role, and the Doc Writer''s declined requests'
-status: open
-created_at: '2026-11-16T00:18:07.487773'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-16T00:18:07.487773'
+status: open
+schema_version: '0.1'
 guid: msxweoad9sa2b51f7rncsy8q8yzx2dip
 ---
 
@@ -36,4 +37,10 @@ Two gaps in what `/quo-execute` does with an implementer's return that is meant 
 - **Fix the class once.** Item 1 and item 2 are the same kind of gap: execute surfacing what an implementer returns for the operator. Find every rule in both orchestrators that reads an implementer's operator-facing return, and give each kind one home.
 - **No predicted cases.** Add nothing beyond what these two pieces of evidence earn. Watch the word count. Execute's body is near its line budget.
 - **Process:** a hand-edit batch in a worktree, inventory-anchored, with cold reviews under the exit rule. Checkpoint 1 is the design: the readers, the wording and the word deltas, for operator approval.
+
+## Amendment (2026-11-16, overseer)
+
+**Item 1 goes to the three questions before anything is drafted.** Its only evidence, Epic 3 Task 3 T-E, is the orchestrator routing a Test Writer's operator step correctly with no rule written for it. That is rare, loud and recovered unaided. By CLAUDE.md `**How a skill improves.**`, it earns one goal sentence at most, and maybe nothing. The overseer folded it into this ticket without applying that test.
+
+**What's left is likely item 2 alone:** one sentence in execute, mirroring fix-issue's Doc Sync line. That's small enough to ride along with the next batch that edits `/quo-execute`. It doesn't need a batch of its own.
 
