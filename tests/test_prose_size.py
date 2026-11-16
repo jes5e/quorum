@@ -24,7 +24,7 @@ from conftest import REPO_ROOT, read, shipped_artifacts
 # reason recorded; lower it when the file shrinks.
 CAPS = {
     "CLAUDE.md": 4743,
-    "skills/quo-breakdown-epic/SKILL.md": 3209,
+    "skills/quo-breakdown-epic/SKILL.md": 3206,
     "skills/quo-doc-writer-review/SKILL.md": 2645,
     "skills/quo-engineer-review/SKILL.md": 5519,
     "skills/quo-execute/SKILL.md": 12126,
