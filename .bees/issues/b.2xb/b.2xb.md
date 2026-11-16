@@ -2,10 +2,11 @@
 id: b.2xb
 type: bee
 title: Test review lists every new site and its covering test in round 1, so a partial enumeration shows
-status: open
-created_at: '2026-11-16T09:46:32.384541'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-16T09:46:32.384541'
+status: done
+schema_version: '0.1'
 guid: 2xbn8rp7ix1anbd9dqzmmo68admfrye9
 ---
 
@@ -34,3 +35,59 @@ The test review's first-round site enumeration returns only the gaps it found, s
 - The orchestrator side (§7's late-chain rule) is an orchestrator hand edit: inventory-anchored, mirrored in fix-issue, with cold reviews under the exit rule.
 - Neutral: no language-specific notion of "branch". Sites are the hooks, branches and error paths the skill already names.
 
+## Closed (2026-11-16)
+
+Merged by fast-forward to `5553313`, rebased onto `08ffbe9` (b.txn). The operator's go was "ok to your recommendations" at Checkpoint 1 and "merge", both in the overseer's tab.
+
+**Commits:**
+- `6a49ae2`: the draft;
+- `ef6a386`: cold round 1;
+- `c3d350f`: cold round 2.
+
+The work was Worker 1's. Its checkpoints are `~/.quorum-overseer/b2xb-checkpoint-1.md` (the evidence table) through `-3.md`. Full test passes on `main` after the merge (601), run by the overseer, who also read the full diff.
+
+**Net shipped: −839 words,** across both orchestrator bodies, three review skills, three reviewer wrappers and the routing reference.
+
+### Evidence
+
+- **Task 1b:** round 1 listed 11 gaps and round 4's late chain listed 16 more. Round 1's output was gaps-only.
+- **The late chain** fired 23 times since 2026-09-17: 21 on the test lane, 2 on the code lane, 0 on docs.
+  - On the test lane it found real gaps in at least 15. Every round-1 list a later round showed incomplete was gaps-only.
+  - Its trigger (two `earned` rounds) has nothing to do with coverage, and it missed 7 lanes.
+  - On the code lane it found nothing to show either time. The docs reader never fired.
+
+### What landed
+
+- **The test review's "Site list".** Ahead of the work items, one line per site the change introduced (each hook, branch and error path the diff adds or changes, plus each owed test), with the test that fails without it or `none`. A one-line empty form. One finding returns every `none`. The wrapper carries the list.
+- **The late chain is cut:**
+  - the `## Site enumeration requested` relay;
+  - the `enumerated` classification and the `close — enumerated` decision;
+  - the earned-chain test and docs clause (now code-lane only);
+  - three confirming-pass third steps;
+  - three wrapper relay sentences;
+  - the pins.
+- **Re-homed readers.** The cut left two relays without a reader, a gap between two agents caught by the tests. The doc review's scope now names the doc sites a relayed `## Blast radius` or `## Design decisions for writers` names. The test review's Site list reads both. CONTRACT_SURFACES now pins all three review skills for both headings.
+
+### Operator decisions
+
+- **The cut,** not the narrow alternative.
+- **Accepted residuals:**
+  - sites added after round 1, by a source change, get no new list in the lane;
+  - an incomplete round-1 list has no in-lane backstop. **Audit one saved round-1 list against the diff on the next live_edit run.**
+- **D12:** the operator decided this is no net loss of review coverage. It's recorded in REWRITE-BRIEF's 2026-11-16 amendment.
+
+### Sync
+
+Old manifests read sensibly (role-play e):
+- an `enumerated` value only falls into the render's remainder;
+- `close — enumerated` sits on a closed lane;
+- a lane left at `another round` gets at most one extra confirming pass.
+
+Safe to sync at a convenient point. A lane mid-flight at the sync may lose its late listing once, which is within the accepted residual.
+
+### Watch
+
+- Round-1 site lists are complete against the diff (the audit above).
+- Test lanes with fix chains close without the late chain.
+- The doc review checks the owed doc sites.
+- Each `none` gets a test or a reasoned "not covered".

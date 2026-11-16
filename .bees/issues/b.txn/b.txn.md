@@ -2,10 +2,11 @@
 id: b.txn
 type: bee
 title: 'Measurement-dependent design: find how often a value a design needs was measured only after the build and its reviews, and get it measured first'
-status: open
-created_at: '2026-11-16T09:52:20.121123'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-16T09:52:20.121123'
+status: done
+schema_version: '0.1'
 guid: txn63oz2ngy88ia4r33cku717gny4tkb
 ---
 
@@ -50,3 +51,45 @@ When an approved design depends on a value only a measurement can give, live_edi
 - **Neutral:** no project figures, no language-specific notion of a measurement.
 - **Process:** a hand-edit batch in a worktree. Orchestrator or breakdown edits are inventory-anchored, with cold reviews under the exit rule. Checkpoint 1 is for operator approval.
 
+## Closed (2026-11-16)
+
+Merged by fast-forward from `8059690` to `08ffbe9`, with the operator's go: "ok to your recommendations" and "ok" at Checkpoint 1, then "merge", all given in the overseer's tab.
+
+**Commits:**
+- `7f63d57`: the change, in the narrower form;
+- `08ffbe9`: cold round 1.
+
+The work was Worker 2's. Its checkpoints are `~/.quorum-overseer/btxn-checkpoint-1.md` (the case table) and `-2.md`. Full test passes (602). The overseer ran it and read the diff.
+
+**Net shipped: +50 words,** in `skills/quo-breakdown-epic/SKILL.md` (cap 3,156 → 3,206). `docs/sdd.md` gains a matching line, which isn't capped.
+
+### Diagnosis
+
+- **Epic 3 Task 3:** about 3.6 h of redesign. The breakdown named the measurement open, and even predicted the gate, but ordered it after the build. The run did not recover unaided; the planner's measure-then-build split fixed it.
+- **Where live_edit split:** the build held where a measure Task covered the value (Epic 3, 5b and 9b). It re-opened where a value stayed inside a build (5a1).
+- **The overhead of a measure Task:** about 17 agent-minutes, 9–18% of the total (5m and 5md). The cost is in the measurement and the Analyst, which a build pays anyway.
+- **b.cn2** (fix-issue): one run, loud, recovered. Measuring first would have removed none of its gates.
+- **Epic 2's "9 of 15"** is not evidence for this: one of the nine is a measurement case.
+
+### What landed
+
+Breakdown §6's Tasks bullet:
+
+> When the spec leaves open a choice the Tasks must commit to, ask in prose before drafting past it; when only a measurement can settle the choice, measure before building on it, as the Task's first `engineer` Subtask or, when several Tasks build on it, as a Task of its own that writes the decision into their bodies, because building first re-opens the design over built and reviewed code.
+
+"Ask in prose" moved there from the Subtasks bullet, so one sentence decides how an open choice is settled.
+
+### Operator decisions
+
+- **The narrower form.** The operator asked whether a separate measure Task pays the full per-Task machinery. The evidence showed it doesn't (about 17 min of overhead), and that the defect was the order. So the measurement goes in the build Task's first `engineer` Subtask, and a separate Task is used only when several Tasks build on it.
+- **Cold round 1, F1** (applied): "first step" could have been met by a `test-writer` Subtask, which runs after the build. b.cn2's design did exactly that.
+- **Declined:** Analyst and fix-issue changes.
+
+### The Analyst side note (evidence only, no ticket)
+
+In the measurement gates (Task 3, 5m, 5md, 5a1), the Analyst never set a measured figure. Every pin was the Engineer's figure under the project's rounding rule. The Analyst earned its time on new mechanisms, accounting choices, and correcting the Engineer's figures. A misfit that only moves a figure doesn't route to the Analyst (`## Design question` fires on an unlisted mechanism), and 5a1 settled with none. live_edit's measure Tasks used the Analyst because their own bodies asked for a gate. **No quorum change is needed.**
+
+### Watch
+
+- The next breakdown with a measurement-dependent choice puts the measurement first.
+- A measurement whose figures fit goes on to the build with no Analyst and no gate.
