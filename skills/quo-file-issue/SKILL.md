@@ -368,21 +368,21 @@ After the ticket is created, proceed to Step 4 (commit) and Step 5 (report back)
 
 Stage and commit the ticket file. **Do not hardcode the `.bees/issues/` path.** `/quo-setup` lets the user choose where each hive lives — in-repo, sibling-to-repo, or anywhere else. A hardcoded `git add .bees/issues/` silently stages nothing when the user picked a sibling path.
 
-To learn the in-repo Issues hive path, run the bundled helper's NON-MUTATING `resolve-hive-paths` mode. The helper emits the Issues hive's absolute path when it lives inside this repo, or nothing when it lives outside (in which case you stage no hive path here). Run it as a single literal Bash call:
+Stage the in-repo Issues hive with the bundled helper's `stage` mode. The helper prints the Issues hive's absolute path when it staged it, or nothing when the hive lives outside this repo. Run it as a single literal Bash call:
 
 ```bash
 # POSIX (bash / zsh):
-python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive issues
+python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" stage --hive issues
 ```
 
 ```powershell
 # Windows (PowerShell):
-python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive issues
+python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" stage --hive issues
 ```
 
-**Resolving the helper path (sibling-skill resolution).** `hive_commit.py` is shipped by `/quo-execute`; this skill consumes it as a *sibling* bundled script. Resolve its path at runtime from this skill's own base directory: `<this skill's base directory>/../quo-execute/scripts/hive_commit.py`. The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../quo-file-issue`). Use the `..` traversal pattern to reach the sibling skill — this matches the same sibling-resolution discipline used elsewhere in the skill set (e.g., `/quo-fix-issue`'s §7 commit step). On Windows, use backslash separators: `<this skill's base directory>\..\quo-execute\scripts\hive_commit.py`. The resolve mode does NOT validate a `--skill` slug (only the helper's encode-commit mode does), so this consumer needs no addition to the helper's set of recognized skills.
+**Resolving the helper path (sibling-skill resolution).** `hive_commit.py` is shipped by `/quo-execute`; this skill consumes it as a *sibling* bundled script. Resolve its path at runtime from this skill's own base directory: `<this skill's base directory>/../quo-execute/scripts/hive_commit.py`. The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../quo-file-issue`). Use the `..` traversal pattern to reach the sibling skill — this matches the same sibling-resolution discipline used elsewhere in the skill set (e.g., `/quo-fix-issue`'s §7 commit step). On Windows, use backslash separators: `<this skill's base directory>\..\quo-execute\scripts\hive_commit.py`.
 
-When the helper emits an Issues hive path, `git add` it alongside the ticket body file you just authored, then commit. **Stage only files related to this filing** — the resolved Issues hive path's contents plus the scratch body file under `<tempdir>/.quorum/` (if it was tracked). **Do NOT `git add -A`** — other agents or processes may have in-flight changes in the working tree, and a blanket add would sweep them into this commit. The commit subject leads with the Issue title and appends the bare Issue ID once in trailing parentheses — `File issue: <title> (<issue-id>)`:
+When the helper prints a path, commit what it staged and nothing else. **Do NOT `git add -A`** — other agents or processes may have in-flight changes in the working tree, and a blanket add would sweep them into this commit. The commit subject leads with the Issue title and appends the bare Issue ID once in trailing parentheses — `File issue: <title> (<issue-id>)`:
 
 ```bash
 # POSIX (bash / zsh):

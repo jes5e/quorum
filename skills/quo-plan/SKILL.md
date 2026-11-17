@@ -204,19 +204,19 @@ Close each row as its item lands. Do not hand off while a row is open. When a ro
 
 **Report.** List the Spec Bee and its PRD and SDD, the Plan Bee, and each Epic by label with its ID, status, and dependencies. Add any `RESEARCH NEEDED` questions, the findings approved over (overridden blockers marked), and where each obligation went.
 
-**Commit.** Stage only the in-repo hive paths the helper prints, never the whole tree, because a hive may live outside the repo and the working tree may hold unrelated changes. The sibling helper prints each in-repo hive path, one per line:
+**Commit.** Stage only the in-repo hives, never the whole tree, because a hive may live outside the repo and the working tree may hold unrelated changes. The sibling helper stages them and prints each staged hive path, one per line:
 
 ```bash
 # POSIX (bash / zsh):
-python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" resolve-hive-paths --hive plans --hive specs
+python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" stage --hive plans --hive specs
 ```
 
 ```powershell
 # Windows (PowerShell):
-python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" resolve-hive-paths --hive plans --hive specs
+python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" stage --hive plans --hive specs
 ```
 
-Stage the printed paths and commit with the subject `Plan feature: <title> (<plan-bee-id>)`. When it prints nothing, commit nothing and say `Plan stored in bees; no in-repo changes to commit.` An earlier commit by an inline `/quo-file-issue` is expected. Never push. Set `**Phase:** complete`.
+Commit with the subject `Plan feature: <title> (<plan-bee-id>)`. When it prints nothing, commit nothing and say `Plan stored in bees; no in-repo changes to commit.` An earlier commit by an inline `/quo-file-issue` is expected. Never push. Set `**Phase:** complete`.
 
 **Next steps.** Above the choices, say that the next skill re-reads everything from bees and disk, so a fresh session gives it the full context budget; same-session work fits only a Bee with one or two Epics. Fire the next-steps gate:
 

@@ -230,6 +230,140 @@ def test_encode_commit_missing_required_args_exit2(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# A hive's `.hive/` configuration is never staged (encode-commit and stage)
+# ---------------------------------------------------------------------------
+
+def _git(repo, *args):
+    return subprocess.run(["git", *args], cwd=str(repo), capture_output=True, text=True)
+
+
+def _setup_tracked_hives(tmp_path, tickets, outside=()):
+    """A repo whose hives each track `.hive/identity.json` and the given ticket files.
+
+    `tickets` maps a hive name to ticket file paths relative to that hive. Hives
+    named in `outside` live outside the repo and are not committed.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_git_repo(repo)
+    hives = {}
+    for name, files in tickets.items():
+        root = (tmp_path / "outside" if name in outside else repo / ".bees") / name
+        (root / ".hive").mkdir(parents=True)
+        (root / ".hive" / "identity.json").write_text('{"hive": "%s"}\n' % name, encoding="utf-8")
+        for rel in files:
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text("body\n", encoding="utf-8")
+        hives[name] = root.resolve()
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "base")
+    hives_json = json.dumps(
+        {"hives": [{"normalized_name": n, "path": str(p)} for n, p in hives.items()]}
+    )
+    bin_dir = tmp_path / "bin"
+    _write_stub_bees(bin_dir, hives_json)
+    return repo, hives, _env_with_bin(bin_dir)
+
+
+def _committed_files(repo):
+    return _git(repo, "show", "--name-only", "--format=", "HEAD").stdout.split()
+
+
+def test_encode_commit_never_stages_hive_configuration(tmp_path):
+    # Role-play (a): a modified Specs identity file and one encoded Plans ticket.
+    repo, hives, env = _setup_tracked_hives(
+        tmp_path, {"plans": ["b.aaa/b.aaa.md"], "specs": ["b.sss/b.sss.md"]}
+    )
+    (hives["specs"] / ".hive" / "identity.json").write_text('{"local": true}\n', encoding="utf-8")
+    (hives["plans"] / "b.aaa" / "b.aaa.md").write_text("encoded\n", encoding="utf-8")
+    res = _run_cli(["encode-commit", "--skill", "quo-execute", "--count", "1"], repo, env)
+    assert res.returncode == 0, res.stderr
+    assert _git(repo, "log", "-1", "--format=%s").stdout.strip() == (
+        "Encode deferral: /quo-execute — 1 deferral(s) encoded"
+    )
+    assert _committed_files(repo) == [".bees/plans/b.aaa/b.aaa.md"]
+    assert " M .bees/specs/.hive/identity.json" in _git(repo, "status", "--porcelain").stdout
+
+
+def test_encode_commit_skips_when_only_hive_configuration_changed(tmp_path):
+    repo, hives, env = _setup_tracked_hives(tmp_path, {"plans": ["b.aaa/b.aaa.md"]})
+    (hives["plans"] / ".hive" / "identity.json").write_text('{"local": true}\n', encoding="utf-8")
+    res = _run_cli(["encode-commit", "--skill", "quo-fix-issue", "--count", "1"], repo, env)
+    assert res.returncode == 0, res.stderr
+    assert "skipped: nothing staged" in res.stdout
+    assert _git(repo, "log", "-1", "--format=%s").stdout.strip() == "base"
+
+
+def test_encode_commit_tolerates_a_hive_holding_only_its_configuration(tmp_path):
+    # A freshly colonized hive has no ticket yet; its pathspec matches only `.hive/`.
+    repo, hives, env = _setup_tracked_hives(tmp_path, {"plans": ["b.aaa/b.aaa.md"], "issues": []})
+    (hives["plans"] / "b.aaa" / "b.aaa.md").write_text("encoded\n", encoding="utf-8")
+    res = _run_cli(["encode-commit", "--skill", "quo-execute", "--count", "1"], repo, env)
+    assert res.returncode == 0, res.stderr
+    assert _committed_files(repo) == [".bees/plans/b.aaa/b.aaa.md"]
+
+
+def test_encode_commit_out_of_repo_hive_stages_nothing(tmp_path):
+    # Role-play (b), encode side.
+    repo, hives, env = _setup_tracked_hives(tmp_path, {"plans": ["b.aaa/b.aaa.md"]}, outside={"plans"})
+    (hives["plans"] / "b.aaa" / "b.aaa.md").write_text("encoded\n", encoding="utf-8")
+    res = _run_cli(["encode-commit", "--skill", "quo-execute", "--count", "1"], repo, env)
+    assert res.returncode == 0, res.stderr
+    assert "skipped: nothing staged" in res.stdout
+
+
+# ---------------------------------------------------------------------------
+# stage mode: stages whole in-repo hives except `.hive/`, never commits
+# ---------------------------------------------------------------------------
+
+def test_stage_mode_stages_every_bee_in_the_hive_but_not_its_configuration(tmp_path):
+    # Role-play (e): a Task under one Bee writes into a Task under another Bee.
+    repo, hives, env = _setup_tracked_hives(
+        tmp_path,
+        {"plans": ["b.aaa/t1.aaa.e1/t2.aaa.e1.t1/t2.aaa.e1.t1.md",
+                   "b.bbb/t1.bbb.e1/t2.bbb.e1.t1/t2.bbb.e1.t1.md",
+                   "b.ccc/b.ccc.md"]},
+    )
+    plans = hives["plans"]
+    (plans / "b.aaa/t1.aaa.e1/t2.aaa.e1.t1/t2.aaa.e1.t1.md").write_text("done\n", encoding="utf-8")
+    (plans / "b.bbb/t1.bbb.e1/t2.bbb.e1.t1/t2.bbb.e1.t1.md").write_text("decision\n", encoding="utf-8")
+    (plans / "b.ccc/b.ccc.md").unlink()
+    (plans / ".hive" / "identity.json").write_text('{"local": true}\n', encoding="utf-8")
+    res = _run_cli(["stage", "--hive", "plans"], repo, env)
+    assert res.returncode == 0, res.stderr
+    assert res.stdout.strip().splitlines() == [str(plans)]
+    staged = _git(repo, "diff", "--cached", "--name-only").stdout.split()
+    assert sorted(staged) == [
+        ".bees/plans/b.aaa/t1.aaa.e1/t2.aaa.e1.t1/t2.aaa.e1.t1.md",
+        ".bees/plans/b.bbb/t1.bbb.e1/t2.bbb.e1.t1/t2.bbb.e1.t1.md",
+        ".bees/plans/b.ccc/b.ccc.md",
+    ]
+    # Stage mode never commits.
+    assert _git(repo, "log", "-1", "--format=%s").stdout.strip() == "base"
+
+
+def test_stage_mode_stages_only_the_named_hives(tmp_path):
+    repo, hives, env = _setup_tracked_hives(
+        tmp_path, {"plans": ["b.aaa/b.aaa.md"], "issues": ["b.iii/b.iii.md"]}
+    )
+    (hives["plans"] / "b.aaa" / "b.aaa.md").write_text("x\n", encoding="utf-8")
+    (hives["issues"] / "b.iii" / "b.iii.md").write_text("x\n", encoding="utf-8")
+    res = _run_cli(["stage", "--hive", "plans"], repo, env)
+    assert res.returncode == 0, res.stderr
+    assert _git(repo, "diff", "--cached", "--name-only").stdout.split() == [".bees/plans/b.aaa/b.aaa.md"]
+
+
+def test_stage_mode_out_of_repo_hive_prints_and_stages_nothing(tmp_path):
+    # Role-play (b), stage side.
+    repo, hives, env = _setup_tracked_hives(tmp_path, {"plans": ["b.aaa/b.aaa.md"]}, outside={"plans"})
+    (hives["plans"] / "b.aaa" / "b.aaa.md").write_text("x\n", encoding="utf-8")
+    res = _run_cli(["stage", "--hive", "plans"], repo, env)
+    assert res.returncode == 0, res.stderr
+    assert res.stdout.strip() == ""
+    assert _git(repo, "diff", "--cached", "--name-only").stdout.strip() == ""
+
+
+# ---------------------------------------------------------------------------
 # resolve-hive-paths mode: NON-MUTATING query
 # ---------------------------------------------------------------------------
 

@@ -124,7 +124,7 @@ OUTPUT_ANCHORS = [
     "addressed-now",
     "defer-to-existing-ticket-body: <ticket-id>",
     "defer-to-new-Issue",
-    "resolve-hive-paths --hive plans",
+    "stage --hive plans",
     "`Plan <bee-id>, Break down <epic-title> (<epic-id>)`",
     "`Deferral hygiene: no deferred items.`",
     "`## Deferred from /quo-breakdown-epic run (<YYYY-MM-DD HH:MM>)`",

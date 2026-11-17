@@ -119,7 +119,7 @@ PLAN_ANCHORS = [
     "`SDD`",
     "`Deferral hygiene: no deferred items.`",
     "`## Deferred from /quo-plan run (<YYYY-MM-DD HH:MM>)`",
-    "resolve-hive-paths --hive plans --hive specs",
+    "stage --hive plans --hive specs",
     "`Plan feature: <title> (<plan-bee-id>)`",
     "`Plan stored in bees; no in-repo changes to commit.`",
 ]

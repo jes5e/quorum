@@ -18,7 +18,7 @@ bundled-helper precedent set by `detect_fast_path.py` and
 
 CLI contract
 ------------
-This helper has two modes, selected by an argparse subcommand. Both reuse the
+This helper has three modes, selected by an argparse subcommand. All reuse the
 same `bees list-hives` parsing, repo-root resolution, and in-repo membership
 test — that single implementation of the hive-scoping mechanics is the whole
 reason the helper exists.
@@ -31,27 +31,33 @@ bare for backward compatibility):**
 Stages and commits the on-disk changes a deferral-hygiene Encode branch
 produced — one follow-up commit per gate firing.
 
+**Stage mode:**
+
+    hive_commit.py stage [--hive <name> ...]
+
+`git add`s each named in-repo hive except its `.hive/` configuration directory,
+and prints each staged hive's absolute path, one per line. Every skill commit
+step that stages a whole hive calls this mode, beside its judgement-selected
+source files, so the `.hive/` exclusion has one home and no caller passes an
+exclude pathspec. It never commits.
+
 **Resolve-hive-paths mode (NON-MUTATING query):**
 
     hive_commit.py resolve-hive-paths [--hive <name> ...]
 
 Pure query — performs NO `git add`, NO `git commit`, NO mutation whatsoever.
-Resolves the named hive(s) via the shared `bees list-hives` + repo-root
-machinery, tests each for in-repo membership, and prints each IN-REPO hive's
-absolute path to stdout, one per line. The three per-ticket commit steps in
-`/quo-execute` and `/quo-fix-issue` (their `## 8. Per-unit close-out`) and
-`/quo-breakdown-epic` (its per-Epic commit) call this mode to learn which hive path to
-`git add` alongside their judgement-selected source files, replacing the
-forbidden inline `bees list-hives | python3 -c '...'` + `git rev-parse` + `case`
-compound-shell fragment with a single literal Bash call.
+Prints each named IN-REPO hive's absolute path, one per line, for a caller that
+stages one ticket's directory under it (`/quo-fix-issue`'s per-Issue commit).
+
+Both `stage` and `resolve-hive-paths` take:
 
 - `--hive <name>` (OPTIONAL, repeatable): one of `plans`, `specs`, `issues`.
   Default = all three when none given (matching the encode-commit mode's
   resolve-all behavior). Filters the resolved hives to the named set.
-- Prints each named, in-repo hive's absolute path, one per line. Prints nothing
-  and exits 0 when no named hive is in-repo (out-of-repo case — the caller
-  stages nothing). Exits 2 with a one-line stderr message on `bees list-hives`
-  or `git rev-parse` failure (matching the encode-commit failure contract).
+- Print nothing and exit 0 when no named hive is in-repo (out-of-repo case —
+  the caller stages nothing). Exit 2 with a one-line stderr message on
+  `bees list-hives`, `git rev-parse`, or `git add` failure (matching the
+  encode-commit failure contract).
 
 encode-commit mode arguments:
 
@@ -67,9 +73,10 @@ Behavior
 1. Resolve hive paths via `bees list-hives` (parsed in-process), keeping the
    `path` of every hive whose `normalized_name` is in {plans, specs, issues}.
 2. Resolve the repo root via `git rev-parse --show-toplevel`.
-3. `git add` each resolved hive path that is the repo root or a descendant of it
+3. Stage each resolved hive that is the repo root or a descendant of it
    (tested via `Path.resolve()` + `Path.is_relative_to`, NOT string-prefix
-   matching). Out-of-repo hives are skipped — their `bees update-ticket` already
+   matching), as stage mode does: everything but its `.hive/` configuration.
+   Out-of-repo hives are skipped — their `bees update-ticket` already
    persisted and they require no git action here.
 4. Check staged state via `git diff --cached --quiet` exit status.
 5. If nothing is staged: print `skipped: nothing staged` and exit 0. Do NOT
@@ -83,6 +90,7 @@ Invariants (load-bearing)
 - NEVER `git push`.
 - NEVER `git add -A` — only the resolved hive paths are staged, so in-flight
   changes elsewhere in the working tree are never swept in.
+- NEVER stage a hive's `.hive/` configuration (see `HIVE_CONFIG_DIR`).
 - NEVER create an empty commit.
 - The commit subject string (em-dash `—`, exact spacing) is a contract shared
   with the three skill prose blocks; do not alter it.
@@ -99,6 +107,10 @@ from pathlib import Path
 
 VALID_SKILLS = frozenset({"quo-execute", "quo-fix-issue", "quo-breakdown-epic"})
 HIVE_NAMES = frozenset({"plans", "specs", "issues"})
+# A hive's own configuration directory. Never staged: a repo may track it, and
+# registering a hive from a worktree rewrites it locally, so committing it would
+# write one checkout's local configuration over the shared file.
+HIVE_CONFIG_DIR = ".hive"
 
 
 def fail(message: str) -> int:
@@ -160,6 +172,28 @@ def resolve_hive_paths(names=None):
     return paths
 
 
+def in_repo_hives(repo_root, hive_paths):
+    """Return the resolved hive Paths that are the repo root or inside it."""
+    resolved = (p.resolve() for p in hive_paths)
+    return [p for p in resolved if p.is_relative_to(repo_root)]
+
+
+def stage_hives(repo_root, hives):
+    """`git add` each in-repo hive except its `.hive/` configuration.
+
+    Returns None on success, or the failure message. The exclusion is a
+    pathspec, not a directory walk, so a deleted ticket directory is staged too.
+    """
+    for hive in hives:
+        rel = hive.relative_to(repo_root)
+        spec = rel.as_posix()
+        exclude = ":(exclude)" + (rel / HIVE_CONFIG_DIR).as_posix()
+        add = run_git(["add", "--", spec, exclude], repo_root=repo_root)
+        if add.returncode != 0:
+            return f"`git add {spec}` failed: {add.stderr.strip()}"
+    return None
+
+
 def cmd_resolve_hive_paths(args) -> int:
     """NON-MUTATING query: print each named in-repo hive's absolute path."""
     repo_root = resolve_repo_root()
@@ -171,11 +205,28 @@ def cmd_resolve_hive_paths(args) -> int:
     if hive_paths is None:
         return fail("could not resolve hive paths via `bees list-hives`")
 
-    for hive_path in hive_paths:
-        resolved = hive_path.resolve()
-        if not resolved.is_relative_to(repo_root):
-            continue
-        print(str(resolved))
+    for hive in in_repo_hives(repo_root, hive_paths):
+        print(str(hive))
+    return 0
+
+
+def cmd_stage(args) -> int:
+    """Stage each named in-repo hive except `.hive/`; print each staged hive's path."""
+    repo_root = resolve_repo_root()
+    if repo_root is None:
+        return fail("could not resolve repo root via `git rev-parse --show-toplevel` (not a git repo?)")
+
+    names = args.hives if args.hives else None
+    hive_paths = resolve_hive_paths(names)
+    if hive_paths is None:
+        return fail("could not resolve hive paths via `bees list-hives`")
+
+    hives = in_repo_hives(repo_root, hive_paths)
+    error = stage_hives(repo_root, hives)
+    if error:
+        return fail(error)
+    for hive in hives:
+        print(str(hive))
     return 0
 
 
@@ -195,14 +246,10 @@ def cmd_encode_commit(args) -> int:
     if hive_paths is None:
         return fail("could not resolve hive paths via `bees list-hives`")
 
-    # Stage in-repo hive paths only (out-of-repo hives already persisted via bees).
-    for hive_path in hive_paths:
-        resolved = hive_path.resolve()
-        if not resolved.is_relative_to(repo_root):
-            continue
-        add = run_git(["add", str(resolved)], repo_root=repo_root)
-        if add.returncode != 0:
-            return fail(f"`git add {resolved}` failed: {add.stderr.strip()}")
+    # Out-of-repo hives already persisted via bees and need no git action.
+    error = stage_hives(repo_root, in_repo_hives(repo_root, hive_paths))
+    if error:
+        return fail(error)
 
     # Check staged state: `git diff --cached --quiet` exits 0 = nothing staged,
     # 1 = staged changes present.
@@ -246,19 +293,26 @@ def main() -> int:
             help="count of defer-* items routed to Encode this gate firing (verbatim in subject)",
         )
 
+    # Stage mode: the one place a hive is staged.
+    stage = subparsers.add_parser(
+        "stage",
+        help="git add each named in-repo hive except its .hive/ configuration; print each staged hive's path",
+    )
+
     # Resolve-hive-paths mode (NON-MUTATING query).
     resolve = subparsers.add_parser(
         "resolve-hive-paths",
         help="print each named, in-repo hive's absolute path (one per line); no mutation",
     )
-    resolve.add_argument(
-        "--hive",
-        action="append",
-        default=[],
-        dest="hives",
-        choices=sorted(HIVE_NAMES),
-        help="hive name to resolve (repeatable; default = all three when omitted)",
-    )
+    for p in (stage, resolve):
+        p.add_argument(
+            "--hive",
+            action="append",
+            default=[],
+            dest="hives",
+            choices=sorted(HIVE_NAMES),
+            help="hive name (repeatable; default = all three when omitted)",
+        )
 
     try:
         args = parser.parse_args()
@@ -267,6 +321,8 @@ def main() -> int:
 
     if args.mode == "resolve-hive-paths":
         return cmd_resolve_hive_paths(args)
+    if args.mode == "stage":
+        return cmd_stage(args)
 
     # Default / bare invocation and the explicit `encode-commit` subcommand both
     # route to encode-commit mode. --skill/--count are required there.
