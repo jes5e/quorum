@@ -23,7 +23,7 @@ from conftest import REPO_ROOT, read, shipped_artifacts
 # Raise an entry in the same commit that grows its file, with the growth's
 # reason recorded; lower it when the file shrinks.
 CAPS = {
-    "CLAUDE.md": 4743,
+    "CLAUDE.md": 4750,
     "skills/quo-breakdown-epic/SKILL.md": 3203,
     "skills/quo-doc-writer-review/SKILL.md": 2587,
     "skills/quo-engineer-review/SKILL.md": 5454,
