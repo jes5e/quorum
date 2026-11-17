@@ -34,7 +34,7 @@ CAPS = {
     "skills/quo-execute/references/post-completion-prompt.md": 1687,
     "skills/quo-execute/references/rationale.md": 2607,
     "skills/quo-execute/references/routing.md": 2536,
-    "skills/quo-file-issue/SKILL.md": 7064,
+    "skills/quo-file-issue/SKILL.md": 6991,
     "skills/quo-fix-issue/SKILL.md": 12186,
     "skills/quo-fix-issue/references/github-close.md": 382,
     "skills/quo-fix-issue/references/url-resolution.md": 521,

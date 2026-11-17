@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage and commit the on-disk changes a deferral-hygiene Encode branch produced.
+"""Stage in-repo hives without their `.hive/` configuration, and commit a deferral-hygiene Encode branch.
 
 The deferral-hygiene gate shared by `/quo-execute` and `/quo-fix-issue` (their
 `## 9. Deferral hygiene`) and `/quo-breakdown-epic` (its end of run) lets a
@@ -271,7 +271,7 @@ def cmd_encode_commit(args) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Stage/commit a deferral-hygiene Encode branch, or resolve in-repo hive paths.",
+        description="Stage in-repo hives (never .hive/), commit a deferral-hygiene Encode branch, or resolve in-repo hive paths.",
         add_help=True,
     )
     subparsers = parser.add_subparsers(dest="mode")

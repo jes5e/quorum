@@ -380,9 +380,9 @@ python3 "<this skill's base directory>/../quo-execute/scripts/hive_commit.py" st
 python "<this skill's base directory>\..\quo-execute\scripts\hive_commit.py" stage --hive issues
 ```
 
-**Resolving the helper path (sibling-skill resolution).** `hive_commit.py` is shipped by `/quo-execute`; this skill consumes it as a *sibling* bundled script. Resolve its path at runtime from this skill's own base directory: `<this skill's base directory>/../quo-execute/scripts/hive_commit.py`. The base directory is shown in the skill invocation header at session start (e.g., `Base directory for this skill: /Users/.../quo-file-issue`). Use the `..` traversal pattern to reach the sibling skill — this matches the same sibling-resolution discipline used elsewhere in the skill set (e.g., `/quo-fix-issue`'s §7 commit step). On Windows, use backslash separators: `<this skill's base directory>\..\quo-execute\scripts\hive_commit.py`.
+`hive_commit.py` ships with `/quo-execute`; resolve it from this skill's base directory, shown in the skill invocation header, as the snippets do.
 
-When the helper prints a path, commit what it staged and nothing else. **Do NOT `git add -A`** — other agents or processes may have in-flight changes in the working tree, and a blanket add would sweep them into this commit. The commit subject leads with the Issue title and appends the bare Issue ID once in trailing parentheses — `File issue: <title> (<issue-id>)`:
+When the helper prints a path, stage nothing else, then commit. **Do NOT `git add -A`** — other agents or processes may have in-flight changes in the working tree, and a blanket add would sweep them into this commit. The commit subject leads with the Issue title and appends the bare Issue ID once in trailing parentheses — `File issue: <title> (<issue-id>)`:
 
 ```bash
 # POSIX (bash / zsh):
