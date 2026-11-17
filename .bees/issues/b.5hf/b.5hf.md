@@ -2,10 +2,11 @@
 id: b.5hf
 type: bee
 title: 'Epic-boundary review: scope sweeps in work merged from elsewhere; the reviewer spawned its own subagents'
-status: open
-created_at: '2026-11-17T14:59:39.873550'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-17T14:59:39.873550'
+status: done
+schema_version: '0.1'
 guid: 5hfgzuaic2k8c69mp8czodounpiv8qdz
 ---
 
@@ -38,3 +39,30 @@ Two defects in `/quo-execute`'s Epic-boundary (post-completion) review, both see
 - **No wide-scope procedure.** Once the scope is right, the pressure that caused item 2 is gone. Splitting large scopes would be a predicted case.
 - **Process:** orchestrator hand edit, inventory-anchored, with cold reviews under the exit rule. Checkpoint 1 is the design, for operator approval.
 
+## Closed (2026-11-17)
+
+Merged by fast-forward from `badba83` to `7b1ef9d`, with the operator's go: "ok" at Checkpoint 1, which included the overseer's addition, then "merge please".
+
+The work was Worker 2's. Its checkpoints are `~/.quorum-overseer/b5hf-checkpoint-1.md` and `-2.md`. There was one cold round, wording only. Full test passes on `main` (620), run by the overseer, who also read the full diff.
+
+**Net shipped: −76 words.**
+
+### What landed
+
+- **One scope shape for both orchestrators' end-of-run review:** the commits the run made for its own units, each read as its own diff, plus uncommitted work and untracked files. In execute those are the Task commits found by their `(<task-id>)` subject tokens; in fix-issue, the commits `**Progress:**` records. The prompt states the reason: a range also takes in work merged onto the branch, which that work's own review covers.
+- **Fix-issue had the same exposure.** About 11 live_edit fix-issue manifests worked around it, twice by rewriting `**Pre-session SHA:**`. Fix-issue's §2 drops "Section 11 reads it back".
+- **The post-completion prompt** gains "Review it yourself and start no other agent: its results would arrive after you hand back, where nothing reads them."
+- **"Subagents cannot spawn subagents"** is deleted from both §5 lead paragraphs. `rationale.md` and the SDD now state the design instead: only the orchestrator dispatches Agents.
+- **The overseer's addition, same class:** fix-issue's `## Engineer's diff (path)` is `git diff HEAD`, so it holds this Issue's uncommitted work only.
+
+### Residuals accepted
+
+- Merge-step and other non-unit commits are out of scope, by design.
+- A reviewer reading per-commit diffs sees intermediate states, and reads the files on disk for the final one.
+- **live_edit-xd1:** a planner-ordered WIP commit mid-Issue means the Doc Writer's diff shows only the work since that commit. An off-skill commit caused it, and the old form was also wrong there.
+
+### Watch
+
+- A side lane's boundary review covers only its own work.
+- No post-completion reviewer spawns agents.
+- Fix-issue batches on merged branches review only their Issues.
