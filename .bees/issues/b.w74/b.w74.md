@@ -2,10 +2,11 @@
 id: b.w74
 type: bee
 title: Commit steps stage whole hive directories, including .hive/identity.json; stage only the ticket directories a run changed
-status: open
-created_at: '2026-11-17T09:55:00.568147'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-17T09:55:00.568147'
+status: done
+schema_version: '0.1'
 guid: w74xauanw1e7da4184zqtzoysech8ws2
 ---
 
@@ -36,3 +37,29 @@ Quorum's commit steps stage whole hive directories, so a hive's own configuratio
 - **Neutral:** no live_edit names. The reason (tracked hive configuration a worktree modifies) goes in the helper's docstring or commit, not in skill prose.
 - **Out of scope:** whether bees registration should modify `identity.json`. That's an upstream bees question for the operator.
 
+## Closed (2026-11-17)
+
+Merged by fast-forward from `8cab092` to `83f7fdf`, with the operator's go: "yes" at Checkpoint 1, with the overseer's scope change, then "yes" to merge.
+
+**Commits:**
+- `f507c4b`: the draft and tests;
+- `83f7fdf`: cold round 1 (three wording nits).
+
+The work was Worker 1's. Its checkpoints are `~/.quorum-overseer/bw74-checkpoint-1.md` and `-2.md`. Full test passes on `main` (608), run by the overseer, who also read the diff.
+
+**Net shipped prose: −162 words** (`/quo-file-issue` −145).
+
+### What landed
+
+- **`hive_commit.py` gains a `stage` mode.** It `git add`s each named in-repo hive except its `.hive/` configuration directory, using the pathspec `:(exclude)<hive>/.hive`, then prints each staged hive's path. It never commits. `encode-commit` stages through the same function. `resolve-hive-paths` is unchanged.
+- **The reason** is in the helper, beside `HIVE_CONFIG_DIR`: a repo may track hive configuration that a worktree's hive registration rewrites locally.
+- **Every site that staged a whole hive now calls `stage`:** execute §8 step 3, breakdown's commit and its Fix in this session, `/quo-plan`'s commit, and `/quo-file-issue` §4. The three Encode callers inherit the exclusion with no prose change.
+- **Unchanged:** `/quo-fix-issue` §8's per-Issue staging.
+- **The scope stays the whole hive.** The overseer changed the design at Checkpoint 1, because 5m's Analyst Approve wrote into other Plan Bees' Tasks (`run-state-quo-execute-b.9nd-history.md`:9), and b.txn sanctions that pattern. Bee-directory staging would have left those edits uncommitted.
+- **Seven tests.** Five of them fail on the old code.
+
+### Watch
+
+- live_edit's Encode commits run through the helper again, with no stop, and never carry `identity.json`.
+- The interim explicit-path workaround is retired once this is synced.
+- The upstream bees question is still open, for the operator: should worktree registration modify a tracked `identity.json` at all?
