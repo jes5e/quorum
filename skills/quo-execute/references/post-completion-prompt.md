@@ -6,13 +6,11 @@
 
 | Parameter | `/quo-fix-issue` value | `/quo-execute` value |
 |---|---|---|
-| `<pre-run-sha>` | the manifest's `**Pre-session SHA:**` field | the commit before the Epic's first Task commit |
+| `<unit-commits>` | the commits `**Progress:**` records | the commits whose subjects carry the Epic's Tasks' `(<task-id>)` tokens |
 | `<unit-noun>` | `fix` | `Epic` |
 | `<spec-source>` | `the issue body, or bodies in batch mode — read each via bees show-ticket --ids <id>. Issue IDs in this session: <issue-id-1> <issue-id-2> ...` | `the Epic body and its Task bodies — read them via bees show-ticket --ids <epic-id> <task-id-1> <task-id-2> .... The spec the Plan Bee's reference_materials name is the secondary source; consult it when the diff vs. those bodies is ambiguous.` |
 | `<compromise-tracker-path>` | the manifest's `**Compromise tracker:**` field, passed as a path, never as inlined contents | the same |
 | `<scope-notes>` | empty | `This review covers one Epic of Plan Bee <bee-id>. In PHASES 1–4, challenge only tracker entries numbered above <n> (the manifest's **Compromises reviewed:**); earlier entries were challenged at an earlier Epic's review. In PHASE 6, also check this Epic against earlier Epics' code, whose commits carry the subject prefix "Plan <bee-id>, Epic": **Contract drift** (ordering contracts, docstring claims, "this should never happen" comments the new code breaks), **Resource compounding** (new acquires from a resource an earlier Epic uses — model the aggregate), and **Symmetric-change gaps** (a new resource class — check earlier Epics' cleanup paths handle it). The project's Full test command ran at this Epic's end: <passed, or its failing output>. Report each failure as a [defect] blocker.` |
-
-The diff scope is `git diff <pre-run-sha>` (the working tree against that commit, no `..HEAD`) plus every untracked file `git ls-files --others --exclude-standard` lists.
 
 ## Skeleton
 
@@ -23,11 +21,12 @@ You are read-only against the working tree: change no file, run no `git checkout
 tools only in a mode that changes no file under review — a reviewer killed
 mid-mutation leaves a change no perturbation copy records.
 
-Scope: review the diff `git diff <pre-run-sha>` — no `..HEAD`, so it is the
-working tree as it stands against the pre-run commit — plus every untracked
-file `git ls-files --others --exclude-standard` lists, read from disk
-(compute these yourself via git; review-round edits may sit uncommitted at
-this point, so a commit-to-commit range alone misses them). Anything that was
+Scope: review each of the commits <unit-commits> as its own diff, plus the
+working tree against HEAD and every untracked file
+`git ls-files --others --exclude-standard` lists, read from disk, since
+review-round edits may sit uncommitted. Read the commits one at a time, not
+as one range: a range also takes in work merged onto the branch from
+elsewhere, which that work's own review covers. Anything that was
 already uncommitted or untracked when the run began is in this scope too, and
 you cannot see the run-start tree to tell it apart: when a finding concerns a
 change no ticket body asks for, say it is likely either pre-existing or an
@@ -35,7 +34,9 @@ unticketed in-run edit (a review-round fix, or a formatter pass), as an
 inference, and name that basis. Review that scope against <spec-source>
 <scope-notes>
 The orchestrator has finished the work — your job is to give it a
-fresh-eyes review with no context of how the work was done.
+fresh-eyes review with no context of how the work was done. Review it
+yourself and start no other agent: its results would arrive after you hand
+back, where nothing reads them.
 
 Perform these phases IN ORDER. Phases 1–5 lead with challenging the
 compromises that were accepted during the run; the discrete-defect sweep is
@@ -122,9 +123,8 @@ source code, not natural-language documentation. Review them with the same
 rigor as language-specific source — broken cross-references, drifted
 contracts, ambiguous prose, and design-rule violations are all in scope.
 
-Do NOT do a general repo audit. Stay focused on the scope stated above —
-the diff against the pre-run commit and the untracked files — and nothing
-outside it.
+Do NOT do a general repo audit. Stay focused on the scope stated above and
+nothing outside it.
 
 Do NOT invoke /quo-engineer-review, /quo-doc-writer-review, or /quo-test-writer-review at
 this stage. Those skills are designed as parallel lanes of an in-flight
