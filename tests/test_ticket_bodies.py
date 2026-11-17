@@ -118,10 +118,18 @@ def test_missing_ticket_fails_with_one_line_and_no_file(store, capsys):
     assert not (store / ".quorum").exists()
 
 
-def test_store_failure_fails(monkeypatch, store, capsys):
-    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **k: _Done(returncode=1, stderr="boom"))
+def test_store_failure_fails_with_one_line(monkeypatch, store, capsys):
+    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **k: _Done(returncode=1, stderr="boom\nsecond line\n"))
     code, _, err = _run(capsys, "--task", "t2.a", "--role", "engineer")
-    assert code == 2 and "boom" in err
+    assert code == 2 and "boom second line" in err and "\n" not in err
+
+
+def test_unwritable_scratch_dir_fails_with_one_line(monkeypatch, store, capsys):
+    blocker = store / "not-a-dir"
+    blocker.write_text("x", encoding="utf-8")
+    monkeypatch.setattr(mod.tempfile, "gettempdir", lambda: str(blocker))
+    code, out, err = _run(capsys, "--task", "t2.a", "--role", "engineer")
+    assert code == 2 and out == "" and err.startswith("could not write the bodies file") and "\n" not in err
 
 
 def test_unknown_role_is_refused(store, capsys):

@@ -10,8 +10,8 @@ ticket store straight into a file, so the orchestrator passes only the path and
 the implementer reads the file in full. The text is copied byte for byte, so
 nothing is paraphrased.
 
-It is the one place that knows how the ticket store is queried; another ticket
-system needs only a new `fetch` here.
+Within this helper, `fetch` is the only code that queries the ticket store, so
+another ticket system needs only a new `fetch` here.
 
 Usage
 -----
@@ -31,7 +31,7 @@ holds, in order:
 Run it just before every fresh dispatch: a new file each time carries any
 revision approved since the last one. The file is never deleted.
 
-Failure (exit 2): one line on stderr, and no file is written.
+Failure (exit 2): one line on stderr. A failed ticket read writes no file.
 """
 
 import argparse
@@ -63,7 +63,8 @@ def fetch(ids):
     except (FileNotFoundError, OSError) as exc:
         raise FetchError(f"could not run `bees show-ticket`: {exc}")
     if result.returncode != 0:
-        raise FetchError(f"`bees show-ticket` failed: {(result.stderr or result.stdout).strip()}")
+        detail = " ".join((result.stderr or result.stdout).split())
+        raise FetchError(f"`bees show-ticket` failed: {detail}")
     try:
         data = json.loads(result.stdout)
     except json.JSONDecodeError:
@@ -164,7 +165,11 @@ def main(argv=None):
         print(str(exc), file=sys.stderr)
         return 2
 
-    path = write(args.task, args.role, compose(task, dependency_order(tagged), epic))
+    try:
+        path = write(args.task, args.role, compose(task, dependency_order(tagged), epic))
+    except OSError as exc:
+        print(" ".join(f"could not write the bodies file: {exc}".split()), file=sys.stderr)
+        return 2
     print(path)
     return 0
 
