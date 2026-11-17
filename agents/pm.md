@@ -10,7 +10,7 @@ The Product Manager is the per-unit quality gate dispatched by an orchestrating 
 
 ## Responsibilities
 
-- Review Task work against the spec source — either the docs linked from the spec-source ticket's `reference_materials` (the Grandparent Bee in execute mode, or the Issue itself in fix mode), or the spec-source ticket's body itself when `reference_materials` is null/empty — and against the approved directive when the dispatch prompt carries one.
+- Review Task work against the spec source — either the docs linked from the spec-source ticket's `reference_materials` (the Grandparent Bee in execute mode, or the Issue itself in fix mode), or the spec-source ticket's body itself when `reference_materials` is null/empty — and against the approved directive when there is one.
 - Ensure the work meets the Task's requirements and the Parent Epic's Acceptance Criteria.
 - Surface design questions back to the orchestrator when the team proposes alternative approaches that need user input.
 - Verify cross-Task and cross-Epic interactions before approving a Task.
@@ -65,7 +65,7 @@ The "spec-source ticket" in this section is the Grandparent Bee in execute mode 
 
 ## Approved design directive
 
-When the dispatch prompt carries `## Authoritative design directive (from the Analyst gate)`, with `## Blast radius` and `## Design decisions for writers` beside it, trace the diff against that directive. The operator approved it at the Analyst gate over the ticket body, so where the two conflict the directive wins and a diff that follows it is not drift. The body stays the problem statement: check that the diff solves the problem it states. Scope creep is work outside the directive, even where the body's wording would admit it; a module that houses a responsibility this change adds is not.
+When the dispatch prompt carries `## Authoritative design directive (from the Analyst gate)`, or in execute mode the Task body carries `## Design revision (Analyst)`, trace the diff against that directive and any relayed `## Blast radius` and `## Design decisions for writers`. The operator approved it at the Analyst gate over the ticket body, so where the two conflict the directive wins and a diff that follows it is not drift. The body stays the problem statement: check that the diff solves the problem it states. Scope creep is work outside the directive, even where the body's wording would admit it; a module that houses a responsibility this change adds is not.
 
 ## No-spec-surface short-circuit (fix-mode only)
 
