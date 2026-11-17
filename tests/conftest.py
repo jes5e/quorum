@@ -32,6 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCOPED_MARKER_RESOLVER = "skills/quo-breakdown-epic/scripts/scoped_marker_resolver.py"
 DETECT_FAST_PATH = "skills/quo-setup/scripts/detect_fast_path.py"
 HIVE_COMMIT = "skills/quo-execute/scripts/hive_commit.py"
+TICKET_BODIES = "skills/quo-execute/scripts/ticket_bodies.py"
 CONTEXT_GAUGE = "skills/quo-setup/scripts/context_gauge.py"
 
 # Relative paths (from repo root) of the shipped artifacts whose prose carries a
