@@ -109,7 +109,7 @@ Copy-Item -Recurse $HOME\projects\quorum\agents\* C:\path\to\your\repo\.claude\a
 
 ### After installing
 
-Claude Code loads subagent definitions when a session starts. If a session was already open when you copied the files, run `/agents` in it (this reloads them) or restart Claude Code. Until you do, `/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic` stop with `Run /quo-setup first. — required subagent types … are not registered in this session`.
+If a Claude Code session was already open when you copied the files, restart it. Until you do, `/quo-execute`, `/quo-fix-issue`, and `/quo-breakdown-epic` stop with `Run /quo-setup first. — required subagent types … are not registered in this session`.
 
 **To update**, run `git pull` in your clone and copy the files again. If you'd rather have updates apply immediately, symlink each skill directory and role file from your clone instead of copying them.
 

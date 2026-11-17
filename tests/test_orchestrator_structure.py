@@ -305,7 +305,7 @@ def test_body_sections_are_numbered_one_through_thirteen():
 
 SHARED_ANCHORS = [
     "Run /quo-setup first.",
-    "Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.",
+    "Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code.",
     "Run /quo-setup first. — Specs hive is not colonized for this repo. Re-run /quo-setup to add the Specs hive without disturbing existing hives (Plans, Issues).",
     "`## Documentation Locations`",
     "`## Build Commands`",

@@ -93,7 +93,7 @@ def test_next_steps_labels_are_five_words_or_fewer():
 
 OUTPUT_ANCHORS = [
     "Run /quo-setup first.",
-    "Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.",
+    "Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code.",
     "`## Documentation Locations`",
     "`## Build Commands`",
     "run-state-quo-breakdown-epic-<bee-id>.md",

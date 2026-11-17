@@ -8,7 +8,7 @@ Turn each drafted Epic of a Plan Bee into Tasks and Subtasks that `/quo-execute`
 
 ## 1. Preconditions
 
-Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hives` lacks the `plans`, `issues`, or `specs` hive (by `normalized_name`), or the target repo's CLAUDE.md lacks `## Documentation Locations` or a `## Build Commands` section carrying `Compile/type-check`, `Format`, `Lint`, `Narrow test`, and `Full test`. If a dispatch fails with `Agent type '<name>' not found`, stop with `Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code or run /agents to hot-reload.` and name the draft file, which survives on disk.
+Hard-fail with `Run /quo-setup first.` plus a one-line reason when `bees list-hives` lacks the `plans`, `issues`, or `specs` hive (by `normalized_name`), or the target repo's CLAUDE.md lacks `## Documentation Locations` or a `## Build Commands` section carrying `Compile/type-check`, `Format`, `Lint`, `Narrow test`, and `Full test`. If a dispatch fails with `Agent type '<name>' not found`, stop with `Run /quo-setup first. — required subagent types <missing-list> are not registered in this session; verify the install per README.md '## Install' and restart Claude Code.` and name the draft file, which survives on disk.
 
 **Working rules for every step.**
 
