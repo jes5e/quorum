@@ -5,7 +5,7 @@ title: 'Execute surfaces every implementer''s operator-facing return: operator s
 parent: null
 reference_materials: null
 created_at: '2026-11-16T00:18:07.487773'
-status: open
+status: done
 schema_version: '0.1'
 guid: msxweoad9sa2b51f7rncsy8q8yzx2dip
 ---
@@ -44,3 +44,7 @@ Two gaps in what `/quo-execute` does with an implementer's return that is meant 
 
 **What's left is likely item 2 alone:** one sentence in execute, mirroring fix-issue's Doc Sync line. That's small enough to ride along with the next batch that edits `/quo-execute`. It doesn't need a batch of its own.
 
+## Closed (2026-11-17)
+
+- **Item 2** (execute had no reader for the Doc Writer's declined requests) landed with b.th3 at `b801bf4`. Execute's Task summary gains a `**Declined doc requests**` line, mirroring fix-issue's `**Doc Sync**`.
+- **Item 1** (Operator-action from any implementer, and breakdown placing operator steps by role) is closed with no change. Its only evidence, Epic 3 Task 3 T-E, is a Test Writer's operator step the orchestrator routed correctly with no rule written for it. Under the three questions that's once, loud and recovered unaided, so it earns nothing. No writer role emits `## Operator action needed`, so no return line goes unread either. The assessment is in `~/.quorum-overseer/bth3-checkpoint-1.md`, item 4.

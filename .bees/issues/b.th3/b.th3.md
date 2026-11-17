@@ -2,10 +2,11 @@
 id: b.th3
 type: bee
 title: Execute pastes the approved directive the Engineer already has in its bodies file; a stale writers sentence; no reader for the Doc Writer's declined requests
-status: open
-created_at: '2026-11-17T11:34:31.989442'
-schema_version: '0.1'
+parent: null
 reference_materials: null
+created_at: '2026-11-17T11:34:31.989442'
+status: done
+schema_version: '0.1'
 guid: th38kgkaxmrd5pezx2ne5iazg2mgf4ap
 ---
 
@@ -34,3 +35,35 @@ Since b.rgw, an approved Analyst revision is recorded in the ticket's body (`## 
 - No change to the bodies file or the helper unless the design needs it.
 - Watch the word count. The likely net is negative.
 
+## Closed (2026-11-17)
+
+Merged by fast-forward from `36b640f` to `b801bf4`, with the operator's go: "go" at Checkpoint 1, "A" on the post-completion carrier, then "merge".
+
+**Commits:**
+- `5ebbafc`: the draft;
+- `6ada892`, `679245e` and `b801bf4`: cold rounds 1–3.
+
+The work was Worker 1's. Its checkpoints are `~/.quorum-overseer/bth3-checkpoint-1.md` through `-3.md`. Full test passes on `main` (620), run by the overseer, who also read the full diff.
+
+**Net shipped: −59 words** (execute −30, engineer −18, pm +10, analyst −21).
+
+### What landed
+
+- **Execute stops pasting the directive.** `## Authoritative design directive` and `## Design context` no longer go to the Engineer, nor the directive block to the PM. After an Approve, the Task body carries the revision (Section 6): implementers read it in their bodies file, and the PM in the Task.
+- **The bodies file is rewritten** before an implementer's first resume after an Approve.
+- **At a `postcomp-<n>` scope, which has no ticket,** the dispatch carries the revision under `## Design revision (Analyst)`. That's the operator's option (A), which keeps today's behavior.
+- **`agents/engineer.md` and `agents/pm.md`** treat that heading as the directive in execute, and it wins over conflicting ticket text. `## Design revision (Analyst)` is pinned as a contract surface.
+- **Stale sentences cut:** execute's "Writers receive … only", and two of the same class in `agents/analyst.md`.
+- **Execute's Task summary** gains `**Declined doc requests**`. This closes b.msx item 2.
+- **b.msx item 1** (operator steps from any role) was not earned: once, loud, and handled correctly without a rule.
+
+### Rollout
+
+The role files change, and subagent definitions load at session start. So the order is: sync, then reload the agents in every session (`/agents` or a restart), then each session re-reads execute and the two role files. The prompt is at `~/.quorum-overseer/paste-live-edit-b-th3-sync.md`.
+
+### Watch
+
+- The next fresh Engineer dispatch after an Approve costs a few points; it was 9 before this change.
+- The Engineer and PM act on the Task body's revision.
+- No orchestrator strips the revision from writers.
+- A declined doc request shows up in a Task summary.
