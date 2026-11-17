@@ -28,9 +28,8 @@ holds, in order:
 - the parent Epic's `## Epic-wide contracts` section, from its heading to the
   next heading of level 1 or 2, or a line saying the Epic has none.
 
-Run it just before every fresh dispatch, and before an implementer's first
-resume after an Approve: a new file each time carries any revision approved
-since the last one. The file is never deleted.
+Each run writes a new file from the ticket store as it stands, so a file
+written after an Approve carries the revision. The file is never deleted.
 
 Failure (exit 2): one line on stderr. A failed ticket read writes no file.
 """
